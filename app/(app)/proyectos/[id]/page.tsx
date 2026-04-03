@@ -20,6 +20,14 @@ export default function ProyectoDetalle() {
   const [docs, setDocs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Movimientos table
+  const [tablaExpandida, setTablaExpandida] = useState(false)
+
+  // Partida form
+  const [showPartidaForm, setShowPartidaForm] = useState(false)
+  const [nuevaPartida, setNuevaPartida] = useState({ nombre: '', categoria: 'obra', presupuesto: '', ejecutado: '' })
+  const [savingPartida, setSavingPartida] = useState(false)
+
   useEffect(() => {
     if (!id) return
     Promise.all([
@@ -42,6 +50,23 @@ export default function ProyectoDetalle() {
     })
   }, [id])
 
+  const guardarPartida = async () => {
+    if (!nuevaPartida.nombre.trim()) return
+    setSavingPartida(true)
+    const { data, error } = await supabase.from('partidas_reforma').insert([{
+      proyecto_id: id,
+      nombre: nuevaPartida.nombre,
+      categoria: nuevaPartida.categoria,
+      presupuesto: parseFloat(nuevaPartida.presupuesto) || 0,
+      ejecutado: parseFloat(nuevaPartida.ejecutado) || 0,
+      orden: partidas.length + 1,
+    }]).select().single()
+    if (!error && data) setPartidas(p => [...p, data])
+    setShowPartidaForm(false)
+    setNuevaPartida({ nombre: '', categoria: 'obra', presupuesto: '', ejecutado: '' })
+    setSavingPartida(false)
+  }
+
   if (loading) return (
     <div className="p-4">
       <div className="h-8 w-32 rounded-lg animate-pulse mb-4" style={{ background: '#141414' }} />
@@ -60,7 +85,6 @@ export default function ProyectoDetalle() {
 
   return (
     <div className="p-4">
-      {/* Back */}
       <button onClick={() => router.back()} className="flex items-center gap-1.5 mb-4 text-sm font-semibold" style={{ color: '#888' }}>
         ← Volver
       </button>
@@ -79,7 +103,7 @@ export default function ProyectoDetalle() {
         </div>
         <div className="grid grid-cols-3 gap-2 relative">
           {[
-            { v: ESTADO_COLOR[proyecto.estado] ? proyecto.estado.charAt(0).toUpperCase() + proyecto.estado.slice(1) : '—', l: 'Estado', c: ESTADO_COLOR[proyecto.estado] },
+            { v: proyecto.estado ? proyecto.estado.charAt(0).toUpperCase() + proyecto.estado.slice(1) : '—', l: 'Estado', c: ESTADO_COLOR[proyecto.estado] },
             { v: `${proyecto.avance_reforma || 0}%`, l: 'Avance', c: '#fff' },
             { v: proyecto.precio_venta_estimado ? fmt(proyecto.precio_venta_estimado) : '—', l: 'Venta est.', c: '#22C55E' },
           ].map(k => (
@@ -95,7 +119,7 @@ export default function ProyectoDetalle() {
       <div className="flex overflow-x-auto mb-4 -mx-4 px-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         {TABS.map((t, i) => (
           <button key={t} onClick={() => setTab(i)}
-            className="flex-shrink-0 px-4 py-2.5 text-sm font-bold whitespace-nowrap transition-colors"
+            className="flex-shrink-0 px-4 py-2.5 text-sm font-bold whitespace-nowrap"
             style={{ color: tab === i ? '#F26E1F' : '#888', borderBottom: tab === i ? '2.5px solid #F26E1F' : '2.5px solid transparent', marginBottom: -1 }}>
             {t}
           </button>
@@ -117,33 +141,54 @@ export default function ProyectoDetalle() {
           </div>
           <div className="rounded-2xl overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="p-4 pb-0 flex items-center justify-between">
-              <div className="font-black text-[15px] text-white">Movimientos</div>
+              <div className="font-black text-[15px] text-white">Movimientos <span style={{ color: '#555', fontSize: 13 }}>({movimientos.length})</span></div>
               <span className="text-sm font-bold" style={{ color: '#F26E1F' }}>+ Agregar</span>
             </div>
             {movimientos.length === 0 ? (
               <div className="p-4 text-sm text-center" style={{ color: '#555' }}>Sin movimientos registrados</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr style={{ background: '#1E1E1E' }}>
-                      {['Fecha','Concepto','Importe'].map(h => (
-                        <th key={h} className="text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#888', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {movimientos.slice(0, 15).map((m, i) => (
-                      <tr key={m.id} style={{ borderBottom: i < movimientos.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-                        <td className="px-3 py-3 text-xs font-medium" style={{ color: '#888' }}>{m.fecha?.slice(5)}</td>
-                        <td className="px-3 py-3 text-sm font-medium text-white">{m.concepto}</td>
-                        <td className="px-3 py-3 text-xs font-black font-mono" style={{ color: m.tipo === 'Ingreso' ? '#22C55E' : '#EF4444' }}>
-                          {m.tipo === 'Ingreso' ? '+' : '-'}{fmt(Math.abs(m.monto))}
-                        </td>
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr style={{ background: '#1E1E1E' }}>
+                        {(tablaExpandida
+                          ? ['Fecha','Concepto','Categoría','Proveedor','Factura','Cuenta','Importe']
+                          : ['Fecha','Concepto','Importe']
+                        ).map(h => (
+                          <th key={h} className="text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
+                            style={{ color: '#888', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {movimientos.slice(0, tablaExpandida ? 999 : 20).map((m, i) => (
+                        <tr key={m.id} style={{ borderBottom: i < movimientos.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                          <td className="px-3 py-2.5 text-xs font-medium whitespace-nowrap" style={{ color: '#888' }}>{m.fecha?.slice(5)}</td>
+                          <td className="px-3 py-2.5 text-sm font-medium text-white" style={{ maxWidth: tablaExpandida ? 180 : 'unset' }}>
+                            <div className="truncate">{m.concepto}</div>
+                          </td>
+                          {tablaExpandida && <>
+                            <td className="px-3 py-2.5 text-xs font-medium whitespace-nowrap" style={{ color: '#888' }}>{m.categoria || '—'}</td>
+                            <td className="px-3 py-2.5 text-xs font-medium whitespace-nowrap" style={{ color: '#888' }}>{m.proveedor || '—'}</td>
+                            <td className="px-3 py-2.5 text-xs font-mono whitespace-nowrap" style={{ color: '#555' }}>{m.numero_factura || '—'}</td>
+                            <td className="px-3 py-2.5 text-xs font-medium whitespace-nowrap" style={{ color: '#555', maxWidth: 120 }}>
+                              <div className="truncate">{m.cuenta || '—'}</div>
+                            </td>
+                          </>}
+                          <td className="px-3 py-2.5 text-xs font-black font-mono whitespace-nowrap" style={{ color: m.tipo === 'Ingreso' || m.monto > 0 ? '#22C55E' : '#EF4444' }}>
+                            {m.monto > 0 ? '+' : ''}{fmt(m.monto)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button onClick={() => setTablaExpandida(!tablaExpandida)}
+                  className="w-full py-3 text-xs font-bold text-center"
+                  style={{ color: '#F26E1F', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  {tablaExpandida ? 'Ver compacto ↑' : `Ver completo (fecha, concepto, categoría, proveedor, factura, cuenta) ↓`}
+                </button>
               </div>
             )}
           </div>
@@ -167,7 +212,7 @@ export default function ProyectoDetalle() {
           <div className="rounded-2xl p-4" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="flex items-center justify-between mb-4">
               <div className="font-black text-[15px] text-white">Partidas</div>
-              <span className="text-sm font-bold" style={{ color: '#F26E1F' }}>+ Partida</span>
+              <button onClick={() => setShowPartidaForm(true)} className="text-sm font-bold" style={{ color: '#F26E1F' }}>+ Partida</button>
             </div>
             {partidas.length === 0 ? (
               <div className="text-sm text-center py-6" style={{ color: '#555' }}>Sin partidas de reforma</div>
@@ -184,7 +229,7 @@ export default function ProyectoDetalle() {
                     Pres. {fmt(p.presupuesto || 0)} · Ejec. {fmt(p.ejecutado || 0)}
                   </div>
                   <div className="h-1 rounded-full overflow-hidden" style={{ background: '#282828' }}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%`, background: col }} />
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, background: col }} />
                   </div>
                 </div>
               )
@@ -244,7 +289,7 @@ export default function ProyectoDetalle() {
           ) : (
             <div className="pl-5 relative">
               <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#282828' }} />
-              {bitacora.map((b, i) => (
+              {bitacora.map((b) => (
                 <div key={b.id} className="relative mb-4">
                   <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background: '#F26E1F', border: '2px solid #0A0A0A' }} />
                   <div className="text-[11px] font-bold mb-1 font-mono tracking-wide" style={{ color: '#888' }}>
@@ -273,11 +318,7 @@ export default function ProyectoDetalle() {
                   {['Compra','Plan.','Reforma','Comercial','Liquid.'].map((s, i) => (
                     <div key={s} className="flex flex-col items-center gap-1.5">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black"
-                        style={{
-                          background: i < 2 ? 'rgba(34,197,94,0.15)' : i === 2 ? 'rgba(242,110,31,0.18)' : '#1E1E1E',
-                          border: `1.5px solid ${i < 2 ? '#22C55E' : i === 2 ? '#F26E1F' : '#333'}`,
-                          color: i < 2 ? '#22C55E' : i === 2 ? '#F26E1F' : '#555',
-                        }}>
+                        style={{ background: i < 2 ? 'rgba(34,197,94,0.15)' : i === 2 ? 'rgba(242,110,31,0.18)' : '#1E1E1E', border: `1.5px solid ${i < 2 ? '#22C55E' : i === 2 ? '#F26E1F' : '#333'}`, color: i < 2 ? '#22C55E' : i === 2 ? '#F26E1F' : '#555' }}>
                         {i < 2 ? '✓' : i === 2 ? '⚡' : '○'}
                       </div>
                       <div className="text-[9px] font-bold uppercase text-center leading-tight" style={{ color: '#555', maxWidth: 40 }}>{s}</div>
@@ -337,6 +378,60 @@ export default function ProyectoDetalle() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Partida form bottom sheet */}
+      {showPartidaForm && (
+        <>
+          <div className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setShowPartidaForm(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 480, margin: '0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
+            <div className="flex justify-between items-center mb-5">
+              <div className="font-black text-[17px] text-white">Nueva partida</div>
+              <button onClick={() => setShowPartidaForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#282828', color: '#888' }}>✕</button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Nombre *</label>
+                <input type="text" value={nuevaPartida.nombre} placeholder="Ej. Demolición interior"
+                  onChange={e => setNuevaPartida(p => ({ ...p, nombre: e.target.value }))}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium placeholder:text-[#555]"
+                  style={{ background: '#1E1E1E', border: '1.5px solid rgba(255,255,255,0.08)' }} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Categoría</label>
+                <select value={nuevaPartida.categoria} onChange={e => setNuevaPartida(p => ({ ...p, categoria: e.target.value }))}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium"
+                  style={{ background: '#1E1E1E', border: '1.5px solid rgba(255,255,255,0.08)' }}>
+                  {['obra','materiales','mobiliario','electro','decoracion','otros'].map(c => (
+                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Presupuesto (€)</label>
+                  <input type="number" value={nuevaPartida.presupuesto} placeholder="0"
+                    onChange={e => setNuevaPartida(p => ({ ...p, presupuesto: e.target.value }))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium placeholder:text-[#555]"
+                    style={{ background: '#1E1E1E', border: '1.5px solid rgba(255,255,255,0.08)' }} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Ejecutado (€)</label>
+                  <input type="number" value={nuevaPartida.ejecutado} placeholder="0"
+                    onChange={e => setNuevaPartida(p => ({ ...p, ejecutado: e.target.value }))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium placeholder:text-[#555]"
+                    style={{ background: '#1E1E1E', border: '1.5px solid rgba(255,255,255,0.08)' }} />
+                </div>
+              </div>
+            </div>
+            <button onClick={guardarPartida} disabled={savingPartida || !nuevaPartida.nombre.trim()}
+              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background: '#F26E1F' }}>
+              {savingPartida ? 'Guardando...' : 'Agregar partida'}
+            </button>
+          </div>
+        </>
       )}
     </div>
   )
