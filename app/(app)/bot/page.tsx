@@ -4,16 +4,7 @@ import { supabase } from '@/lib/supabase'
 
 type Msg = { role: 'bot' | 'user'; text: string; time: string }
 
-const QUICK = ['📄 Factura', '💰 Saldo', '🔨 Estado obra', '📋 Liquidación', '📅 Tareas']
-
-const RESPONSES: Record<string, string> = {
-  saldo: 'Saldo cuenta principal HASU: <strong style="color:#22C55E">cargando...</strong> — revisá la sección HASU para el detalle actualizado.',
-  factura: '¿De qué proyecto y cuánto? Podés mandarme foto de la factura directamente.',
-  obra: 'Revisando el estado de reforma... <br><br>Accedé a <strong>Proyectos</strong> para ver el avance detallado de cada obra.',
-  tarea: 'Tus pendientes activos están en cada proyecto. <br><br>Abrí un proyecto → tab Pendientes para ver las tareas asignadas.',
-  liquidación: '📋 Generando borrador de liquidación parcial... <br><br>El informe estará listo para el próximo viernes.',
-  default: 'Entendido. ¿A qué proyecto lo asigno?',
-}
+const QUICK = ['📄 Factura', '💰 Saldo', '🔨 Estado obra', '📋 Liquidación', '📅 Tareas pendientes']
 
 function now() {
   const d = new Date()
@@ -24,42 +15,72 @@ export default function BotPage() {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
-  const [proyectosActivos, setProyectosActivos] = useState<number>(0)
+  const [context, setContext] = useState('')
+  const [historial, setHistorial] = useState<{role:string;content:string}[]>([])
   const endRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    supabase.from('proyectos').select('id', { count: 'exact' })
-      .in('estado', ['comprado', 'reforma', 'venta'])
-      .then(({ count }) => {
-        const n = count ?? 0
-        setProyectosActivos(n)
-        setMsgs([{
-          role: 'bot',
-          text: `Hola Pato 👋<br><br>Tenés <strong>${n > 0 ? n : '...'} proyecto${n !== 1 ? 's' : ''} activo${n !== 1 ? 's' : ''}</strong>.<br><br>¿Qué arrancamos hoy?`,
-          time: now()
-        }])
-      })
+    async function loadContext() {
+      const [
+        { count: activos },
+        { data: movs },
+        { data: tareas },
+        { data: proyectos }
+      ] = await Promise.all([
+        supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta']),
+        supabase.from('movimientos').select('concepto,monto,fecha').order('fecha', { ascending: false }).limit(5),
+        supabase.from('tareas').select('titulo,prioridad,estado').eq('estado', 'Pendiente').order('created_at').limit(5),
+        supabase.from('proyectos').select('nombre,estado,ciudad').order('created_at')
+      ])
+
+      const n = activos ?? 0
+      const ctx = [
+        `Proyectos activos: ${n}`,
+        proyectos?.length ? `Proyectos: ${proyectos.map(p => `${p.nombre} (${p.estado}, ${p.ciudad})`).join(', ')}` : '',
+        movs?.length ? `Últimos movimientos: ${movs.map(m => `${m.concepto} ${m.monto > 0 ? '+' : ''}${m.monto}€ (${m.fecha})`).join(' | ')}` : '',
+        tareas?.length ? `Tareas pendientes: ${tareas.map(t => `${t.titulo} [${t.prioridad}]`).join(', ')}` : ''
+      ].filter(Boolean).join('\n')
+
+      setContext(ctx)
+      setMsgs([{
+        role: 'bot',
+        text: `Hola Pato 👋<br><br>Tenés <strong>${n} proyecto${n !== 1 ? 's' : ''} activo${n !== 1 ? 's' : ''}</strong>.<br><br>¿Qué arrancamos hoy?`,
+        time: now()
+      }])
+    }
+    loadContext()
   }, [])
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, typing])
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     if (!text.trim()) return
     const t = now()
     setMsgs(m => [...m, { role: 'user', text, time: t }])
     setInput('')
     if (taRef.current) taRef.current.style.height = 'auto'
     setTyping(true)
-    setTimeout(() => {
+
+    const newHistorial = [...historial, { role: 'user', content: text }]
+    setHistorial(newHistorial)
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newHistorial, context })
+      })
+      const { text: resp } = await res.json()
       setTyping(false)
-      const low = text.toLowerCase()
-      let resp = RESPONSES.default
-      for (const [k, v] of Object.entries(RESPONSES)) {
-        if (k !== 'default' && low.includes(k)) { resp = v; break }
-      }
-      setMsgs(m => [...m, { role: 'bot', text: resp, time: now() }])
-    }, 900)
+      // Convert newlines to <br> for display
+      const html = resp.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>')
+      setMsgs(m => [...m, { role: 'bot', text: html, time: now() }])
+      setHistorial(h => [...h, { role: 'assistant', content: resp }])
+    } catch {
+      setTyping(false)
+      setMsgs(m => [...m, { role: 'bot', text: 'Error de conexión. Intentá de nuevo.', time: now() }])
+    }
   }
 
   return (
@@ -68,7 +89,7 @@ export default function BotPage() {
       <div className="flex items-center gap-3 px-4 h-[54px] flex-shrink-0" style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
         <div className="flex-1 font-bold text-[17px] text-white tracking-[-0.3px]">Bot</div>
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base cursor-pointer" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#ccc' }}>◎</div>
+        <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} title="Conectado a Claude" />
       </div>
 
       {/* Messages */}

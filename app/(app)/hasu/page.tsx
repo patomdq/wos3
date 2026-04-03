@@ -31,11 +31,11 @@ export default function HasuPage() {
   const pct = (totalCapital / OBJETIVO * 100).toFixed(1)
 
   const MODULOS = [
-    { icon: '🔧', bg: 'rgba(96,165,250,0.15)', nombre: 'Proveedores', desc: 'Gestión de proveedores y contactos', href: '/admin' },
-    { icon: '🧾', bg: 'rgba(245,158,11,0.15)', nombre: 'Fiscal y gestoría', desc: 'IVA, IRPF, documentos legales', href: '#' },
-    { icon: '📊', bg: 'rgba(34,197,94,0.15)', nombre: 'Flujo de caja global', desc: 'Todos los proyectos consolidados', href: '#' },
+    { icon: '🔧', bg: 'rgba(96,165,250,0.15)', nombre: 'Proveedores', desc: 'Gestión de proveedores y contactos', href: '/hasu/proveedores' },
+    { icon: '🧾', bg: 'rgba(245,158,11,0.15)', nombre: 'Fiscal y gestoría', desc: 'IVA, IRPF, documentos legales', href: '/hasu/fiscal' },
+    { icon: '📊', bg: 'rgba(34,197,94,0.15)', nombre: 'Flujo de caja global', desc: 'Todos los proyectos consolidados', href: '/hasu/flujo-caja' },
     { icon: '⚙', bg: 'rgba(242,110,31,0.18)', nombre: 'Usuarios y permisos', desc: 'Roles · accesos · proyectos', href: '/admin' },
-    { icon: '📁', bg: '#282828', nombre: 'Docs de empresa', desc: 'Estatutos · contratos · CIF', href: '#' },
+    { icon: '📁', bg: '#282828', nombre: 'Docs de empresa', desc: 'Estatutos · contratos · CIF', href: '/hasu/docs' },
   ]
 
   return (
