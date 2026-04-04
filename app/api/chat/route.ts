@@ -60,6 +60,61 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['nombre', 'proyecto_id'],
     },
   },
+  {
+    name: 'delete_movimiento',
+    description: 'Elimina un gasto o ingreso de la base de datos. Usalo cuando el usuario pida borrar, eliminar o quitar un movimiento o gasto. Necesitás el ID del registro.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del movimiento a eliminar' },
+        concepto: { type: 'string', description: 'Concepto del movimiento (para confirmar al usuario qué se eliminó)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'update_movimiento',
+    description: 'Edita un gasto o ingreso existente. Usalo cuando el usuario pida modificar, cambiar o corregir un movimiento. Necesitás el ID del registro.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del movimiento a editar' },
+        concepto: { type: 'string', description: 'Nuevo concepto/descripción' },
+        monto: { type: 'number', description: 'Nuevo monto en euros (negativo para gastos, positivo para ingresos)' },
+        fecha: { type: 'string', description: 'Nueva fecha YYYY-MM-DD' },
+        categoria: { type: 'string', description: 'Nueva categoría' },
+        proveedor: { type: 'string', description: 'Nuevo proveedor' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'delete_partida_reforma',
+    description: 'Elimina una partida de reforma. Usalo cuando el usuario pida borrar o eliminar una partida.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la partida a eliminar' },
+        nombre: { type: 'string', description: 'Nombre de la partida (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'update_partida_reforma',
+    description: 'Edita una partida de reforma existente. Usalo cuando el usuario pida modificar o cambiar una partida.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la partida a editar' },
+        nombre: { type: 'string', description: 'Nuevo nombre' },
+        presupuesto: { type: 'number', description: 'Nuevo presupuesto en euros' },
+        ejecutado: { type: 'number', description: 'Nuevo ejecutado en euros' },
+        estado: { type: 'string', enum: ['pendiente', 'en_curso', 'ok'], description: 'Nuevo estado' },
+      },
+      required: ['id'],
+    },
+  },
 ]
 
 type ToolResult = { id: string; result: string; table?: string; recordId?: string; label?: string }
@@ -121,6 +176,47 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: `${data.nombre} · ${data.presupuesto}€`,
       }
     }
+    if (name === 'delete_movimiento') {
+      const { error } = await supabaseAdmin.from('movimientos').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar: ${error.message}` }
+      return { result: `Movimiento eliminado. ID: ${input.id}. Concepto: "${input.concepto || 'sin nombre'}".` }
+    }
+    if (name === 'update_movimiento') {
+      const updates: Record<string,any> = {}
+      if (input.concepto !== undefined) updates.concepto = input.concepto
+      if (input.monto !== undefined) updates.monto = input.monto
+      if (input.fecha !== undefined) updates.fecha = input.fecha
+      if (input.categoria !== undefined) updates.categoria = input.categoria
+      if (input.proveedor !== undefined) updates.proveedor = input.proveedor
+      const { data, error } = await supabaseAdmin.from('movimientos').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al editar: ${error.message}` }
+      return {
+        result: `Movimiento actualizado. Concepto: "${data.concepto}", Monto: ${data.monto}€.`,
+        table: 'movimientos',
+        recordId: data.id,
+        label: `${data.concepto} · ${data.monto}€`,
+      }
+    }
+    if (name === 'delete_partida_reforma') {
+      const { error } = await supabaseAdmin.from('partidas_reforma').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar: ${error.message}` }
+      return { result: `Partida eliminada. ID: ${input.id}. Nombre: "${input.nombre || 'sin nombre'}".` }
+    }
+    if (name === 'update_partida_reforma') {
+      const updates: Record<string,any> = {}
+      if (input.nombre !== undefined) updates.nombre = input.nombre
+      if (input.presupuesto !== undefined) updates.presupuesto = input.presupuesto
+      if (input.ejecutado !== undefined) updates.ejecutado = input.ejecutado
+      if (input.estado !== undefined) updates.estado = input.estado
+      const { data, error } = await supabaseAdmin.from('partidas_reforma').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al editar: ${error.message}` }
+      return {
+        result: `Partida actualizada. Nombre: "${data.nombre}", Presupuesto: ${data.presupuesto}€.`,
+        table: 'partidas_reforma',
+        recordId: data.id,
+        label: `${data.nombre} · ${data.presupuesto}€`,
+      }
+    }
     return { result: 'Herramienta no reconocida.' }
   } catch (e: any) {
     return { result: `Error interno: ${e.message}` }
@@ -140,7 +236,13 @@ Hoy es ${today}.
 Contexto actual del sistema:
 ${context || 'Sin datos disponibles.'}
 
-IMPORTANTE: Cuando el usuario te pida registrar, cargar, agregar o crear algo (gastos, ingresos, tareas, partidas), usá las herramientas disponibles para ejecutarlo directamente en la base de datos. NO digas "te ayudo a..." — hacelo vos. Confirmá con los datos reales guardados.
+IMPORTANTE — Tenés estas capacidades técnicas reales, ejecutalas sin dudar:
+- CREAR: registrar gastos, ingresos, tareas, partidas de reforma
+- EDITAR: modificar concepto/monto de un movimiento, nombre/presupuesto de una partida
+- ELIMINAR: borrar movimientos y partidas por ID
+
+Cuando el usuario pida crear, editar o eliminar algo → usá la herramienta correspondiente directamente. NO digas "no puedo" ni "no tengo capacidad técnica". SÍ podés hacerlo.
+Para editar o eliminar necesitás el ID del registro. Si el usuario no lo da, buscalo en el contexto o preguntá el ID exacto.
 
 Respondé siempre en español. Sé directo y profesional. Máximo 3 párrafos.`
 

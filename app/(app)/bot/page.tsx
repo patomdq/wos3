@@ -50,19 +50,22 @@ export default function BotPage() {
         { count: activos },
         { data: movs },
         { data: tareas },
-        { data: proyectos }
+        { data: proyectos },
+        { data: partidas }
       ] = await Promise.all([
         supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta']),
-        supabase.from('movimientos').select('concepto,monto,fecha').order('fecha', { ascending: false }).limit(5),
-        supabase.from('tareas').select('titulo,prioridad,estado').eq('estado', 'Pendiente').limit(5),
-        supabase.from('proyectos').select('id,nombre,estado,ciudad').order('created_at')
+        supabase.from('movimientos').select('id,concepto,monto,fecha').order('fecha', { ascending: false }).limit(10),
+        supabase.from('tareas').select('id,titulo,prioridad,estado').eq('estado', 'Pendiente').limit(5),
+        supabase.from('proyectos').select('id,nombre,estado,ciudad').order('created_at'),
+        supabase.from('partidas_reforma').select('id,nombre,presupuesto,estado').order('created_at', { ascending: false }).limit(10),
       ])
 
       const ctx = [
         `Proyectos activos: ${activos ?? 0}`,
         proyectos?.length ? `Lista de proyectos (ID | Nombre | Estado | Ciudad):\n${proyectos.map(p => `- ${p.id} | ${p.nombre} | ${p.estado} | ${p.ciudad}`).join('\n')}` : '',
-        movs?.length ? `Últimos movimientos: ${movs.map(m => `${m.concepto} ${m.monto > 0 ? '+' : ''}${m.monto}€ (${m.fecha})`).join(' | ')}` : '',
-        tareas?.length ? `Tareas pendientes: ${tareas.map(t => `${t.titulo} [${t.prioridad}]`).join(', ')}` : ''
+        movs?.length ? `Últimos movimientos (ID | Concepto | Monto | Fecha):\n${movs.map(m => `- ${m.id} | ${m.concepto} | ${m.monto > 0 ? '+' : ''}${m.monto}€ | ${m.fecha}`).join('\n')}` : '',
+        tareas?.length ? `Tareas pendientes (ID | Título | Prioridad):\n${tareas.map(t => `- ${t.id} | ${t.titulo} | ${t.prioridad}`).join('\n')}` : '',
+        partidas?.length ? `Partidas de reforma (ID | Nombre | Presupuesto | Estado):\n${partidas.map(p => `- ${p.id} | ${p.nombre} | ${p.presupuesto}€ | ${p.estado}`).join('\n')}` : '',
       ].filter(Boolean).join('\n')
 
       contextRef.current = ctx
