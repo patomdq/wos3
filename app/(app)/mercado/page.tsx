@@ -3,24 +3,65 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
-const fmtPct = (n: number) => n.toFixed(1) + '%'
+const fmt2 = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n)
+const fmtPct = (n: number) => (isFinite(n) ? n.toFixed(2) : '0.00') + '%'
 
+const CONCEPTOS_GASTOS = [
+  { id: 'precio_compra', nombre: 'Precio de compra' },
+  { id: 'gastos_compraventa', nombre: 'Gastos de compraventa (notario, registro, gestoría)' },
+  { id: 'gastos_cancelacion', nombre: 'Gastos de cancelación (notario, registro, gestoría)' },
+  { id: 'itp', nombre: 'Impuesto de compra ITP' },
+  { id: 'honorarios_profesionales', nombre: 'Honorarios profesionales' },
+  { id: 'honorarios_complementaria', nombre: 'Honorarios gestión complementaria' },
+  { id: 'certificado_energetico', nombre: 'Certificado energético' },
+  { id: 'comisiones_inmobiliarias', nombre: 'Comisiones inmobiliarias' },
+  { id: 'reforma', nombre: 'Reforma' },
+  { id: 'seguros', nombre: 'Seguros' },
+  { id: 'suministros_basura', nombre: 'Suministros / basura' },
+  { id: 'cuotas_comunidad', nombre: 'Cuotas comunidad propietarios' },
+  { id: 'deuda_ibi', nombre: 'Deuda IBI' },
+  { id: 'deuda_comunidad', nombre: 'Deuda comunidad propietarios' },
+]
+
+type Gastos = Record<string, { estimado: number; real: number }>
 type Radar = { id: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string }
 type Estudio = { id: string; nombre?: string; precio_compra: number; precio_venta_objetivo: number; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string }
 
-type CalcData = { precio: number; addr: string; reforma: number; gastosCompra: number; precioVenta: number; gastosVenta: number; alquiler: number }
-type CalcResult = { inv: number; ben: number; roi: number; yield: number; cashflow: number }
+function emptyGastos(): Gastos {
+  const g: Gastos = {}
+  CONCEPTOS_GASTOS.forEach(c => { g[c.id] = { estimado: 0, real: 0 } })
+  return g
+}
 
-function calcular(d: CalcData): CalcResult | null {
-  if (!d.precio || !d.precioVenta) return null
-  const gastosCompraEur = d.precio * d.gastosCompra / 100
-  const gastosVentaEur = d.precioVenta * d.gastosVenta / 100
-  const inv = d.precio + d.reforma + gastosCompraEur
-  const ingresoNeto = d.precioVenta - gastosVentaEur
-  const ben = ingresoNeto - inv
-  const roi = (ben / inv) * 100
-  const yieldAnual = d.alquiler > 0 ? (d.alquiler * 12 / inv) * 100 : 0
-  return { inv, ben, roi, yield: yieldAnual, cashflow: d.alquiler }
+function toNum(v: any): number {
+  if (v === null || v === undefined || v === '') return 0
+  if (typeof v === 'number') return isNaN(v) || !isFinite(v) ? 0 : v
+  const n = parseFloat(String(v).replace(/€/g,'').replace(/\s/g,'').replace(/\./g,'').replace(/,/g,'.'))
+  return isNaN(n) || !isFinite(n) ? 0 : n
+}
+
+function calcResultados(gastos: Gastos, pvPes: number, pvReal: number, pvOpt: number, meses: number) {
+  let totalReal = 0
+  CONCEPTOS_GASTOS.forEach(c => {
+    const r = toNum(gastos[c.id].real)
+    const e = toNum(gastos[c.id].estimado)
+    totalReal += r > 0 ? r : e
+  })
+  let totalEst = 0
+  CONCEPTOS_GASTOS.forEach(c => { totalEst += toNum(gastos[c.id].estimado) })
+
+  if (totalReal <= 0) return null
+
+  const pv = [pvPes, pvReal, pvOpt]
+  const ben = pv.map(p => toNum(p) - totalReal)
+  const rent = ben.map(b => (b / totalReal) * 100)
+  const m = Math.max(1, toNum(meses))
+  const anual = rent.map(r => {
+    const a = (Math.pow(1 + r / 100, 12 / m) - 1) * 100
+    return isFinite(a) ? a : 0
+  })
+
+  return { totalEst, totalReal, ben, rent, anual }
 }
 
 export default function MercadoPage() {
@@ -29,8 +70,15 @@ export default function MercadoPage() {
   const [estudio, setEstudio] = useState<Estudio[]>([])
   const [loading, setLoading] = useState(true)
   const [calcOpen, setCalcOpen] = useState(false)
-  const [calcData, setCalcData] = useState<CalcData>({ precio: 0, addr: '', reforma: 15000, gastosCompra: 10, precioVenta: 0, gastosVenta: 5, alquiler: 0 })
-  const [calcResult, setCalcResult] = useState<CalcResult | null>(null)
+
+  // Calc state
+  const [nombre, setNombre] = useState('')
+  const [ciudad, setCiudad] = useState('')
+  const [duracionMeses, setDuracionMeses] = useState(12)
+  const [gastos, setGastos] = useState<Gastos>(emptyGastos)
+  const [pvPes, setPvPes] = useState(0)
+  const [pvReal, setPvReal] = useState(0)
+  const [pvOpt, setPvOpt] = useState(0)
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState<string | null>(null)
 
@@ -45,33 +93,34 @@ export default function MercadoPage() {
     })
   }, [])
 
-  const openCalc = (precio: number, addr: string) => {
-    const next: CalcData = { precio, addr, reforma: 15000, gastosCompra: 10, precioVenta: Math.round(precio * 1.45), gastosVenta: 5, alquiler: 0 }
-    setCalcData(next)
-    setCalcResult(calcular(next))
+  const openCalc = (precio: number, addr: string, ciu: string = '') => {
+    const g = emptyGastos()
+    g.precio_compra.estimado = precio
+    setGastos(g)
+    setNombre(addr)
+    setCiudad(ciu)
+    setPvPes(0); setPvReal(Math.round(precio * 1.45)); setPvOpt(0)
+    setDuracionMeses(12)
     setSavedId(null)
     setCalcOpen(true)
   }
 
-  const updateCalc = (field: keyof CalcData, val: number | string) => {
-    const next = { ...calcData, [field]: typeof val === 'string' ? parseFloat(val as string) || 0 : val }
-    setCalcData(next)
-    setCalcResult(calcular(next))
+  const updateGasto = (id: string, tipo: 'estimado' | 'real', val: string) => {
+    setGastos(prev => ({ ...prev, [id]: { ...prev[id], [tipo]: parseFloat(val) || 0 } }))
   }
 
-  const guardarAnalisis = async () => {
-    if (!calcResult) return
+  const res = calcResultados(gastos, pvPes, pvReal, pvOpt, duracionMeses)
+
+  const guardar = async () => {
+    if (!res) return
     setSaving(true)
     const today = new Date().toISOString().split('T')[0]
-    const parts = calcData.addr.split('·')
-    const direccion = parts[0]?.trim() || calcData.addr
-    const ciudad = parts[1]?.trim() || ''
     const { data, error } = await supabase.from('inmuebles_estudio').insert([{
-      nombre: calcData.addr,
-      precio_compra: calcData.precio,
-      precio_venta_objetivo: calcData.precioVenta,
-      roi_estimado: calcResult.roi,
-      direccion,
+      nombre,
+      precio_compra: toNum(gastos.precio_compra.estimado) || toNum(gastos.precio_compra.real),
+      precio_venta_objetivo: pvReal || pvOpt || pvPes,
+      roi_estimado: res.rent[1] || res.rent[0],
+      direccion: nombre,
       ciudad,
       estado: 'en_estudio',
       analizado_en: today,
@@ -84,59 +133,103 @@ export default function MercadoPage() {
   }
 
   const exportarPDF = () => {
-    if (!calcResult) return
-    const r = calcResult
-    const d = calcData
-    const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Análisis ROI — ${d.addr}</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; color: #111; }
-    h1 { font-size: 22px; margin-bottom: 4px; }
-    .sub { color: #888; font-size: 14px; margin-bottom: 24px; }
-    .logo { font-weight: 900; color: #F26E1F; font-size: 18px; margin-bottom: 16px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    td { padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 14px; }
-    td:last-child { text-align: right; font-weight: 700; }
-    .section { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; padding: 14px 14px 6px; }
-    .highlight { background: #fff7f0; }
-    .green { color: #16a34a; }
-    .red { color: #dc2626; }
-    .footer { font-size: 11px; color: #aaa; margin-top: 32px; text-align: center; }
-    @media print { body { margin: 0; } }
-  </style>
-</head>
-<body>
-  <div class="logo">Wallest · Hasu Activos Inmobiliarios SL</div>
-  <h1>Análisis de Rentabilidad</h1>
-  <div class="sub">${d.addr} · ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
-  <table>
-    <tr><td class="section" colspan="2">Datos de entrada</td></tr>
-    <tr><td>Precio de compra</td><td>${fmt(d.precio)}</td></tr>
-    <tr><td>Coste de reforma</td><td>${fmt(d.reforma)}</td></tr>
-    <tr><td>Gastos de compra (${d.gastosCompra}%)</td><td>${fmt(d.precio * d.gastosCompra / 100)}</td></tr>
-    <tr><td>Precio de venta objetivo</td><td>${fmt(d.precioVenta)}</td></tr>
-    <tr><td>Gastos de venta (${d.gastosVenta}%)</td><td>${fmt(d.precioVenta * d.gastosVenta / 100)}</td></tr>
-    ${d.alquiler > 0 ? `<tr><td>Alquiler mensual estimado</td><td>${fmt(d.alquiler)}/mes</td></tr>` : ''}
-    <tr><td class="section" colspan="2">Resultados</td></tr>
-    <tr class="highlight"><td><strong>Inversión total</strong></td><td><strong>${fmt(r.inv)}</strong></td></tr>
-    <tr class="highlight"><td><strong>Beneficio estimado</strong></td><td><strong class="${r.ben >= 0 ? 'green' : 'red'}">${r.ben >= 0 ? '+' : ''}${fmt(r.ben)}</strong></td></tr>
-    <tr class="highlight"><td><strong>ROI sobre inversión</strong></td><td><strong class="${r.roi >= 15 ? 'green' : r.roi >= 0 ? '' : 'red'}">${r.roi.toFixed(1)}%</strong></td></tr>
-    ${d.alquiler > 0 ? `<tr class="highlight"><td><strong>Yield bruto anual</strong></td><td><strong class="green">${r.yield.toFixed(1)}%</strong></td></tr>` : ''}
-  </table>
-  <div class="footer">Generado por Wallest · wos3.vercel.app · ${new Date().toISOString().split('T')[0]}</div>
-</body>
-</html>`
-    const w = window.open('', '_blank')
-    if (!w) return
-    w.document.write(html)
-    w.document.close()
-    setTimeout(() => w.print(), 400)
+    if (!res) return
+    import('jspdf').then(({ jsPDF }) => {
+      const doc = new jsPDF()
+      const naranja = [230, 126, 34] as [number,number,number]
+      const negro = [0, 0, 0] as [number,number,number]
+      const gris = [100, 100, 100] as [number,number,number]
+      const grisClaro = [240, 240, 240] as [number,number,number]
+      let y = 20
+
+      doc.setDrawColor(...naranja); doc.setLineWidth(0.5); doc.line(14, y, 196, y); y += 8
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(28); doc.setTextColor(...negro); doc.text('Wallest', 14, y); y += 8
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...gris); doc.text('Hasu Activos Inmobiliarios SL', 14, y); y += 6
+      doc.setDrawColor(...naranja); doc.line(14, y, 196, y); y += 10
+
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...negro)
+      doc.text(`${nombre || 'Proyecto'} — Calculadora de Rentabilidad`, 14, y); y += 12
+
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...gris)
+      if (ciudad) { doc.text(`Ciudad: ${ciudad}`, 14, y); y += 6 }
+      doc.text(`Duración estimada: ${duracionMeses} meses`, 14, y); y += 10
+
+      // Gastos table header
+      doc.setFillColor(...grisClaro); doc.rect(14, y, 182, 8, 'F')
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...negro)
+      doc.text('Concepto', 16, y + 5.5)
+      doc.text('Estimado', 130, y + 5.5, { align: 'right' })
+      doc.text('Real', 196, y + 5.5, { align: 'right' }); y += 8
+
+      doc.setFont('helvetica', 'normal')
+      CONCEPTOS_GASTOS.forEach(c => {
+        const est = gastos[c.id].estimado; const rea = gastos[c.id].real
+        if (est === 0 && rea === 0) return
+        if (y > 270) { doc.addPage(); y = 20 }
+        doc.setTextColor(...negro)
+        doc.text(c.nombre, 16, y + 5)
+        doc.text(est > 0 ? fmt2(est) : '-', 130, y + 5, { align: 'right' })
+        doc.text(rea > 0 ? fmt2(rea) : '-', 196, y + 5, { align: 'right' })
+        doc.setDrawColor(220,220,220); doc.line(14, y+8, 196, y+8); y += 9
+      })
+
+      y += 2
+      doc.setFillColor(...grisClaro); doc.rect(14, y, 182, 9, 'F')
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(...naranja)
+      doc.text('TOTAL INVERSIÓN', 16, y + 6)
+      doc.text(fmt2(res.totalEst), 130, y + 6, { align: 'right' })
+      doc.text(fmt2(res.totalReal), 196, y + 6, { align: 'right' }); y += 18
+
+      if (y > 230) { doc.addPage(); y = 20 }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...negro)
+      doc.text('Escenarios de Rentabilidad', 14, y); y += 8
+
+      doc.setFillColor(...grisClaro); doc.rect(14, y, 182, 8, 'F')
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...negro)
+      doc.text('Escenario', 16, y + 5.5)
+      doc.text('Precio Venta', 90, y + 5.5, { align: 'right' })
+      doc.text('Beneficio', 130, y + 5.5, { align: 'right' })
+      doc.text('Rentabilidad', 163, y + 5.5, { align: 'right' })
+      doc.text('Rent. Anual', 196, y + 5.5, { align: 'right' }); y += 8
+
+      const ESCENARIOS = [
+        { nombre: 'Pesimista', pv: pvPes, idx: 0 },
+        { nombre: 'Realista', pv: pvReal, idx: 1 },
+        { nombre: 'Optimista', pv: pvOpt, idx: 2 },
+      ]
+      doc.setFont('helvetica', 'normal')
+      ESCENARIOS.forEach(esc => {
+        doc.setTextColor(...negro)
+        doc.text(esc.nombre, 16, y + 5)
+        doc.text(fmt2(toNum(esc.pv)), 90, y + 5, { align: 'right' })
+        const color = res.ben[esc.idx] >= 0 ? [22,163,74] as [number,number,number] : [220,38,38] as [number,number,number]
+        doc.setTextColor(...color)
+        doc.text(fmt2(res.ben[esc.idx]), 130, y + 5, { align: 'right' })
+        doc.text(fmtPct(res.rent[esc.idx]), 163, y + 5, { align: 'right' })
+        doc.text(fmtPct(res.anual[esc.idx]), 196, y + 5, { align: 'right' })
+        doc.setDrawColor(220,220,220); doc.setTextColor(...negro)
+        doc.line(14, y+8, 196, y+8); y += 9
+      })
+
+      const totalPages = doc.getNumberOfPages()
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...gris)
+        doc.text('Wallest — Hasu Activos Inmobiliarios SL', 14, 290)
+        doc.text(new Date().toLocaleDateString('es-ES'), 196, 290, { align: 'right' })
+      }
+      doc.save(`${nombre || 'proyecto'}-rentabilidad.pdf`)
+    })
   }
 
   const TABS = ['🗂 En radar', '📊 En estudio', '🔍 Scraper']
+  const CARD = { background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }
+  const INP = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', color: '#fff' }
+
+  const ESCENARIOS = [
+    { label: 'Pesimista', pv: pvPes, setPv: setPvPes, idx: 0, color: '#EF4444' },
+    { label: 'Realista', pv: pvReal, setPv: setPvReal, idx: 1, color: '#F59E0B' },
+    { label: 'Optimista', pv: pvOpt, setPv: setPvOpt, idx: 2, color: '#22C55E' },
+  ]
 
   return (
     <div className="p-4">
@@ -181,13 +274,13 @@ export default function MercadoPage() {
             radar.length === 0 ? (
               <div className="text-center py-8 text-sm" style={{ color: '#555' }}>Sin inmuebles en radar todavía</div>
             ) : radar.map(r => (
-              <div key={r.id} className="rounded-2xl p-4 mb-2 flex justify-between items-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div key={r.id} className="rounded-2xl p-4 mb-2 flex justify-between items-center" style={CARD}>
                 <div>
                   <div className="font-black text-[18px] text-white">{fmt(r.precio || 0)}</div>
                   <div className="text-sm font-medium mt-0.5" style={{ color: '#888' }}>{r.direccion} · {r.habitaciones} hab · {r.superficie}m²</div>
                   <div className="text-xs font-medium mt-0.5" style={{ color: '#555' }}>Recibido {r.fecha_recibido} · {r.fuente}</div>
                 </div>
-                <button onClick={() => openCalc(r.precio || 0, `${r.direccion} · ${r.ciudad}`)}
+                <button onClick={() => openCalc(r.precio || 0, `${r.direccion} · ${r.ciudad}`, r.ciudad)}
                   className="text-xs font-black px-3 py-1.5 rounded-xl flex-shrink-0 ml-3"
                   style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>
                   → Calcular
@@ -208,7 +301,7 @@ export default function MercadoPage() {
             estudio.length === 0 ? (
               <div className="text-center py-8 text-sm" style={{ color: '#555' }}>Sin análisis realizados todavía</div>
             ) : estudio.map(e => (
-              <div key={e.id} className="rounded-2xl mb-3 overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div key={e.id} className="rounded-2xl mb-3 overflow-hidden" style={CARD}>
                 <div className="p-4">
                   <div className="font-black text-[22px] text-white tracking-tight">{fmt(e.precio_compra || 0)}</div>
                   <div className="text-sm font-medium mt-1 mb-3" style={{ color: '#888' }}>{e.direccion}{e.ciudad ? ` · ${e.ciudad}` : ''}</div>
@@ -216,7 +309,7 @@ export default function MercadoPage() {
                 </div>
                 <div className="flex justify-between items-center px-4 py-3" style={{ background: '#1E1E1E', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <span className="text-xs font-semibold" style={{ color: '#888' }}>Analizado {e.analizado_en}</span>
-                  <button onClick={() => openCalc(e.precio_compra, `${e.direccion}${e.ciudad ? ' · '+e.ciudad : ''}`)}
+                  <button onClick={() => openCalc(e.precio_compra, `${e.direccion}${e.ciudad ? ' · '+e.ciudad : ''}`, e.ciudad)}
                     className="text-sm font-black" style={{ color: '#F26E1F' }}>Recalcular →</button>
                 </div>
               </div>
@@ -232,107 +325,164 @@ export default function MercadoPage() {
             <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
             <span className="text-xs font-bold font-mono" style={{ color: '#888' }}>IDEALISTA · 24 RESULTADOS · €742/M² PROM.</span>
           </div>
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {['Compra','€40k–€150k','+2 hab','Más baratos'].map(f => (
-              <span key={f} className="text-xs font-bold px-3 py-1.5 rounded-full cursor-pointer" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#888' }}>{f}</span>
-            ))}
-          </div>
           {[
-            { precio: 48000, dir: 'C/ Real 7 · Los Gallardos · 3 hab · 85m²', roi: 17.8, fecha: 'hoy', tag: 'Reformar', epm: '565' },
-            { precio: 95000, dir: 'C/ Constitución 18 · Zurgena · dúplex · 4 hab', roi: 20.3, fecha: 'hoy', tag: '', epm: '863' },
+            { precio: 48000, dir: 'C/ Real 7 · Los Gallardos · 3 hab · 85m²', ciu: 'Los Gallardos' },
+            { precio: 95000, dir: 'C/ Constitución 18 · Zurgena · dúplex · 4 hab', ciu: 'Zurgena' },
           ].map((r, i) => (
-            <div key={i} className="rounded-2xl mb-3 overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div key={i} className="rounded-2xl mb-3 overflow-hidden" style={CARD}>
               <div className="p-4">
                 <div className="font-black text-[22px] text-white tracking-tight">{fmt(r.precio)}</div>
                 <div className="text-sm font-medium mt-1 mb-3" style={{ color: '#888' }}>{r.dir}</div>
-                <div className="flex gap-1.5 mb-2 flex-wrap">
-                  {r.tag && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B' }}>{r.tag}</span>}
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#282828', color: '#888' }}>€{r.epm}/m²</span>
-                </div>
-                <div className="font-black text-sm" style={{ color: '#22C55E' }}>↗ ROI estimado {r.roi}%</div>
               </div>
               <div className="flex justify-between items-center px-4 py-3" style={{ background: '#1E1E1E', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                <span className="text-xs font-semibold" style={{ color: '#888' }}>Scrapeado {r.fecha}</span>
-                <button onClick={() => openCalc(r.precio, r.dir)} className="text-sm font-black" style={{ color: '#F26E1F' }}>Calcular →</button>
+                <span className="text-xs font-semibold" style={{ color: '#888' }}>Scrapeado hoy</span>
+                <button onClick={() => openCalc(r.precio, r.dir, r.ciu)} className="text-sm font-black" style={{ color: '#F26E1F' }}>Calcular →</button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Calc overlay */}
+      {/* ===== CALCULADORA FULL SCREEN ===== */}
       {calcOpen && (
-        <div className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }} onClick={() => setCalcOpen(false)} />
-      )}
-
-      {/* Calc sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-[51] transition-transform duration-300 ease-out overflow-y-auto"
-        style={{ transform: calcOpen ? 'translateY(0)' : 'translateY(100%)', maxWidth: 480, margin: '0 auto', maxHeight: '92vh' }}>
-        <div className="rounded-t-[20px] p-5 pb-8" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', borderBottom: 'none' }}>
-          <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
-          <div className="flex justify-between items-center mb-1">
-            <div className="font-black text-[17px] text-white">Calculadora de rentabilidad</div>
-            <button onClick={() => setCalcOpen(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#282828', color: '#888' }}>✕</button>
-          </div>
-          <div className="text-xs font-semibold mb-5 truncate" style={{ color: '#888' }}>{calcData.addr}</div>
-
-          {/* Inputs */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            {[
-              { label: 'Precio compra (€)', field: 'precio' },
-              { label: 'Coste reforma (€)', field: 'reforma' },
-              { label: 'Gastos compra (%)', field: 'gastosCompra' },
-              { label: 'Precio venta (€)', field: 'precioVenta' },
-              { label: 'Gastos venta (%)', field: 'gastosVenta' },
-              { label: 'Alquiler/mes (€)', field: 'alquiler' },
-            ].map(f => (
-              <div key={f.field}>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{f.label}</label>
-                <input type="number" value={(calcData as any)[f.field] || ''}
-                  onChange={e => updateCalc(f.field as keyof CalcData, e.target.value)}
-                  className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-semibold"
-                  style={{ background: '#1E1E1E', border: '1.5px solid rgba(255,255,255,0.08)' }}
-                  onFocus={e => e.target.style.borderColor = '#F26E1F'}
-                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
-              </div>
-            ))}
-          </div>
-
-          {/* Results */}
-          {calcResult && (
-            <div className="rounded-xl p-4 mb-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-              {[
-                { l: 'Inversión total', v: fmt(calcResult.inv), c: '#fff' },
-                { l: 'Beneficio estimado', v: (calcResult.ben >= 0 ? '+' : '') + fmt(calcResult.ben), c: calcResult.ben >= 0 ? '#22C55E' : '#EF4444' },
-                { l: 'ROI sobre inversión', v: fmtPct(calcResult.roi), c: calcResult.roi >= 15 ? '#22C55E' : calcResult.roi >= 0 ? '#F59E0B' : '#EF4444', big: true },
-                ...(calcData.alquiler > 0 ? [
-                  { l: 'Yield bruto anual', v: fmtPct(calcResult.yield), c: '#22C55E' },
-                  { l: 'Cashflow mensual', v: fmt(calcData.alquiler), c: '#60A5FA' },
-                ] : [])
-              ].map((row, i) => (
-                <div key={i} className="flex justify-between py-1.5" style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : undefined }}>
-                  <span className="text-sm font-medium" style={{ color: '#888' }}>{row.l}</span>
-                  <span className={`font-black font-mono ${row.big ? 'text-lg' : 'text-sm'}`} style={{ color: row.c }}>{row.v}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <button onClick={guardarAnalisis} disabled={saving || !calcResult || !!savedId}
-              className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-50"
-              style={{ background: savedId ? '#22C55E' : '#F26E1F' }}>
-              {saving ? 'Guardando...' : savedId ? '✓ Guardado' : 'Guardar análisis'}
-            </button>
-            <button onClick={exportarPDF} disabled={!calcResult}
-              className="px-4 py-3.5 rounded-xl text-sm font-black disabled:opacity-30"
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: '#0A0A0A' }}>
+          {/* Header */}
+          <div className="sticky top-0 z-10 flex items-center gap-3 px-4 h-[54px]" style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <button onClick={() => setCalcOpen(false)} className="font-black text-xl" style={{ color: '#888' }}>←</button>
+            <div className="flex-1 font-black text-[16px] text-white">Calculadora de Rentabilidad</div>
+            <button onClick={exportarPDF} disabled={!res}
+              className="text-xs font-black px-3 py-1.5 rounded-lg disabled:opacity-30"
               style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.12)', color: '#ccc' }}>
               PDF
             </button>
           </div>
+
+          <div className="p-4 pb-10">
+            {/* Nombre y ciudad */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="col-span-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Nombre / Dirección</label>
+                <input type="text" value={nombre} onChange={e => setNombre(e.target.value)}
+                  className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium"
+                  style={INP}
+                  onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Ciudad</label>
+                <input type="text" value={ciudad} onChange={e => setCiudad(e.target.value)}
+                  className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium"
+                  style={INP}
+                  onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Duración (meses)</label>
+                <input type="number" value={duracionMeses || ''} onChange={e => setDuracionMeses(parseFloat(e.target.value) || 12)}
+                  className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium"
+                  style={INP}
+                  onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+              </div>
+            </div>
+
+            {/* Tabla de gastos */}
+            <div className="text-[11px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#888' }}>Gastos estimados y reales</div>
+            <div className="rounded-xl overflow-hidden mb-5" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+              {/* Header */}
+              <div className="grid grid-cols-[1fr_80px_80px] px-3 py-2" style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#555' }}>Concepto</div>
+                <div className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: '#555' }}>Estimado</div>
+                <div className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: '#555' }}>Real</div>
+              </div>
+              {CONCEPTOS_GASTOS.map((c, i) => (
+                <div key={c.id} className="grid grid-cols-[1fr_80px_80px] px-3 py-2 items-center"
+                  style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : undefined, background: '#141414' }}>
+                  <div className="text-xs font-medium pr-2" style={{ color: '#ccc', lineHeight: 1.3 }}>{c.nombre}</div>
+                  <div className="px-1">
+                    <input type="number" value={gastos[c.id].estimado || ''}
+                      onChange={e => updateGasto(c.id, 'estimado', e.target.value)}
+                      className="w-full rounded-lg px-1.5 py-1.5 text-xs text-white outline-none font-mono text-right"
+                      style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.10)', color: '#fff' }}
+                      onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                      onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+                  </div>
+                  <div className="px-1">
+                    <input type="number" value={gastos[c.id].real || ''}
+                      onChange={e => updateGasto(c.id, 'real', e.target.value)}
+                      className="w-full rounded-lg px-1.5 py-1.5 text-xs text-white outline-none font-mono text-right"
+                      style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.10)', color: '#22C55E' }}
+                      onFocus={e => e.target.style.borderColor = '#22C55E'}
+                      onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+                  </div>
+                </div>
+              ))}
+              {/* Total */}
+              {res && (
+                <div className="grid grid-cols-[1fr_80px_80px] px-3 py-2.5" style={{ background: '#1E1E1E', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+                  <div className="text-xs font-black uppercase" style={{ color: '#F26E1F' }}>TOTAL INVERSIÓN</div>
+                  <div className="text-xs font-black font-mono text-right" style={{ color: '#888' }}>{fmt(res.totalEst)}</div>
+                  <div className="text-xs font-black font-mono text-right" style={{ color: '#fff' }}>{fmt(res.totalReal)}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Escenarios */}
+            <div className="text-[11px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#888' }}>Precios de venta por escenario</div>
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {ESCENARIOS.map(esc => (
+                <div key={esc.label}>
+                  <label className="block text-[10px] font-black uppercase tracking-wide mb-1.5 text-center" style={{ color: esc.color }}>{esc.label}</label>
+                  <input type="number" value={esc.pv || ''}
+                    onChange={e => esc.setPv(parseFloat(e.target.value) || 0)}
+                    className="w-full rounded-xl px-2 py-2.5 text-sm text-white outline-none font-mono text-center"
+                    style={INP}
+                    onFocus={e => e.target.style.borderColor = esc.color}
+                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+                </div>
+              ))}
+            </div>
+
+            {/* Resultados por escenario */}
+            {res && (
+              <>
+                <div className="text-[11px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#888' }}>Resultados</div>
+                <div className="rounded-xl overflow-hidden mb-5" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="grid grid-cols-[80px_1fr_1fr_1fr] px-3 py-2" style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#555' }}></div>
+                    {ESCENARIOS.map(esc => (
+                      <div key={esc.label} className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: esc.color }}>{esc.label}</div>
+                    ))}
+                  </div>
+                  {[
+                    { label: 'Precio venta', vals: ESCENARIOS.map(e => fmt(toNum(e.pv))), colors: ESCENARIOS.map(() => '#fff') },
+                    { label: 'Beneficio', vals: ESCENARIOS.map((e,i) => (res.ben[i] >= 0 ? '+' : '') + fmt(res.ben[i])), colors: ESCENARIOS.map((e,i) => res.ben[i] >= 0 ? '#22C55E' : '#EF4444') },
+                    { label: 'ROI', vals: ESCENARIOS.map((_,i) => fmtPct(res.rent[i])), colors: ESCENARIOS.map((_,i) => res.rent[i] >= 15 ? '#22C55E' : res.rent[i] >= 0 ? '#F59E0B' : '#EF4444') },
+                    { label: 'ROI anual', vals: ESCENARIOS.map((_,i) => fmtPct(res.anual[i])), colors: ESCENARIOS.map((_,i) => res.anual[i] >= 15 ? '#22C55E' : res.anual[i] >= 0 ? '#F59E0B' : '#EF4444') },
+                  ].map((row, ri) => (
+                    <div key={row.label} className="grid grid-cols-[80px_1fr_1fr_1fr] px-3 py-2.5 items-center"
+                      style={{ borderTop: ri > 0 ? '1px solid rgba(255,255,255,0.06)' : undefined, background: '#141414' }}>
+                      <div className="text-xs font-bold" style={{ color: '#888' }}>{row.label}</div>
+                      {row.vals.map((v, i) => (
+                        <div key={i} className="font-black text-xs font-mono text-center" style={{ color: row.colors[i] }}>{v}</div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2">
+              <button onClick={guardar} disabled={saving || !res || !!savedId}
+                className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-50"
+                style={{ background: savedId ? '#22C55E' : '#F26E1F' }}>
+                {saving ? 'Guardando...' : savedId ? '✓ Guardado en estudio' : 'Guardar análisis'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

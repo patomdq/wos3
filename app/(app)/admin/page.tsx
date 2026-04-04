@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 type UserRole = { id: string; user_id: string; role: string; email?: string }
@@ -11,6 +12,7 @@ const AVATAR_COLORS = ['#E8621A','#7C3AED','#2563EB','#16A34A','#DC2626','#0891B
 const initials = (name: string) => name.split(' ').slice(0,2).map(n => n[0]).join('').toUpperCase()
 
 export default function AdminPage() {
+  const router = useRouter()
   const [roles, setRoles] = useState<UserRole[]>([])
   const [loading, setLoading] = useState(true)
   const [perms, setPerms] = useState({ zurgena: true, cuevas: false, portal: true, finanzas: false })
@@ -34,7 +36,7 @@ export default function AdminPage() {
   return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
+        <button onClick={() => router.back()} className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-base text-white" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>←</button>
         <div className="flex-1 font-bold text-[17px] text-white">Usuarios y permisos</div>
       </div>
 

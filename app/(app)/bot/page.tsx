@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
-type Msg = { role: 'bot' | 'user'; text: string; time: string; action?: string }
+type ToolData = { id: string; result: string; table?: string; recordId?: string; label?: string }
+type Msg = { role: 'bot' | 'user'; text: string; time: string; toolData?: ToolData[] }
 
 const QUICK = ['📄 Factura', '💰 Saldo HASU', '🔨 Estado obra', '📋 Liquidación', '📅 Tareas pendientes']
 
@@ -13,41 +14,38 @@ function now() {
 
 const WELCOME: Msg = { role: 'bot', text: 'Hola 👋 ¿En qué puedo ayudarte hoy?', time: '—' }
 
+type EditState = { recordId: string; table: string; label: string; concepto: string; monto: string }
+
 export default function BotPage() {
   const [msgs, setMsgs] = useState<Msg[]>([WELCOME])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
-  const [context, setContext] = useState('')
   const [historial, setHistorial] = useState<{role:string;content:string}[]>([])
   const [userId, setUserId] = useState<string>('')
+  const [editState, setEditState] = useState<EditState | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const contextRef = useRef('')
 
   useEffect(() => {
     async function init() {
-      // Get current user
       const { data: { session } } = await supabase.auth.getSession()
       const uid = session?.user?.id || 'anon'
       setUserId(uid)
 
-      // Load messages from localStorage
       const stored = localStorage.getItem(`wos3_chat_${uid}`)
       if (stored) {
         try {
           const parsed = JSON.parse(stored)
           if (Array.isArray(parsed) && parsed.length > 0) {
             setMsgs(parsed)
-            // Rebuild historial from stored messages
-            const hist = parsed
-              .filter((m: Msg) => m.role !== 'bot' || msgs.indexOf(m) > 0)
-              .map((m: Msg) => ({ role: m.role === 'bot' ? 'assistant' : 'user', content: m.text.replace(/<[^>]+>/g, '') }))
+            const hist = parsed.map((m: Msg) => ({ role: m.role === 'bot' ? 'assistant' : 'user', content: m.text.replace(/<[^>]+>/g, '') }))
             setHistorial(hist)
           }
         } catch {}
       }
 
-      // Load context from Supabase
       const [
         { count: activos },
         { data: movs },
@@ -67,7 +65,6 @@ export default function BotPage() {
         tareas?.length ? `Tareas pendientes: ${tareas.map(t => `${t.titulo} [${t.prioridad}]`).join(', ')}` : ''
       ].filter(Boolean).join('\n')
 
-      setContext(ctx)
       contextRef.current = ctx
     }
     init()
@@ -75,7 +72,6 @@ export default function BotPage() {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, typing])
 
-  // Save messages to localStorage
   useEffect(() => {
     if (userId && msgs.length > 1) {
       localStorage.setItem(`wos3_chat_${userId}`, JSON.stringify(msgs))
@@ -104,14 +100,7 @@ export default function BotPage() {
       setTyping(false)
 
       const html = resp.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>')
-
-      // Build action summary if tools were used
-      let actionSummary = ''
-      if (toolResults?.length) {
-        actionSummary = toolResults.map((r: { id: string; result: string }) => r.result).join(' ')
-      }
-
-      const botMsg: Msg = { role: 'bot', text: html, time: now(), action: actionSummary || undefined }
+      const botMsg: Msg = { role: 'bot', text: html, time: now(), toolData: toolResults?.length ? toolResults : undefined }
       setMsgs(m => [...m, botMsg])
       setHistorial(h => [...h, { role: 'assistant', content: resp }])
     } catch {
@@ -124,6 +113,61 @@ export default function BotPage() {
     setMsgs([WELCOME])
     setHistorial([])
     if (userId) localStorage.removeItem(`wos3_chat_${userId}`)
+  }
+
+  const deleteRecord = async (msgIdx: number, td: ToolData) => {
+    if (!td.table || !td.recordId) return
+    if (!confirm(`¿Eliminar "${td.label}"?`)) return
+    const { error } = await supabase.from(td.table).delete().eq('id', td.recordId)
+    if (!error) {
+      setMsgs(prev => prev.map((m, i) => {
+        if (i !== msgIdx) return m
+        return { ...m, toolData: m.toolData?.filter(t => t.id !== td.id) }
+      }))
+    }
+  }
+
+  const openEdit = (td: ToolData) => {
+    if (!td.table || !td.recordId) return
+    const parts = (td.label || '').split(' · ')
+    setEditState({
+      recordId: td.recordId,
+      table: td.table,
+      label: td.label || '',
+      concepto: parts[0] || '',
+      monto: parts[1]?.replace('€','') || '',
+    })
+  }
+
+  const saveEdit = async () => {
+    if (!editState) return
+    setEditSaving(true)
+    const { table, recordId, concepto, monto } = editState
+    let payload: Record<string,any> = {}
+    if (table === 'movimientos') {
+      const n = parseFloat(monto) || 0
+      payload = { concepto, monto: n }
+    } else if (table === 'partidas_reforma') {
+      payload = { nombre: concepto, presupuesto: parseFloat(monto) || 0 }
+    } else if (table === 'tareas') {
+      payload = { titulo: concepto }
+    }
+    await supabase.from(table).update(payload).eq('id', recordId)
+    setEditSaving(false)
+    setEditState(null)
+    // Update label in msgs
+    const newLabel = `${concepto} · ${monto}€`
+    setMsgs(prev => prev.map(m => ({
+      ...m,
+      toolData: m.toolData?.map(td => td.recordId === recordId ? { ...td, label: newLabel } : td)
+    })))
+  }
+
+  const tableIcon = (table?: string) => {
+    if (table === 'movimientos') return '💰'
+    if (table === 'partidas_reforma') return '🔨'
+    if (table === 'tareas') return '📋'
+    return '✓'
   }
 
   return (
@@ -155,11 +199,33 @@ export default function BotPage() {
                   borderRadius: m.role === 'bot' ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
                 }}
                 dangerouslySetInnerHTML={{ __html: m.text }} />
-              {m.action && (
-                <div className="mt-1.5 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)', color: '#22C55E' }}>
-                  ✓ Guardado en Supabase
+
+              {/* Tool results with edit/delete */}
+              {m.toolData?.map((td, ti) => (
+                <div key={ti} className="mt-1.5 px-3 py-2 rounded-xl" style={{ background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.22)' }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm">{tableIcon(td.table)}</span>
+                      <span className="text-xs font-bold truncate" style={{ color: '#22C55E' }}>
+                        {td.label || '✓ Guardado'}
+                      </span>
+                    </div>
+                    {td.table && td.table !== 'tareas' && (
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <button onClick={() => openEdit(td)}
+                          className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold"
+                          style={{ background: 'rgba(255,255,255,0.08)', color: '#ccc' }}
+                          title="Editar">✎</button>
+                        <button onClick={() => deleteRecord(i, td)}
+                          className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold"
+                          style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}
+                          title="Eliminar">✕</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              ))}
+
               <div className="text-[10px] mt-1 font-semibold tracking-wide" style={{ color: '#555' }}>{m.time}</div>
             </div>
           </div>
@@ -205,6 +271,45 @@ export default function BotPage() {
           className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg text-white flex-shrink-0"
           style={{ background: '#F26E1F' }}>↑</button>
       </div>
+
+      {/* Edit sheet */}
+      {editState && (
+        <>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => setEditState(null)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] p-5 pb-8" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 480, margin: '0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
+            <div className="font-black text-[16px] text-white mb-4">Editar registro</div>
+            <div className="mb-3">
+              <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>
+                {editState.table === 'movimientos' ? 'Concepto' : editState.table === 'partidas_reforma' ? 'Nombre' : 'Título'}
+              </label>
+              <input type="text" value={editState.concepto} onChange={e => setEditState(s => s ? { ...s, concepto: e.target.value } : s)}
+                className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium"
+                style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
+                onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+            </div>
+            {editState.table !== 'tareas' && (
+              <div className="mb-5">
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>
+                  {editState.table === 'movimientos' ? 'Monto (€)' : 'Presupuesto (€)'}
+                </label>
+                <input type="number" value={editState.monto} onChange={e => setEditState(s => s ? { ...s, monto: e.target.value } : s)}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium font-mono"
+                  style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
+                  onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => setEditState(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+              <button onClick={saveEdit} disabled={editSaving} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-50" style={{ background: '#F26E1F' }}>
+                {editSaving ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <style>{`@keyframes bounce{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1.1)}}`}</style>
     </div>

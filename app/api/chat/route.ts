@@ -62,7 +62,9 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ]
 
-async function executeTool(name: string, input: Record<string, any>): Promise<string> {
+type ToolResult = { id: string; result: string; table?: string; recordId?: string; label?: string }
+
+async function executeTool(name: string, input: Record<string, any>): Promise<{ result: string; table?: string; recordId?: string; label?: string }> {
   try {
     if (name === 'insert_movimiento') {
       const { data, error } = await supabaseAdmin.from('movimientos').insert([{
@@ -75,8 +77,13 @@ async function executeTool(name: string, input: Record<string, any>): Promise<st
         cuenta: input.cuenta || null,
         proveedor: input.proveedor || null,
       }]).select().single()
-      if (error) return `Error al guardar: ${error.message}`
-      return `Guardado exitosamente. ID: ${data.id}. Concepto: "${data.concepto}", Monto: ${data.monto}€, Fecha: ${data.fecha}.`
+      if (error) return { result: `Error al guardar: ${error.message}` }
+      return {
+        result: `Guardado exitosamente. ID: ${data.id}. Concepto: "${data.concepto}", Monto: ${data.monto}€, Fecha: ${data.fecha}.`,
+        table: 'movimientos',
+        recordId: data.id,
+        label: `${data.concepto} · ${data.monto}€`,
+      }
     }
     if (name === 'insert_tarea') {
       const { data, error } = await supabaseAdmin.from('tareas').insert([{
@@ -88,8 +95,13 @@ async function executeTool(name: string, input: Record<string, any>): Promise<st
         proyecto_id: input.proyecto_id || null,
         asignado_a: input.asignado_a || null,
       }]).select().single()
-      if (error) return `Error al guardar: ${error.message}`
-      return `Tarea creada. ID: ${data.id}. Título: "${data.titulo}", Prioridad: ${data.prioridad}.`
+      if (error) return { result: `Error al guardar: ${error.message}` }
+      return {
+        result: `Tarea creada. ID: ${data.id}. Título: "${data.titulo}", Prioridad: ${data.prioridad}.`,
+        table: 'tareas',
+        recordId: data.id,
+        label: data.titulo,
+      }
     }
     if (name === 'insert_partida_reforma') {
       const { data, error } = await supabaseAdmin.from('partidas_reforma').insert([{
@@ -101,12 +113,17 @@ async function executeTool(name: string, input: Record<string, any>): Promise<st
         notas: input.notas || null,
         orden: 99,
       }]).select().single()
-      if (error) return `Error al guardar: ${error.message}`
-      return `Partida creada. ID: ${data.id}. Nombre: "${data.nombre}", Presupuesto: ${data.presupuesto}€.`
+      if (error) return { result: `Error al guardar: ${error.message}` }
+      return {
+        result: `Partida creada. ID: ${data.id}. Nombre: "${data.nombre}", Presupuesto: ${data.presupuesto}€.`,
+        table: 'partidas_reforma',
+        recordId: data.id,
+        label: `${data.nombre} · ${data.presupuesto}€`,
+      }
     }
-    return 'Herramienta no reconocida.'
+    return { result: 'Herramienta no reconocida.' }
   } catch (e: any) {
-    return `Error interno: ${e.message}`
+    return { result: `Error interno: ${e.message}` }
   }
 }
 
@@ -140,13 +157,13 @@ Respondé siempre en español. Sé directo y profesional. Máximo 3 párrafos.`
     })
 
     // Handle tool use loop
-    const toolResults: Array<{ id: string; result: string }> = []
+    const toolResults: Array<{ id: string; result: string; table?: string; recordId?: string; label?: string }> = []
     while (response.stop_reason === 'tool_use') {
       const toolUseBlocks = response.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
       const results = await Promise.all(
         toolUseBlocks.map(async (b) => {
-          const result = await executeTool(b.name, b.input as Record<string, any>)
-          toolResults.push({ id: b.id, result })
+          const { result, table, recordId, label } = await executeTool(b.name, b.input as Record<string, any>)
+          toolResults.push({ id: b.id, result, table, recordId, label })
           return { type: 'tool_result' as const, tool_use_id: b.id, content: result }
         })
       )
