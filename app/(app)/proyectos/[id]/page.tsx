@@ -297,81 +297,113 @@ export default function ProyectoDetalle() {
               <div className="p-4 text-sm text-center" style={{ color:'rgba(255,255,255,0.3)' }}>Sin movimientos registrados</div>
             ) : (
               <div>
-                <div className="overflow-x-auto mt-3">
-                  <table className="w-full border-collapse" style={{ minWidth: tablaExpandida ? 900 : 'auto' }}>
-                    <thead>
-                      <tr style={{ background:'#1E1E1E' }}>
-                        {(tablaExpandida
-                          ? ['Fecha','Tipo','Cat.','Descripción','Proveedor','Cant.','P.Unit.','Total','Forma pago','Obs.','Acciones']
-                          : ['Fecha','Descripción','Total']
-                        ).map(h => (
-                          <th key={h} className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
-                            style={{ color:'rgba(255,255,255,0.4)', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {movimientos.map((m, i) => {
-                        const isIngreso = m.tipo === 'Ingreso' || m.monto > 0
-                        const total = Math.abs(m.monto || m.total || 0)
-                        return (
-                          <tr key={m.id} style={{ borderBottom: i < movimientos.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                            <td className="px-3 py-2.5 text-xs font-medium whitespace-nowrap text-white" style={{ opacity:0.6 }}>{m.fecha}</td>
-                            {tablaExpandida && <>
-                              <td className="px-3 py-2.5 text-xs font-bold whitespace-nowrap" style={{ color: isIngreso ? '#22C55E' : '#EF4444' }}>
-                                {isIngreso ? 'Ingreso' : 'Gasto'}
+                {/* Vista compacta — 3 columnas sin scroll */}
+                {!tablaExpandida && (
+                  <div className="mt-2">
+                    {/* Header */}
+                    <div className="flex px-3 py-2" style={{ borderBottom:'1px solid rgba(255,255,255,0.08)', background:'#1E1E1E' }}>
+                      <div style={{ width:72, flexShrink:0, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(255,255,255,0.4)' }}>Fecha</div>
+                      <div style={{ flex:1, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(255,255,255,0.4)' }}>Concepto</div>
+                      <div style={{ width:96, textAlign:'right', flexShrink:0, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(255,255,255,0.4)' }}>Total</div>
+                    </div>
+                    {movimientos.map((m, i) => {
+                      const isIngreso = m.tipo === 'Ingreso' || m.monto > 0
+                      const total = Math.abs(m.monto || m.total || 0)
+                      const montoColor = isIngreso ? '#22C55E' : '#EF4444'
+                      return (
+                        <div key={m.id} className="flex items-center px-3 py-2.5"
+                          style={{ borderBottom: i < movimientos.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                          <div style={{ width:72, flexShrink:0, fontSize:12, fontWeight:500, color:'rgba(255,255,255,0.55)' }}>{m.fecha}</div>
+                          <div style={{ flex:1, overflow:'hidden', paddingRight:8 }}>
+                            <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:13, fontWeight:500, color:'#FFFFFF' }}>
+                              {m.concepto || m.descripcion}
+                            </div>
+                          </div>
+                          <div style={{ width:96, flexShrink:0, textAlign:'right', fontSize:13, fontWeight:900, fontFamily:'monospace', color: montoColor, whiteSpace:'nowrap' }}>
+                            {isIngreso ? '+' : '-'}{fmt(total)}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {/* Footer totales */}
+                    <div style={{ borderTop:'2px solid rgba(255,255,255,0.10)', background:'#1E1E1E' }}>
+                      <div className="flex px-3 py-2">
+                        <div style={{ flex:1, textAlign:'right', fontSize:12, fontWeight:700, color:'#FFFFFF', paddingRight:8 }}>Total gastos:</div>
+                        <div style={{ width:96, textAlign:'right', fontSize:13, fontWeight:900, fontFamily:'monospace', color:'#EF4444' }}>-{fmt(gastos)}</div>
+                      </div>
+                      <div className="flex px-3 py-2" style={{ borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ flex:1, textAlign:'right', fontSize:12, fontWeight:700, color:'#FFFFFF', paddingRight:8 }}>Total ingresos:</div>
+                        <div style={{ width:96, textAlign:'right', fontSize:13, fontWeight:900, fontFamily:'monospace', color:'#22C55E' }}>+{fmt(ingresos)}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Vista expandida — tabla completa con scroll */}
+                {tablaExpandida && (
+                  <div className="overflow-x-auto mt-3">
+                    <table className="w-full border-collapse" style={{ minWidth:900 }}>
+                      <thead>
+                        <tr style={{ background:'#1E1E1E' }}>
+                          {['Fecha','Tipo','Cat.','Descripción','Proveedor','Cant.','P.Unit.','Total','Forma pago','Obs.','Acciones'].map(h => (
+                            <th key={h} className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
+                              style={{ color:'rgba(255,255,255,0.4)', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {movimientos.map((m, i) => {
+                          const isIngreso = m.tipo === 'Ingreso' || m.monto > 0
+                          const total = Math.abs(m.monto || m.total || 0)
+                          const montoColor = isIngreso ? '#22C55E' : '#EF4444'
+                          return (
+                            <tr key={m.id} style={{ borderBottom: i < movimientos.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.6)', whiteSpace:'nowrap' }}>{m.fecha}</td>
+                              <td style={{ padding:'10px 12px', fontSize:12, fontWeight:700, whiteSpace:'nowrap', color: montoColor }}>{isIngreso ? 'Ingreso' : 'Gasto'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.6)', whiteSpace:'nowrap' }}>{m.categoria||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:13, color:'#FFFFFF', maxWidth:160 }}>
+                                <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.concepto || m.descripcion}</div>
                               </td>
-                              <td className="px-3 py-2.5 text-xs whitespace-nowrap text-white" style={{ opacity:0.6 }}>{m.categoria||'—'}</td>
-                            </>}
-                            <td className="px-3 py-2.5 text-sm font-medium text-white" style={{ maxWidth: tablaExpandida ? 160 : undefined }}>
-                              <div className="truncate">{m.concepto || m.descripcion}</div>
-                            </td>
-                            {tablaExpandida && <>
-                              <td className="px-3 py-2.5 text-xs whitespace-nowrap text-white" style={{ opacity:0.5 }}>{m.proveedor||'—'}</td>
-                              <td className="px-3 py-2.5 text-xs text-right whitespace-nowrap text-white" style={{ opacity:0.5 }}>{m.cantidad||'—'}</td>
-                              <td className="px-3 py-2.5 text-xs text-right whitespace-nowrap text-white" style={{ opacity:0.5 }}>
-                                {m.precio_unitario ? fmt(m.precio_unitario) : '—'}
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', whiteSpace:'nowrap' }}>{m.proveedor||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', textAlign:'right', whiteSpace:'nowrap' }}>{m.cantidad||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', textAlign:'right', whiteSpace:'nowrap' }}>{m.precio_unitario ? fmt(m.precio_unitario) : '—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:13, fontWeight:900, fontFamily:'monospace', textAlign:'right', whiteSpace:'nowrap', color: montoColor }}>
+                                {isIngreso ? '+' : '-'}{fmt(total)}
                               </td>
-                            </>}
-                            <td className="px-3 py-2.5 text-sm font-black font-mono text-right whitespace-nowrap"
-                              style={{ color: isIngreso ? '#22C55E' : '#EF4444' }}>
-                              {isIngreso ? '+' : '-'}{fmt(total)}
-                            </td>
-                            {tablaExpandida && <>
-                              <td className="px-3 py-2.5 text-xs whitespace-nowrap text-white" style={{ opacity:0.5 }}>{m.forma_pago||'—'}</td>
-                              <td className="px-3 py-2.5 text-xs whitespace-nowrap text-white" style={{ opacity:0.5, maxWidth:100 }}>
-                                <div className="truncate">{m.observaciones||'—'}</div>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', whiteSpace:'nowrap' }}>{m.forma_pago||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', whiteSpace:'nowrap', maxWidth:100 }}>
+                                <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.observaciones||'—'}</div>
                               </td>
-                              <td className="px-3 py-2.5">
-                                <div className="flex gap-2 justify-center">
-                                  <button onClick={() => openMovForm(m)} className="text-xs font-bold px-2 py-1 rounded-lg text-white" style={{ background:'rgba(255,255,255,0.08)' }}>✎</button>
-                                  <button onClick={() => deleteMov(m.id)} className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
+                              <td style={{ padding:'10px 12px' }}>
+                                <div style={{ display:'flex', gap:6, justifyContent:'center' }}>
+                                  <button onClick={() => openMovForm(m)} style={{ fontSize:12, fontWeight:700, padding:'3px 8px', borderRadius:6, background:'rgba(255,255,255,0.08)', color:'#FFFFFF', border:'none', cursor:'pointer' }}>✎</button>
+                                  <button onClick={() => deleteMov(m.id)} style={{ fontSize:12, fontWeight:700, padding:'3px 8px', borderRadius:6, background:'rgba(239,68,68,0.18)', color:'#EF4444', border:'none', cursor:'pointer' }}>✕</button>
                                 </div>
                               </td>
-                            </>}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr style={{ borderTop:'2px solid rgba(255,255,255,0.10)', background:'#1E1E1E' }}>
-                        <td colSpan={tablaExpandida ? 7 : 2} className="px-3 py-2.5 text-sm font-bold text-right text-white">Total gastos:</td>
-                        <td className="px-3 py-2.5 text-sm font-black font-mono text-right" style={{ color:'#EF4444' }}>-{fmt(gastos)}</td>
-                        {tablaExpandida && <td colSpan={3}></td>}
-                      </tr>
-                      <tr style={{ borderTop:'1px solid rgba(255,255,255,0.06)', background:'#1E1E1E' }}>
-                        <td colSpan={tablaExpandida ? 7 : 2} className="px-3 py-2.5 text-sm font-bold text-right text-white">Total ingresos:</td>
-                        <td className="px-3 py-2.5 text-sm font-black font-mono text-right" style={{ color:'#22C55E' }}>+{fmt(ingresos)}</td>
-                        {tablaExpandida && <td colSpan={3}></td>}
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-                {/* Toggle button — white on dark, visible */}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ borderTop:'2px solid rgba(255,255,255,0.10)', background:'#1E1E1E' }}>
+                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:13, fontWeight:700, textAlign:'right', color:'#FFFFFF' }}>Total gastos:</td>
+                          <td style={{ padding:'10px 12px', fontSize:13, fontWeight:900, fontFamily:'monospace', textAlign:'right', color:'#EF4444' }}>-{fmt(gastos)}</td>
+                          <td colSpan={3}></td>
+                        </tr>
+                        <tr style={{ borderTop:'1px solid rgba(255,255,255,0.06)', background:'#1E1E1E' }}>
+                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:13, fontWeight:700, textAlign:'right', color:'#FFFFFF' }}>Total ingresos:</td>
+                          <td style={{ padding:'10px 12px', fontSize:13, fontWeight:900, fontFamily:'monospace', textAlign:'right', color:'#22C55E' }}>+{fmt(ingresos)}</td>
+                          <td colSpan={3}></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+
+                {/* Toggle */}
                 <button onClick={() => setTablaExpandida(!tablaExpandida)}
-                  className="w-full py-3 text-xs font-black text-center"
-                  style={{ background:'#fff', color:'#000', borderTop:'1px solid rgba(255,255,255,0.1)' }}>
-                  {tablaExpandida ? '▲ Vista compacta' : '▼ Ver tabla completa (tipo · cat · proveedor · precio unit · forma pago)'}
+                  style={{ width:'100%', padding:'11px 0', fontSize:12, fontWeight:900, textAlign:'center', background:'#FFFFFF', color:'#000000', borderTop:'1px solid rgba(255,255,255,0.1)', cursor:'pointer', border:'none' }}>
+                  {tablaExpandida ? '▲ Vista compacta' : '▼ Ver tabla completa'}
                 </button>
               </div>
             )}
