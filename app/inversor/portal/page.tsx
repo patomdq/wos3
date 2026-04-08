@@ -17,58 +17,71 @@ export default function PortalInversorPage() {
   const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadData = async (session: any) => {
-      // Verificar si el usuario tiene rol admin
-      const { data: roleData } = await supabase
-        .from('user_roles').select('role').eq('user_id', session.user.id).single()
-      const isAdmin = roleData?.role === 'admin'
+    let cancelled = false
 
-      // Buscar fila en inversores
-      const { data: inv, error: invError } = await supabase
-        .from('inversores').select('*').eq('user_id', session.user.id).single()
-      console.log('[Portal] inversores query:', { inv, invError, userId: session.user.id, isAdmin })
+    const init = async () => {
+      try {
+        // Retry hasta 3 veces con 400ms de delay para manejar race condition post-login
+        let session = null
+        for (let i = 0; i < 3; i++) {
+          const { data } = await supabase.auth.getSession()
+          session = data.session
+          if (session) break
+          if (i < 2) await new Promise(r => setTimeout(r, 400))
+        }
 
-      if (!inv && !isAdmin) {
-        setAuthError(`Tu cuenta (${session.user.email}) no tiene acceso al portal inversor. Contactá a patricio@wallest.pro`)
-        setLoading(false)
-        return
+        if (cancelled) return
+        if (!session) { router.replace('/inversor'); return }
+
+        // Verificar rol admin
+        const { data: roleData } = await supabase
+          .from('user_roles').select('role').eq('user_id', session.user.id).single()
+        const isAdmin = roleData?.role === 'admin'
+
+        // Buscar fila inversor
+        const { data: inv } = await supabase
+          .from('inversores').select('*').eq('user_id', session.user.id).single()
+
+        if (cancelled) return
+
+        if (!inv && !isAdmin) {
+          setAuthError(`Tu cuenta (${session.user.email}) no tiene acceso al portal inversor. Contactá a patricio@wallest.pro`)
+          setLoading(false)
+          return
+        }
+
+        const inversorData = inv || { id: null, nombre: session.user.email?.split('@')[0] || 'Admin', desde: null }
+        setInversor(inversorData)
+
+        // Cargar operación solo si hay id de inversor
+        if (inversorData.id) {
+          const { data: op } = await supabase.from('proyecto_inversores')
+            .select('*, proyectos(*)').eq('inversor_id', inversorData.id).single()
+
+          if (op && !cancelled) {
+            setOperacion(op)
+            setProyecto(op.proyectos)
+
+            const [{ data: movs }, { data: bit }] = await Promise.all([
+              supabase.from('movimientos').select('*').eq('proyecto_id', op.proyecto_id).order('fecha', { ascending: false }),
+              supabase.from('bitacora_inversor').select('*').eq('proyecto_inversor_id', op.id).order('orden'),
+            ])
+            if (!cancelled) {
+              setMovimientos(movs || [])
+              setBitacora(bit || [])
+            }
+          }
+        }
+
+        if (!cancelled) setLoading(false)
+      } catch (err) {
+        console.error('[Portal] error:', err)
+        if (!cancelled) { router.replace('/inversor') }
       }
-
-      // Admin sin fila inversor: acceso permitido con datos mínimos
-      setInversor(inv || { nombre: session.user.email?.split('@')[0] || 'Admin', desde: 'Admin' })
-
-      // Buscar operación del inversor
-      const { data: op } = await supabase.from('proyecto_inversores')
-        .select('*, proyectos(*)').eq('inversor_id', inv.id).single()
-      if (op) {
-        setOperacion(op)
-        setProyecto(op.proyectos)
-
-        // Movimientos del proyecto
-        const { data: movs } = await supabase.from('movimientos')
-          .select('*').eq('proyecto_id', op.proyecto_id).order('fecha', { ascending: false })
-        setMovimientos(movs || [])
-
-        // Bitácora del inversor
-        const { data: bit } = await supabase.from('bitacora_inversor')
-          .select('*').eq('proyecto_inversor_id', op.id).order('orden')
-        setBitacora(bit || [])
-      }
-      setLoading(false)
     }
 
-    // onAuthStateChange con INITIAL_SESSION evita la race condition
-    // donde getSession() devuelve null antes de que el cliente restaure la sesión
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        if (!session) { router.replace('/inversor'); return }
-        loadData(session)
-      } else if (event === 'SIGNED_OUT') {
-        router.replace('/inversor')
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    init()
+    return () => { cancelled = true }
   }, [router])
 
   const handleLogout = async () => {
