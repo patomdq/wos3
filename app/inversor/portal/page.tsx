@@ -21,13 +21,14 @@ export default function PortalInversorPage() {
 
     const init = async () => {
       try {
-        // Retry hasta 3 veces con 400ms de delay para manejar race condition post-login
+        // Retry hasta 5 veces con 600ms de delay — necesario en desktop donde
+        // la restauración de sesión desde localStorage puede tardar más
         let session = null
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
           const { data } = await supabase.auth.getSession()
           session = data.session
           if (session) break
-          if (i < 2) await new Promise(r => setTimeout(r, 400))
+          if (i < 4) await new Promise(r => setTimeout(r, 600))
         }
 
         if (cancelled) return
