@@ -16,9 +16,7 @@ export default function PortalInversorPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { router.replace('/inversor'); return }
-
+    const loadData = async (session: any) => {
       // Buscar inversor por user_id
       const { data: inv } = await supabase.from('inversores').select('*').eq('user_id', session.user.id).single()
       if (!inv) { router.replace('/inversor'); return }
@@ -42,7 +40,20 @@ export default function PortalInversorPage() {
         setBitacora(bit || [])
       }
       setLoading(false)
+    }
+
+    // onAuthStateChange con INITIAL_SESSION evita la race condition
+    // donde getSession() devuelve null antes de que el cliente restaure la sesión
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        if (!session) { router.replace('/inversor'); return }
+        loadData(session)
+      } else if (event === 'SIGNED_OUT') {
+        router.replace('/inversor')
+      }
     })
+
+    return () => subscription.unsubscribe()
   }, [router])
 
   const handleLogout = async () => {
