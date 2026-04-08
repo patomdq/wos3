@@ -18,15 +18,24 @@ export default function PortalInversorPage() {
 
   useEffect(() => {
     const loadData = async (session: any) => {
-      // Buscar inversor por user_id
-      const { data: inv, error: invError } = await supabase.from('inversores').select('*').eq('user_id', session.user.id).single()
-      console.log('[Portal] inversores query:', { inv, invError, userId: session.user.id })
-      if (!inv) {
+      // Verificar si el usuario tiene rol admin
+      const { data: roleData } = await supabase
+        .from('user_roles').select('role').eq('user_id', session.user.id).single()
+      const isAdmin = roleData?.role === 'admin'
+
+      // Buscar fila en inversores
+      const { data: inv, error: invError } = await supabase
+        .from('inversores').select('*').eq('user_id', session.user.id).single()
+      console.log('[Portal] inversores query:', { inv, invError, userId: session.user.id, isAdmin })
+
+      if (!inv && !isAdmin) {
         setAuthError(`Tu cuenta (${session.user.email}) no tiene acceso al portal inversor. Contactá a patricio@wallest.pro`)
         setLoading(false)
         return
       }
-      setInversor(inv)
+
+      // Admin sin fila inversor: acceso permitido con datos mínimos
+      setInversor(inv || { nombre: session.user.email?.split('@')[0] || 'Admin', desde: 'Admin' })
 
       // Buscar operación del inversor
       const { data: op } = await supabase.from('proyecto_inversores')
