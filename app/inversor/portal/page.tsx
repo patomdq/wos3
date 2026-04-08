@@ -14,12 +14,18 @@ export default function PortalInversorPage() {
   const [movimientos, setMovimientos] = useState<any[]>([])
   const [bitacora, setBitacora] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
     const loadData = async (session: any) => {
       // Buscar inversor por user_id
-      const { data: inv } = await supabase.from('inversores').select('*').eq('user_id', session.user.id).single()
-      if (!inv) { router.replace('/inversor'); return }
+      const { data: inv, error: invError } = await supabase.from('inversores').select('*').eq('user_id', session.user.id).single()
+      console.log('[Portal] inversores query:', { inv, invError, userId: session.user.id })
+      if (!inv) {
+        setAuthError(`Tu cuenta (${session.user.email}) no tiene acceso al portal inversor. Contactá a patricio@wallest.pro`)
+        setLoading(false)
+        return
+      }
       setInversor(inv)
 
       // Buscar operación del inversor
@@ -64,6 +70,21 @@ export default function PortalInversorPage() {
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A0A0A' }}>
       <div className="text-sm font-semibold animate-pulse" style={{ color: '#888' }}>Cargando tu portal...</div>
+    </div>
+  )
+
+  if (authError) return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: '#0A0A0A' }}>
+      <div className="w-full max-w-sm text-center">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl mx-auto mb-5" style={{ background: '#EF444420', border: '1px solid #EF444440' }}>✕</div>
+        <div className="font-black text-lg text-white mb-2">Sin acceso</div>
+        <div className="text-sm font-medium mb-6 leading-relaxed" style={{ color: '#888' }}>{authError}</div>
+        <button onClick={() => { supabase.auth.signOut(); router.replace('/inversor') }}
+          className="w-full py-3 rounded-xl text-sm font-black"
+          style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#888' }}>
+          Volver al login
+        </button>
+      </div>
     </div>
   )
 
