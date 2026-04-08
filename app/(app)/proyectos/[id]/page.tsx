@@ -63,6 +63,21 @@ export default function ProyectoDetalle() {
   const [nuevaPartida, setNuevaPartida] = useState({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'' })
   const [savingPartida, setSavingPartida] = useState(false)
 
+  // Tareas
+  const [showTareaForm, setShowTareaForm] = useState(false)
+  const [tareaForm, setTareaForm] = useState({ titulo:'', prioridad:'Media', estado:'Pendiente', fecha_limite:'', asignado_a:'' })
+  const [savingTarea, setSavingTarea] = useState(false)
+
+  // Bitácora
+  const [showBitacoraForm, setShowBitacoraForm] = useState(false)
+  const [bitacoraForm, setBitacoraForm] = useState({ contenido:'', autor:'', tipo:'nota' })
+  const [savingBitacora, setSavingBitacora] = useState(false)
+
+  // Docs
+  const [showDocForm, setShowDocForm] = useState(false)
+  const [docForm, setDocForm] = useState({ nombre:'', url:'', tipo:'' })
+  const [savingDoc, setSavingDoc] = useState(false)
+
   const loadMovimientos = async () => {
     const { data } = await supabase.from('movimientos').select('*').eq('proyecto_id', id).order('fecha', { ascending: false })
     setMovimientos(data || [])
@@ -203,6 +218,63 @@ export default function ProyectoDetalle() {
   const cambiarEstadoPartida = async (pid: string, estado: string) => {
     await supabase.from('partidas_reforma').update({ estado }).eq('id', pid)
     setPartidas(p => p.map(x => x.id === pid ? { ...x, estado } : x))
+  }
+
+  const saveTarea = async () => {
+    if (!tareaForm.titulo.trim()) return
+    setSavingTarea(true)
+    await supabase.from('tareas').insert([{
+      proyecto_id: id,
+      titulo: tareaForm.titulo,
+      prioridad: tareaForm.prioridad,
+      estado: tareaForm.estado,
+      fecha_limite: tareaForm.fecha_limite || null,
+      asignado_a: tareaForm.asignado_a || null,
+    }])
+    const { data } = await supabase.from('tareas').select('*').eq('proyecto_id', id).order('created_at', { ascending: false })
+    setTareas(data || [])
+    setTareaForm({ titulo:'', prioridad:'Media', estado:'Pendiente', fecha_limite:'', asignado_a:'' })
+    setShowTareaForm(false)
+    setSavingTarea(false)
+  }
+
+  const saveBitacoraEntry = async () => {
+    if (!bitacoraForm.contenido.trim()) return
+    setSavingBitacora(true)
+    await supabase.from('bitacora').insert([{
+      proyecto_id: id,
+      contenido: bitacoraForm.contenido,
+      autor: bitacoraForm.autor || 'Usuario',
+      tipo: bitacoraForm.tipo,
+    }])
+    const { data } = await supabase.from('bitacora').select('*').eq('proyecto_id', id).order('created_at', { ascending: false })
+    setBitacora(data || [])
+    setBitacoraForm({ contenido:'', autor:'', tipo:'nota' })
+    setShowBitacoraForm(false)
+    setSavingBitacora(false)
+  }
+
+  const saveDoc = async () => {
+    if (!docForm.nombre.trim() || !docForm.url.trim()) return
+    setSavingDoc(true)
+    await supabase.from('documentos').insert([{
+      proyecto_id: id,
+      nombre: docForm.nombre,
+      url: docForm.url,
+      tipo: docForm.tipo || 'drive',
+      subido_por: 'Usuario',
+    }])
+    const { data } = await supabase.from('documentos').select('*').eq('proyecto_id', id).order('created_at', { ascending: false })
+    setDocs(data || [])
+    setDocForm({ nombre:'', url:'', tipo:'' })
+    setShowDocForm(false)
+    setSavingDoc(false)
+  }
+
+  const deleteDoc = async (docId: string) => {
+    if (!confirm('¿Eliminar este documento?')) return
+    await supabase.from('documentos').delete().eq('id', docId)
+    setDocs(d => d.filter(x => x.id !== docId))
   }
 
   if (loading) return (
@@ -504,6 +576,13 @@ export default function ProyectoDetalle() {
       {/* ═══ Tab: PENDIENTES ═══ */}
       {tab === 2 && (
         <div>
+          <div className="flex justify-end mb-3">
+            <button onClick={() => setShowTareaForm(true)}
+              className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
+              style={{ background:'#F26E1F' }}>
+              + Agregar
+            </button>
+          </div>
           {['Alta','Media','Baja'].map(p => {
             const ts = tareasPrioridad(p)
             if (ts.length === 0) return null
@@ -544,6 +623,11 @@ export default function ProyectoDetalle() {
         <div className="rounded-2xl p-4" style={CARD}>
           <div className="flex items-center justify-between mb-4">
             <div className="font-black text-[15px] text-white">Historial</div>
+            <button onClick={() => setShowBitacoraForm(true)}
+              className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
+              style={{ background:'#F26E1F' }}>
+              + Agregar
+            </button>
           </div>
           {bitacora.length === 0 ? (
             <div className="text-center py-6 text-sm" style={{ color:'rgba(255,255,255,0.3)' }}>Sin entradas en bitácora</div>
@@ -595,17 +679,33 @@ export default function ProyectoDetalle() {
       {/* ═══ Tab: DOCS ═══ */}
       {tab === 5 && (
         <div>
+          <div className="flex justify-end mb-3">
+            <button onClick={() => setShowDocForm(true)}
+              className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
+              style={{ background:'#F26E1F' }}>
+              + Agregar link
+            </button>
+          </div>
           {docs.length === 0 ? (
-            <div className="text-center py-12 text-sm" style={{ color:'rgba(255,255,255,0.3)' }}>Sin documentos subidos</div>
-          ) : docs.map(d => (
-            <div key={d.id} className="rounded-xl p-3.5 mb-2 flex gap-3 items-center" style={CARD}>
-              <span className="text-xl">📄</span>
-              <div>
-                <div className="text-sm font-bold text-white">{d.nombre}</div>
-                <div className="text-xs font-medium mt-0.5" style={{ color:'rgba(255,255,255,0.4)' }}>{d.tipo}</div>
-              </div>
+            <div className="text-center py-12 text-sm" style={{ color:'rgba(255,255,255,0.3)' }}>Sin documentos. Agregá links de Google Drive.</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {docs.map(d => (
+                <div key={d.id} className="rounded-xl p-3.5 flex gap-3 items-center justify-between" style={CARD}>
+                  <a href={d.url} target="_blank" rel="noopener noreferrer"
+                    className="flex gap-3 items-center flex-1 min-w-0">
+                    <span className="text-xl flex-shrink-0">📄</span>
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-white truncate">{d.nombre}</div>
+                      {d.tipo && <div className="text-xs font-medium mt-0.5" style={{ color:'rgba(255,255,255,0.4)' }}>{d.tipo}</div>}
+                    </div>
+                    <span className="text-xs font-bold flex-shrink-0 px-2 py-1 rounded-lg" style={{ background:'rgba(242,110,31,0.18)', color:'#F26E1F' }}>Abrir →</span>
+                  </a>
+                  <button onClick={() => deleteDoc(d.id)} className="ml-2 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -707,6 +807,155 @@ export default function ProyectoDetalle() {
                 </div>
               </form>
             </div>
+          </div>
+        </>
+      )}
+
+      {/* ─────── FORM: Tarea ─────── */}
+      {showTareaForm && (
+        <>
+          <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowTareaForm(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10"
+            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+            <div className="flex justify-between items-center mb-5">
+              <div className="font-black text-[17px] text-white">Nueva tarea</div>
+              <button onClick={() => setShowTareaForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Título *</label>
+                <input type="text" value={tareaForm.titulo} placeholder="Ej. Pedir presupuesto electricista"
+                  onChange={e => setTareaForm(f=>({...f,titulo:e.target.value}))}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Prioridad</label>
+                  <select value={tareaForm.prioridad} onChange={e => setTareaForm(f=>({...f,prioridad:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
+                    <option>Alta</option><option>Media</option><option>Baja</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Estado</label>
+                  <select value={tareaForm.estado} onChange={e => setTareaForm(f=>({...f,estado:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
+                    <option>Pendiente</option><option>En curso</option><option>Completada</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha límite</label>
+                  <input type="date" value={tareaForm.fecha_limite} onChange={e => setTareaForm(f=>({...f,fecha_limite:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Asignado a</label>
+                  <input type="text" value={tareaForm.asignado_a} placeholder="Nombre"
+                    onChange={e => setTareaForm(f=>({...f,asignado_a:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+              </div>
+            </div>
+            <button onClick={saveTarea} disabled={savingTarea || !tareaForm.titulo.trim()}
+              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background:'#F26E1F' }}>
+              {savingTarea ? 'Guardando...' : 'Agregar tarea'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ─────── FORM: Bitácora ─────── */}
+      {showBitacoraForm && (
+        <>
+          <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowBitacoraForm(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10"
+            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+            <div className="flex justify-between items-center mb-5">
+              <div className="font-black text-[17px] text-white">Nueva entrada</div>
+              <button onClick={() => setShowBitacoraForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Contenido *</label>
+                <textarea rows={4} value={bitacoraForm.contenido} placeholder="Descripción de lo que ocurrió..."
+                  onChange={e => setBitacoraForm(f=>({...f,contenido:e.target.value}))}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium resize-none" style={INPUT_STYLE} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Autor</label>
+                  <input type="text" value={bitacoraForm.autor} placeholder="Tu nombre"
+                    onChange={e => setBitacoraForm(f=>({...f,autor:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo</label>
+                  <select value={bitacoraForm.tipo} onChange={e => setBitacoraForm(f=>({...f,tipo:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
+                    <option value="nota">Nota</option>
+                    <option value="hito">Hito</option>
+                    <option value="alerta">Alerta</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <button onClick={saveBitacoraEntry} disabled={savingBitacora || !bitacoraForm.contenido.trim()}
+              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background:'#F26E1F' }}>
+              {savingBitacora ? 'Guardando...' : 'Guardar entrada'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ─────── FORM: Doc ─────── */}
+      {showDocForm && (
+        <>
+          <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowDocForm(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10"
+            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+            <div className="flex justify-between items-center mb-5">
+              <div className="font-black text-[17px] text-white">Agregar documento</div>
+              <button onClick={() => setShowDocForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
+                <input type="text" value={docForm.nombre} placeholder="Ej. Planos reforma cocina"
+                  onChange={e => setDocForm(f=>({...f,nombre:e.target.value}))}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Link de Google Drive *</label>
+                <input type="url" value={docForm.url} placeholder="https://drive.google.com/..."
+                  onChange={e => setDocForm(f=>({...f,url:e.target.value}))}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo</label>
+                <select value={docForm.tipo} onChange={e => setDocForm(f=>({...f,tipo:e.target.value}))}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
+                  <option value="">Drive</option>
+                  <option value="planos">Planos</option>
+                  <option value="contrato">Contrato</option>
+                  <option value="presupuesto">Presupuesto</option>
+                  <option value="factura">Factura</option>
+                  <option value="foto">Fotos</option>
+                  <option value="otros">Otros</option>
+                </select>
+              </div>
+            </div>
+            <button onClick={saveDoc} disabled={savingDoc || !docForm.nombre.trim() || !docForm.url.trim()}
+              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background:'#F26E1F' }}>
+              {savingDoc ? 'Guardando...' : 'Agregar documento'}
+            </button>
           </div>
         </>
       )}
