@@ -48,6 +48,44 @@ export default function HasuPage() {
   const [filter,     setFilter]     = useState<FilterKey>('todos')
   const [sortBy,     setSortBy]     = useState<SortKey>('fecha')
 
+  // Cuentas bancarias — add/edit
+  const emptyCuenta = () => ({ nombre: '', banco: '', iban_parcial: '', saldo_actual: '' })
+  const [cuentaModal, setCuentaModal] = useState<'add' | 'edit' | null>(null)
+  const [cuentaForm,  setCuentaForm]  = useState(emptyCuenta())
+  const [editingCuenta, setEditingCuenta] = useState<any | null>(null)
+  const [savingCuenta,  setSavingCuenta]  = useState(false)
+
+  const openAddCuenta = () => { setCuentaForm(emptyCuenta()); setCuentaModal('add') }
+  const openEditCuenta = (c: any) => {
+    setEditingCuenta(c)
+    setCuentaForm({ nombre: c.nombre || '', banco: c.banco || '', iban_parcial: c.iban_parcial || '', saldo_actual: String(c.saldo_actual ?? '') })
+    setCuentaModal('edit')
+  }
+  const saveCuenta = async () => {
+    setSavingCuenta(true)
+    const payload = {
+      nombre: cuentaForm.nombre,
+      banco: cuentaForm.banco || null,
+      iban_parcial: cuentaForm.iban_parcial || null,
+      saldo_actual: parseFloat(cuentaForm.saldo_actual) || 0,
+    }
+    if (cuentaModal === 'add') {
+      const { data, error } = await supabase.from('cuentas_bancarias').insert([{ ...payload, activa: true }]).select().single()
+      if (!error && data) setCuentas(prev => [...prev, data])
+    } else if (editingCuenta) {
+      const { data, error } = await supabase.from('cuentas_bancarias').update(payload).eq('id', editingCuenta.id).select().single()
+      if (!error && data) setCuentas(prev => prev.map(c => c.id === editingCuenta.id ? data : c))
+    }
+    setSavingCuenta(false)
+    setCuentaModal(null)
+    setEditingCuenta(null)
+  }
+  const deleteCuenta = async (c: any) => {
+    if (!confirm(`¿Eliminar la cuenta "${c.nombre}"?`)) return
+    const { error } = await supabase.from('cuentas_bancarias').delete().eq('id', c.id)
+    if (!error) setCuentas(prev => prev.filter(x => x.id !== c.id))
+  }
+
   useEffect(() => {
     Promise.all([
       supabase.from('cuentas_bancarias').select('*').eq('activa', true).order('created_at'),
@@ -182,22 +220,34 @@ export default function HasuPage() {
 
       {/* Cuentas bancarias */}
       <div className="rounded-2xl mb-5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="p-4 pb-0 flex items-center justify-between">
+        <div className="p-4 pb-3 flex items-center justify-between">
           <div className="font-black text-[15px] text-white">Cuentas bancarias</div>
-          <span className="text-sm font-bold" style={{ color: '#F26E1F' }}>+ Cuenta</span>
+          <button onClick={openAddCuenta}
+            className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
+            style={{ background: '#F26E1F' }}>+ Cuenta</button>
         </div>
         {loading ? (
           <div className="p-4 text-sm" style={{ color: '#555' }}>Cargando...</div>
         ) : cuentas.length === 0 ? (
-          <div className="p-4 text-sm text-center" style={{ color: '#555' }}>Sin cuentas registradas</div>
+          <div className="p-4 text-sm text-center" style={{ color: '#555' }}>Sin cuentas registradas. Usá el bot o el botón + para agregar.</div>
         ) : cuentas.map((c, i) => (
-          <div key={c.id} className="px-4 py-3.5 flex justify-between items-center"
-            style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.08)' : undefined }}>
-            <div>
-              <div className="text-sm font-bold text-white">{c.nombre}</div>
-              <div className="text-xs font-medium mt-0.5 font-mono" style={{ color: '#888' }}>{c.banco}{c.iban_parcial ? ` · ****${c.iban_parcial}` : ''}</div>
+          <div key={c.id} className="px-4 py-3 flex items-center gap-3"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold text-white truncate">{c.nombre}</div>
+              <div className="text-xs font-mono mt-0.5" style={{ color: '#888' }}>
+                {c.banco}{c.iban_parcial ? ` · ${c.iban_parcial}` : ''}
+              </div>
             </div>
-            <div className="font-black text-base" style={{ color: '#22C55E' }}>{fmt(c.saldo_actual || 0)}</div>
+            <div className="font-black text-base flex-shrink-0" style={{ color: '#22C55E' }}>{fmt(c.saldo_actual || 0)}</div>
+            <button onClick={() => openEditCuenta(c)}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+              style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc', border: '1px solid rgba(255,255,255,0.10)' }}
+              title="Editar">✎</button>
+            <button onClick={() => deleteCuenta(c)}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+              style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.22)' }}
+              title="Eliminar">🗑</button>
           </div>
         ))}
       </div>
@@ -341,6 +391,57 @@ export default function HasuPage() {
           </div>
         )}
       </div>
+
+      {/* ═══ MODAL CUENTA BANCARIA ═══ */}
+      {cuentaModal && (
+        <>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setCuentaModal(null)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] p-5 pb-8"
+            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 480, margin: '0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
+            <div className="flex items-center justify-between mb-5">
+              <div className="font-black text-[17px] text-white">
+                {cuentaModal === 'add' ? 'Nueva cuenta bancaria' : 'Editar cuenta'}
+              </div>
+              <button onClick={() => setCuentaModal(null)}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-sm"
+                style={{ background: '#282828', color: '#888' }}>✕</button>
+            </div>
+            <div className="space-y-3 mb-5">
+              {[
+                { key: 'nombre',       label: 'Nombre *',       placeholder: 'BBVA Corporativa HASU',  type: 'text' },
+                { key: 'banco',        label: 'Banco',          placeholder: 'BBVA, Santander…',       type: 'text' },
+                { key: 'iban_parcial', label: 'IBAN',           placeholder: 'ES12 3456 7890 1234',    type: 'text' },
+                { key: 'saldo_actual', label: 'Saldo actual (€)',placeholder: '0',                     type: 'number' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{f.label}</label>
+                  <input
+                    type={f.type}
+                    value={(cuentaForm as any)[f.key]}
+                    onChange={e => setCuentaForm(p => ({ ...p, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium placeholder:text-[#555]"
+                    style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
+                    onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setCuentaModal(null)}
+                className="flex-1 py-3.5 rounded-xl text-sm font-black"
+                style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+              <button onClick={saveCuenta} disabled={savingCuenta || !cuentaForm.nombre}
+                className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
+                style={{ background: '#F26E1F' }}>
+                {savingCuenta ? 'Guardando...' : cuentaModal === 'add' ? 'Crear cuenta' : 'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   )
