@@ -33,7 +33,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     supabase.from('user_roles').select('*').then(({ data }) => {
-      if (data && data.length > 0) setRoles(data)
+      if (data && data.length > 0 && data.some((r: any) => r.email || r.nombre)) setRoles(data)
       setLoading(false)
     })
   }, [])
