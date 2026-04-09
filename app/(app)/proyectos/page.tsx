@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useUser, canAccessProject } from '@/lib/user-context'
 
 const ESTADOS = ['captado','analisis','ofertado','comprado','reforma','venta','cerrado']
 const ESTADO_LABEL: Record<string,string> = { captado:'Captado', analisis:'Análisis', ofertado:'Ofertado', comprado:'Comprado', reforma:'Reforma', venta:'Venta', cerrado:'Cerrado' }
@@ -36,6 +37,7 @@ const SEM_CFG = {
 
 export default function ProyectosPage() {
   const router = useRouter()
+  const user = useUser()
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
   const [gastosMap, setGastosMap] = useState<Record<string, number>>({})
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -75,8 +77,9 @@ export default function ProyectosPage() {
     if (!error) setProyectos(prev => prev.filter(x => x.id !== p.id))
   }
 
-  const activos  = proyectos.filter(p => ['comprado','reforma','venta'].includes(p.estado))
-  const pipeline = proyectos.filter(p => ['captado','analisis','ofertado'].includes(p.estado))
+  const visibles = proyectos.filter(p => canAccessProject(user?.permisos ?? null, p.id))
+  const activos  = visibles.filter(p => ['comprado','reforma','venta'].includes(p.estado))
+  const pipeline = visibles.filter(p => ['captado','analisis','ofertado'].includes(p.estado))
 
   return (
     <div className="p-4" style={{ background: '#0A0A0A', minHeight: '100vh' }}>

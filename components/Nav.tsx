@@ -1,16 +1,20 @@
 'use client'
 import { usePathname, useRouter } from 'next/navigation'
+import { useUser, canAccessPage } from '@/lib/user-context'
 
-const items = [
-  { id: 'bot', href: '/bot', icon: '◎', label: 'Bot' },
-  { id: 'proyectos', href: '/proyectos', icon: '⊞', label: 'Proyectos' },
-  { id: 'mercado', href: '/mercado', icon: '🔍', label: 'Mercado' },
-  { id: 'hasu', href: '/hasu', icon: '🏢', label: 'HASU' },
+const ALL_ITEMS = [
+  { id: 'bot',       href: '/bot',       icon: '◎',  label: 'Bot' },
+  { id: 'proyectos', href: '/proyectos', icon: '⊞',  label: 'Proyectos' },
+  { id: 'mercado',   href: '/mercado',   icon: '🔍', label: 'Mercado' },
+  { id: 'hasu',      href: '/hasu',      icon: '🏢', label: 'HASU' },
 ]
 
 export default function Nav() {
   const pathname = usePathname()
   const router = useRouter()
+  const user = useUser()
+
+  const items = ALL_ITEMS.filter(item => canAccessPage(user?.permisos ?? null, item.id))
   const active = items.find(i => pathname.startsWith(i.href))?.id
 
   return (
