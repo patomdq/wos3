@@ -357,16 +357,17 @@ Para editar o eliminar necesitás el ID del registro. Si el usuario no lo da, bu
 
 Respondé siempre en español. Sé directo y profesional. Máximo 3 párrafos.`
 
-    // Initial call
+    // Initial call — only keep messages with plain string content
+    const cleanMessages = (messages as { role: string; content: any }[])
+      .filter(m => typeof m.content === 'string' && m.content.trim() !== '')
+      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content as string }))
+
     let response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: systemPrompt,
       tools: TOOLS,
-      messages: messages.map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content
-      }))
+      messages: cleanMessages
     })
 
     // Handle tool use loop
@@ -382,7 +383,7 @@ Respondé siempre en español. Sé directo y profesional. Máximo 3 párrafos.`
       )
 
       const newMessages = [
-        ...messages.map((m: { role: string; content: string }) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        ...cleanMessages,
         { role: 'assistant' as const, content: response.content },
         { role: 'user' as const, content: results }
       ]
@@ -403,6 +404,7 @@ Respondé siempre en español. Sé directo y profesional. Máximo 3 párrafos.`
     return NextResponse.json({ text, toolResults })
   } catch (err: any) {
     console.error('Chat API error:', err)
-    return NextResponse.json({ text: 'Error al conectar con el asistente. Intentá de nuevo.' }, { status: 500 })
+    const msg = err?.message || err?.toString() || 'Error desconocido'
+    return NextResponse.json({ text: `Error técnico: ${msg}` }, { status: 500 })
   }
 }
