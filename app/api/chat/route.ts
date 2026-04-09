@@ -165,6 +165,47 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'insert_cuenta_bancaria',
+    description: 'Crea una cuenta bancaria. Usalo cuando el usuario pida agregar, registrar o crear una cuenta bancaria, cuenta corriente o cuenta de ahorro.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre: { type: 'string', description: 'Nombre descriptivo (ej: "BBVA Corporativa HASU", "Cuenta Reforma Gracia 1")' },
+        banco: { type: 'string', description: 'Nombre del banco (BBVA, Santander, CaixaBank, etc.)' },
+        iban_parcial: { type: 'string', description: 'IBAN completo o parcial (ej: ES12 3456 7890)' },
+        proyecto_id: { type: 'string', description: 'UUID del proyecto al que pertenece (opcional)' },
+        saldo_actual: { type: 'number', description: 'Saldo actual en euros (default 0)' },
+      },
+      required: ['nombre'],
+    },
+  },
+  {
+    name: 'update_cuenta_bancaria',
+    description: 'Edita una cuenta bancaria existente.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la cuenta' },
+        nombre: { type: 'string' }, banco: { type: 'string' },
+        iban_parcial: { type: 'string' }, saldo_actual: { type: 'number' },
+        activa: { type: 'boolean' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'delete_cuenta_bancaria',
+    description: 'Elimina una cuenta bancaria.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la cuenta' },
+        nombre: { type: 'string', description: 'Nombre (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
     name: 'update_radar',
     description: 'Edita un inmueble del radar. Usalo cuando el usuario pida modificar o actualizar un inmueble del radar.',
     input_schema: {
@@ -496,6 +537,35 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: `${data.nombre}${data.rubro ? ' · ' + data.rubro : ''}`,
       }
     }
+    if (name === 'insert_cuenta_bancaria') {
+      const { data, error } = await supabaseAdmin.from('cuentas_bancarias').insert([{
+        nombre: input.nombre,
+        banco: input.banco || null,
+        iban_parcial: input.iban_parcial || null,
+        proyecto_id: input.proyecto_id || null,
+        saldo_actual: input.saldo_actual || 0,
+        activa: true,
+      }]).select().single()
+      if (error) return { result: `Error al crear cuenta: ${error.message}` }
+      return {
+        result: `Cuenta bancaria creada. ID: ${data.id}. Nombre: "${data.nombre}", Banco: ${data.banco || 'sin especificar'}, IBAN: ${data.iban_parcial || 'sin especificar'}.`,
+        table: 'cuentas_bancarias', recordId: data.id,
+        label: `${data.nombre}${data.banco ? ' · ' + data.banco : ''}`,
+      }
+    }
+    if (name === 'update_cuenta_bancaria') {
+      const fields = ['nombre','banco','iban_parcial','saldo_actual','activa']
+      const updates: Record<string,any> = {}
+      for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
+      const { data, error } = await supabaseAdmin.from('cuentas_bancarias').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al editar cuenta: ${error.message}` }
+      return { result: `Cuenta actualizada. Nombre: "${data.nombre}".`, table: 'cuentas_bancarias', recordId: data.id, label: data.nombre }
+    }
+    if (name === 'delete_cuenta_bancaria') {
+      const { error } = await supabaseAdmin.from('cuentas_bancarias').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar cuenta: ${error.message}` }
+      return { result: `Cuenta bancaria eliminada: "${input.nombre || input.id}".` }
+    }
     if (name === 'update_radar') {
       const fields = ['direccion','ciudad','precio','habitaciones','superficie','url','fuente','notas','estado']
       const updates: Record<string,any> = {}
@@ -627,6 +697,7 @@ ${context || 'Sin datos disponibles.'}
 
 IMPORTANTE — Tenés estas capacidades técnicas reales. Para TODAS las entidades podés CREAR, EDITAR y ELIMINAR:
 - proyectos (insert/update/delete_proyecto)
+- cuentas bancarias (insert/update/delete_cuenta_bancaria)
 - movimientos (insert/update/delete_movimiento)
 - tareas (insert/update/delete_tarea)
 - partidas de reforma (insert/update/delete_partida_reforma)
