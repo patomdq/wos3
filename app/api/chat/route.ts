@@ -115,6 +115,62 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['id'],
     },
   },
+  {
+    name: 'insert_proyecto',
+    description: 'Crea un nuevo proyecto/activo inmobiliario. Usalo cuando el usuario pida crear, agregar o registrar un nuevo proyecto, inmueble o activo.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre: { type: 'string', description: 'Nombre del proyecto (ej: "Piso Gracia 1")' },
+        direccion: { type: 'string', description: 'Dirección completa' },
+        ciudad: { type: 'string', description: 'Ciudad' },
+        provincia: { type: 'string', description: 'Provincia' },
+        tipo: { type: 'string', enum: ['piso', 'local', 'edificio', 'solar'], description: 'Tipo de inmueble' },
+        estado: { type: 'string', enum: ['captado', 'analisis', 'ofertado', 'comprado', 'reforma', 'venta', 'cerrado'], description: 'Estado actual en el pipeline' },
+        precio_compra: { type: 'number', description: 'Precio de compra en euros' },
+        precio_venta_conservador: { type: 'number', description: 'Precio de venta escenario conservador en euros' },
+        precio_venta_realista: { type: 'number', description: 'Precio de venta escenario realista en euros' },
+        precio_venta_optimista: { type: 'number', description: 'Precio de venta escenario optimista en euros' },
+        precio_venta_estimado: { type: 'number', description: 'Precio de venta estimado general (si no se dan escenarios separados)' },
+        valor_total_operacion: { type: 'number', description: 'Valor total de la operación incluyendo reforma y gastos' },
+        superficie: { type: 'number', description: 'Superficie en m²' },
+        habitaciones: { type: 'number', description: 'Número de habitaciones' },
+        banos: { type: 'number', description: 'Número de baños' },
+        porcentaje_hasu: { type: 'number', description: 'Porcentaje de equity de HASU (0-100). Default 100.' },
+        socio_nombre: { type: 'string', description: 'Nombre del socio si hay coinversión' },
+        inversion_hasu: { type: 'number', description: 'Capital invertido por HASU en euros' },
+        fecha_compra: { type: 'string', description: 'Fecha de compra YYYY-MM-DD' },
+        fecha_salida_estimada: { type: 'string', description: 'Fecha estimada de venta/salida YYYY-MM-DD' },
+        notas: { type: 'string', description: 'Notas adicionales' },
+      },
+      required: ['nombre'],
+    },
+  },
+  {
+    name: 'update_proyecto',
+    description: 'Actualiza datos de un proyecto existente. Usalo para: cambiar el estado en el pipeline, actualizar el avance de obra, actualizar los escenarios de precio de venta (conservador/realista/optimista), o modificar cualquier dato del proyecto. Necesitás el ID del proyecto.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del proyecto a actualizar' },
+        nombre: { type: 'string', description: 'Nuevo nombre' },
+        estado: { type: 'string', enum: ['captado', 'analisis', 'ofertado', 'comprado', 'reforma', 'venta', 'cerrado'], description: 'Nuevo estado en el pipeline' },
+        avance_reforma: { type: 'number', description: 'Porcentaje de avance de obra (0-100)' },
+        precio_venta_conservador: { type: 'number', description: 'Precio de venta escenario conservador en euros' },
+        precio_venta_realista: { type: 'number', description: 'Precio de venta escenario realista en euros' },
+        precio_venta_optimista: { type: 'number', description: 'Precio de venta escenario optimista en euros' },
+        precio_venta_estimado: { type: 'number', description: 'Precio de venta estimado general en euros' },
+        precio_compra: { type: 'number', description: 'Precio de compra en euros' },
+        valor_total_operacion: { type: 'number', description: 'Valor total de la operación en euros' },
+        inversion_hasu: { type: 'number', description: 'Capital invertido por HASU en euros' },
+        porcentaje_hasu: { type: 'number', description: 'Porcentaje de equity de HASU (0-100)' },
+        fecha_compra: { type: 'string', description: 'Fecha de compra YYYY-MM-DD' },
+        fecha_salida_estimada: { type: 'string', description: 'Fecha estimada de salida YYYY-MM-DD' },
+        notas: { type: 'string', description: 'Notas' },
+      },
+      required: ['id'],
+    },
+  },
 ]
 
 type ToolResult = { id: string; result: string; table?: string; recordId?: string; label?: string }
@@ -217,6 +273,59 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: `${data.nombre} · ${data.presupuesto}€`,
       }
     }
+    if (name === 'insert_proyecto') {
+      const { data, error } = await supabaseAdmin.from('proyectos').insert([{
+        nombre: input.nombre,
+        direccion: input.direccion || null,
+        ciudad: input.ciudad || null,
+        provincia: input.provincia || null,
+        tipo: input.tipo || 'piso',
+        estado: input.estado || 'captado',
+        precio_compra: input.precio_compra || null,
+        precio_venta_conservador: input.precio_venta_conservador || null,
+        precio_venta_realista: input.precio_venta_realista || null,
+        precio_venta_optimista: input.precio_venta_optimista || null,
+        precio_venta_estimado: input.precio_venta_estimado || null,
+        valor_total_operacion: input.valor_total_operacion || null,
+        superficie: input.superficie || null,
+        habitaciones: input.habitaciones || null,
+        banos: input.banos || null,
+        porcentaje_hasu: input.porcentaje_hasu ?? 100,
+        socio_nombre: input.socio_nombre || null,
+        inversion_hasu: input.inversion_hasu || null,
+        fecha_compra: input.fecha_compra || null,
+        fecha_salida_estimada: input.fecha_salida_estimada || null,
+        notas: input.notas || null,
+      }]).select().single()
+      if (error) return { result: `Error al crear proyecto: ${error.message}` }
+      return {
+        result: `Proyecto creado. ID: ${data.id}. Nombre: "${data.nombre}", Estado: ${data.estado}, Ciudad: ${data.ciudad || 'sin especificar'}.`,
+        table: 'proyectos',
+        recordId: data.id,
+        label: data.nombre,
+      }
+    }
+    if (name === 'update_proyecto') {
+      const fields = [
+        'nombre','estado','avance_reforma',
+        'precio_venta_conservador','precio_venta_realista','precio_venta_optimista','precio_venta_estimado',
+        'precio_compra','valor_total_operacion','inversion_hasu','porcentaje_hasu',
+        'fecha_compra','fecha_salida_estimada','notas',
+      ]
+      const updates: Record<string,any> = {}
+      for (const f of fields) {
+        if (input[f] !== undefined) updates[f] = input[f]
+      }
+      const { data, error } = await supabaseAdmin.from('proyectos').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al actualizar proyecto: ${error.message}` }
+      const cambios = Object.keys(updates).join(', ')
+      return {
+        result: `Proyecto actualizado. Nombre: "${data.nombre}". Campos actualizados: ${cambios}.`,
+        table: 'proyectos',
+        recordId: data.id,
+        label: data.nombre,
+      }
+    }
     return { result: 'Herramienta no reconocida.' }
   } catch (e: any) {
     return { result: `Error interno: ${e.message}` }
@@ -237,8 +346,10 @@ Contexto actual del sistema:
 ${context || 'Sin datos disponibles.'}
 
 IMPORTANTE — Tenés estas capacidades técnicas reales, ejecutalas sin dudar:
-- CREAR: registrar gastos, ingresos, tareas, partidas de reforma
-- EDITAR: modificar concepto/monto de un movimiento, nombre/presupuesto de una partida
+- CREAR: proyectos/activos, gastos, ingresos, tareas, partidas de reforma
+- EDITAR proyectos: estado en el pipeline (captado→analisis→ofertado→comprado→reforma→venta→cerrado), avance de obra (%), escenarios de venta (conservador/realista/optimista en €), y otros campos
+- EDITAR movimientos: concepto/monto de un movimiento
+- EDITAR partidas: nombre/presupuesto de una partida
 - ELIMINAR: borrar movimientos y partidas por ID
 
 Cuando el usuario pida crear, editar o eliminar algo → usá la herramienta correspondiente directamente. NO digas "no puedo" ni "no tengo capacidad técnica". SÍ podés hacerlo.

@@ -12,6 +12,7 @@ type Proyecto = {
   id: string; nombre: string; direccion?: string; ciudad: string; tipo: string; estado: string
   porcentaje_hasu: number; socio_nombre: string | null; avance_reforma: number
   precio_compra: number | null; precio_venta_estimado: number | null; precio_venta_real: number | null
+  precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null
   valor_total_operacion: number | null; inversion_hasu: number | null
   fecha_compra: string | null; fecha_salida_estimada: string | null
 }
@@ -43,7 +44,7 @@ export default function ProyectosPage() {
   useEffect(() => {
     Promise.all([
       supabase.from('proyectos')
-        .select('id,nombre,direccion,ciudad,tipo,estado,porcentaje_hasu,socio_nombre,avance_reforma,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,inversion_hasu,fecha_compra,fecha_salida_estimada')
+        .select('id,nombre,direccion,ciudad,tipo,estado,porcentaje_hasu,socio_nombre,avance_reforma,precio_compra,precio_venta_estimado,precio_venta_real,precio_venta_conservador,precio_venta_realista,precio_venta_optimista,valor_total_operacion,inversion_hasu,fecha_compra,fecha_salida_estimada')
         .order('created_at', { ascending: false }),
       supabase.from('movimientos').select('proyecto_id,monto,tipo'),
     ]).then(([p, m]) => {
@@ -140,15 +141,16 @@ export default function ProyectosPage() {
                 const inversion = p.valor_total_operacion || p.precio_compra || 0
                 const ventaEst = p.precio_venta_estimado || 0
 
+                // Usar escenarios almacenados si existen, sino calcular automáticamente desde precio_venta_estimado
                 const escenarios = [
-                  { label: 'Conservador', mult: 0.90, color: '#888' },
-                  { label: 'Realista',    mult: 1.00, color: '#F26E1F' },
-                  { label: 'Optimista',   mult: 1.10, color: '#22C55E' },
+                  { label: 'Conservador', stored: p.precio_venta_conservador, mult: 0.90, color: '#888' },
+                  { label: 'Realista',    stored: p.precio_venta_realista,    mult: 1.00, color: '#F26E1F' },
+                  { label: 'Optimista',   stored: p.precio_venta_optimista,   mult: 1.10, color: '#22C55E' },
                 ].map(s => {
-                  const venta    = ventaEst * s.mult
+                  const venta    = s.stored ?? (ventaEst * s.mult)
                   const benef    = venta - inversion
                   const roi      = inversion > 0 ? (benef / inversion) * 100 : 0
-                  return { ...s, venta, benef, roi }
+                  return { label: s.label, color: s.color, venta, benef, roi }
                 })
 
                 const roiReal = escenarios[1].roi
