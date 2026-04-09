@@ -165,6 +165,124 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'update_radar',
+    description: 'Edita un inmueble del radar. Usalo cuando el usuario pida modificar o actualizar un inmueble del radar.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del inmueble en radar' },
+        direccion: { type: 'string' }, ciudad: { type: 'string' },
+        precio: { type: 'number' }, habitaciones: { type: 'number' }, superficie: { type: 'number' },
+        url: { type: 'string' }, fuente: { type: 'string' }, notas: { type: 'string' },
+        estado: { type: 'string', enum: ['activo', 'descartado', 'convertido'] },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'delete_radar',
+    description: 'Elimina un inmueble del radar. Usalo cuando el usuario pida borrar o quitar un inmueble del radar.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del inmueble a eliminar' },
+        direccion: { type: 'string', description: 'Dirección (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'update_tarea',
+    description: 'Edita una tarea existente. Usalo cuando el usuario pida modificar, completar o cambiar el estado de una tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la tarea' },
+        titulo: { type: 'string' }, descripcion: { type: 'string' },
+        prioridad: { type: 'string', enum: ['Alta', 'Media', 'Baja'] },
+        estado: { type: 'string', enum: ['Pendiente', 'En curso', 'Completada'] },
+        fecha_limite: { type: 'string' }, asignado_a: { type: 'string' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'delete_tarea',
+    description: 'Elimina una tarea. Usalo cuando el usuario pida borrar o eliminar una tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la tarea' },
+        titulo: { type: 'string', description: 'Título (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'update_proveedor',
+    description: 'Edita un proveedor existente.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del proveedor' },
+        nombre: { type: 'string' }, rubro: { type: 'string' },
+        telefono: { type: 'string' }, email: { type: 'string' },
+        contacto: { type: 'string' }, cif: { type: 'string' },
+        activo: { type: 'boolean' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'delete_proveedor',
+    description: 'Elimina un proveedor.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del proveedor' },
+        nombre: { type: 'string', description: 'Nombre (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'update_bitacora',
+    description: 'Edita una entrada de bitácora existente.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la entrada' },
+        contenido: { type: 'string' }, titulo: { type: 'string' },
+        tipo: { type: 'string', enum: ['nota', 'hito', 'alerta', 'bot'] },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'delete_bitacora',
+    description: 'Elimina una entrada de bitácora.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la entrada' },
+        contenido: { type: 'string', description: 'Contenido (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'delete_proyecto',
+    description: 'Elimina un proyecto del sistema. Usalo solo cuando el usuario confirme explícitamente que quiere borrar el proyecto.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del proyecto' },
+        nombre: { type: 'string', description: 'Nombre del proyecto (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
     name: 'insert_proyecto',
     description: 'Crea un nuevo proyecto/activo inmobiliario. Usalo cuando el usuario pida crear, agregar o registrar un nuevo proyecto, inmueble o activo.',
     input_schema: {
@@ -378,6 +496,63 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: `${data.nombre}${data.rubro ? ' · ' + data.rubro : ''}`,
       }
     }
+    if (name === 'update_radar') {
+      const fields = ['direccion','ciudad','precio','habitaciones','superficie','url','fuente','notas','estado']
+      const updates: Record<string,any> = {}
+      for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
+      const { data, error } = await supabaseAdmin.from('inmuebles_radar').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al editar inmueble: ${error.message}` }
+      return { result: `Inmueble actualizado. Dirección: "${data.direccion}", Precio: ${data.precio}€.`, table: 'inmuebles_radar', recordId: data.id, label: `${data.direccion} · ${data.precio}€` }
+    }
+    if (name === 'delete_radar') {
+      const { error } = await supabaseAdmin.from('inmuebles_radar').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar: ${error.message}` }
+      return { result: `Inmueble eliminado del radar. Dirección: "${input.direccion || input.id}".` }
+    }
+    if (name === 'update_tarea') {
+      const fields = ['titulo','descripcion','prioridad','estado','fecha_limite','asignado_a']
+      const updates: Record<string,any> = {}
+      for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
+      const { data, error } = await supabaseAdmin.from('tareas').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al editar tarea: ${error.message}` }
+      return { result: `Tarea actualizada. Título: "${data.titulo}", Estado: ${data.estado}.`, table: 'tareas', recordId: data.id, label: data.titulo }
+    }
+    if (name === 'delete_tarea') {
+      const { error } = await supabaseAdmin.from('tareas').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar tarea: ${error.message}` }
+      return { result: `Tarea eliminada: "${input.titulo || input.id}".` }
+    }
+    if (name === 'update_proveedor') {
+      const fields = ['nombre','rubro','telefono','email','contacto','cif','activo']
+      const updates: Record<string,any> = {}
+      for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
+      const { data, error } = await supabaseAdmin.from('proveedores').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al editar proveedor: ${error.message}` }
+      return { result: `Proveedor actualizado. Nombre: "${data.nombre}".`, table: 'proveedores', recordId: data.id, label: data.nombre }
+    }
+    if (name === 'delete_proveedor') {
+      const { error } = await supabaseAdmin.from('proveedores').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar proveedor: ${error.message}` }
+      return { result: `Proveedor eliminado: "${input.nombre || input.id}".` }
+    }
+    if (name === 'update_bitacora') {
+      const fields = ['contenido','titulo','tipo']
+      const updates: Record<string,any> = {}
+      for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
+      const { data, error } = await supabaseAdmin.from('bitacora').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al editar bitácora: ${error.message}` }
+      return { result: `Entrada de bitácora actualizada. Contenido: "${data.contenido}".`, table: 'bitacora', recordId: data.id, label: data.titulo || data.contenido.slice(0,40) }
+    }
+    if (name === 'delete_bitacora') {
+      const { error } = await supabaseAdmin.from('bitacora').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar entrada: ${error.message}` }
+      return { result: `Entrada de bitácora eliminada.` }
+    }
+    if (name === 'delete_proyecto') {
+      const { error } = await supabaseAdmin.from('proyectos').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar proyecto: ${error.message}` }
+      return { result: `Proyecto eliminado: "${input.nombre || input.id}".` }
+    }
     if (name === 'insert_proyecto') {
       const { data, error } = await supabaseAdmin.from('proyectos').insert([{
         nombre: input.nombre,
@@ -450,12 +625,16 @@ Hoy es ${today}.
 Contexto actual del sistema:
 ${context || 'Sin datos disponibles.'}
 
-IMPORTANTE — Tenés estas capacidades técnicas reales, ejecutalas sin dudar:
-- CREAR: proyectos/activos, gastos, ingresos, tareas, partidas de reforma, entradas de bitácora, proveedores, inmuebles en el radar de mercado
-- EDITAR proyectos: estado en el pipeline (captado→analisis→ofertado→comprado→reforma→venta→cerrado), avance de obra (%), escenarios de venta (conservador/realista/optimista en €), y otros campos
-- EDITAR movimientos: concepto/monto de un movimiento
-- EDITAR partidas: nombre/presupuesto de una partida
-- ELIMINAR: borrar movimientos y partidas por ID
+IMPORTANTE — Tenés estas capacidades técnicas reales. Para TODAS las entidades podés CREAR, EDITAR y ELIMINAR:
+- proyectos (insert/update/delete_proyecto)
+- movimientos (insert/update/delete_movimiento)
+- tareas (insert/update/delete_tarea)
+- partidas de reforma (insert/update/delete_partida_reforma)
+- inmuebles en radar (insert/update/delete_radar)
+- entradas de bitácora (insert/update/delete_bitacora)
+- proveedores (insert/update/delete_proveedor)
+
+Nunca digas "no puedo editar/eliminar X". Siempre podés. Para editar o eliminar necesitás el ID — buscalo en el contexto o preguntáselo al usuario.
 
 Cuando el usuario pida crear, editar o eliminar algo → usá la herramienta correspondiente directamente. NO digas "no puedo" ni "no tengo capacidad técnica". SÍ podés hacerlo.
 Para editar o eliminar necesitás el ID del registro. Si el usuario no lo da, buscalo en el contexto o preguntá el ID exacto.

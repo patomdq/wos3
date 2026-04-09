@@ -76,10 +76,15 @@ export default function MercadoPage() {
   const [estudio, setEstudio] = useState<Estudio[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Radar form
+  // Radar form (crear)
   const [radarOpen, setRadarOpen] = useState(false)
   const [radarForm, setRadarForm] = useState(emptyRadarForm())
   const [savingRadar, setSavingRadar] = useState(false)
+
+  // Radar edit
+  const [editRadar, setEditRadar] = useState<Radar | null>(null)
+  const [editRadarForm, setEditRadarForm] = useState(emptyRadarForm())
+  const [savingEditRadar, setSavingEditRadar] = useState(false)
 
   // Scraper
   const [scraperItems, setScraperItems] = useState<ScraperItem[]>([])
@@ -177,6 +182,43 @@ export default function MercadoPage() {
       setRadar(prev => [data, ...prev])
       setTab(0)
     }
+  }
+
+  // Editar radar
+  const openEditRadar = (r: Radar) => {
+    setEditRadar(r)
+    setEditRadarForm({
+      direccion: r.direccion || '', ciudad: r.ciudad || '',
+      precio: String(r.precio || ''), habitaciones: String(r.habitaciones || ''),
+      superficie: String(r.superficie || ''), estado: r.estado || 'activo',
+      fuente: r.fuente || 'WhatsApp', notas: r.notas || '', url: r.url || '',
+    })
+  }
+  const saveEditRadar = async () => {
+    if (!editRadar) return
+    setSavingEditRadar(true)
+    const payload: Record<string,any> = {
+      direccion: editRadarForm.direccion,
+      ciudad: editRadarForm.ciudad,
+      precio: parseFloat(editRadarForm.precio) || 0,
+      habitaciones: parseInt(editRadarForm.habitaciones) || 0,
+      superficie: parseInt(editRadarForm.superficie) || 0,
+      fuente: editRadarForm.fuente,
+      notas: editRadarForm.notas || null,
+    }
+    if (editRadarForm.url) payload.url = editRadarForm.url
+    const { data, error } = await supabase.from('inmuebles_radar').update(payload).eq('id', editRadar.id).select().single()
+    setSavingEditRadar(false)
+    if (error) { alert(`Error: ${error.message}`); return }
+    if (data) {
+      setRadar(prev => prev.map(r => r.id === editRadar.id ? data : r))
+      setEditRadar(null)
+    }
+  }
+  const deleteRadarItem = async (r: Radar) => {
+    if (!confirm(`¿Eliminar "${r.direccion}"?`)) return
+    const { error } = await supabase.from('inmuebles_radar').delete().eq('id', r.id)
+    if (!error) setRadar(prev => prev.filter(x => x.id !== r.id))
   }
 
   // Abrir calculadora (nuevo o editar estudio)
@@ -397,11 +439,21 @@ export default function MercadoPage() {
                       {r.fuente && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.fuente}</span>}
                     </div>
                   </div>
-                  <button onClick={() => openCalc(r.precio || 0, `${r.direccion}${r.ciudad ? ' · '+r.ciudad : ''}`, r.ciudad)}
-                    className="text-xs font-black px-3 py-2 rounded-xl flex-shrink-0 ml-3"
-                    style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>
-                    → Calcular
-                  </button>
+                  <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
+                    <button onClick={() => openCalc(r.precio || 0, `${r.direccion}${r.ciudad ? ' · '+r.ciudad : ''}`, r.ciudad)}
+                      className="text-xs font-black px-3 py-2 rounded-xl"
+                      style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>
+                      → Calcular
+                    </button>
+                    <button onClick={() => openEditRadar(r)}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+                      style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc', border: '1px solid rgba(255,255,255,0.10)' }}
+                      title="Editar">✎</button>
+                    <button onClick={() => deleteRadarItem(r)}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+                      style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.22)' }}
+                      title="Eliminar">🗑</button>
+                  </div>
                 </div>
                 {r.notas && <div className="mt-2 text-xs" style={{ color: '#888' }}>{r.notas}</div>}
                 {r.url && (
@@ -652,6 +704,74 @@ export default function MercadoPage() {
                   className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
                   style={{ background: '#F26E1F' }}>
                   {savingRadar ? 'Guardando...' : 'Guardar en radar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ═══ MODAL EDITAR RADAR ═══ */}
+      {editRadar && (
+        <>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setEditRadar(null)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] overflow-y-auto" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '92vh', maxWidth: 480, margin: '0 auto' }}>
+            <div className="p-5 pb-8">
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
+              <div className="flex items-center justify-between mb-5">
+                <div className="font-black text-[17px] text-white">Editar inmueble</div>
+                <button onClick={() => setEditRadar(null)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#282828', color: '#888' }}>✕</button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Dirección</label>
+                  <input type="text" value={editRadarForm.direccion} onChange={e => setEditRadarForm(f => ({ ...f, direccion: e.target.value }))}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP}
+                    onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Municipio</label>
+                  <input type="text" value={editRadarForm.ciudad} onChange={e => setEditRadarForm(f => ({ ...f, ciudad: e.target.value }))}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP}
+                    onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Precio (€)</label>
+                  <input type="number" value={editRadarForm.precio} onChange={e => setEditRadarForm(f => ({ ...f, precio: e.target.value }))}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium font-mono" style={INP}
+                    onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Habitaciones</label>
+                  <input type="number" value={editRadarForm.habitaciones} onChange={e => setEditRadarForm(f => ({ ...f, habitaciones: e.target.value }))}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP}
+                    onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>m²</label>
+                  <input type="number" value={editRadarForm.superficie} onChange={e => setEditRadarForm(f => ({ ...f, superficie: e.target.value }))}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP}
+                    onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link</label>
+                  <input type="url" value={editRadarForm.url} onChange={e => setEditRadarForm(f => ({ ...f, url: e.target.value }))}
+                    placeholder="https://www.idealista.com/inmueble/..."
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP}
+                    onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Notas</label>
+                  <textarea value={editRadarForm.notas} onChange={e => setEditRadarForm(f => ({ ...f, notas: e.target.value }))} rows={2}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium resize-none" style={INP}
+                    onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setEditRadar(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+                <button onClick={saveEditRadar} disabled={savingEditRadar}
+                  className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>
+                  {savingEditRadar ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </div>
