@@ -222,8 +222,9 @@ export default function ProyectosPage() {
                           {escenarios.map(s => (
                             <div key={s.label} className="rounded-xl p-2.5 text-center" style={{ background: '#1E1E1E', border: `1px solid ${s.color}30` }}>
                               <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: s.color }}>{s.label}</div>
-                              <div className="font-black text-[13px] text-white leading-tight">{s.benef >= 0 ? '+' : ''}{fmt(s.benef)}</div>
-                              <div className="text-[11px] font-bold mt-0.5" style={{ color: s.color }}>
+                              <div className="font-black text-[13px] text-white leading-tight">{fmt(s.venta)}</div>
+                              <div className="text-[11px] font-semibold mt-0.5" style={{ color: '#aaa' }}>{s.benef >= 0 ? '+' : ''}{fmt(s.benef)}</div>
+                              <div className="text-[11px] font-bold mt-0" style={{ color: s.color }}>
                                 {s.roi >= 0 ? '+' : ''}{s.roi.toFixed(1)}% ROI
                               </div>
                             </div>
