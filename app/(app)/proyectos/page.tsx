@@ -68,6 +68,13 @@ export default function ProyectosPage() {
     })
   }
 
+  const deleteProyecto = async (p: Proyecto, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm(`¿Eliminar el proyecto "${p.nombre}"? Esta acción no se puede deshacer.`)) return
+    const { error } = await supabase.from('proyectos').delete().eq('id', p.id)
+    if (!error) setProyectos(prev => prev.filter(x => x.id !== p.id))
+  }
+
   const activos  = proyectos.filter(p => ['comprado','reforma','venta'].includes(p.estado))
   const pipeline = proyectos.filter(p => ['captado','analisis','ofertado'].includes(p.estado))
 
@@ -187,11 +194,14 @@ export default function ProyectosPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
                           <div className="font-black text-[18px]" style={{ color: roiReal >= 0 ? '#22C55E' : '#EF4444' }}>
                             {ventaEst ? `${roiReal >= 0 ? '+' : ''}${roiReal.toFixed(1)}%` : '—'}
                           </div>
-                          <div className="text-[11px] font-medium mt-0.5" style={{ color: '#888' }}>ROI est.</div>
+                          <div className="text-[11px] font-medium" style={{ color: '#888' }}>ROI est.</div>
+                          <button onClick={e => deleteProyecto(p, e)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm mt-1"
+                            style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
                         </div>
                       </div>
 
@@ -306,26 +316,32 @@ export default function ProyectosPage() {
             <>
               <div className="font-black text-[15px] text-white mb-3 mt-2">En pipeline</div>
               {pipeline.map(p => (
-                <button key={p.id} onClick={() => router.push(`/proyectos/${p.id}`)}
-                  className="w-full text-left rounded-2xl mb-2.5 p-4 flex gap-3 opacity-60 transition-opacity active:opacity-40"
+                <div key={p.id} className="rounded-2xl mb-2.5 p-4 flex gap-3 opacity-60"
                   style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: '#282828' }}>🏠</div>
-                  <div className="flex-1">
-                    <div className="font-black text-base text-white">{p.nombre}</div>
-                    <div className="text-xs font-medium mt-1" style={{ color: '#888' }}>📍 {p.ciudad || '—'}</div>
-                    <div className="flex gap-1.5 mt-2">
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#282828', color: '#888' }}>
-                        {ESTADO_LABEL[p.estado]}
-                      </span>
+                  <div onClick={() => router.push(`/proyectos/${p.id}`)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
+                    <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: '#282828' }}>🏠</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-base text-white">{p.nombre}</div>
+                      <div className="text-xs font-medium mt-1" style={{ color: '#888' }}>📍 {p.ciudad || '—'}</div>
+                      <div className="flex gap-1.5 mt-2">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#282828', color: '#888' }}>
+                          {ESTADO_LABEL[p.estado]}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  {p.precio_compra && (
-                    <div className="text-right flex-shrink-0">
-                      <div className="font-black text-[17px] text-white">€{(p.precio_compra/1000).toFixed(0)}k</div>
-                      <div className="text-[11px] font-medium mt-1" style={{ color: '#888' }}>precio</div>
-                    </div>
-                  )}
-                </button>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    {p.precio_compra && (
+                      <>
+                        <div className="font-black text-[17px] text-white">€{(p.precio_compra/1000).toFixed(0)}k</div>
+                        <div className="text-[11px] font-medium" style={{ color: '#888' }}>precio</div>
+                      </>
+                    )}
+                    <button onClick={e => deleteProyecto(p, e)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-sm mt-auto"
+                      style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
+                  </div>
+                </div>
               ))}
             </>
           )}

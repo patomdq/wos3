@@ -65,11 +65,13 @@ export default function ProyectoDetalle() {
 
   // Tareas
   const [showTareaForm, setShowTareaForm] = useState(false)
+  const [editingTareaId, setEditingTareaId] = useState<string|null>(null)
   const [tareaForm, setTareaForm] = useState({ titulo:'', prioridad:'Media', estado:'Pendiente', fecha_limite:'', asignado_a:'' })
   const [savingTarea, setSavingTarea] = useState(false)
 
   // Bitácora
   const [showBitacoraForm, setShowBitacoraForm] = useState(false)
+  const [editingBitacoraId, setEditingBitacoraId] = useState<string|null>(null)
   const [bitacoraForm, setBitacoraForm] = useState({ contenido:'', autor:'', tipo:'nota' })
   const [savingBitacora, setSavingBitacora] = useState(false)
 
@@ -220,38 +222,82 @@ export default function ProyectoDetalle() {
     setPartidas(p => p.map(x => x.id === pid ? { ...x, estado } : x))
   }
 
+  const openTareaForm = (t?: any) => {
+    if (t) {
+      setTareaForm({ titulo: t.titulo, prioridad: t.prioridad, estado: t.estado, fecha_limite: t.fecha_limite || '', asignado_a: t.asignado_a || '' })
+      setEditingTareaId(t.id)
+    } else {
+      setTareaForm({ titulo:'', prioridad:'Media', estado:'Pendiente', fecha_limite:'', asignado_a:'' })
+      setEditingTareaId(null)
+    }
+    setShowTareaForm(true)
+  }
+
   const saveTarea = async () => {
     if (!tareaForm.titulo.trim()) return
     setSavingTarea(true)
-    await supabase.from('tareas').insert([{
-      proyecto_id: id,
+    const payload = {
       titulo: tareaForm.titulo,
       prioridad: tareaForm.prioridad,
       estado: tareaForm.estado,
       fecha_limite: tareaForm.fecha_limite || null,
       asignado_a: tareaForm.asignado_a || null,
-    }])
+    }
+    if (editingTareaId) {
+      await supabase.from('tareas').update(payload).eq('id', editingTareaId)
+    } else {
+      await supabase.from('tareas').insert([{ ...payload, proyecto_id: id }])
+    }
     const { data } = await supabase.from('tareas').select('*').eq('proyecto_id', id).order('created_at', { ascending: false })
     setTareas(data || [])
     setTareaForm({ titulo:'', prioridad:'Media', estado:'Pendiente', fecha_limite:'', asignado_a:'' })
+    setEditingTareaId(null)
     setShowTareaForm(false)
     setSavingTarea(false)
+  }
+
+  const deleteTarea = async (tid: string) => {
+    if (!confirm('¿Eliminar esta tarea?')) return
+    await supabase.from('tareas').delete().eq('id', tid)
+    setTareas(t => t.filter(x => x.id !== tid))
+  }
+
+  const openBitacoraForm = (b?: any) => {
+    if (b) {
+      setBitacoraForm({ contenido: b.contenido, autor: b.autor || '', tipo: b.tipo || 'nota' })
+      setEditingBitacoraId(b.id)
+    } else {
+      setBitacoraForm({ contenido:'', autor:'', tipo:'nota' })
+      setEditingBitacoraId(null)
+    }
+    setShowBitacoraForm(true)
   }
 
   const saveBitacoraEntry = async () => {
     if (!bitacoraForm.contenido.trim()) return
     setSavingBitacora(true)
-    await supabase.from('bitacora').insert([{
-      proyecto_id: id,
+    const payload = {
       contenido: bitacoraForm.contenido,
       autor: bitacoraForm.autor || 'Usuario',
       tipo: bitacoraForm.tipo,
-    }])
+    }
+    if (editingBitacoraId) {
+      await supabase.from('bitacora').update(payload).eq('id', editingBitacoraId)
+    } else {
+      await supabase.from('bitacora').insert([{ ...payload, proyecto_id: id }])
+    }
     const { data } = await supabase.from('bitacora').select('*').eq('proyecto_id', id).order('created_at', { ascending: false })
     setBitacora(data || [])
     setBitacoraForm({ contenido:'', autor:'', tipo:'nota' })
+    setEditingBitacoraId(null)
     setShowBitacoraForm(false)
     setSavingBitacora(false)
+  }
+
+  const deleteBitacora = async (bid: string) => {
+    if (!confirm('¿Eliminar esta entrada?')) return
+    await supabase.from('bitacora').delete().eq('id', bid)
+    setBitacora(b => b.filter(x => x.id !== bid))
   }
 
   const saveDoc = async () => {
@@ -577,7 +623,7 @@ export default function ProyectoDetalle() {
       {tab === 2 && (
         <div>
           <div className="flex justify-end mb-3">
-            <button onClick={() => setShowTareaForm(true)}
+            <button onClick={() => openTareaForm()}
               className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
               style={{ background:'#F26E1F' }}>
               + Agregar
@@ -592,12 +638,14 @@ export default function ProyectoDetalle() {
                   <div className="font-black text-[15px] text-white">{p} prioridad</div>
                 </div>
                 {ts.map(t => (
-                  <div key={t.id} className="rounded-xl p-3.5 mb-2 flex gap-2.5 items-start" style={CARD}>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: p==='Alta'?'#EF4444':p==='Media'?'#F59E0B':'#888' }} />
-                    <div>
+                  <div key={t.id} className="rounded-xl p-3.5 mb-2 flex gap-2.5 items-center" style={CARD}>
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p==='Alta'?'#EF4444':p==='Media'?'#F59E0B':'#888' }} />
+                    <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-white">{t.titulo}</div>
                       <div className="text-xs font-medium mt-0.5" style={{ color:'rgba(255,255,255,0.4)' }}>{t.asignado_a||'Sin asignar'}{t.fecha_limite?` · ${t.fecha_limite}`:''}</div>
                     </div>
+                    <button onClick={() => openTareaForm(t)} className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0" style={{ background:'rgba(255,255,255,0.08)', color:'#fff' }}>✎</button>
+                    <button onClick={() => deleteTarea(t.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0" style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
                   </div>
                 ))}
               </div>
@@ -607,9 +655,10 @@ export default function ProyectoDetalle() {
             <>
               <div className="font-black text-[15px] mb-2.5 mt-2" style={{ color:'#22C55E' }}>Completado ✓</div>
               {tareasHechas.map(t => (
-                <div key={t.id} className="rounded-xl p-3.5 mb-2 flex gap-2.5 items-start opacity-40" style={CARD}>
-                  <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background:'#22C55E' }} />
-                  <div className="text-sm font-semibold text-white">{t.titulo}</div>
+                <div key={t.id} className="rounded-xl p-3.5 mb-2 flex gap-2.5 items-center opacity-40" style={CARD}>
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background:'#22C55E' }} />
+                  <div className="flex-1 text-sm font-semibold text-white">{t.titulo}</div>
+                  <button onClick={() => deleteTarea(t.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0" style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
                 </div>
               ))}
             </>
@@ -623,7 +672,7 @@ export default function ProyectoDetalle() {
         <div className="rounded-2xl p-4" style={CARD}>
           <div className="flex items-center justify-between mb-4">
             <div className="font-black text-[15px] text-white">Historial</div>
-            <button onClick={() => setShowBitacoraForm(true)}
+            <button onClick={() => openBitacoraForm()}
               className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
               style={{ background:'#F26E1F' }}>
               + Agregar
@@ -637,8 +686,14 @@ export default function ProyectoDetalle() {
               {bitacora.map(b => (
                 <div key={b.id} className="relative mb-4">
                   <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background:'#F26E1F', border:'2px solid #0A0A0A' }} />
-                  <div className="text-[11px] font-bold mb-1 font-mono tracking-wide" style={{ color:'rgba(255,255,255,0.4)' }}>
-                    {new Date(b.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}).toUpperCase()}
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-[11px] font-bold font-mono tracking-wide" style={{ color:'rgba(255,255,255,0.4)' }}>
+                      {new Date(b.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}).toUpperCase()}
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => openBitacoraForm(b)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background:'rgba(255,255,255,0.08)', color:'#fff' }}>✎</button>
+                      <button onClick={() => deleteBitacora(b.id)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
+                    </div>
                   </div>
                   <div className="text-sm font-medium text-white leading-relaxed">{b.contenido}</div>
                   <div className="text-xs font-bold mt-1" style={{ color:'#F26E1F' }}>{b.autor}</div>
@@ -819,7 +874,7 @@ export default function ProyectoDetalle() {
             style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto' }}>
             <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
             <div className="flex justify-between items-center mb-5">
-              <div className="font-black text-[17px] text-white">Nueva tarea</div>
+              <div className="font-black text-[17px] text-white">{editingTareaId ? 'Editar tarea' : 'Nueva tarea'}</div>
               <button onClick={() => setShowTareaForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
             </div>
             <div className="flex flex-col gap-3">
@@ -862,7 +917,7 @@ export default function ProyectoDetalle() {
             <button onClick={saveTarea} disabled={savingTarea || !tareaForm.titulo.trim()}
               className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
               style={{ background:'#F26E1F' }}>
-              {savingTarea ? 'Guardando...' : 'Agregar tarea'}
+              {savingTarea ? 'Guardando...' : editingTareaId ? 'Guardar cambios' : 'Agregar tarea'}
             </button>
           </div>
         </>
@@ -876,7 +931,7 @@ export default function ProyectoDetalle() {
             style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto' }}>
             <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
             <div className="flex justify-between items-center mb-5">
-              <div className="font-black text-[17px] text-white">Nueva entrada</div>
+              <div className="font-black text-[17px] text-white">{editingBitacoraId ? 'Editar entrada' : 'Nueva entrada'}</div>
               <button onClick={() => setShowBitacoraForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
             </div>
             <div className="flex flex-col gap-3">
@@ -907,7 +962,7 @@ export default function ProyectoDetalle() {
             <button onClick={saveBitacoraEntry} disabled={savingBitacora || !bitacoraForm.contenido.trim()}
               className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
               style={{ background:'#F26E1F' }}>
-              {savingBitacora ? 'Guardando...' : 'Guardar entrada'}
+              {savingBitacora ? 'Guardando...' : editingBitacoraId ? 'Guardar cambios' : 'Guardar entrada'}
             </button>
           </div>
         </>
