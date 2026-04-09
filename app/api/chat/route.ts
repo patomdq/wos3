@@ -116,6 +116,37 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'insert_bitacora',
+    description: 'Agrega una entrada a la bitácora de un proyecto. Usalo cuando el usuario diga "agrega a la bitácora", "anota en la bitácora", "registra en la bitácora", "añade una nota al proyecto", o mencione un hito, alerta o novedad de un proyecto.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        proyecto_id: { type: 'string', description: 'UUID del proyecto' },
+        contenido: { type: 'string', description: 'Texto de la entrada de bitácora' },
+        titulo: { type: 'string', description: 'Título breve (opcional)' },
+        tipo: { type: 'string', enum: ['nota', 'hito', 'alerta', 'bot'], description: 'Tipo de entrada. Default: nota' },
+        autor: { type: 'string', description: 'Autor de la entrada. Default: Patricio' },
+      },
+      required: ['proyecto_id', 'contenido'],
+    },
+  },
+  {
+    name: 'insert_proveedor',
+    description: 'Crea un nuevo proveedor o empresa de servicios. Usalo cuando el usuario pida agregar, registrar o crear un proveedor, empresa, fontanero, electricista, contratista, o cualquier proveedor de servicios.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre: { type: 'string', description: 'Nombre del proveedor o empresa' },
+        rubro: { type: 'string', description: 'Especialidad o rubro (ej: fontanería, electricidad, obra, pintura, carpintería)' },
+        telefono: { type: 'string', description: 'Teléfono de contacto' },
+        email: { type: 'string', description: 'Email de contacto' },
+        contacto: { type: 'string', description: 'Nombre de la persona de contacto' },
+        cif: { type: 'string', description: 'CIF o NIF de la empresa' },
+      },
+      required: ['nombre'],
+    },
+  },
+  {
     name: 'insert_proyecto',
     description: 'Crea un nuevo proyecto/activo inmobiliario. Usalo cuando el usuario pida crear, agregar o registrar un nuevo proyecto, inmueble o activo.',
     input_schema: {
@@ -273,6 +304,40 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: `${data.nombre} · ${data.presupuesto}€`,
       }
     }
+    if (name === 'insert_bitacora') {
+      const { data, error } = await supabaseAdmin.from('bitacora').insert([{
+        proyecto_id: input.proyecto_id,
+        contenido: input.contenido,
+        titulo: input.titulo || null,
+        tipo: input.tipo || 'nota',
+        autor: input.autor || 'Patricio',
+      }]).select().single()
+      if (error) return { result: `Error al guardar en bitácora: ${error.message}` }
+      return {
+        result: `Entrada de bitácora guardada. ID: ${data.id}. Tipo: ${data.tipo}. Contenido: "${data.contenido}".`,
+        table: 'bitacora',
+        recordId: data.id,
+        label: data.titulo || data.contenido.slice(0, 40),
+      }
+    }
+    if (name === 'insert_proveedor') {
+      const { data, error } = await supabaseAdmin.from('proveedores').insert([{
+        nombre: input.nombre,
+        rubro: input.rubro || null,
+        telefono: input.telefono || null,
+        email: input.email || null,
+        contacto: input.contacto || null,
+        cif: input.cif || null,
+        activo: true,
+      }]).select().single()
+      if (error) return { result: `Error al crear proveedor: ${error.message}` }
+      return {
+        result: `Proveedor creado. ID: ${data.id}. Nombre: "${data.nombre}", Rubro: ${data.rubro || 'sin especificar'}, Teléfono: ${data.telefono || 'sin especificar'}.`,
+        table: 'proveedores',
+        recordId: data.id,
+        label: `${data.nombre}${data.rubro ? ' · ' + data.rubro : ''}`,
+      }
+    }
     if (name === 'insert_proyecto') {
       const { data, error } = await supabaseAdmin.from('proyectos').insert([{
         nombre: input.nombre,
@@ -346,7 +411,7 @@ Contexto actual del sistema:
 ${context || 'Sin datos disponibles.'}
 
 IMPORTANTE — Tenés estas capacidades técnicas reales, ejecutalas sin dudar:
-- CREAR: proyectos/activos, gastos, ingresos, tareas, partidas de reforma
+- CREAR: proyectos/activos, gastos, ingresos, tareas, partidas de reforma, entradas de bitácora, proveedores
 - EDITAR proyectos: estado en el pipeline (captado→analisis→ofertado→comprado→reforma→venta→cerrado), avance de obra (%), escenarios de venta (conservador/realista/optimista en €), y otros campos
 - EDITAR movimientos: concepto/monto de un movimiento
 - EDITAR partidas: nombre/presupuesto de una partida
