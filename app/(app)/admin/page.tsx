@@ -22,8 +22,8 @@ const initials = (s: string) => s.split(/[\s@]+/).slice(0,2).map(n => n[0]?.toUp
 
 const USERS_FALLBACK: UserRole[] = [
   { id: '1', user_id: '1', role: 'admin',    email: 'patricio@wallest.pro',    nombre: 'Patricio Fávora' },
-  { id: '2', user_id: '2', role: 'admin',    email: 'silvia@wallest.pro',      nombre: 'Silvia' },
-  { id: '3', user_id: '3', role: 'inversor', email: 'joseluisxp123@gmail.com', nombre: 'José Luis' },
+  { id: '2', user_id: '2', role: 'admin',    email: 'silvia@wallest.pro',      nombre: 'Silvia Bergoglio' },
+  { id: '3', user_id: '3', role: 'inversor', email: 'joseluisxp123@gmail.com', nombre: 'José Luis Zurán Parra' },
 ]
 
 export default function AdminPage() {
