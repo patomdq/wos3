@@ -25,7 +25,7 @@ const CONCEPTOS_GASTOS = [
 ]
 
 type Gastos = Record<string, { estimado: number; real: number }>
-type Radar = { id: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string }
+type Radar = { id: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
 type Estudio = { id: string; nombre?: string; precio_compra: number; precio_venta_objetivo: number; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string }
 
 const SCRAPER_DATA = [
@@ -67,7 +67,8 @@ function calcResultados(gastos: Gastos, pvPes: number, pvReal: number, pvOpt: nu
   return { totalEst, totalReal, ben, rent, anual }
 }
 
-const emptyRadarForm = () => ({ direccion: '', ciudad: '', precio: '', habitaciones: '', superficie: '', estado: 'reformar', fuente: 'WhatsApp', notas: '' })
+type ScraperItem = { precio: number; dir: string; ciudad: string; hab: number; m2: number; tag: string; epm: number; fecha: string; url: string }
+const emptyRadarForm = () => ({ direccion: '', ciudad: '', precio: '', habitaciones: '', superficie: '', estado: 'reformar', fuente: 'WhatsApp', notas: '', url: '' })
 
 export default function MercadoPage() {
   const [tab, setTab] = useState(0)
@@ -79,6 +80,12 @@ export default function MercadoPage() {
   const [radarOpen, setRadarOpen] = useState(false)
   const [radarForm, setRadarForm] = useState(emptyRadarForm())
   const [savingRadar, setSavingRadar] = useState(false)
+
+  // Scraper
+  const [scraperItems, setScraperItems] = useState<ScraperItem[]>([])
+  const [scraperLoading, setScraperLoading] = useState(false)
+  const [scraperError, setScraperError] = useState<string | null>(null)
+  const [scraperLoaded, setScraperLoaded] = useState(false)
 
   // Calculadora
   const [calcOpen, setCalcOpen] = useState(false)
@@ -104,6 +111,28 @@ export default function MercadoPage() {
     })
   }, [])
 
+  // Fetch scraper data from Idealista API
+  const loadScraper = async () => {
+    if (scraperLoaded) return
+    setScraperLoading(true)
+    setScraperError(null)
+    try {
+      const res = await fetch('/api/scraper')
+      const json = await res.json()
+      if (json.error === 'NO_CREDENTIALS') {
+        setScraperError('NO_CREDENTIALS')
+      } else if (json.error) {
+        setScraperError(json.error)
+      } else {
+        setScraperItems(json.items || [])
+        setScraperLoaded(true)
+      }
+    } catch {
+      setScraperError('Error de red')
+    }
+    setScraperLoading(false)
+  }
+
   // Guardar radar
   const saveRadar = async () => {
     if (!radarForm.direccion || !radarForm.precio) return
@@ -114,10 +143,11 @@ export default function MercadoPage() {
       precio: parseFloat(radarForm.precio) || 0,
       habitaciones: parseInt(radarForm.habitaciones) || 0,
       superficie: parseInt(radarForm.superficie) || 0,
-      estado: radarForm.fuente === 'Idealista' ? 'activo' : 'activo',
+      estado: 'activo',
       fuente: radarForm.fuente,
       fecha_recibido: today(),
       notas: radarForm.notas || null,
+      url: radarForm.url || null,
     }]).select().single()
     setSavingRadar(false)
     if (!error && data) {
@@ -128,7 +158,7 @@ export default function MercadoPage() {
   }
 
   // Guardar scraper item en radar
-  const saveScraperToRadar = async (item: typeof SCRAPER_DATA[0]) => {
+  const saveScraperToRadar = async (item: ScraperItem) => {
     const { data, error } = await supabase.from('inmuebles_radar').insert([{
       direccion: item.dir,
       ciudad: item.ciudad,
@@ -138,6 +168,7 @@ export default function MercadoPage() {
       estado: 'activo',
       fuente: 'Idealista',
       fecha_recibido: today(),
+      url: item.url || null,
     }]).select().single()
     if (!error && data) {
       setRadar(prev => [data, ...prev])
@@ -370,6 +401,13 @@ export default function MercadoPage() {
                   </button>
                 </div>
                 {r.notas && <div className="mt-2 text-xs" style={{ color: '#888' }}>{r.notas}</div>}
+                {r.url && (
+                  <a href={r.url} target="_blank" rel="noopener noreferrer"
+                    className="mt-2 text-xs font-bold inline-flex items-center gap-1"
+                    style={{ color: '#60A5FA' }}>
+                    🔗 Ver en Idealista
+                  </a>
+                )}
               </div>
             ))
           }
@@ -422,42 +460,93 @@ export default function MercadoPage() {
       {/* ═══ Tab 2: SCRAPER ═══ */}
       {tab === 2 && (
         <div>
+          {/* Header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
-              <span className="text-xs font-bold font-mono" style={{ color: '#888' }}>IDEALISTA · {SCRAPER_DATA.length} RESULTADOS</span>
+              <div className="w-2 h-2 rounded-full" style={{ background: scraperError ? '#EF4444' : scraperLoaded ? '#22C55E' : '#888' }} />
+              <span className="text-xs font-bold font-mono" style={{ color: '#888' }}>
+                IDEALISTA{scraperLoaded ? ` · ${scraperItems.length} RESULTADOS` : ''}
+              </span>
             </div>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: '#1E1E1E', color: '#888', border: '1px solid rgba(255,255,255,0.08)' }}>
-              Demo
-            </span>
+            <button onClick={() => { setScraperLoaded(false); loadScraper() }}
+              className="text-xs font-bold px-2.5 py-1 rounded-full"
+              style={{ background: '#1E1E1E', color: '#888', border: '1px solid rgba(255,255,255,0.08)' }}>
+              {scraperLoading ? '...' : '↻ Actualizar'}
+            </button>
           </div>
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {['Compra','€35k–€120k','+2 hab','Reformar','Almería'].map(f => (
-              <span key={f} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#888' }}>{f}</span>
-            ))}
-          </div>
-          {SCRAPER_DATA.map((r, i) => (
+
+          {/* Load trigger */}
+          {!scraperLoaded && !scraperLoading && !scraperError && (
+            <div className="text-center py-10">
+              <button onClick={loadScraper}
+                className="text-sm font-black px-5 py-3 rounded-xl text-white"
+                style={{ background: '#F26E1F' }}>
+                Cargar resultados de Idealista
+              </button>
+            </div>
+          )}
+
+          {/* Loading */}
+          {scraperLoading && (
+            <div className="space-y-2">
+              {[1,2,3].map(i => <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: '#141414' }} />)}
+            </div>
+          )}
+
+          {/* No credentials */}
+          {scraperError === 'NO_CREDENTIALS' && (
+            <div className="rounded-2xl p-5" style={{ background: '#141414', border: '1px solid rgba(239,68,68,0.3)' }}>
+              <div className="font-black text-white mb-2">Credenciales no configuradas</div>
+              <div className="text-sm mb-3" style={{ color: '#888' }}>
+                Para usar el scraper real de Idealista necesitás configurar las variables de entorno en Vercel:
+              </div>
+              <div className="rounded-xl p-3 font-mono text-xs mb-3" style={{ background: '#0A0A0A', color: '#22C55E' }}>
+                IDEALISTA_API_KEY=tu_api_key<br />
+                IDEALISTA_API_SECRET=tu_api_secret<br />
+                IDEALISTA_LOCATION_ID=0-EU-ES-04-000-0-CO
+              </div>
+              <div className="text-xs" style={{ color: '#555' }}>
+                Obtené las credenciales en developers.idealista.com
+              </div>
+            </div>
+          )}
+
+          {/* Other error */}
+          {scraperError && scraperError !== 'NO_CREDENTIALS' && (
+            <div className="rounded-2xl p-4 text-sm" style={{ background: '#141414', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444' }}>
+              Error: {scraperError}
+            </div>
+          )}
+
+          {/* Results */}
+          {scraperLoaded && scraperItems.map((r, i) => (
             <div key={i} className="rounded-2xl mb-3 overflow-hidden" style={CARD}>
               <div className="p-4">
                 <div className="flex justify-between items-start mb-1">
                   <div className="font-black text-[20px] text-white">{fmt(r.precio)}</div>
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B' }}>{r.tag}</span>
                 </div>
-                <div className="text-sm font-medium mb-1" style={{ color: '#888' }}>{r.dir} · {r.ciudad}</div>
-                <div className="flex gap-3">
-                  <span className="text-xs font-medium" style={{ color: '#555' }}>{r.hab} hab</span>
-                  <span className="text-xs font-medium" style={{ color: '#555' }}>{r.m2} m²</span>
-                  <span className="text-xs font-medium" style={{ color: '#555' }}>€{r.epm}/m²</span>
+                <div className="text-sm font-medium mb-1" style={{ color: '#888' }}>{r.dir}{r.ciudad ? ` · ${r.ciudad}` : ''}</div>
+                <div className="flex gap-3 flex-wrap">
+                  {r.hab > 0 && <span className="text-xs font-medium" style={{ color: '#555' }}>{r.hab} hab</span>}
+                  {r.m2 > 0 && <span className="text-xs font-medium" style={{ color: '#555' }}>{r.m2} m²</span>}
+                  {r.epm > 0 && <span className="text-xs font-medium" style={{ color: '#555' }}>€{r.epm}/m²</span>}
                 </div>
               </div>
               <div className="flex gap-2 px-4 py-3" style={{ background: '#1E1E1E', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                <span className="text-xs font-semibold flex-1 self-center" style={{ color: '#888' }}>Scrapeado {r.fecha}</span>
+                {r.url ? (
+                  <a href={r.url} target="_blank" rel="noopener noreferrer"
+                    className="text-xs font-semibold flex-1 self-center"
+                    style={{ color: '#60A5FA' }}>🔗 Ver anuncio</a>
+                ) : (
+                  <span className="text-xs font-semibold flex-1 self-center" style={{ color: '#888' }}>{r.fecha}</span>
+                )}
                 <button onClick={() => saveScraperToRadar(r)}
                   className="text-xs font-black px-3 py-1.5 rounded-lg"
                   style={{ background: '#282828', color: '#ccc', border: '1px solid rgba(255,255,255,0.10)' }}>
                   + Radar
                 </button>
-                <button onClick={() => openCalc(r.precio, `${r.dir} · ${r.ciudad}`, r.ciudad)}
+                <button onClick={() => openCalc(r.precio, `${r.dir}${r.ciudad ? ' · '+r.ciudad : ''}`, r.ciudad)}
                   className="text-xs font-black px-3 py-1.5 rounded-lg"
                   style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>
                   Calcular →
@@ -536,6 +625,13 @@ export default function MercadoPage() {
                     <option value="API">API</option>
                     <option value="otro">Otro</option>
                   </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link (Idealista u otra fuente)</label>
+                  <input type="url" value={radarForm.url} onChange={e => setRadarForm(f => ({ ...f, url: e.target.value }))}
+                    placeholder="https://www.idealista.com/inmueble/..."
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]"
+                    style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Notas</label>

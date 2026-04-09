@@ -116,6 +116,24 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'insert_radar',
+    description: 'Agrega un inmueble al radar de mercado para seguimiento. Usalo cuando el usuario pida agregar, guardar o meter un piso/inmueble/propiedad al radar o a vigilar.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        direccion: { type: 'string', description: 'Dirección del inmueble' },
+        ciudad: { type: 'string', description: 'Ciudad o municipio' },
+        precio: { type: 'number', description: 'Precio de venta pedido en euros' },
+        habitaciones: { type: 'number', description: 'Número de habitaciones' },
+        superficie: { type: 'number', description: 'Superficie en m²' },
+        url: { type: 'string', description: 'Link de Idealista u otra fuente (pegar URL completa)' },
+        fuente: { type: 'string', enum: ['WhatsApp', 'Idealista', 'API', 'otro'], description: 'Fuente del inmueble. Default: otro' },
+        notas: { type: 'string', description: 'Notas u observaciones' },
+      },
+      required: ['direccion', 'precio'],
+    },
+  },
+  {
     name: 'insert_bitacora',
     description: 'Agrega una entrada a la bitácora de un proyecto. Usalo cuando el usuario diga "agrega a la bitácora", "anota en la bitácora", "registra en la bitácora", "añade una nota al proyecto", o mencione un hito, alerta o novedad de un proyecto.',
     input_schema: {
@@ -304,6 +322,27 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: `${data.nombre} · ${data.presupuesto}€`,
       }
     }
+    if (name === 'insert_radar') {
+      const { data, error } = await supabaseAdmin.from('inmuebles_radar').insert([{
+        direccion: input.direccion,
+        ciudad: input.ciudad || null,
+        precio: input.precio,
+        habitaciones: input.habitaciones || null,
+        superficie: input.superficie || null,
+        url: input.url || null,
+        fuente: input.fuente || 'otro',
+        estado: 'activo',
+        fecha_recibido: new Date().toISOString().split('T')[0],
+        notas: input.notas || null,
+      }]).select().single()
+      if (error) return { result: `Error al guardar en radar: ${error.message}` }
+      return {
+        result: `Inmueble agregado al radar. ID: ${data.id}. Dirección: "${data.direccion}", Precio: ${data.precio}€, Ciudad: ${data.ciudad || 'sin especificar'}.`,
+        table: 'inmuebles_radar',
+        recordId: data.id,
+        label: `${data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''} · ${data.precio}€`,
+      }
+    }
     if (name === 'insert_bitacora') {
       const { data, error } = await supabaseAdmin.from('bitacora').insert([{
         proyecto_id: input.proyecto_id,
@@ -411,7 +450,7 @@ Contexto actual del sistema:
 ${context || 'Sin datos disponibles.'}
 
 IMPORTANTE — Tenés estas capacidades técnicas reales, ejecutalas sin dudar:
-- CREAR: proyectos/activos, gastos, ingresos, tareas, partidas de reforma, entradas de bitácora, proveedores
+- CREAR: proyectos/activos, gastos, ingresos, tareas, partidas de reforma, entradas de bitácora, proveedores, inmuebles en el radar de mercado
 - EDITAR proyectos: estado en el pipeline (captado→analisis→ofertado→comprado→reforma→venta→cerrado), avance de obra (%), escenarios de venta (conservador/realista/optimista en €), y otros campos
 - EDITAR movimientos: concepto/monto de un movimiento
 - EDITAR partidas: nombre/presupuesto de una partida
