@@ -323,18 +323,19 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }
     }
     if (name === 'insert_radar') {
-      const { data, error } = await supabaseAdmin.from('inmuebles_radar').insert([{
+      const radarRow: Record<string, any> = {
         direccion: input.direccion,
         ciudad: input.ciudad || null,
         precio: input.precio,
         habitaciones: input.habitaciones || null,
         superficie: input.superficie || null,
-        url: input.url || null,
         fuente: input.fuente || 'otro',
         estado: 'activo',
         fecha_recibido: new Date().toISOString().split('T')[0],
         notas: input.notas || null,
-      }]).select().single()
+      }
+      if (input.url) radarRow.url = input.url
+      const { data, error } = await supabaseAdmin.from('inmuebles_radar').insert([radarRow]).select().single()
       if (error) return { result: `Error al guardar en radar: ${error.message}` }
       return {
         result: `Inmueble agregado al radar. ID: ${data.id}. Dirección: "${data.direccion}", Precio: ${data.precio}€, Ciudad: ${data.ciudad || 'sin especificar'}.`,

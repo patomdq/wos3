@@ -137,7 +137,7 @@ export default function MercadoPage() {
   const saveRadar = async () => {
     if (!radarForm.direccion || !radarForm.precio) return
     setSavingRadar(true)
-    const { data, error } = await supabase.from('inmuebles_radar').insert([{
+    const radarPayload: Record<string, any> = {
       direccion: radarForm.direccion,
       ciudad: radarForm.ciudad,
       precio: parseFloat(radarForm.precio) || 0,
@@ -147,10 +147,12 @@ export default function MercadoPage() {
       fuente: radarForm.fuente,
       fecha_recibido: today(),
       notas: radarForm.notas || null,
-      url: radarForm.url || null,
-    }]).select().single()
+    }
+    if (radarForm.url) radarPayload.url = radarForm.url
+    const { data, error } = await supabase.from('inmuebles_radar').insert([radarPayload]).select().single()
     setSavingRadar(false)
-    if (!error && data) {
+    if (error) { alert(`Error al guardar: ${error.message}`); return }
+    if (data) {
       setRadar(prev => [data, ...prev])
       setRadarOpen(false)
       setRadarForm(emptyRadarForm())
@@ -159,7 +161,7 @@ export default function MercadoPage() {
 
   // Guardar scraper item en radar
   const saveScraperToRadar = async (item: ScraperItem) => {
-    const { data, error } = await supabase.from('inmuebles_radar').insert([{
+    const scraperPayload: Record<string, any> = {
       direccion: item.dir,
       ciudad: item.ciudad,
       precio: item.precio,
@@ -168,8 +170,9 @@ export default function MercadoPage() {
       estado: 'activo',
       fuente: 'Idealista',
       fecha_recibido: today(),
-      url: item.url || null,
-    }]).select().single()
+    }
+    if (item.url) scraperPayload.url = item.url
+    const { data, error } = await supabase.from('inmuebles_radar').insert([scraperPayload]).select().single()
     if (!error && data) {
       setRadar(prev => [data, ...prev])
       setTab(0)
