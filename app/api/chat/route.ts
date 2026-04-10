@@ -325,6 +325,19 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'recalcular_timeline',
+    description: 'Desplaza en cascada las fechas de una partida de reforma y todas las que dependen de ella. Usalo cuando el usuario diga que una partida/gremio se retrasa o adelanta N días. Identifica la partida por nombre parcial (ej: "pintor" → "Pintura").',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        proyecto_id: { type: 'string', description: 'UUID del proyecto' },
+        partida_nombre: { type: 'string', description: 'Nombre (o parte del nombre) de la partida afectada. Ej: "pintor", "electricidad", "suelos"' },
+        dias: { type: 'number', description: 'Días a desplazar. Positivo = retraso, negativo = adelanto.' },
+      },
+      required: ['proyecto_id', 'partida_nombre', 'dias'],
+    },
+  },
+  {
     name: 'insert_proyecto',
     description: 'Crea un nuevo proyecto/activo inmobiliario. Usalo cuando el usuario pida crear, agregar o registrar un nuevo proyecto, inmueble o activo.',
     input_schema: {
@@ -619,6 +632,65 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (error) return { result: `Error al eliminar entrada: ${error.message}` }
       return { result: `Entrada de bitácora eliminada.` }
     }
+    if (name === 'recalcular_timeline') {
+      // 1. Fetch all partidas of the project
+      const { data: todas, error: fetchErr } = await supabaseAdmin
+        .from('partidas_reforma')
+        .select('id, nombre, fecha_inicio, fecha_fin_estimada, fecha_fin_real, depende_de, estado')
+        .eq('proyecto_id', input.proyecto_id)
+      if (fetchErr || !todas) return { result: `Error al leer partidas: ${fetchErr?.message}` }
+
+      // 2. Find root partida by partial name (case-insensitive)
+      const needle = (input.partida_nombre as string).toLowerCase()
+      const raiz = todas.find(p => p.nombre.toLowerCase().includes(needle))
+      if (!raiz) return { result: `No encontré ninguna partida con el nombre "${input.partida_nombre}". Verificá el nombre.` }
+
+      const dias: number = input.dias
+      const addDays = (dateStr: string, d: number): string => {
+        const dt = new Date(dateStr)
+        dt.setDate(dt.getDate() + d)
+        return dt.toISOString().split('T')[0]
+      }
+
+      // 3. BFS cascade
+      const afectadas: { id: string; nombre: string; updates: Record<string,any> }[] = []
+      const visited = new Set<string>()
+      const queue: string[] = [raiz.id]
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!
+        if (visited.has(currentId)) continue
+        visited.add(currentId)
+
+        const p = todas.find(x => x.id === currentId)
+        if (!p) continue
+
+        const updates: Record<string,any> = {}
+        if (p.fecha_fin_estimada) updates.fecha_fin_estimada = addDays(p.fecha_fin_estimada, dias)
+        if (p.fecha_inicio && currentId !== raiz.id) updates.fecha_inicio = addDays(p.fecha_inicio, dias)
+        if (dias > 0 && p.estado !== 'ok') updates.estado = 'retrasada'
+
+        if (Object.keys(updates).length > 0) {
+          afectadas.push({ id: currentId, nombre: p.nombre, updates })
+          // Enqueue dependents
+          for (const dep of todas.filter(x => x.depende_de === currentId)) {
+            if (!visited.has(dep.id)) queue.push(dep.id)
+          }
+        }
+      }
+
+      // 4. Batch update
+      for (const a of afectadas) {
+        await supabaseAdmin.from('partidas_reforma').update(a.updates).eq('id', a.id)
+      }
+
+      const nombres = afectadas.map(a => a.nombre).join(', ')
+      const accion = dias > 0 ? `retrasada${Math.abs(dias)} días` : `adelantada ${Math.abs(dias)} días`
+      return {
+        result: `"${raiz.nombre}" ${accion}. En cascada se desplazaron ${afectadas.length} partida${afectadas.length !== 1 ? 's' : ''}: ${nombres}.`,
+        table: 'partidas_reforma',
+      }
+    }
     if (name === 'delete_proyecto') {
       const { error } = await supabaseAdmin.from('proyectos').delete().eq('id', input.id)
       if (error) return { result: `Error al eliminar proyecto: ${error.message}` }
@@ -716,6 +788,7 @@ IMPORTANTE — Tenés estas capacidades técnicas reales. Para TODAS las entidad
 - inmuebles en radar (insert/update/delete_radar)
 - entradas de bitácora (insert/update/delete_bitacora)
 - proveedores (insert/update/delete_proveedor)
+- timeline de reforma (recalcular_timeline) — desplaza en cascada N días una partida y todas sus dependientes
 
 Nunca digas "no puedo editar/eliminar X". Siempre podés. Para editar o eliminar necesitás el ID — buscalo en el contexto o preguntáselo al usuario.
 

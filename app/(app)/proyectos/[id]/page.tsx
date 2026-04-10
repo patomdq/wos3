@@ -68,6 +68,7 @@ export default function ProyectoDetalle() {
   const [editingPartidaId, setEditingPartidaId] = useState<string|null>(null)
   const [nuevaPartida, setNuevaPartida] = useState({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'', fecha_inicio:'', fecha_fin_estimada:'', fecha_fin_real:'', depende_de:'' })
   const [savingPartida, setSavingPartida] = useState(false)
+  const [reformaVista, setReformaVista] = useState<'tabla'|'gantt'>('tabla')
 
   // Tareas
   const [showTareaForm, setShowTareaForm] = useState(false)
@@ -585,7 +586,112 @@ export default function ProyectoDetalle() {
               <div className="text-xs font-bold mt-1" style={{ color:'rgba(255,255,255,0.4)' }}>resta {fmtK(Math.max(0,presupuestoTotal-ejecutadoTotal))}</div>
             </div>
           </div>
-          <div className="rounded-2xl overflow-hidden" style={CARD}>
+          {/* Vista toggle */}
+          <div className="flex gap-2 mb-3">
+            <button onClick={() => setReformaVista('tabla')}
+              className="flex-1 py-2 rounded-xl text-sm font-black"
+              style={{ background: reformaVista==='tabla' ? '#F26E1F' : '#1E1E1E', color: reformaVista==='tabla' ? '#fff' : '#888' }}>
+              Tabla
+            </button>
+            <button onClick={() => setReformaVista('gantt')}
+              className="flex-1 py-2 rounded-xl text-sm font-black"
+              style={{ background: reformaVista==='gantt' ? '#F26E1F' : '#1E1E1E', color: reformaVista==='gantt' ? '#fff' : '#888' }}>
+              Timeline
+            </button>
+          </div>
+
+          {/* ── Vista Gantt ── */}
+          {reformaVista === 'gantt' && (() => {
+            const conFechas = partidas.filter(p => p.fecha_inicio && p.fecha_fin_estimada)
+            if (conFechas.length === 0) return (
+              <div className="rounded-2xl p-8 text-center text-sm" style={{ ...CARD, color:'rgba(255,255,255,0.3)' }}>
+                Asigná fechas de inicio y fin a las partidas para ver el timeline
+              </div>
+            )
+            const toMs = (d: string) => new Date(d).getTime()
+            const allDates = conFechas.flatMap(p => [toMs(p.fecha_inicio!), toMs(p.fecha_fin_estimada!)])
+            const minMs = Math.min(...allDates)
+            const maxMs = Math.max(...allDates)
+            const totalMs = maxMs - minMs || 1
+            const todayMs = new Date().setHours(0,0,0,0)
+            const todayPct = Math.min(100, Math.max(0, ((todayMs - minMs) / totalMs) * 100))
+            const fmtDate = (ms: number) => new Date(ms).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})
+            const BAR_COLOR: Record<string,string> = { ok:'#22C55E', retrasada:'#EF4444', en_curso:'#F26E1F', pendiente:'#888' }
+            return (
+              <div className="rounded-2xl overflow-hidden" style={CARD}>
+                {/* Eje de fechas */}
+                <div className="flex px-4 pt-3 pb-1" style={{ borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ width:130, flexShrink:0 }} />
+                  <div className="flex-1 relative" style={{ height:16 }}>
+                    <span className="absolute left-0 text-[10px] font-bold" style={{ color:'#888' }}>{fmtDate(minMs)}</span>
+                    <span className="absolute right-0 text-[10px] font-bold" style={{ color:'#888' }}>{fmtDate(maxMs)}</span>
+                  </div>
+                </div>
+                {/* Filas */}
+                <div>
+                  {partidas.map((p, i) => {
+                    const hasDates = p.fecha_inicio && p.fecha_fin_estimada
+                    const left = hasDates ? ((toMs(p.fecha_inicio!) - minMs) / totalMs) * 100 : 0
+                    const width = hasDates ? ((toMs(p.fecha_fin_estimada!) - toMs(p.fecha_inicio!)) / totalMs) * 100 : 0
+                    const color = BAR_COLOR[p.estado] || '#888'
+                    const dep = p.depende_de ? partidas.find(x => x.id === p.depende_de) : null
+                    return (
+                      <div key={p.id} className="flex items-center px-4 py-2"
+                        style={{ borderBottom: i < partidas.length-1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                        {/* Nombre */}
+                        <div style={{ width:130, flexShrink:0, paddingRight:8 }}>
+                          <div style={{ fontSize:11, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nombre}</div>
+                          {dep && <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>↳ {dep.nombre}</div>}
+                        </div>
+                        {/* Canvas barra */}
+                        <div className="flex-1 relative" style={{ height:22, background:'rgba(255,255,255,0.04)', borderRadius:4 }}>
+                          {/* Línea hoy */}
+                          {todayMs >= minMs && todayMs <= maxMs && (
+                            <div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:1.5, background:'rgba(255,255,255,0.25)', zIndex:2 }} />
+                          )}
+                          {hasDates ? (
+                            <div style={{
+                              position:'absolute',
+                              left:`${left}%`,
+                              width:`${Math.max(width, 1.5)}%`,
+                              top:3, bottom:3,
+                              borderRadius:3,
+                              background: color,
+                              opacity: p.estado === 'ok' ? 0.85 : 1,
+                            }} />
+                          ) : (
+                            <div style={{ position:'absolute', left:4, top:'50%', transform:'translateY(-50%)', fontSize:10, color:'rgba(255,255,255,0.2)', fontStyle:'italic' }}>sin fechas</div>
+                          )}
+                        </div>
+                        {/* Estado pill */}
+                        <div style={{ width:68, flexShrink:0, textAlign:'right' }}>
+                          <span style={{ fontSize:10, fontWeight:700, color, background:`${color}22`, padding:'2px 6px', borderRadius:4 }}>
+                            {ESTADO_PARTIDA[p.estado]?.label || p.estado}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {/* Leyenda */}
+                <div className="flex gap-4 px-4 py-2.5" style={{ borderTop:'1px solid rgba(255,255,255,0.08)', background:'#1E1E1E' }}>
+                  {Object.entries(BAR_COLOR).map(([k,c]) => (
+                    <div key={k} className="flex items-center gap-1.5">
+                      <div style={{ width:10, height:10, borderRadius:2, background:c }} />
+                      <span style={{ fontSize:10, fontWeight:700, color:'#888', textTransform:'capitalize' }}>{k}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-1.5">
+                    <div style={{ width:2, height:10, background:'rgba(255,255,255,0.3)' }} />
+                    <span style={{ fontSize:10, fontWeight:700, color:'#888' }}>hoy</span>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* ── Vista Tabla ── */}
+          {reformaVista === 'tabla' && <div className="rounded-2xl overflow-hidden" style={CARD}>
             <div className="px-4 py-3.5 flex items-center justify-between" style={{ borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
               <div className="font-black text-[15px] text-white">Partidas <span style={{ color:'rgba(255,255,255,0.3)', fontSize:13 }}>({partidas.length})</span></div>
               <button onClick={() => openPartidaForm()}
@@ -658,7 +764,7 @@ export default function ProyectoDetalle() {
                 </table>
               </div>
             )}
-          </div>
+          </div>}
         </div>
       )}
 
