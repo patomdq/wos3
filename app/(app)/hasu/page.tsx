@@ -158,6 +158,7 @@ export default function HasuPage() {
     { icon: '📊', bg: 'rgba(34,197,94,0.15)',   nombre: 'Flujo de caja global',desc:'Todos los proyectos consolidados',    href: '/hasu/flujo-caja' },
     { icon: '⚙',  bg: 'rgba(242,110,31,0.18)', nombre: 'Usuarios y permisos', desc: 'Roles · accesos · proyectos',         href: '/admin' },
     { icon: '📁', bg: '#282828',                nombre: 'Docs de empresa',    desc: 'Estatutos · contratos · CIF',         href: '/hasu/docs' },
+    { icon: '📅', bg: 'rgba(96,165,250,0.12)', nombre: 'Calendario',          desc: 'Google Calendar · hola@hasu.in',      href: '/hasu/calendario' },
   ]
 
   const ESTADO_COLOR: Record<string,string> = { comprado:'#22C55E', reforma:'#F26E1F', venta:'#a78bfa', cerrado:'#888', captado:'#555', analisis:'#60A5FA', ofertado:'#F59E0B' }

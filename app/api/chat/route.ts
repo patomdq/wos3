@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
+import { getOrgAccessToken } from '@/lib/gcalToken'
+import { gcalCreateEvent } from '@/lib/googleCalendar'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabaseAdmin = createClient(
@@ -325,6 +327,22 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'agendar_evento',
+    description: 'Crea un evento en Google Calendar de hola@hasu.in. Usalo cuando el usuario pida agendar, programar, crear una reunión o evento. Interpretá fechas relativas como "mañana", "el lunes", "el 15 de mayo".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        titulo:       { type: 'string',  description: 'Título del evento. Ej: "Reunión con José Luis"' },
+        fecha:        { type: 'string',  description: 'Fecha en formato YYYY-MM-DD' },
+        hora_inicio:  { type: 'string',  description: 'Hora de inicio HH:MM (ej: "09:00"). Omitir si es todo el día.' },
+        hora_fin:     { type: 'string',  description: 'Hora de fin HH:MM (ej: "10:00"). Omitir si es todo el día.' },
+        todo_el_dia:  { type: 'boolean', description: 'true si es evento de todo el día sin hora específica.' },
+        descripcion:  { type: 'string',  description: 'Descripción opcional del evento.' },
+      },
+      required: ['titulo', 'fecha'],
+    },
+  },
+  {
     name: 'recalcular_timeline',
     description: 'Desplaza en cascada las fechas de una partida de reforma y todas las que dependen de ella. Usalo cuando el usuario diga que una partida/gremio se retrasa o adelanta N días. Identifica la partida por nombre parcial (ej: "pintor" → "Pintura").',
     input_schema: {
@@ -632,6 +650,35 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (error) return { result: `Error al eliminar entrada: ${error.message}` }
       return { result: `Entrada de bitácora eliminada.` }
     }
+    if (name === 'agendar_evento') {
+      const token = await getOrgAccessToken()
+      if (!token) return { result: 'Google Calendar no está conectado. Conectalo primero desde HASU → Calendario.' }
+
+      const allDay = input.todo_el_dia || (!input.hora_inicio && !input.hora_fin)
+      const startDT = allDay
+        ? input.fecha
+        : `${input.fecha}T${input.hora_inicio || '09:00'}:00`
+      const endDT = allDay
+        ? input.fecha
+        : `${input.fecha}T${input.hora_fin   || (String(parseInt((input.hora_inicio||'09').split(':')[0])+1).padStart(2,'0')+':00')}:00`
+
+      const created = await gcalCreateEvent(token, {
+        title:         input.titulo,
+        description:   input.descripcion || '',
+        startDateTime: startDT,
+        endDateTime:   endDT,
+        allDay,
+      })
+
+      if (!created) return { result: 'Error al crear el evento en Google Calendar. Verificá que la conexión esté activa.' }
+
+      const horaStr = allDay ? 'todo el día' : `${input.hora_inicio || '09:00'} – ${input.hora_fin || ''}`
+      return {
+        result: `Evento creado en Google Calendar. Título: "${created.summary}", Fecha: ${input.fecha}, Hora: ${horaStr}. ID: ${created.id}.`,
+        table: 'google_calendar',
+        label: created.summary,
+      }
+    }
     if (name === 'recalcular_timeline') {
       // 1. Fetch all partidas of the project
       const { data: todas, error: fetchErr } = await supabaseAdmin
@@ -684,10 +731,37 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         await supabaseAdmin.from('partidas_reforma').update(a.updates).eq('id', a.id)
       }
 
+      // 5. Update Google Calendar events for affected partidas (fire-and-forget)
+      const gcalToken = await getOrgAccessToken()
+      if (gcalToken) {
+        const { gcalUpdateEvent: gcalUpd, gcalCreateEvent: gcalCre } = await import('@/lib/googleCalendar')
+        for (const a of afectadas) {
+          const partida = todas.find(x => x.id === a.id)
+          if (!partida?.fecha_inicio) continue
+          const { data: gcalRow } = await supabaseAdmin
+            .from('partidas_gcal')
+            .select('google_event_id')
+            .eq('partida_id', a.id)
+            .single()
+          const title = `${partida.nombre} — ${input.proyecto_id}`
+          const startDT = a.updates.fecha_inicio || partida.fecha_inicio
+          const endDT   = a.updates.fecha_fin_estimada || partida.fecha_fin_estimada || startDT
+          if (gcalRow?.google_event_id) {
+            await gcalUpd(gcalToken, gcalRow.google_event_id, { title, startDateTime: startDT, endDateTime: endDT, allDay: true })
+          } else if (startDT) {
+            const created = await gcalCre(gcalToken, { title, startDateTime: startDT, endDateTime: endDT, allDay: true })
+            if (created) {
+              await supabaseAdmin.from('partidas_gcal').upsert({ partida_id: a.id, google_event_id: created.id }, { onConflict: 'partida_id' })
+            }
+          }
+        }
+      }
+
       const nombres = afectadas.map(a => a.nombre).join(', ')
-      const accion = dias > 0 ? `retrasada${Math.abs(dias)} días` : `adelantada ${Math.abs(dias)} días`
+      const accion = dias > 0 ? `retrasada ${Math.abs(dias)} días` : `adelantada ${Math.abs(dias)} días`
+      const gcalMsg = gcalToken ? ' Eventos del calendario actualizados.' : ''
       return {
-        result: `"${raiz.nombre}" ${accion}. En cascada se desplazaron ${afectadas.length} partida${afectadas.length !== 1 ? 's' : ''}: ${nombres}.`,
+        result: `"${raiz.nombre}" ${accion}. En cascada se desplazaron ${afectadas.length} partida${afectadas.length !== 1 ? 's' : ''}: ${nombres}.${gcalMsg}`,
         table: 'partidas_reforma',
       }
     }
@@ -789,6 +863,7 @@ IMPORTANTE — Tenés estas capacidades técnicas reales. Para TODAS las entidad
 - entradas de bitácora (insert/update/delete_bitacora)
 - proveedores (insert/update/delete_proveedor)
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días una partida y todas sus dependientes
+- Google Calendar (agendar_evento) — crea eventos en el calendario de hola@hasu.in. Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
 
 Nunca digas "no puedo editar/eliminar X". Siempre podés. Para editar o eliminar necesitás el ID — buscalo en el contexto o preguntáselo al usuario.
 

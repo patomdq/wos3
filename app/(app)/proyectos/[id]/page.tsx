@@ -214,12 +214,30 @@ export default function ProyectoDetalle() {
       fecha_fin_real: nuevaPartida.fecha_fin_real || null,
       depende_de: nuevaPartida.depende_de || null,
     }
+    let savedId: string | null = editingPartidaId
     if (editingPartidaId) {
       await supabase.from('partidas_reforma').update(data).eq('id', editingPartidaId)
     } else {
       data.orden = partidas.length + 1
-      await supabase.from('partidas_reforma').insert([data])
+      const { data: inserted } = await supabase.from('partidas_reforma').insert([data]).select('id').single()
+      savedId = inserted?.id || null
     }
+
+    // Sync to Google Calendar if partida has a fecha_inicio
+    if (savedId && nuevaPartida.fecha_inicio) {
+      fetch('/api/google/create-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partida_id: savedId,
+          proyecto_nombre: proyecto?.nombre || '',
+          nombre: nuevaPartida.nombre,
+          fecha_inicio: nuevaPartida.fecha_inicio,
+          fecha_fin_estimada: nuevaPartida.fecha_fin_estimada || nuevaPartida.fecha_inicio,
+        }),
+      }).catch(() => {/* silent — GCal may not be connected */})
+    }
+
     await loadPartidas()
     setShowPartidaForm(false)
     setNuevaPartida({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'', fecha_inicio:'', fecha_fin_estimada:'', fecha_fin_real:'', depende_de:'' })
@@ -231,6 +249,12 @@ export default function ProyectoDetalle() {
     if (!confirm('¿Eliminar esta partida?')) return
     await supabase.from('partidas_reforma').delete().eq('id', pid)
     setPartidas(p => p.filter(x => x.id !== pid))
+    // Remove GCal event silently
+    fetch('/api/google/create-event', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partida_id: pid }),
+    }).catch(() => {})
   }
 
   const cambiarEstadoPartida = async (pid: string, estado: string) => {
