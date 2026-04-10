@@ -16,6 +16,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/hasu/calendario?google_error=exchange_failed', req.url))
   }
 
-  await saveOrgTokens(tokens)
+  try {
+    await saveOrgTokens(tokens)
+  } catch (e: any) {
+    console.error('[GCal callback] saveOrgTokens failed:', e.message)
+    return NextResponse.redirect(new URL(`/hasu/calendario?google_error=${encodeURIComponent(e.message)}`, req.url))
+  }
   return NextResponse.redirect(new URL('/hasu/calendario?google_connected=true', req.url))
 }

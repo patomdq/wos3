@@ -43,16 +43,17 @@ export async function saveOrgTokens(tokens: {
   scope?: string
 }) {
   const token_expiry = new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from('google_tokens')
     .upsert({
-      org_key:      ORG_KEY,
-      access_token: tokens.access_token,
+      org_key:       ORG_KEY,
+      access_token:  tokens.access_token,
       refresh_token: tokens.refresh_token,
       token_expiry,
-      scope:        tokens.scope || '',
-      updated_at:   new Date().toISOString(),
+      scope:         tokens.scope || '',
+      updated_at:    new Date().toISOString(),
     }, { onConflict: 'org_key' })
+  if (error) throw new Error(error.message)
 }
 
 export async function isGoogleConnected(): Promise<boolean> {

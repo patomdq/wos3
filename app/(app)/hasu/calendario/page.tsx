@@ -80,7 +80,7 @@ export default function CalendarioPage() {
       loadCalendar()
     }
     if (params.get('google_error')) {
-      showToast('Error al conectar Google Calendar')
+      showToast(`Error: ${params.get('google_error')}`)
     }
   }, [params]) // eslint-disable-line
 
