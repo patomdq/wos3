@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
+import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabaseAdmin = createClient(
@@ -648,8 +649,19 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         notas: input.notas || null,
       }]).select().single()
       if (error) return { result: `Error al crear proyecto: ${error.message}` }
+      // Auto-insert 21 default partidas template
+      const partidasRows = PARTIDAS_PLANTILLA.map(p => ({
+        proyecto_id: data.id,
+        nombre: p.nombre,
+        categoria: p.categoria,
+        orden: p.orden,
+        presupuesto: 0,
+        ejecutado: 0,
+        estado: 'pendiente',
+      }))
+      await supabaseAdmin.from('partidas_reforma').insert(partidasRows)
       return {
-        result: `Proyecto creado. ID: ${data.id}. Nombre: "${data.nombre}", Estado: ${data.estado}, Ciudad: ${data.ciudad || 'sin especificar'}.`,
+        result: `Proyecto creado. ID: ${data.id}. Nombre: "${data.nombre}", Estado: ${data.estado}, Ciudad: ${data.ciudad || 'sin especificar'}. Se cargaron 21 partidas de reforma por defecto.`,
         table: 'proyectos',
         recordId: data.id,
         label: data.nombre,

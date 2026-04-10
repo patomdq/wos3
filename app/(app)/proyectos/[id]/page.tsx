@@ -10,9 +10,10 @@ const fmtK = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',curr
 
 const CATEGORIAS_MOV = ['Materiales','Mano de obra','Honorarios','Impuestos','Venta','Arras','Compra','Reforma','Otros']
 const ESTADO_PARTIDA: Record<string,{c:string;bg:string;label:string}> = {
-  pendiente: { c:'#888', bg:'rgba(255,255,255,0.06)', label:'Pendiente' },
-  en_curso: { c:'#60A5FA', bg:'rgba(96,165,250,0.15)', label:'En curso' },
-  ok: { c:'#22C55E', bg:'rgba(34,197,94,0.15)', label:'OK ✓' },
+  pendiente:  { c:'#888',     bg:'rgba(255,255,255,0.06)',   label:'Pendiente' },
+  en_curso:   { c:'#60A5FA', bg:'rgba(96,165,250,0.15)',   label:'En curso' },
+  ok:         { c:'#22C55E', bg:'rgba(34,197,94,0.15)',    label:'OK ✓' },
+  retrasada:  { c:'#F59E0B', bg:'rgba(245,158,11,0.18)',   label:'Retrasada' },
 }
 
 type Movimiento = {
@@ -20,7 +21,12 @@ type Movimiento = {
   proveedor?: string; cantidad?: number; precio_unitario?: number; monto: number; total?: number
   forma_pago?: string; cuenta?: string; numero_factura?: string; observaciones?: string
 }
-type Partida = { id: string; nombre: string; categoria: string; estado: string; presupuesto: number; ejecutado: number; orden: number; notas?: string }
+type Partida = {
+  id: string; nombre: string; categoria: string; estado: string
+  presupuesto: number; ejecutado: number; orden: number; notas?: string
+  fecha_inicio?: string; fecha_fin_estimada?: string; fecha_fin_real?: string
+  depende_de?: string
+}
 
 const emptyForm = () => ({
   fecha: new Date().toISOString().split('T')[0],
@@ -60,7 +66,7 @@ export default function ProyectoDetalle() {
   // Partidas
   const [showPartidaForm, setShowPartidaForm] = useState(false)
   const [editingPartidaId, setEditingPartidaId] = useState<string|null>(null)
-  const [nuevaPartida, setNuevaPartida] = useState({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'' })
+  const [nuevaPartida, setNuevaPartida] = useState({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'', fecha_inicio:'', fecha_fin_estimada:'', fecha_fin_real:'', depende_de:'' })
   const [savingPartida, setSavingPartida] = useState(false)
 
   // Tareas
@@ -179,10 +185,15 @@ export default function ProyectoDetalle() {
   // ─── Partidas handlers ───────────────────────────────────
   const openPartidaForm = (p?: Partida) => {
     if (p) {
-      setNuevaPartida({ nombre: p.nombre, categoria: p.categoria, presupuesto: p.presupuesto?.toString() || '', ejecutado: p.ejecutado?.toString() || '' })
+      setNuevaPartida({
+        nombre: p.nombre, categoria: p.categoria,
+        presupuesto: p.presupuesto?.toString() || '', ejecutado: p.ejecutado?.toString() || '',
+        fecha_inicio: p.fecha_inicio || '', fecha_fin_estimada: p.fecha_fin_estimada || '',
+        fecha_fin_real: p.fecha_fin_real || '', depende_de: p.depende_de || '',
+      })
       setEditingPartidaId(p.id)
     } else {
-      setNuevaPartida({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'' })
+      setNuevaPartida({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'', fecha_inicio:'', fecha_fin_estimada:'', fecha_fin_real:'', depende_de:'' })
       setEditingPartidaId(null)
     }
     setShowPartidaForm(true)
@@ -197,6 +208,10 @@ export default function ProyectoDetalle() {
       categoria: nuevaPartida.categoria,
       presupuesto: parseFloat(nuevaPartida.presupuesto) || 0,
       ejecutado: parseFloat(nuevaPartida.ejecutado) || 0,
+      fecha_inicio: nuevaPartida.fecha_inicio || null,
+      fecha_fin_estimada: nuevaPartida.fecha_fin_estimada || null,
+      fecha_fin_real: nuevaPartida.fecha_fin_real || null,
+      depende_de: nuevaPartida.depende_de || null,
     }
     if (editingPartidaId) {
       await supabase.from('partidas_reforma').update(data).eq('id', editingPartidaId)
@@ -206,7 +221,7 @@ export default function ProyectoDetalle() {
     }
     await loadPartidas()
     setShowPartidaForm(false)
-    setNuevaPartida({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'' })
+    setNuevaPartida({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'', fecha_inicio:'', fecha_fin_estimada:'', fecha_fin_real:'', depende_de:'' })
     setEditingPartidaId(null)
     setSavingPartida(false)
   }
@@ -341,6 +356,19 @@ export default function ProyectoDetalle() {
 
   const CARD = { background: '#141414', border: '1px solid rgba(255,255,255,0.10)' }
   const INPUT_STYLE = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.12)', color: '#fff' }
+
+  // Alert detection for reforma tab
+  const today = new Date().toISOString().split('T')[0]
+  const partidasRetrasadas = partidas.filter(p => p.estado === 'retrasada')
+  const partidasVencidas = partidas.filter(p =>
+    p.estado !== 'ok' && p.fecha_fin_estimada && p.fecha_fin_estimada < today
+  )
+  const partidasBloqueadas = partidas.filter(p => {
+    if (!p.depende_de) return false
+    const dep = partidas.find(x => x.id === p.depende_de)
+    return dep && dep.estado !== 'ok' && p.estado !== 'ok'
+  })
+  const alertPartidas = [...new Set([...partidasRetrasadas, ...partidasVencidas, ...partidasBloqueadas])]
 
   return (
     <div className="p-4" style={{ background: '#0A0A0A', minHeight: '100vh' }}>
@@ -532,6 +560,20 @@ export default function ProyectoDetalle() {
       {/* ═══ Tab: REFORMA ═══ */}
       {tab === 1 && (
         <div>
+          {alertPartidas.length > 0 && (
+            <div className="rounded-xl p-3.5 mb-3 flex gap-3 items-start"
+              style={{ background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.35)' }}>
+              <span className="text-lg flex-shrink-0">⚠️</span>
+              <div>
+                <div className="text-sm font-black" style={{ color:'#F59E0B' }}>
+                  {alertPartidas.length} partida{alertPartidas.length > 1 ? 's' : ''} con alertas
+                </div>
+                <div className="text-xs font-medium mt-1" style={{ color:'rgba(245,158,11,0.8)' }}>
+                  {alertPartidas.map(p => p.nombre).join(' · ')}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2.5 mb-3">
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Presupuesto</div>
@@ -582,6 +624,7 @@ export default function ProyectoDetalle() {
                               <option value="pendiente">Pendiente</option>
                               <option value="en_curso">En curso</option>
                               <option value="ok">OK ✓</option>
+                              <option value="retrasada">Retrasada</option>
                             </select>
                           </td>
                           <td className="px-3 py-3 text-sm font-mono text-right text-white whitespace-nowrap">{fmt(p.presupuesto||0)}</td>
@@ -1054,6 +1097,39 @@ export default function ProyectoDetalle() {
                   <input type="number" value={nuevaPartida.ejecutado} placeholder="0"
                     onChange={e => setNuevaPartida(p=>({...p,ejecutado:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Inicio</label>
+                  <input type="date" value={nuevaPartida.fecha_inicio}
+                    onChange={e => setNuevaPartida(p=>({...p,fecha_inicio:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fin estimado</label>
+                  <input type="date" value={nuevaPartida.fecha_fin_estimada}
+                    onChange={e => setNuevaPartida(p=>({...p,fecha_fin_estimada:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fin real</label>
+                  <input type="date" value={nuevaPartida.fecha_fin_real}
+                    onChange={e => setNuevaPartida(p=>({...p,fecha_fin_real:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Depende de</label>
+                  <select value={nuevaPartida.depende_de}
+                    onChange={e => setNuevaPartida(p=>({...p,depende_de:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
+                    <option value="">—</option>
+                    {partidas.filter(p => p.id !== editingPartidaId).map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
