@@ -795,19 +795,37 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         notas: input.notas || null,
       }]).select().single()
       if (error) return { result: `Error al crear proyecto: ${error.message}` }
-      // Auto-insert 21 default partidas template
-      const partidasRows = PARTIDAS_PLANTILLA.map(p => ({
-        proyecto_id: data.id,
-        nombre: p.nombre,
-        categoria: p.categoria,
-        orden: p.orden,
-        presupuesto: 0,
-        ejecutado: 0,
-        estado: 'pendiente',
-      }))
-      await supabaseAdmin.from('partidas_reforma').insert(partidasRows)
+      // Auto-insert 21 default partidas + items template
+      const { data: partidasInsertadas } = await supabaseAdmin
+        .from('partidas_reforma')
+        .insert(PARTIDAS_PLANTILLA.map(p => ({
+          proyecto_id: data.id,
+          nombre: p.nombre,
+          categoria: p.categoria,
+          orden: p.orden,
+          presupuesto: 0,
+          ejecutado: 0,
+          estado: 'pendiente',
+        })))
+        .select('id, nombre')
+      // Insert items for each partida
+      if (partidasInsertadas) {
+        const itemsRows: any[] = []
+        for (const partida of partidasInsertadas) {
+          const template = PARTIDAS_PLANTILLA.find(p => p.nombre === partida.nombre)
+          if (template?.items) {
+            for (const item of template.items) {
+              itemsRows.push({ partida_id: partida.id, nombre: item.nombre, orden: item.orden })
+            }
+          }
+        }
+        if (itemsRows.length > 0) {
+          await supabaseAdmin.from('items_partida').insert(itemsRows)
+        }
+      }
+      const totalItems = PARTIDAS_PLANTILLA.reduce((s, p) => s + p.items.length, 0)
       return {
-        result: `Proyecto creado. ID: ${data.id}. Nombre: "${data.nombre}", Estado: ${data.estado}, Ciudad: ${data.ciudad || 'sin especificar'}. Se cargaron 21 partidas de reforma por defecto.`,
+        result: `Proyecto creado. ID: ${data.id}. Nombre: "${data.nombre}", Estado: ${data.estado}, Ciudad: ${data.ciudad || 'sin especificar'}. Se cargaron 21 partidas con ${totalItems} ítems por defecto.`,
         table: 'proyectos',
         recordId: data.id,
         label: data.nombre,

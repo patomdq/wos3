@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -26,6 +26,11 @@ type Partida = {
   presupuesto: number; ejecutado: number; orden: number; notas?: string
   fecha_inicio?: string; fecha_fin_estimada?: string; fecha_fin_real?: string
   depende_de?: string
+}
+type ItemPartida = {
+  id: string; partida_id: string; nombre: string; orden: number
+  estancia?: string; proveedor?: string; coste?: number
+  fecha_compra?: string; nota?: string
 }
 
 const emptyForm = () => ({
@@ -69,6 +74,15 @@ export default function ProyectoDetalle() {
   const [nuevaPartida, setNuevaPartida] = useState({ nombre:'', categoria:'obra', presupuesto:'', ejecutado:'', fecha_inicio:'', fecha_fin_estimada:'', fecha_fin_real:'', depende_de:'' })
   const [savingPartida, setSavingPartida] = useState(false)
   const [reformaVista, setReformaVista] = useState<'tabla'|'gantt'>('tabla')
+  const [expandedPartidas, setExpandedPartidas] = useState<Set<string>>(new Set())
+  const [itemsByPartida, setItemsByPartida] = useState<Record<string, ItemPartida[]>>({})
+  const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set())
+  // Item form
+  const [showItemForm, setShowItemForm] = useState(false)
+  const [editingItemId, setEditingItemId] = useState<string|null>(null)
+  const [itemFormPartidaId, setItemFormPartidaId] = useState<string>('')
+  const [itemForm, setItemForm] = useState({ nombre:'', estancia:'', proveedor:'', coste:'', fecha_compra:'', nota:'' })
+  const [savingItem, setSavingItem] = useState(false)
 
   // Tareas
   const [showTareaForm, setShowTareaForm] = useState(false)
@@ -260,6 +274,80 @@ export default function ProyectoDetalle() {
   const cambiarEstadoPartida = async (pid: string, estado: string) => {
     await supabase.from('partidas_reforma').update({ estado }).eq('id', pid)
     setPartidas(p => p.map(x => x.id === pid ? { ...x, estado } : x))
+  }
+
+  // ─── Items handlers ──────────────────────────────────────
+  const togglePartida = async (pid: string) => {
+    const next = new Set(expandedPartidas)
+    if (next.has(pid)) {
+      next.delete(pid)
+      setExpandedPartidas(next)
+    } else {
+      next.add(pid)
+      setExpandedPartidas(next)
+      if (!itemsByPartida[pid]) {
+        setLoadingItems(s => new Set(s).add(pid))
+        const { data } = await supabase.from('items_partida').select('*').eq('partida_id', pid).order('orden')
+        setItemsByPartida(m => ({ ...m, [pid]: data || [] }))
+        setLoadingItems(s => { const ns = new Set(s); ns.delete(pid); return ns })
+      }
+    }
+  }
+
+  const openItemForm = (partidaId: string, item?: ItemPartida) => {
+    setItemFormPartidaId(partidaId)
+    if (item) {
+      setItemForm({ nombre: item.nombre, estancia: item.estancia||'', proveedor: item.proveedor||'', coste: item.coste?.toString()||'', fecha_compra: item.fecha_compra||'', nota: item.nota||'' })
+      setEditingItemId(item.id)
+    } else {
+      setItemForm({ nombre:'', estancia:'', proveedor:'', coste:'', fecha_compra:'', nota:'' })
+      setEditingItemId(null)
+    }
+    setShowItemForm(true)
+  }
+
+  const saveItem = async () => {
+    if (!itemForm.nombre.trim()) return
+    setSavingItem(true)
+    const payload: any = {
+      partida_id:   itemFormPartidaId,
+      nombre:       itemForm.nombre,
+      estancia:     itemForm.estancia || null,
+      proveedor:    itemForm.proveedor || null,
+      coste:        parseFloat(itemForm.coste) || null,
+      fecha_compra: itemForm.fecha_compra || null,
+      nota:         itemForm.nota || null,
+    }
+    if (editingItemId) {
+      await supabase.from('items_partida').update(payload).eq('id', editingItemId)
+    } else {
+      const existing = itemsByPartida[itemFormPartidaId] || []
+      payload.orden = existing.length + 1
+      await supabase.from('items_partida').insert([payload])
+    }
+    const { data } = await supabase.from('items_partida').select('*').eq('partida_id', itemFormPartidaId).order('orden')
+    setItemsByPartida(m => ({ ...m, [itemFormPartidaId]: data || [] }))
+    // Update partida presupuesto from sum of item costes
+    const total = (data || []).reduce((s: number, it: ItemPartida) => s + (it.coste || 0), 0)
+    if (total > 0) {
+      await supabase.from('partidas_reforma').update({ presupuesto: total }).eq('id', itemFormPartidaId)
+      setPartidas(p => p.map(x => x.id === itemFormPartidaId ? { ...x, presupuesto: total } : x))
+    }
+    setShowItemForm(false)
+    setEditingItemId(null)
+    setSavingItem(false)
+  }
+
+  const deleteItem = async (item: ItemPartida) => {
+    if (!confirm('¿Eliminar este ítem?')) return
+    await supabase.from('items_partida').delete().eq('id', item.id)
+    const updated = (itemsByPartida[item.partida_id] || []).filter(x => x.id !== item.id)
+    setItemsByPartida(m => ({ ...m, [item.partida_id]: updated }))
+    const total = updated.reduce((s, it) => s + (it.coste || 0), 0)
+    if (total >= 0) {
+      await supabase.from('partidas_reforma').update({ presupuesto: total }).eq('id', item.partida_id)
+      setPartidas(p => p.map(x => x.id === item.partida_id ? { ...x, presupuesto: total } : x))
+    }
   }
 
   const openTareaForm = (t?: any) => {
@@ -731,7 +819,7 @@ export default function ProyectoDetalle() {
                 <table className="w-full border-collapse" style={{ minWidth:520 }}>
                   <thead>
                     <tr style={{ background:'#1E1E1E' }}>
-                      {['Partida','Categoría','Estado','Presupuesto','Ejecutado','%','Acciones'].map(h => (
+                      {['','Partida','Categoría','Estado','Presupuesto','Ejecutado','%','Acciones'].map(h => (
                         <th key={h} className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
                           style={{ color:'rgba(255,255,255,0.4)', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>{h}</th>
                       ))}
@@ -742,38 +830,118 @@ export default function ProyectoDetalle() {
                       const pct = p.presupuesto > 0 ? Math.round((p.ejecutado/p.presupuesto)*100) : 0
                       const col = pct >= 100 ? '#22C55E' : pct > 50 ? '#F59E0B' : '#EF4444'
                       const ep = ESTADO_PARTIDA[p.estado] || ESTADO_PARTIDA.pendiente
+                      const isExpanded = expandedPartidas.has(p.id)
+                      const items = itemsByPartida[p.id] || []
+                      const isLoadingItems = loadingItems.has(p.id)
                       return (
-                        <tr key={p.id} style={{ borderBottom: i < partidas.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                          <td className="px-3 py-3 text-sm font-bold text-white">{p.nombre}</td>
-                          <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color:'rgba(255,255,255,0.5)' }}>{p.categoria}</td>
-                          <td className="px-3 py-3">
-                            <select value={p.estado}
-                              onChange={e => cambiarEstadoPartida(p.id, e.target.value)}
-                              className="text-[11px] font-bold px-2 py-1 rounded-full outline-none cursor-pointer"
-                              style={{ background:ep.bg, color:ep.c, border:`1px solid ${ep.c}33` }}>
-                              <option value="pendiente">Pendiente</option>
-                              <option value="en_curso">En curso</option>
-                              <option value="ok">OK ✓</option>
-                              <option value="retrasada">Retrasada</option>
-                            </select>
-                          </td>
-                          <td className="px-3 py-3 text-sm font-mono text-right text-white whitespace-nowrap">{fmt(p.presupuesto||0)}</td>
-                          <td className="px-3 py-3 text-sm font-mono text-right whitespace-nowrap" style={{ color:'#F26E1F' }}>{fmt(p.ejecutado||0)}</td>
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="h-1.5 w-16 rounded-full overflow-hidden flex-shrink-0" style={{ background:'#282828' }}>
-                                <div className="h-full rounded-full" style={{ width:`${Math.min(pct,100)}%`, background:col }} />
+                        <React.Fragment key={p.id}>
+                          <tr style={{ borderBottom: (!isExpanded && i < partidas.length-1) ? '1px solid rgba(255,255,255,0.06)' : 'none', background: isExpanded ? 'rgba(242,110,31,0.04)' : 'transparent' }}>
+                            {/* Expand toggle */}
+                            <td className="px-2 py-3" style={{ width:28 }}>
+                              <button onClick={() => togglePartida(p.id)}
+                                className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-black"
+                                style={{ background:'rgba(255,255,255,0.08)', color: isExpanded ? '#F26E1F' : '#888' }}>
+                                {isExpanded ? '▾' : '▸'}
+                              </button>
+                            </td>
+                            <td className="px-3 py-3 text-sm font-bold text-white">{p.nombre}</td>
+                            <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color:'rgba(255,255,255,0.5)' }}>{p.categoria}</td>
+                            <td className="px-3 py-3">
+                              <select value={p.estado}
+                                onChange={e => cambiarEstadoPartida(p.id, e.target.value)}
+                                className="text-[11px] font-bold px-2 py-1 rounded-full outline-none cursor-pointer"
+                                style={{ background:ep.bg, color:ep.c, border:`1px solid ${ep.c}33` }}>
+                                <option value="pendiente">Pendiente</option>
+                                <option value="en_curso">En curso</option>
+                                <option value="ok">OK ✓</option>
+                                <option value="retrasada">Retrasada</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-3 text-sm font-mono text-right text-white whitespace-nowrap">{fmt(p.presupuesto||0)}</td>
+                            <td className="px-3 py-3 text-sm font-mono text-right whitespace-nowrap" style={{ color:'#F26E1F' }}>{fmt(p.ejecutado||0)}</td>
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-16 rounded-full overflow-hidden flex-shrink-0" style={{ background:'#282828' }}>
+                                  <div className="h-full rounded-full" style={{ width:`${Math.min(pct,100)}%`, background:col }} />
+                                </div>
+                                <span className="text-xs font-black whitespace-nowrap" style={{ color:col }}>{pct}%</span>
                               </div>
-                              <span className="text-xs font-black whitespace-nowrap" style={{ color:col }}>{pct}%</span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex gap-1.5">
-                              <button onClick={() => openPartidaForm(p)} className="text-xs font-bold px-2 py-1 rounded-lg text-white" style={{ background:'rgba(255,255,255,0.08)' }}>✎</button>
-                              <button onClick={() => deletePartida(p.id)} className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="px-3 py-3">
+                              <div className="flex gap-1.5">
+                                <button onClick={() => openPartidaForm(p)} className="text-xs font-bold px-2 py-1 rounded-lg text-white" style={{ background:'rgba(255,255,255,0.08)' }}>✎</button>
+                                <button onClick={() => deletePartida(p.id)} className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
+                              </div>
+                            </td>
+                          </tr>
+                          {/* ── Items expandibles ── */}
+                          {isExpanded && (
+                            <tr key={`items-${p.id}`} style={{ borderBottom: i < partidas.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                              <td colSpan={8} style={{ padding:'0 0 8px 0', background:'rgba(0,0,0,0.25)' }}>
+                                {isLoadingItems ? (
+                                  <div className="px-6 py-3 text-xs" style={{ color:'rgba(255,255,255,0.3)' }}>Cargando ítems...</div>
+                                ) : (
+                                  <div>
+                                    {/* Items list */}
+                                    {items.length > 0 && (
+                                      <table className="w-full border-collapse">
+                                        <thead>
+                                          <tr style={{ background:'rgba(255,255,255,0.03)' }}>
+                                            {['Ítem','Estancia','Proveedor','Coste','F. Compra','Nota',''].map(h => (
+                                              <th key={h} className="px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wide"
+                                                style={{ color:'rgba(255,255,255,0.3)', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>{h}</th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {items.map(item => (
+                                            <tr key={item.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                                              <td className="px-3 py-2 text-xs font-semibold text-white">{item.nombre}</td>
+                                              <td className="px-3 py-2 text-xs" style={{ color:'rgba(255,255,255,0.45)' }}>{item.estancia||'—'}</td>
+                                              <td className="px-3 py-2 text-xs" style={{ color:'rgba(255,255,255,0.45)' }}>{item.proveedor||'—'}</td>
+                                              <td className="px-3 py-2 text-xs font-mono text-right whitespace-nowrap" style={{ color: item.coste ? '#F26E1F' : 'rgba(255,255,255,0.3)' }}>
+                                                {item.coste ? fmt(item.coste) : '—'}
+                                              </td>
+                                              <td className="px-3 py-2 text-xs" style={{ color:'rgba(255,255,255,0.45)' }}>{item.fecha_compra||'—'}</td>
+                                              <td className="px-3 py-2 text-xs" style={{ color:'rgba(255,255,255,0.45)', maxWidth:120 }}>
+                                                <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.nota||'—'}</div>
+                                              </td>
+                                              <td className="px-2 py-2">
+                                                <div className="flex gap-1">
+                                                  <button onClick={() => openItemForm(p.id, item)} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background:'rgba(255,255,255,0.08)', color:'#fff' }}>✎</button>
+                                                  <button onClick={() => deleteItem(item)} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                        <tfoot>
+                                          <tr style={{ borderTop:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)' }}>
+                                            <td colSpan={3} className="px-3 py-1.5 text-[10px] font-bold text-right" style={{ color:'rgba(255,255,255,0.4)' }}>Total ítems:</td>
+                                            <td className="px-3 py-1.5 text-xs font-black font-mono text-right" style={{ color:'#F26E1F' }}>
+                                              {fmt(items.reduce((s,it) => s+(it.coste||0),0))}
+                                            </td>
+                                            <td colSpan={3}></td>
+                                          </tr>
+                                        </tfoot>
+                                      </table>
+                                    )}
+                                    {items.length === 0 && (
+                                      <div className="px-6 py-2 text-xs" style={{ color:'rgba(255,255,255,0.3)' }}>Sin ítems — agregá el primero</div>
+                                    )}
+                                    <div className="px-3 pt-2">
+                                      <button onClick={() => openItemForm(p.id)}
+                                        className="text-xs font-black px-3 py-1.5 rounded-lg text-white"
+                                        style={{ background:'rgba(242,110,31,0.25)', border:'1px solid rgba(242,110,31,0.4)' }}>
+                                        + Ítem
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       )
                     })}
                   </tbody>
@@ -1267,6 +1435,68 @@ export default function ProyectoDetalle() {
               className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
               style={{ background:'#F26E1F' }}>
               {savingPartida ? 'Guardando...' : editingPartidaId ? 'Actualizar partida' : 'Agregar partida'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ─────── FORM: Ítem de partida ─────── */}
+      {showItemForm && (
+        <>
+          <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowItemForm(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10 overflow-y-auto"
+            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto', maxHeight:'85vh' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+            <div className="flex justify-between items-center mb-5">
+              <div className="font-black text-[17px] text-white">{editingItemId ? 'Editar ítem' : 'Nuevo ítem'}</div>
+              <button onClick={() => setShowItemForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
+                <input type="text" value={itemForm.nombre} placeholder="Ej. Cuadro eléctrico"
+                  onChange={e => setItemForm(f=>({...f,nombre:e.target.value}))}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Estancia</label>
+                  <input type="text" value={itemForm.estancia} placeholder="Cocina, Baño…"
+                    onChange={e => setItemForm(f=>({...f,estancia:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Proveedor</label>
+                  <input type="text" value={itemForm.proveedor} placeholder="Nombre empresa"
+                    onChange={e => setItemForm(f=>({...f,proveedor:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Coste (€)</label>
+                  <input type="number" step="0.01" value={itemForm.coste} placeholder="0.00"
+                    onChange={e => setItemForm(f=>({...f,coste:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha compra</label>
+                  <input type="date" value={itemForm.fecha_compra}
+                    onChange={e => setItemForm(f=>({...f,fecha_compra:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nota</label>
+                <textarea rows={2} value={itemForm.nota} placeholder="Observaciones…"
+                  onChange={e => setItemForm(f=>({...f,nota:e.target.value}))}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium resize-none" style={INPUT_STYLE} />
+              </div>
+            </div>
+            <button onClick={saveItem} disabled={savingItem || !itemForm.nombre.trim()}
+              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background:'#F26E1F' }}>
+              {savingItem ? 'Guardando...' : editingItemId ? 'Actualizar ítem' : 'Agregar ítem'}
             </button>
           </div>
         </>
