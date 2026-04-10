@@ -766,7 +766,22 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }
     }
     if (name === 'delete_proyecto') {
-      const { error } = await supabaseAdmin.from('proyectos').delete().eq('id', input.id)
+      // Delete related records in order to avoid FK violations
+      const pid = input.id
+      // items_partida cascade-deletes when partidas_reforma is deleted
+      const { data: partidas } = await supabaseAdmin.from('partidas_reforma').select('id').eq('proyecto_id', pid)
+      if (partidas?.length) {
+        const pids = partidas.map((p: any) => p.id)
+        await supabaseAdmin.from('items_partida').delete().in('partida_id', pids)
+        await supabaseAdmin.from('partidas_gcal').delete().in('partida_id', pids)
+        await supabaseAdmin.from('partidas_reforma').delete().eq('proyecto_id', pid)
+      }
+      await supabaseAdmin.from('movimientos').delete().eq('proyecto_id', pid)
+      await supabaseAdmin.from('tareas').delete().eq('proyecto_id', pid)
+      await supabaseAdmin.from('bitacora').delete().eq('proyecto_id', pid)
+      await supabaseAdmin.from('documentos').delete().eq('proyecto_id', pid)
+      await supabaseAdmin.from('proyecto_inversores').delete().eq('proyecto_id', pid)
+      const { error } = await supabaseAdmin.from('proyectos').delete().eq('id', pid)
       if (error) return { result: `Error al eliminar proyecto: ${error.message}` }
       return { result: `Proyecto eliminado: "${input.nombre || input.id}".` }
     }
