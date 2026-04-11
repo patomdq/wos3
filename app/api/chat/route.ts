@@ -333,6 +333,47 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'listar_eventos',
+    description: 'Lista eventos de Google Calendar en un rango de fechas. Usalo para buscar eventos cuando necesites el ID para editar o eliminar, o cuando el usuario pregunte qué hay en el calendario.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        fecha_desde: { type: 'string', description: 'Fecha inicio del rango YYYY-MM-DD' },
+        fecha_hasta: { type: 'string', description: 'Fecha fin del rango YYYY-MM-DD' },
+      },
+      required: ['fecha_desde'],
+    },
+  },
+  {
+    name: 'editar_evento',
+    description: 'Edita un evento existente en Google Calendar. Usalo cuando el usuario pida cambiar la hora, fecha o título de un evento. Si no tenés el google_event_id, usá listar_eventos primero.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        google_event_id: { type: 'string', description: 'ID del evento en Google Calendar' },
+        titulo:          { type: 'string', description: 'Nuevo título (omitir para no cambiar)' },
+        fecha:           { type: 'string', description: 'Nueva fecha YYYY-MM-DD' },
+        hora_inicio:     { type: 'string', description: 'Nueva hora inicio HH:MM' },
+        hora_fin:        { type: 'string', description: 'Nueva hora fin HH:MM' },
+        todo_el_dia:     { type: 'boolean', description: 'true si es todo el día' },
+        descripcion:     { type: 'string', description: 'Nueva descripción' },
+      },
+      required: ['google_event_id'],
+    },
+  },
+  {
+    name: 'eliminar_evento',
+    description: 'Elimina un evento de Google Calendar. Si no tenés el google_event_id, usá listar_eventos primero para buscarlo.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        google_event_id: { type: 'string', description: 'ID del evento en Google Calendar' },
+        titulo:          { type: 'string', description: 'Título del evento (para confirmar al usuario)' },
+      },
+      required: ['google_event_id'],
+    },
+  },
+  {
     name: 'agendar_evento',
     description: 'Crea un evento en Google Calendar de hola@hasu.in. Usalo cuando el usuario pida agendar, programar, crear una reunión o evento. Interpretá fechas relativas como "mañana", "el lunes", "el 15 de mayo".',
     input_schema: {
@@ -700,6 +741,51 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (error) return { result: `Error al eliminar entrada: ${error.message}` }
       return { result: `Entrada de bitácora eliminada.` }
     }
+    if (name === 'listar_eventos') {
+      const token = await getOrgAccessToken()
+      if (!token) return { result: 'Google Calendar no está conectado.' }
+      const { gcalListEvents } = await import('@/lib/googleCalendar')
+      const desde = input.fecha_desde
+      const hasta = input.fecha_hasta || new Date(new Date(desde).getTime() + 7 * 86400000).toISOString().split('T')[0]
+      const events = await gcalListEvents(token, new Date(desde).toISOString(), new Date(hasta + 'T23:59:59').toISOString())
+      if (!events.length) return { result: `No hay eventos entre ${desde} y ${hasta}.` }
+      const lista = events.map(e => {
+        const fecha = (e.start.dateTime || e.start.date || '').substring(0, 10)
+        const hora  = e.start.dateTime ? new Date(e.start.dateTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : 'Todo el día'
+        return `- ID: ${e.id} | ${e.summary} | ${fecha} ${hora}`
+      }).join('\n')
+      return { result: `Eventos (${desde} → ${hasta}):\n${lista}` }
+    }
+    if (name === 'editar_evento') {
+      const token = await getOrgAccessToken()
+      if (!token) return { result: 'Google Calendar no está conectado.' }
+      const { gcalUpdateEvent, gcalListEvents } = await import('@/lib/googleCalendar')
+      // Fetch current event to merge fields
+      const events = await gcalListEvents(token)
+      const current = events.find(e => e.id === input.google_event_id)
+      if (!current) return { result: `No encontré el evento con ID ${input.google_event_id}.` }
+      const allDay = input.todo_el_dia ?? !current.start.dateTime
+      const fecha = input.fecha || (current.start.dateTime || current.start.date || '').substring(0, 10)
+      const startDT = allDay ? fecha : `${fecha}T${input.hora_inicio || new Date(current.start.dateTime!).toTimeString().substring(0,5)}:00`
+      const endDT   = allDay ? fecha : `${fecha}T${input.hora_fin   || new Date(current.end.dateTime!).toTimeString().substring(0,5)}:00`
+      const updated = await gcalUpdateEvent(token, input.google_event_id, {
+        title:         input.titulo      || current.summary || '',
+        description:   input.descripcion ?? current.description ?? '',
+        startDateTime: startDT,
+        endDateTime:   endDT,
+        allDay,
+      })
+      if (!updated) return { result: 'Error al editar el evento.' }
+      return { result: `Evento actualizado: "${updated.summary}", ${fecha}${allDay ? '' : ' ' + startDT.substring(11,16)}.` }
+    }
+    if (name === 'eliminar_evento') {
+      const token = await getOrgAccessToken()
+      if (!token) return { result: 'Google Calendar no está conectado.' }
+      const { gcalDeleteEvent } = await import('@/lib/googleCalendar')
+      const ok = await gcalDeleteEvent(token, input.google_event_id)
+      if (!ok) return { result: `Error al eliminar el evento.` }
+      return { result: `Evento eliminado: "${input.titulo || input.google_event_id}".` }
+    }
     if (name === 'agendar_evento') {
       const token = await getOrgAccessToken()
       if (!token) return { result: 'Google Calendar no está conectado. Conectalo primero desde HASU → Calendario.' }
@@ -946,7 +1032,7 @@ IMPORTANTE — Tenés estas capacidades técnicas reales. Para TODAS las entidad
 - entradas de bitácora (insert/update/delete_bitacora)
 - proveedores (insert/update/delete_proveedor)
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días una partida y todas sus dependientes
-- Google Calendar (agendar_evento) — crea eventos en el calendario de hola@hasu.in. Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
+- Google Calendar — podés crear (agendar_evento), listar (listar_eventos), editar (editar_evento) y eliminar (eliminar_evento) eventos en hola@hasu.in. Para editar/eliminar primero listá para obtener el ID. Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
 
 Nunca digas "no puedo editar/eliminar X". Siempre podés. Para editar o eliminar necesitás el ID — buscalo en el contexto o preguntáselo al usuario.
 
