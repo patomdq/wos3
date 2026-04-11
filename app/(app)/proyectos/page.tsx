@@ -73,8 +73,9 @@ export default function ProyectosPage() {
   const deleteProyecto = async (p: Proyecto, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm(`¿Eliminar el proyecto "${p.nombre}"? Esta acción no se puede deshacer.`)) return
-    const { error } = await supabase.from('proyectos').delete().eq('id', p.id)
-    if (!error) setProyectos(prev => prev.filter(x => x.id !== p.id))
+    const res = await fetch(`/api/proyectos/${p.id}`, { method: 'DELETE' })
+    if (res.ok) setProyectos(prev => prev.filter(x => x.id !== p.id))
+    else alert('Error al eliminar el proyecto.')
   }
 
   const visibles = proyectos.filter(p => canAccessProject(user?.permisos ?? null, p.id))
