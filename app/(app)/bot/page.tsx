@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 type ToolData = { id: string; result: string; table?: string; recordId?: string; label?: string }
 type Msg = { role: 'bot' | 'user'; text: string; time: string; toolData?: ToolData[] }
 
-const QUICK = ['📄 Factura', '💰 Saldo HASU', '🔨 Estado obra', '📋 Liquidación', '📅 Tareas pendientes']
+const QUICK = ['📄 Factura', '💰 Saldo HASU', '🔨 Estado obra', '📋 Liquidación', '📅 ¿Qué tareas hay?']
 
 function now() {
   const d = new Date()

@@ -1030,7 +1030,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 REGLAS DE RESPUESTA — MUY IMPORTANTE:
 1. NUNCA muestres IDs, UUIDs ni códigos al usuario. Son internos. Usalos solo para llamar herramientas.
 2. NUNCA uses tablas markdown con columnas de IDs. Listá con bullet points e iconos.
-3. Si la consulta es ambigua (ej: "tareas pendientes" sin especificar de qué proyecto), PREGUNTÁ antes de responder: "¿Te referís a las tareas de un proyecto específico o las generales?"
+3. SIEMPRE que el usuario pregunte por tareas (pendientes, en curso, etc.) sin estar en contexto de un proyecto específico, ANTES de listar nada preguntá: "¿Te referís a las tareas de un proyecto en particular o las generales?" — NO listés tareas sin hacer esta pregunta primero.
 4. Respuestas cortas y limpias. Solo la info que el usuario necesita ver. Sin columnas técnicas.
 5. Para editar o eliminar, buscá el ID en el contexto sin mostrárselo al usuario.
 
