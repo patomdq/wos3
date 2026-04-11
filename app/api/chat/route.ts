@@ -49,7 +49,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'insert_partida_reforma',
-    description: 'Agrega una partida de reforma a un proyecto. Usalo cuando el usuario quiera añadir una partida de obra o reforma.',
+    description: 'Agrega una partida de reforma a un proyecto. Usalo cuando el usuario quiera añadir una partida de obra o reforma, o cuando indique cuándo empieza un gremio/trabajo (ej: "el lunes empieza el pintor").',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -59,6 +59,8 @@ const TOOLS: Anthropic.Tool[] = [
         ejecutado: { type: 'number', description: 'Ejecutado en euros (puede ser 0)' },
         proyecto_id: { type: 'string', description: 'UUID del proyecto' },
         notas: { type: 'string', description: 'Notas adicionales' },
+        fecha_inicio: { type: 'string', description: 'Fecha de inicio YYYY-MM-DD. Si el usuario dice "el lunes", "el 15 de mayo", etc., convertirla.' },
+        fecha_fin_estimada: { type: 'string', description: 'Fecha fin estimada YYYY-MM-DD (opcional)' },
       },
       required: ['nombre', 'proyecto_id'],
     },
@@ -105,7 +107,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'update_partida_reforma',
-    description: 'Edita una partida de reforma existente. Usalo cuando el usuario pida modificar o cambiar una partida.',
+    description: 'Edita una partida de reforma existente. Usalo cuando el usuario pida modificar o cambiar una partida, incluyendo fechas de inicio/fin.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -113,7 +115,11 @@ const TOOLS: Anthropic.Tool[] = [
         nombre: { type: 'string', description: 'Nuevo nombre' },
         presupuesto: { type: 'number', description: 'Nuevo presupuesto en euros' },
         ejecutado: { type: 'number', description: 'Nuevo ejecutado en euros' },
-        estado: { type: 'string', enum: ['pendiente', 'en_curso', 'ok'], description: 'Nuevo estado' },
+        estado: { type: 'string', enum: ['pendiente', 'en_curso', 'ok', 'retrasada'], description: 'Nuevo estado' },
+        fecha_inicio: { type: 'string', description: 'Fecha de inicio YYYY-MM-DD' },
+        fecha_fin_estimada: { type: 'string', description: 'Fecha fin estimada YYYY-MM-DD' },
+        fecha_fin_real: { type: 'string', description: 'Fecha fin real YYYY-MM-DD' },
+        proyecto_nombre: { type: 'string', description: 'Nombre del proyecto (para el título del evento GCal)' },
       },
       required: ['id'],
     },
@@ -462,11 +468,31 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         ejecutado: input.ejecutado || 0,
         proyecto_id: input.proyecto_id,
         notas: input.notas || null,
+        fecha_inicio: input.fecha_inicio || null,
+        fecha_fin_estimada: input.fecha_fin_estimada || null,
         orden: 99,
       }]).select().single()
       if (error) return { result: `Error al guardar: ${error.message}` }
+      // Sync to GCal if has fecha_inicio
+      if (input.fecha_inicio) {
+        const gcalToken = await getOrgAccessToken()
+        if (gcalToken) {
+          const { data: proy } = await supabaseAdmin.from('proyectos').select('nombre').eq('id', input.proyecto_id).single()
+          const title = `${input.nombre} — ${proy?.nombre || ''}`
+          const created = await gcalCreateEvent(gcalToken, {
+            title,
+            startDateTime: input.fecha_inicio,
+            endDateTime: input.fecha_fin_estimada || input.fecha_inicio,
+            allDay: true,
+          })
+          if (created) {
+            await supabaseAdmin.from('partidas_gcal').upsert({ partida_id: data.id, google_event_id: created.id }, { onConflict: 'partida_id' })
+          }
+        }
+      }
+      const fechaMsg = input.fecha_inicio ? `, Inicio: ${input.fecha_inicio}` : ''
       return {
-        result: `Partida creada. ID: ${data.id}. Nombre: "${data.nombre}", Presupuesto: ${data.presupuesto}€.`,
+        result: `Partida creada. ID: ${data.id}. Nombre: "${data.nombre}", Presupuesto: ${data.presupuesto}€${fechaMsg}.${input.fecha_inicio ? ' Evento creado en Google Calendar.' : ''}`,
         table: 'partidas_reforma',
         recordId: data.id,
         label: `${data.nombre} · ${data.presupuesto}€`,
@@ -504,10 +530,34 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (input.presupuesto !== undefined) updates.presupuesto = input.presupuesto
       if (input.ejecutado !== undefined) updates.ejecutado = input.ejecutado
       if (input.estado !== undefined) updates.estado = input.estado
+      if (input.fecha_inicio !== undefined) updates.fecha_inicio = input.fecha_inicio
+      if (input.fecha_fin_estimada !== undefined) updates.fecha_fin_estimada = input.fecha_fin_estimada
+      if (input.fecha_fin_real !== undefined) updates.fecha_fin_real = input.fecha_fin_real
       const { data, error } = await supabaseAdmin.from('partidas_reforma').update(updates).eq('id', input.id).select().single()
       if (error) return { result: `Error al editar: ${error.message}` }
+      // Sync GCal if dates changed
+      if (input.fecha_inicio || input.fecha_fin_estimada) {
+        const gcalToken = await getOrgAccessToken()
+        if (gcalToken) {
+          const title = `${data.nombre} — ${input.proyecto_nombre || ''}`
+          const startDT = data.fecha_inicio
+          const endDT   = data.fecha_fin_estimada || data.fecha_inicio
+          if (startDT) {
+            const { data: gcalRow } = await supabaseAdmin.from('partidas_gcal').select('google_event_id').eq('partida_id', input.id).single()
+            const { gcalUpdateEvent: gcalUpd } = await import('@/lib/googleCalendar')
+            if (gcalRow?.google_event_id) {
+              await gcalUpd(gcalToken, gcalRow.google_event_id, { title, startDateTime: startDT, endDateTime: endDT, allDay: true })
+            } else {
+              const created = await gcalCreateEvent(gcalToken, { title, startDateTime: startDT, endDateTime: endDT, allDay: true })
+              if (created) {
+                await supabaseAdmin.from('partidas_gcal').upsert({ partida_id: input.id, google_event_id: created.id }, { onConflict: 'partida_id' })
+              }
+            }
+          }
+        }
+      }
       return {
-        result: `Partida actualizada. Nombre: "${data.nombre}", Presupuesto: ${data.presupuesto}€.`,
+        result: `Partida actualizada. Nombre: "${data.nombre}", Presupuesto: ${data.presupuesto}€.${(input.fecha_inicio || input.fecha_fin_estimada) ? ' Calendario actualizado.' : ''}`,
         table: 'partidas_reforma',
         recordId: data.id,
         label: `${data.nombre} · ${data.presupuesto}€`,
