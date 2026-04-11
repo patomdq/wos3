@@ -92,39 +92,87 @@ export default function ProyectosPage() {
           className="text-sm font-bold px-3 py-1.5 rounded-xl" style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F' }}>+ Nuevo</button>
       </div>
 
-      {/* Pipeline */}
-      <div className="rounded-2xl mb-4 overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="px-4 pt-4 pb-1">
-          <div className="font-black text-[15px] text-white mb-0.5">Pipeline</div>
-          <div className="text-xs font-medium" style={{ color: '#888' }}>Ciclo de vida de cada inmueble</div>
-        </div>
-        <div className="flex items-center overflow-x-auto px-4 py-4 gap-0">
-          {ESTADOS.map((est, i) => {
-            const hasProj = proyectos.some(p => p.estado === est)
-            const isActive = ['comprado','reforma','venta'].includes(est)
-            return (
-              <div key={est} className="flex items-center flex-shrink-0">
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{
-                      background: isActive ? `${ESTADO_COLOR[est]}20` : hasProj ? 'rgba(255,255,255,0.06)' : '#1E1E1E',
-                      border: `1.5px solid ${isActive ? ESTADO_COLOR[est] : hasProj ? 'rgba(255,255,255,0.2)' : '#333'}`,
-                      color: isActive ? ESTADO_COLOR[est] : hasProj ? '#fff' : '#555',
-                    }}>
-                    {isActive ? '●' : hasProj ? '✓' : '○'}
-                  </div>
-                  <div className="text-[10px] font-bold text-center" style={{ color: isActive ? ESTADO_COLOR[est] : '#555', maxWidth: 44, lineHeight: 1.3 }}>
-                    {ESTADO_LABEL[est]}
-                  </div>
+      {/* Dashboard */}
+      {(() => {
+        const capitalTotal   = activos.reduce((s, p) => s + (p.inversion_hasu || p.precio_compra || 0), 0)
+        const benefTotal     = activos.reduce((s, p) => {
+          const venta = p.precio_venta_realista || p.precio_venta_estimado || 0
+          const inv   = p.valor_total_operacion || p.precio_compra || 0
+          return s + (venta - inv)
+        }, 0)
+        const roisValidos    = activos.filter(p => {
+          const inv = p.valor_total_operacion || p.precio_compra || 0
+          return inv > 0
+        })
+        const roiMedio       = roisValidos.length > 0
+          ? roisValidos.reduce((s, p) => {
+              const venta = p.precio_venta_realista || p.precio_venta_estimado || 0
+              const inv   = p.valor_total_operacion || p.precio_compra || 0
+              return s + ((venta - inv) / inv * 100)
+            }, 0) / roisValidos.length
+          : null
+        const enReforma      = activos.filter(p => p.estado === 'reforma')
+        const avanceMedio    = enReforma.length > 0
+          ? enReforma.reduce((s, p) => s + (p.avance_reforma || 0), 0) / enReforma.length
+          : null
+
+        const cards = [
+          {
+            icon: '🏠', label: 'Proyectos activos',
+            value: activos.length.toString(),
+            sub: pipeline.length > 0 ? `+ ${pipeline.length} en pipeline` : 'En cartera',
+            color: '#F26E1F', bg: 'rgba(242,110,31,0.12)',
+          },
+          {
+            icon: '💰', label: 'Capital HASU',
+            value: capitalTotal > 0 ? fmt(capitalTotal) : '—',
+            sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`,
+            color: '#60A5FA', bg: 'rgba(96,165,250,0.10)',
+          },
+          {
+            icon: '📈', label: 'Beneficio est.',
+            value: benefTotal !== 0 ? fmt(benefTotal) : '—',
+            sub: 'Escenario realista',
+            color: benefTotal >= 0 ? '#22C55E' : '#EF4444',
+            bg: benefTotal >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
+          },
+          {
+            icon: '⚡', label: roiMedio !== null ? 'ROI medio' : enReforma.length > 0 ? 'Avance medio' : 'ROI medio',
+            value: roiMedio !== null
+              ? `${roiMedio >= 0 ? '+' : ''}${roiMedio.toFixed(1)}%`
+              : avanceMedio !== null
+                ? `${Math.round(avanceMedio)}%`
+                : '—',
+            sub: roiMedio !== null ? 'Sobre inversión total' : enReforma.length > 0 ? 'Obras en curso' : 'Sin datos aún',
+            color: roiMedio !== null ? (roiMedio >= 0 ? '#22C55E' : '#EF4444') : '#a78bfa',
+            bg: roiMedio !== null ? (roiMedio >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)') : 'rgba(167,139,250,0.10)',
+          },
+        ]
+
+        return (
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            {cards.map(c => (
+              <div key={c.label} className="rounded-2xl p-4 flex flex-col gap-2"
+                style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="text-xl">{c.icon}</div>
+                  <div className="w-2 h-2 rounded-full" style={{ background: c.color }} />
                 </div>
-                {i < ESTADOS.length - 1 && (
-                  <div className="w-4 h-[1.5px] flex-shrink-0 mb-4" style={{ background: isActive ? ESTADO_COLOR[est] : '#333' }} />
+                <div className="font-black text-[22px] leading-none" style={{ color: c.color }}>{c.value}</div>
+                <div>
+                  <div className="text-[12px] font-black text-white">{c.label}</div>
+                  <div className="text-[10px] font-medium mt-0.5" style={{ color: '#666' }}>{c.sub}</div>
+                </div>
+                {c.label === 'Avance medio' && avanceMedio !== null && (
+                  <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${avanceMedio}%`, background: c.color }} />
+                  </div>
                 )}
               </div>
-            )
-          })}
-        </div>
-      </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Cards */}
       {loading ? (
