@@ -35,7 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <UserContext.Provider value={user}>
       <div className="flex h-screen overflow-hidden" style={{ background: '#0A0A0A' }}>
         <Nav />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[70px] md:pb-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[70px] lg:pb-0">
           {children}
         </main>
       </div>

@@ -54,9 +54,9 @@ export default function Nav() {
 
   return (
     <>
-      {/* ── MOBILE BOTTOM NAV ── */}
+      {/* ── MOBILE + TABLET BOTTOM NAV ── */}
       <nav style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.08)' }}
-        className="md:hidden fixed bottom-0 left-0 right-0 h-[70px] flex items-center px-2 pb-1 z-20">
+        className="lg:hidden fixed bottom-0 left-0 right-0 h-[70px] flex items-center px-2 pb-1 z-20">
         {items.map(item => (
           <button key={item.id} onClick={() => router.push(item.href)}
             className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5">
@@ -78,7 +78,7 @@ export default function Nav() {
 
       {/* ── DESKTOP SIDEBAR ── */}
       <nav style={{ background: '#141414', borderRight: '1px solid rgba(255,255,255,0.08)' }}
-        className="hidden md:flex flex-col w-[220px] h-screen flex-shrink-0 p-3 gap-1">
+        className="hidden lg:flex flex-col w-[220px] h-screen flex-shrink-0 p-3 gap-1">
         <div className="flex items-center gap-3 px-3 py-4 mb-2">
           <div style={{ background: '#F26E1F' }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-white">W</div>
           <span className="font-bold text-base text-white">WOS 3.0</span>
@@ -120,12 +120,12 @@ export default function Nav() {
         </div>
       </nav>
 
-      {/* ── PROFILE SHEET (mobile) ── */}
+      {/* ── PROFILE SHEET (mobile + tablet) ── */}
       {profileOpen && (
         <>
           <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setProfileOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] p-5 pb-10 md:hidden"
-            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 480, margin: '0 auto' }}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] p-5 pb-10 lg:hidden"
+            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 600, margin: '0 auto' }}>
             <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
 
             {/* User info */}
@@ -164,7 +164,7 @@ export default function Nav() {
         <>
           <div className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.8)' }} onClick={() => setChangePwOpen(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10"
-            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 480, margin: '0 auto' }}>
+            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 600, margin: '0 auto' }}>
             <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
             <div className="font-black text-[17px] text-white mb-5">Cambiar contraseña</div>
 
