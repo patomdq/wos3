@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 type ToolData = { id: string; result: string; table?: string; recordId?: string; label?: string }
@@ -17,6 +18,9 @@ const WELCOME: Msg = { role: 'bot', text: 'Hola 👋 ¿En qué puedo ayudarte ho
 type EditState = { recordId: string; table: string; label: string; concepto: string; monto: string }
 
 export default function BotPage() {
+  const searchParams = useSearchParams()
+  const proyectoId = searchParams.get('proyecto_id')
+
   const [msgs, setMsgs] = useState<Msg[]>([WELCOME])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
@@ -24,6 +28,7 @@ export default function BotPage() {
   const [userId, setUserId] = useState<string>('')
   const [editState, setEditState] = useState<EditState | null>(null)
   const [editSaving, setEditSaving] = useState(false)
+  const [proyectoNombre, setProyectoNombre] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const contextRef = useRef('')
@@ -34,7 +39,7 @@ export default function BotPage() {
       const uid = session?.user?.id || 'anon'
       setUserId(uid)
 
-      const stored = localStorage.getItem(`wos3_chat_${uid}`)
+      const stored = localStorage.getItem(`wos3_chat_${uid}${proyectoId ? '_' + proyectoId : ''}`)
       if (stored) {
         try {
           const parsed = JSON.parse(stored)
@@ -46,27 +51,40 @@ export default function BotPage() {
         } catch {}
       }
 
-      const [
-        { count: activos },
-        { data: movs },
-        { data: tareas },
-        { data: proyectos },
-        { data: partidas }
-      ] = await Promise.all([
-        supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta']),
-        supabase.from('movimientos').select('id,concepto,monto,fecha').order('fecha', { ascending: false }).limit(10),
-        supabase.from('tareas').select('id,titulo,prioridad,estado').eq('estado', 'Pendiente').limit(5),
-        supabase.from('proyectos').select('id,nombre,estado,ciudad').order('created_at'),
-        supabase.from('partidas_reforma').select('id,nombre,presupuesto,estado').order('created_at', { ascending: false }).limit(10),
-      ])
+      let ctx = ''
 
-      const ctx = [
-        `Proyectos activos: ${activos ?? 0}`,
-        proyectos?.length ? `Lista de proyectos (ID | Nombre | Estado | Ciudad):\n${proyectos.map(p => `- ${p.id} | ${p.nombre} | ${p.estado} | ${p.ciudad}`).join('\n')}` : '',
-        movs?.length ? `Últimos movimientos (ID | Concepto | Monto | Fecha):\n${movs.map(m => `- ${m.id} | ${m.concepto} | ${m.monto > 0 ? '+' : ''}${m.monto}€ | ${m.fecha}`).join('\n')}` : '',
-        tareas?.length ? `Tareas pendientes (ID | Título | Prioridad):\n${tareas.map(t => `- ${t.id} | ${t.titulo} | ${t.prioridad}`).join('\n')}` : '',
-        partidas?.length ? `Partidas de reforma (ID | Nombre | Presupuesto | Estado):\n${partidas.map(p => `- ${p.id} | ${p.nombre} | ${p.presupuesto}€ | ${p.estado}`).join('\n')}` : '',
-      ].filter(Boolean).join('\n')
+      if (proyectoId) {
+        // Contexto específico del proyecto — mínimo de tokens
+        const [{ data: proy }, { data: partidas }, { data: movs }, { data: tareas }] = await Promise.all([
+          supabase.from('proyectos').select('id,nombre,estado,ciudad,precio_compra,avance_reforma').eq('id', proyectoId).single(),
+          supabase.from('partidas_reforma').select('id,nombre,estado,presupuesto,ejecutado,fecha_inicio,fecha_fin_estimada').eq('proyecto_id', proyectoId).order('orden'),
+          supabase.from('movimientos').select('id,concepto,monto,fecha').eq('proyecto_id', proyectoId).order('fecha', { ascending: false }).limit(8),
+          supabase.from('tareas').select('id,titulo,prioridad,estado').eq('proyecto_id', proyectoId).eq('estado', 'Pendiente').limit(5),
+        ])
+        if (proy) setProyectoNombre(proy.nombre)
+        ctx = [
+          proy ? `Proyecto: ${proy.nombre} | ID: ${proy.id} | Estado: ${proy.estado} | Ciudad: ${proy.ciudad} | Compra: ${proy.precio_compra ?? '-'}€ | Avance: ${proy.avance_reforma ?? 0}%` : '',
+          partidas?.length ? `Partidas (ID|Nombre|Estado|Presup|Ejecutado|Inicio|FinEst):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.presupuesto}€|${p.ejecutado}€|${p.fecha_inicio??'-'}|${p.fecha_fin_estimada??'-'}`).join('\n')}` : '',
+          movs?.length ? `Movimientos (ID|Concepto|Monto|Fecha):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}`).join('\n')}` : '',
+          tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
+        ].filter(Boolean).join('\n')
+      } else {
+        // Contexto global
+        const [{ count: activos }, { data: movs }, { data: tareas }, { data: proyectos }, { data: partidas }] = await Promise.all([
+          supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta']),
+          supabase.from('movimientos').select('id,concepto,monto,fecha').order('fecha', { ascending: false }).limit(10),
+          supabase.from('tareas').select('id,titulo,prioridad,estado').eq('estado', 'Pendiente').limit(5),
+          supabase.from('proyectos').select('id,nombre,estado,ciudad').order('created_at'),
+          supabase.from('partidas_reforma').select('id,nombre,presupuesto,estado').order('created_at', { ascending: false }).limit(10),
+        ])
+        ctx = [
+          `Proyectos activos: ${activos ?? 0}`,
+          proyectos?.length ? `Proyectos (ID|Nombre|Estado|Ciudad):\n${proyectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.ciudad}`).join('\n')}` : '',
+          movs?.length ? `Últimos movimientos (ID|Concepto|Monto|Fecha):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}`).join('\n')}` : '',
+          tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
+          partidas?.length ? `Partidas recientes (ID|Nombre|Presup|Estado):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.presupuesto}€|${p.estado}`).join('\n')}` : '',
+        ].filter(Boolean).join('\n')
+      }
 
       contextRef.current = ctx
     }
@@ -77,7 +95,7 @@ export default function BotPage() {
 
   useEffect(() => {
     if (userId && msgs.length > 1) {
-      localStorage.setItem(`wos3_chat_${userId}`, JSON.stringify(msgs))
+      localStorage.setItem(`wos3_chat_${userId}${proyectoId ? '_' + proyectoId : ''}`, JSON.stringify(msgs))
     }
   }, [msgs, userId])
 
@@ -178,7 +196,10 @@ export default function BotPage() {
       {/* Topbar */}
       <div className="flex items-center gap-3 px-4 h-[54px] flex-shrink-0" style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
-        <div className="flex-1 font-bold text-[17px] text-white tracking-[-0.3px]">Bot</div>
+        <div className="flex-1 font-bold text-[17px] text-white tracking-[-0.3px]">
+          {proyectoNombre ? proyectoNombre : 'Bot'}
+          {proyectoNombre && <span className="ml-2 text-xs font-medium opacity-40">Bot</span>}
+        </div>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} title="Conectado a Claude" />
           <button onClick={clearChat} className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ color: '#555', background: '#1E1E1E' }}>Limpiar</button>

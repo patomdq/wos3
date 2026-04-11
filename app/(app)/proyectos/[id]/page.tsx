@@ -485,9 +485,16 @@ export default function ProyectoDetalle() {
 
   return (
     <div className="p-4" style={{ background: '#0A0A0A', minHeight: '100vh' }}>
-      <button onClick={() => router.back()} className="flex items-center gap-1.5 mb-4 text-sm font-bold text-white opacity-60 hover:opacity-100">
-        ← Volver
-      </button>
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm font-bold text-white opacity-60 hover:opacity-100">
+          ← Volver
+        </button>
+        <button onClick={() => router.push(`/bot?proyecto_id=${id}`)}
+          className="flex items-center gap-1.5 text-sm font-black px-3 py-1.5 rounded-xl text-white"
+          style={{ background: '#F26E1F' }}>
+          🤖 Bot
+        </button>
+      </div>
 
       {/* Hero */}
       <div className="rounded-2xl p-4 mb-4 relative overflow-hidden" style={CARD}>
