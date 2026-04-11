@@ -174,6 +174,33 @@ export default function ProyectosPage() {
         )
       })()}
 
+      {/* Avance obra */}
+      {activos.filter(p => ['comprado','reforma'].includes(p.estado)).length > 0 && (
+        <div className="rounded-2xl p-4 mb-5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-lg">🔨</span>
+            <div className="font-black text-[14px] text-white">Avance de obra</div>
+          </div>
+          <div className="flex flex-col gap-3">
+            {activos.filter(p => ['comprado','reforma'].includes(p.estado)).map(p => {
+              const pct = p.avance_reforma || 0
+              const color = pct >= 75 ? '#22C55E' : pct >= 40 ? '#F26E1F' : '#60A5FA'
+              return (
+                <div key={p.id} onClick={() => router.push(`/proyectos/${p.id}`)} className="cursor-pointer">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-[13px] font-black text-white truncate flex-1 mr-2">{p.nombre}</div>
+                    <div className="text-[13px] font-black flex-shrink-0" style={{ color }}>{pct}%</div>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Cards */}
       {loading ? (
         <div className="space-y-2">
