@@ -3,7 +3,7 @@
 
 const CLIENT_ID     = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
-const REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI || 'https://wos3-rho.vercel.app/api/google/callback'
+const REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI || 'https://wos3.vercel.app/api/google/callback'
 export const SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events'
 export const TZ     = 'Europe/Madrid'
 
