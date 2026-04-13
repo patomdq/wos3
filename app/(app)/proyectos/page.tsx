@@ -78,6 +78,14 @@ export default function ProyectosPage() {
     else alert('Error al eliminar el proyecto.')
   }
 
+  const cerrarProyecto = async (p: Proyecto, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm(`¿Cerrar la operación "${p.nombre}"?\nEl proyecto pasará a "Operaciones finalizadas" en HASU.`)) return
+    const { error } = await supabase.from('proyectos').update({ estado: 'cerrado' }).eq('id', p.id)
+    if (!error) setProyectos(prev => prev.map(x => x.id === p.id ? { ...x, estado: 'cerrado' } : x))
+    else alert('Error al cerrar el proyecto.')
+  }
+
   const visibles = proyectos.filter(p => canAccessProject(user?.permisos ?? null, p.id))
   const activos  = visibles.filter(p => ['comprado','reforma','venta'].includes(p.estado))
   const pipeline = visibles.filter(p => ['captado','analisis','ofertado'].includes(p.estado))
@@ -369,6 +377,13 @@ export default function ProyectosPage() {
                             <div className="text-[11px] font-medium mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>{semCfg.label}</div>
                           </div>
                         </div>
+
+                        {/* Cerrar operación */}
+                        <button onClick={ev => cerrarProyecto(p, ev)}
+                          className="w-full py-3 rounded-xl text-sm font-black mb-2"
+                          style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}>
+                          Cerrar operación ✓
+                        </button>
 
                         {/* Abrir completo */}
                         <button onClick={() => router.push(`/proyectos/${p.id}`)}

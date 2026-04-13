@@ -434,6 +434,20 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'convertir_estudio_a_proyecto',
+    description: 'Busca un inmueble en "En Estudio" por dirección o nombre y lo convierte en proyecto activo con estado "comprado". Usalo cuando el usuario diga que un inmueble está comprado, se compró, o quiere pasarlo a proyectos. Busca por texto parcial en dirección o nombre.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        busqueda: { type: 'string', description: 'Dirección, nombre o texto para buscar el inmueble en estudios. Ej: "Calle Mayor 5"' },
+        precio_compra: { type: 'number', description: 'Precio de compra en euros (opcional, usa el del estudio si no se indica)' },
+        fecha_compra: { type: 'string', description: 'Fecha de compra YYYY-MM-DD (opcional, default hoy)' },
+        notas: { type: 'string', description: 'Notas adicionales' },
+      },
+      required: ['busqueda'],
+    },
+  },
+  {
     name: 'update_proyecto',
     description: 'Actualiza datos de un proyecto existente. Usalo para: cambiar el estado en el pipeline, actualizar el avance de obra, actualizar los escenarios de precio de venta (conservador/realista/optimista), o modificar cualquier dato del proyecto. Necesitás el ID del proyecto.',
     input_schema: {
@@ -921,6 +935,66 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (error) return { result: `Error al eliminar proyecto: ${error.message}` }
       return { result: `Proyecto eliminado: "${input.nombre || input.id}".` }
     }
+    if (name === 'convertir_estudio_a_proyecto') {
+      // Buscar en inmuebles_estudio por dirección o nombre
+      const { data: estudios, error: busqErr } = await supabaseAdmin
+        .from('inmuebles_estudio')
+        .select('*')
+        .or(`direccion.ilike.%${input.busqueda}%,nombre.ilike.%${input.busqueda}%`)
+        .neq('estado', 'comprado')
+        .order('created_at', { ascending: false })
+        .limit(1)
+      if (busqErr) return { result: `Error al buscar: ${busqErr.message}` }
+      if (!estudios || estudios.length === 0) {
+        return { result: `No encontré ningún inmueble en estudio que coincida con "${input.busqueda}". Verificá el nombre o dirección.` }
+      }
+      const estudio = estudios[0]
+      const hoy = new Date().toISOString().split('T')[0]
+      const { data: proyecto, error: proyErr } = await supabaseAdmin.from('proyectos').insert([{
+        nombre: estudio.nombre || estudio.direccion,
+        direccion: estudio.direccion || null,
+        ciudad: estudio.ciudad || null,
+        tipo: 'piso',
+        estado: 'comprado',
+        precio_compra: input.precio_compra || estudio.precio_compra || null,
+        precio_venta_estimado: estudio.precio_venta_objetivo || null,
+        porcentaje_hasu: 100,
+        fecha_compra: input.fecha_compra || hoy,
+        notas: input.notas || null,
+      }]).select().single()
+      if (proyErr) return { result: `Error al crear proyecto: ${proyErr.message}` }
+      // Template partidas
+      const { data: partidasInsertadas } = await supabaseAdmin.from('partidas_reforma')
+        .insert(PARTIDAS_PLANTILLA.map((p: any) => ({
+          proyecto_id: proyecto.id,
+          nombre: p.nombre,
+          categoria: p.categoria,
+          orden: p.orden,
+          presupuesto: 0,
+          ejecutado: 0,
+          estado: 'pendiente',
+        }))).select('id, nombre')
+      if (partidasInsertadas) {
+        const itemsRows: any[] = []
+        for (const partida of partidasInsertadas) {
+          const template = PARTIDAS_PLANTILLA.find((p: any) => p.nombre === partida.nombre)
+          if ((template as any)?.items) {
+            for (const item of (template as any).items) {
+              itemsRows.push({ partida_id: partida.id, nombre: item.nombre, orden: item.orden })
+            }
+          }
+        }
+        if (itemsRows.length > 0) await supabaseAdmin.from('items_partida').insert(itemsRows)
+      }
+      // Marcar estudio como comprado
+      await supabaseAdmin.from('inmuebles_estudio').update({ estado: 'comprado' }).eq('id', estudio.id)
+      return {
+        result: `Proyecto creado desde "${estudio.direccion || estudio.nombre}". Nombre: "${proyecto.nombre}", Estado: Comprado, Precio: ${proyecto.precio_compra || 'sin especificar'}€. Se cargaron las partidas de reforma por defecto.`,
+        table: 'proyectos',
+        recordId: proyecto.id,
+        label: proyecto.nombre,
+      }
+    }
     if (name === 'insert_proyecto') {
       const { data, error } = await supabaseAdmin.from('proyectos').insert([{
         nombre: input.nombre,
@@ -1026,6 +1100,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - proyectos, cuentas bancarias, movimientos, tareas, partidas de reforma, radar, bitácora, proveedores
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
+- TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto para buscarlo en En Estudio y crear el proyecto automáticamente. Para finalizar un proyecto usá update_proyecto con estado="cerrado" — aparecerá en HASU como operación finalizada.
 
 REGLAS DE RESPUESTA — MUY IMPORTANTE:
 1. NUNCA muestres IDs, UUIDs ni códigos al usuario. Son internos. Usalos solo para llamar herramientas.

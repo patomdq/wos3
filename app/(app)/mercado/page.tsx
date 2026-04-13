@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
 
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
 const fmt2 = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n)
@@ -26,7 +28,7 @@ const CONCEPTOS_GASTOS = [
 
 type Gastos = Record<string, { estimado: number; real: number }>
 type Radar = { id: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
-type Estudio = { id: string; nombre?: string; precio_compra: number; precio_venta_objetivo: number; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string }
+type Estudio = { id: string; nombre?: string; precio_compra: number; precio_venta_objetivo: number; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string }
 
 const SCRAPER_DATA = [
   { precio: 48000, dir: 'C/ Real 7', ciudad: 'Los Gallardos', hab: 3, m2: 85, tag: 'Reformar', epm: 565, fecha: 'hoy' },
@@ -36,6 +38,13 @@ const SCRAPER_DATA = [
   { precio: 35000, dir: 'C/ Nueva 3', ciudad: 'Albox', hab: 2, m2: 65, tag: 'Reformar', epm: 538, fecha: 'hace 2d' },
   { precio: 78000, dir: 'C/ Almería 9', ciudad: 'Vera', hab: 3, m2: 98, tag: 'Buen estado', epm: 796, fecha: 'hace 2d' },
 ]
+
+const SUBESTADO_CFG: Record<string, { label: string; color: string; bg: string }> = {
+  en_estudio: { label: 'En estudio', color: '#60A5FA', bg: 'rgba(96,165,250,0.15)' },
+  ofertado:   { label: 'Ofertado',   color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+  en_arras:   { label: 'En arras',   color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
+  comprado:   { label: 'Comprado',   color: '#22C55E', bg: 'rgba(34,197,94,0.15)' },
+}
 
 function emptyGastos(): Gastos {
   const g: Gastos = {}
@@ -71,10 +80,12 @@ type ScraperItem = { precio: number; dir: string; ciudad: string; hab: number; m
 const emptyRadarForm = () => ({ direccion: '', ciudad: '', precio: '', habitaciones: '', superficie: '', estado: 'reformar', fuente: 'WhatsApp', notas: '', url: '' })
 
 export default function MercadoPage() {
+  const router = useRouter()
   const [tab, setTab] = useState(0)
   const [radar, setRadar] = useState<Radar[]>([])
   const [estudio, setEstudio] = useState<Estudio[]>([])
   const [loading, setLoading] = useState(true)
+  const [creando, setCreando] = useState<string | null>(null)
 
   // Radar form (crear)
   const [radarOpen, setRadarOpen] = useState(false)
@@ -292,6 +303,58 @@ export default function MercadoPage() {
     if (!error) setEstudio(prev => prev.filter(e => e.id !== id))
   }
 
+  // Cambiar sub-estado de estudio
+  const updateEstudioEstado = async (id: string, nuevoEstado: string) => {
+    const { error } = await supabase.from('inmuebles_estudio').update({ estado: nuevoEstado }).eq('id', id)
+    if (!error) setEstudio(prev => prev.map(e => e.id === id ? { ...e, estado: nuevoEstado } : e))
+  }
+
+  // Convertir estudio a proyecto (disparado por botón "Comprado")
+  const crearProyectoDesdeEstudio = async (e: Estudio) => {
+    if (!confirm(`¿Marcar "${e.nombre || e.direccion}" como comprado y crear proyecto?`)) return
+    setCreando(e.id)
+    const { data: proyecto, error } = await supabase.from('proyectos').insert([{
+      nombre: e.nombre || e.direccion,
+      direccion: e.direccion,
+      ciudad: e.ciudad || null,
+      tipo: 'piso',
+      estado: 'comprado',
+      precio_compra: e.precio_compra || null,
+      precio_venta_estimado: e.precio_venta_objetivo || null,
+      porcentaje_hasu: 100,
+      fecha_compra: new Date().toISOString().split('T')[0],
+    }]).select().single()
+    if (error) { alert(`Error al crear proyecto: ${error.message}`); setCreando(null); return }
+    // Insert template partidas
+    const { data: partidasInsertadas } = await supabase.from('partidas_reforma')
+      .insert(PARTIDAS_PLANTILLA.map(p => ({
+        proyecto_id: proyecto.id,
+        nombre: p.nombre,
+        categoria: p.categoria,
+        orden: p.orden,
+        presupuesto: 0,
+        ejecutado: 0,
+        estado: 'pendiente',
+      }))).select('id, nombre')
+    if (partidasInsertadas) {
+      const itemsRows: any[] = []
+      for (const partida of partidasInsertadas) {
+        const template = PARTIDAS_PLANTILLA.find(pt => pt.nombre === partida.nombre)
+        if (template?.items) {
+          for (const item of template.items) {
+            itemsRows.push({ partida_id: partida.id, nombre: item.nombre, orden: item.orden })
+          }
+        }
+      }
+      if (itemsRows.length > 0) await supabase.from('items_partida').insert(itemsRows)
+    }
+    // Marcar estudio como comprado
+    await supabase.from('inmuebles_estudio').update({ estado: 'comprado' }).eq('id', e.id)
+    setEstudio(prev => prev.map(x => x.id === e.id ? { ...x, estado: 'comprado' } : x))
+    setCreando(null)
+    router.push('/proyectos')
+  }
+
   // PDF
   const exportarPDF = () => {
     if (!res) return
@@ -488,11 +551,59 @@ export default function MercadoPage() {
                     </button>
                   </div>
                   <div className="text-sm font-medium mb-2" style={{ color: '#888' }}>{e.direccion}{e.ciudad ? ` · ${e.ciudad}` : ''}</div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 mt-1">
                     <div className="font-black text-sm" style={{ color: '#22C55E' }}>↗ ROI {e.roi_estimado?.toFixed(1)}%</div>
                     <div className="text-xs" style={{ color: '#555' }}>· Venta obj. {fmt(e.precio_venta_objetivo || 0)}</div>
+                    {(() => {
+                      const cfg = SUBESTADO_CFG[e.estado || 'en_estudio'] || SUBESTADO_CFG.en_estudio
+                      return (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full ml-auto"
+                          style={{ background: cfg.bg, color: cfg.color }}>
+                          {cfg.label}
+                        </span>
+                      )
+                    })()}
                   </div>
                 </div>
+
+                {/* Botones de estado — visibles solo si no está comprado */}
+                {e.estado !== 'comprado' && (
+                  <div className="flex gap-2 px-4 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span className="text-[10px] font-bold self-center flex-shrink-0 uppercase tracking-wide" style={{ color: '#555' }}>Estado:</span>
+                    {(['ofertado', 'en_arras'] as const).map(s => {
+                      const cfg = SUBESTADO_CFG[s]
+                      const activo = (e.estado || 'en_estudio') === s
+                      return (
+                        <button key={s} onClick={() => updateEstudioEstado(e.id, activo ? 'en_estudio' : s)}
+                          className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                          style={{
+                            background: activo ? cfg.bg : 'rgba(255,255,255,0.05)',
+                            color: activo ? cfg.color : '#666',
+                            border: `1px solid ${activo ? cfg.color + '60' : 'rgba(255,255,255,0.08)'}`,
+                          }}>
+                          {cfg.label}
+                        </button>
+                      )
+                    })}
+                    <button onClick={() => crearProyectoDesdeEstudio(e)}
+                      disabled={creando === e.id}
+                      className="text-[11px] font-black px-2.5 py-1 rounded-lg ml-auto disabled:opacity-50"
+                      style={{ background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.35)' }}>
+                      {creando === e.id ? '...' : 'Comprado →'}
+                    </button>
+                  </div>
+                )}
+                {e.estado === 'comprado' && (
+                  <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(34,197,94,0.06)' }}>
+                    <span className="text-[11px] font-bold" style={{ color: '#22C55E' }}>✓ Proyecto creado</span>
+                    <button onClick={() => router.push('/proyectos')}
+                      className="text-[11px] font-black px-2.5 py-1 rounded-lg ml-auto"
+                      style={{ background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.35)' }}>
+                      Ver proyectos →
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex gap-2 px-4 py-3" style={{ background: '#1E1E1E', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <span className="text-xs font-semibold flex-1" style={{ color: '#888' }}>Analizado {e.analizado_en}</span>
                   <button onClick={() => exportarPDF()}
