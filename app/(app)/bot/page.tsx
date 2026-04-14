@@ -55,11 +55,12 @@ export default function BotPage() {
 
       if (proyectoId) {
         // Contexto específico del proyecto — mínimo de tokens
-        const [{ data: proy }, { data: partidas }, { data: movs }, { data: tareas }] = await Promise.all([
+        const [{ data: proy }, { data: partidas }, { data: movs }, { data: tareas }, { data: prospectos }] = await Promise.all([
           supabase.from('proyectos').select('id,nombre,estado,ciudad,precio_compra,avance_reforma').eq('id', proyectoId).single(),
           supabase.from('partidas_reforma').select('id,nombre,estado,presupuesto,ejecutado,fecha_inicio,fecha_fin_estimada').eq('proyecto_id', proyectoId).order('orden'),
           supabase.from('movimientos').select('id,concepto,monto,fecha').eq('proyecto_id', proyectoId).order('fecha', { ascending: false }).limit(8),
           supabase.from('tareas').select('id,titulo,prioridad,estado').eq('proyecto_id', proyectoId).eq('estado', 'Pendiente').limit(5),
+          supabase.from('prospectos').select('id,nombre,telefono,email,estado,mejor_oferta,proxima_visita').eq('proyecto_id', proyectoId).order('created_at', { ascending: false }),
         ])
         if (proy) setProyectoNombre(proy.nombre)
         ctx = [
@@ -67,6 +68,7 @@ export default function BotPage() {
           partidas?.length ? `Partidas (ID|Nombre|Estado|Presup|Ejecutado|Inicio|FinEst):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.presupuesto}€|${p.ejecutado}€|${p.fecha_inicio??'-'}|${p.fecha_fin_estimada??'-'}`).join('\n')}` : '',
           movs?.length ? `Movimientos (ID|Concepto|Monto|Fecha):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}`).join('\n')}` : '',
           tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
+          prospectos?.length ? `Prospectos Comercialización (ID|Nombre|Estado|Oferta|ProxVisita):\n${prospectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.mejor_oferta??'-'}€|${p.proxima_visita??'-'}`).join('\n')}` : 'Prospectos: sin datos aún.',
         ].filter(Boolean).join('\n')
       } else {
         // Contexto global

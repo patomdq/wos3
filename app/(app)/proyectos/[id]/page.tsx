@@ -3,7 +3,14 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-const TABS = ['Finanzas','Reforma','Pendientes','Bitácora','Inversor','Docs']
+const TABS = ['Finanzas','Reforma','Pendientes','Bitácora','Inversor','Docs','Comercialización']
+
+const ESTADOS_PROSPECTO = ['Contactado','Visita programada','Visita realizada','Oferta recibida','En negociación','Descartado']
+const ESTADO_PROSPECTO_COLOR: Record<string,string> = {
+  'Contactado':'#60A5FA','Visita programada':'#F59E0B','Visita realizada':'#a78bfa',
+  'Oferta recibida':'#F26E1F','En negociación':'#22C55E','Descartado':'#EF4444',
+}
+const TIPOS_INTERACCION = ['llamada','visita','mensaje','email','nota']
 const ESTADO_COLOR: Record<string,string> = { captado:'#888', analisis:'#60A5FA', ofertado:'#F59E0B', comprado:'#22C55E', reforma:'#F26E1F', venta:'#a78bfa', cerrado:'#22C55E' }
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2}).format(n)
 const fmtK = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
@@ -101,6 +108,19 @@ export default function ProyectoDetalle() {
   const [docForm, setDocForm] = useState({ nombre:'', url:'', tipo:'' })
   const [savingDoc, setSavingDoc] = useState(false)
 
+  // Comercialización - Prospectos
+  const [prospectos, setProspectos] = useState<any[]>([])
+  const [interacciones, setInteracciones] = useState<Record<string, any[]>>({})
+  const [expandedProspecto, setExpandedProspecto] = useState<string|null>(null)
+  const [showProspectoForm, setShowProspectoForm] = useState(false)
+  const [editingProspectoId, setEditingProspectoId] = useState<string|null>(null)
+  const [prospectoForm, setProspectoForm] = useState({ nombre:'', telefono:'', email:'', estado:'Contactado', mejor_oferta:'', proxima_visita:'', notas:'' })
+  const [savingProspecto, setSavingProspecto] = useState(false)
+  const [showInteraccionForm, setShowInteraccionForm] = useState(false)
+  const [interaccionProspectoId, setInteraccionProspectoId] = useState<string>('')
+  const [interaccionForm, setInteraccionForm] = useState({ tipo:'llamada', fecha: new Date().toISOString().split('T')[0], nota:'' })
+  const [savingInteraccion, setSavingInteraccion] = useState(false)
+
   const loadMovimientos = async () => {
     const { data } = await supabase.from('movimientos').select('*').eq('proyecto_id', id).order('fecha', { ascending: false })
     setMovimientos(data || [])
@@ -121,7 +141,8 @@ export default function ProyectoDetalle() {
       supabase.from('bitacora').select('*').eq('proyecto_id', id).order('created_at', { ascending: false }),
       supabase.from('proyecto_inversores').select('*, inversores(nombre, email)').eq('proyecto_id', id).single(),
       supabase.from('documentos').select('*').eq('proyecto_id', id).order('created_at', { ascending: false }),
-    ]).then(([p, m, pa, t, b, inv, d]) => {
+      supabase.from('prospectos').select('*').eq('proyecto_id', id).order('created_at', { ascending: false }),
+    ]).then(([p, m, pa, t, b, inv, d, pr]) => {
       setProyecto(p.data)
       setMovimientos(m.data || [])
       setPartidas(pa.data || [])
@@ -129,6 +150,7 @@ export default function ProyectoDetalle() {
       setBitacora(b.data || [])
       setInversor(inv.data)
       setDocs(d.data || [])
+      setProspectos(pr.data || [])
       setLoading(false)
     })
   }, [id])
@@ -449,6 +471,85 @@ export default function ProyectoDetalle() {
     if (!confirm('¿Eliminar este documento?')) return
     await supabase.from('documentos').delete().eq('id', docId)
     setDocs(d => d.filter(x => x.id !== docId))
+  }
+
+  // ─── Prospectos handlers ─────────────────────────────────
+  const loadProspectos = async () => {
+    const { data } = await supabase.from('prospectos').select('*').eq('proyecto_id', id).order('created_at', { ascending: false })
+    setProspectos(data || [])
+  }
+
+  const openProspectoForm = (p?: any) => {
+    if (p) {
+      setProspectoForm({ nombre: p.nombre, telefono: p.telefono||'', email: p.email||'', estado: p.estado, mejor_oferta: p.mejor_oferta?.toString()||'', proxima_visita: p.proxima_visita||'', notas: p.notas||'' })
+      setEditingProspectoId(p.id)
+    } else {
+      setProspectoForm({ nombre:'', telefono:'', email:'', estado:'Contactado', mejor_oferta:'', proxima_visita:'', notas:'' })
+      setEditingProspectoId(null)
+    }
+    setShowProspectoForm(true)
+  }
+
+  const saveProspecto = async () => {
+    if (!prospectoForm.nombre.trim()) return
+    setSavingProspecto(true)
+    const payload: any = {
+      proyecto_id: id,
+      nombre: prospectoForm.nombre,
+      telefono: prospectoForm.telefono || null,
+      email: prospectoForm.email || null,
+      estado: prospectoForm.estado,
+      mejor_oferta: parseFloat(prospectoForm.mejor_oferta) || null,
+      proxima_visita: prospectoForm.proxima_visita || null,
+      notas: prospectoForm.notas || null,
+      updated_at: new Date().toISOString(),
+    }
+    if (editingProspectoId) {
+      await supabase.from('prospectos').update(payload).eq('id', editingProspectoId)
+    } else {
+      await supabase.from('prospectos').insert([payload])
+    }
+    await loadProspectos()
+    setShowProspectoForm(false)
+    setEditingProspectoId(null)
+    setSavingProspecto(false)
+  }
+
+  const deleteProspecto = async (pid: string) => {
+    if (!confirm('¿Eliminar este prospecto?')) return
+    await supabase.from('prospectos').delete().eq('id', pid)
+    setProspectos(p => p.filter(x => x.id !== pid))
+    if (expandedProspecto === pid) setExpandedProspecto(null)
+  }
+
+  const toggleProspecto = async (pid: string) => {
+    if (expandedProspecto === pid) { setExpandedProspecto(null); return }
+    setExpandedProspecto(pid)
+    if (!interacciones[pid]) {
+      const { data } = await supabase.from('interacciones_prospecto').select('*').eq('prospecto_id', pid).order('fecha', { ascending: false })
+      setInteracciones(m => ({ ...m, [pid]: data || [] }))
+    }
+  }
+
+  const saveInteraccion = async () => {
+    if (!interaccionForm.nota.trim()) return
+    setSavingInteraccion(true)
+    await supabase.from('interacciones_prospecto').insert([{
+      prospecto_id: interaccionProspectoId,
+      tipo: interaccionForm.tipo,
+      fecha: interaccionForm.fecha,
+      nota: interaccionForm.nota,
+    }])
+    const { data } = await supabase.from('interacciones_prospecto').select('*').eq('prospecto_id', interaccionProspectoId).order('fecha', { ascending: false })
+    setInteracciones(m => ({ ...m, [interaccionProspectoId]: data || [] }))
+    setShowInteraccionForm(false)
+    setInteraccionForm({ tipo:'llamada', fecha: new Date().toISOString().split('T')[0], nota:'' })
+    setSavingInteraccion(false)
+  }
+
+  const deleteInteraccion = async (interaccionId: string, prospectoId: string) => {
+    await supabase.from('interacciones_prospecto').delete().eq('id', interaccionId)
+    setInteracciones(m => ({ ...m, [prospectoId]: (m[prospectoId]||[]).filter(x => x.id !== interaccionId) }))
   }
 
   if (loading) return (
@@ -1110,6 +1211,236 @@ export default function ProyectoDetalle() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ═══ Tab: COMERCIALIZACIÓN ═══ */}
+      {tab === 6 && (() => {
+        const activos = prospectos.filter(p => p.estado !== 'Descartado')
+        const mejorOferta = prospectos.reduce((max: number, p: any) => p.mejor_oferta > max ? p.mejor_oferta : max, 0)
+        const proximaVisita = prospectos
+          .filter((p: any) => p.proxima_visita && p.estado !== 'Descartado')
+          .sort((a: any, b: any) => a.proxima_visita.localeCompare(b.proxima_visita))[0]
+        return (
+          <div>
+            {/* Resumen */}
+            <div className="grid grid-cols-3 gap-2.5 mb-4">
+              <div className="rounded-xl p-3.5" style={CARD}>
+                <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Activos</div>
+                <div className="font-black text-[22px] text-white">{activos.length}</div>
+              </div>
+              <div className="rounded-xl p-3.5" style={CARD}>
+                <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Mejor oferta</div>
+                <div className="font-black text-[18px]" style={{ color:'#22C55E' }}>{mejorOferta ? fmtK(mejorOferta) : '—'}</div>
+              </div>
+              <div className="rounded-xl p-3.5" style={CARD}>
+                <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Próx. visita</div>
+                <div className="font-black text-[13px] text-white">{proximaVisita ? new Date(proximaVisita.proxima_visita).toLocaleDateString('es-ES',{day:'2-digit',month:'short'}) : '—'}</div>
+                {proximaVisita && <div className="text-[10px] font-bold mt-0.5" style={{ color:'rgba(255,255,255,0.4)' }}>{proximaVisita.nombre}</div>}
+              </div>
+            </div>
+
+            {/* Botón agregar */}
+            <div className="flex justify-end mb-3">
+              <button onClick={() => openProspectoForm()}
+                className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
+                style={{ background:'#F26E1F' }}>
+                + Prospecto
+              </button>
+            </div>
+
+            {/* Lista */}
+            {prospectos.length === 0 ? (
+              <div className="text-center py-12 text-sm" style={{ color:'rgba(255,255,255,0.3)' }}>Sin prospectos. Agregá o usá el bot.</div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {prospectos.map((p: any) => {
+                  const isExpanded = expandedProspecto === p.id
+                  const ec = ESTADO_PROSPECTO_COLOR[p.estado] || '#888'
+                  const ints = interacciones[p.id] || []
+                  return (
+                    <div key={p.id} className="rounded-2xl overflow-hidden" style={CARD}>
+                      {/* Header */}
+                      <div className="p-3.5 flex items-start gap-3">
+                        <button onClick={() => toggleProspecto(p.id)}
+                          className="w-6 h-6 rounded flex items-center justify-center text-[11px] font-black flex-shrink-0 mt-0.5"
+                          style={{ background:'rgba(255,255,255,0.08)', color: isExpanded ? '#F26E1F' : '#888' }}>
+                          {isExpanded ? '▾' : '▸'}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-black text-[15px] text-white">{p.nombre}</span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background:`${ec}22`, color:ec }}>
+                              {p.estado}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-3 mt-1">
+                            {p.telefono && <span className="text-xs font-bold" style={{ color:'rgba(255,255,255,0.5)' }}>📞 {p.telefono}</span>}
+                            {p.email && <span className="text-xs font-bold truncate" style={{ color:'rgba(255,255,255,0.5)' }}>✉ {p.email}</span>}
+                            {p.mejor_oferta && <span className="text-xs font-black" style={{ color:'#22C55E' }}>💰 {fmtK(p.mejor_oferta)}</span>}
+                            {p.proxima_visita && p.estado !== 'Descartado' && <span className="text-xs font-bold" style={{ color:'#F59E0B' }}>📅 {new Date(p.proxima_visita).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <button onClick={() => openProspectoForm(p)} className="text-xs font-bold px-2 py-1 rounded-lg text-white" style={{ background:'rgba(255,255,255,0.08)' }}>✎</button>
+                          <button onClick={() => deleteProspecto(p.id)} className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
+                        </div>
+                      </div>
+                      {/* Interacciones expandibles */}
+                      {isExpanded && (
+                        <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)', background:'rgba(0,0,0,0.2)' }}>
+                          <div className="flex items-center justify-between px-4 py-2.5">
+                            <span className="text-[11px] font-black uppercase tracking-wide" style={{ color:'#888' }}>Interacciones ({ints.length})</span>
+                            <button
+                              onClick={() => { setInteraccionProspectoId(p.id); setInteraccionForm({ tipo:'llamada', fecha: new Date().toISOString().split('T')[0], nota:'' }); setShowInteraccionForm(true) }}
+                              className="text-[11px] font-black px-2.5 py-1 rounded-lg text-white"
+                              style={{ background:'#F26E1F' }}>
+                              + Registrar
+                            </button>
+                          </div>
+                          {ints.length === 0 ? (
+                            <div className="px-4 pb-3 text-xs" style={{ color:'rgba(255,255,255,0.3)' }}>Sin interacciones registradas</div>
+                          ) : (
+                            <div className="px-4 pb-3 flex flex-col gap-2">
+                              {ints.map((int: any) => (
+                                <div key={int.id} className="flex gap-3 items-start group">
+                                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: ESTADO_PROSPECTO_COLOR[p.estado] || '#F26E1F' }} />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[11px] font-black" style={{ color:'#F26E1F', textTransform:'capitalize' }}>{int.tipo}</span>
+                                      <span className="text-[11px]" style={{ color:'rgba(255,255,255,0.4)' }}>{new Date(int.fecha).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})}</span>
+                                    </div>
+                                    {int.nota && <div className="text-xs font-medium mt-0.5" style={{ color:'rgba(255,255,255,0.7)' }}>{int.nota}</div>}
+                                  </div>
+                                  <button onClick={() => deleteInteraccion(int.id, p.id)} className="text-[10px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* ─────── FORM: Prospecto ─────── */}
+      {showProspectoForm && (
+        <>
+          <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowProspectoForm(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] overflow-y-auto"
+            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto', maxHeight:'90vh' }}>
+            <div className="p-5 pb-10">
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+              <div className="flex justify-between items-center mb-5">
+                <div className="font-black text-[17px] text-white">{editingProspectoId ? 'Editar prospecto' : 'Nuevo prospecto'}</div>
+                <button onClick={() => setShowProspectoForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+              </div>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
+                  <input type="text" value={prospectoForm.nombre} placeholder="Nombre completo"
+                    onChange={e => setProspectoForm(f=>({...f,nombre:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Teléfono</label>
+                    <input type="tel" value={prospectoForm.telefono} placeholder="612 345 678"
+                      onChange={e => setProspectoForm(f=>({...f,telefono:e.target.value}))}
+                      className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Email</label>
+                    <input type="email" value={prospectoForm.email} placeholder="email@ejemplo.com"
+                      onChange={e => setProspectoForm(f=>({...f,email:e.target.value}))}
+                      className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Estado</label>
+                  <select value={prospectoForm.estado} onChange={e => setProspectoForm(f=>({...f,estado:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
+                    {ESTADOS_PROSPECTO.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Mejor oferta (€)</label>
+                    <input type="number" step="1000" value={prospectoForm.mejor_oferta} placeholder="85000"
+                      onChange={e => setProspectoForm(f=>({...f,mejor_oferta:e.target.value}))}
+                      className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Próxima visita</label>
+                    <input type="date" value={prospectoForm.proxima_visita}
+                      onChange={e => setProspectoForm(f=>({...f,proxima_visita:e.target.value}))}
+                      className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Notas</label>
+                  <textarea rows={2} value={prospectoForm.notas} placeholder="Observaciones..."
+                    onChange={e => setProspectoForm(f=>({...f,notas:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium resize-none" style={INPUT_STYLE} />
+                </div>
+              </div>
+              <button onClick={saveProspecto} disabled={savingProspecto || !prospectoForm.nombre.trim()}
+                className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
+                style={{ background:'#F26E1F' }}>
+                {savingProspecto ? 'Guardando...' : editingProspectoId ? 'Actualizar' : 'Agregar prospecto'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ─────── FORM: Interacción ─────── */}
+      {showInteraccionForm && (
+        <>
+          <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowInteraccionForm(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] overflow-y-auto"
+            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto', maxHeight:'80vh' }}>
+            <div className="p-5 pb-10">
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+              <div className="flex justify-between items-center mb-5">
+                <div className="font-black text-[17px] text-white">Registrar interacción</div>
+                <button onClick={() => setShowInteraccionForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+              </div>
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo</label>
+                    <select value={interaccionForm.tipo} onChange={e => setInteraccionForm(f=>({...f,tipo:e.target.value}))}
+                      className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium capitalize" style={INPUT_STYLE}>
+                      {TIPOS_INTERACCION.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha</label>
+                    <input type="date" value={interaccionForm.fecha}
+                      onChange={e => setInteraccionForm(f=>({...f,fecha:e.target.value}))}
+                      className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nota *</label>
+                  <textarea rows={3} value={interaccionForm.nota} placeholder="Descripción de la interacción..."
+                    onChange={e => setInteraccionForm(f=>({...f,nota:e.target.value}))}
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium resize-none" style={INPUT_STYLE} />
+                </div>
+              </div>
+              <button onClick={saveInteraccion} disabled={savingInteraccion || !interaccionForm.nota.trim()}
+                className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
+                style={{ background:'#F26E1F' }}>
+                {savingInteraccion ? 'Guardando...' : 'Registrar'}
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* ─────── FORM: Movimiento ─────── */}

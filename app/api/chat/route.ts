@@ -448,6 +448,68 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'insert_prospecto',
+    description: 'Agrega un prospecto (comprador potencial) a un proyecto. Usalo cuando el usuario diga "agrega prospecto", "nuevo interesado", o indique nombre y teléfono/email de alguien interesado en comprar.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        proyecto_id: { type: 'string', description: 'UUID del proyecto' },
+        nombre: { type: 'string', description: 'Nombre completo del prospecto' },
+        telefono: { type: 'string', description: 'Teléfono de contacto' },
+        email: { type: 'string', description: 'Email de contacto' },
+        estado: { type: 'string', enum: ['Contactado','Visita programada','Visita realizada','Oferta recibida','En negociación','Descartado'], description: 'Estado del prospecto. Default: Contactado' },
+        mejor_oferta: { type: 'number', description: 'Mejor oferta recibida en euros' },
+        proxima_visita: { type: 'string', description: 'Fecha de próxima visita YYYY-MM-DD' },
+        notas: { type: 'string', description: 'Notas adicionales' },
+      },
+      required: ['proyecto_id', 'nombre'],
+    },
+  },
+  {
+    name: 'update_prospecto',
+    description: 'Actualiza un prospecto existente. Usalo para cambiar el estado, registrar una oferta, programar visita o descartar a alguien. Buscá el prospecto_id en el contexto por nombre.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del prospecto' },
+        nombre: { type: 'string', description: 'Nuevo nombre (opcional)' },
+        telefono: { type: 'string' },
+        email: { type: 'string' },
+        estado: { type: 'string', enum: ['Contactado','Visita programada','Visita realizada','Oferta recibida','En negociación','Descartado'] },
+        mejor_oferta: { type: 'number', description: 'Oferta recibida en euros' },
+        proxima_visita: { type: 'string', description: 'Fecha próxima visita YYYY-MM-DD' },
+        notas: { type: 'string' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'delete_prospecto',
+    description: 'Elimina un prospecto. Usalo cuando el usuario pida borrar o quitar un prospecto.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del prospecto' },
+        nombre: { type: 'string', description: 'Nombre (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'insert_interaccion_prospecto',
+    description: 'Registra una interacción (llamada, visita, mensaje, email) con un prospecto. Usalo cuando el usuario mencione que llamó, visitó o mandó un mensaje a un prospecto.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        prospecto_id: { type: 'string', description: 'UUID del prospecto' },
+        tipo: { type: 'string', enum: ['llamada','visita','mensaje','email','nota'], description: 'Tipo de interacción' },
+        fecha: { type: 'string', description: 'Fecha YYYY-MM-DD. Default: hoy' },
+        nota: { type: 'string', description: 'Descripción de la interacción o nota' },
+      },
+      required: ['prospecto_id', 'nota'],
+    },
+  },
+  {
     name: 'update_proyecto',
     description: 'Actualiza datos de un proyecto existente. Usalo para: cambiar el estado en el pipeline, actualizar el avance de obra, actualizar los escenarios de precio de venta (conservador/realista/optimista), o modificar cualquier dato del proyecto. Necesitás el ID del proyecto.',
     input_schema: {
@@ -1056,6 +1118,60 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: data.nombre,
       }
     }
+    if (name === 'insert_prospecto') {
+      const { data, error } = await supabaseAdmin.from('prospectos').insert([{
+        proyecto_id: input.proyecto_id,
+        nombre: input.nombre,
+        telefono: input.telefono || null,
+        email: input.email || null,
+        estado: input.estado || 'Contactado',
+        mejor_oferta: input.mejor_oferta || null,
+        proxima_visita: input.proxima_visita || null,
+        notas: input.notas || null,
+      }]).select().single()
+      if (error) return { result: `Error al guardar prospecto: ${error.message}` }
+      return {
+        result: `Prospecto creado. ID: ${data.id}. Nombre: "${data.nombre}", Estado: ${data.estado}${data.telefono ? ', Tel: '+data.telefono : ''}.`,
+        table: 'prospectos',
+        recordId: data.id,
+        label: `${data.nombre} · ${data.estado}`,
+      }
+    }
+    if (name === 'update_prospecto') {
+      const fields = ['nombre','telefono','email','estado','mejor_oferta','proxima_visita','notas']
+      const updates: Record<string,any> = { updated_at: new Date().toISOString() }
+      for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
+      const { data, error } = await supabaseAdmin.from('prospectos').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al actualizar prospecto: ${error.message}` }
+      const ofertaMsg = data.mejor_oferta ? `, Oferta: ${data.mejor_oferta}€` : ''
+      return {
+        result: `Prospecto actualizado. Nombre: "${data.nombre}", Estado: ${data.estado}${ofertaMsg}.`,
+        table: 'prospectos',
+        recordId: data.id,
+        label: `${data.nombre} · ${data.estado}`,
+      }
+    }
+    if (name === 'delete_prospecto') {
+      const { error } = await supabaseAdmin.from('prospectos').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar prospecto: ${error.message}` }
+      return { result: `Prospecto eliminado: "${input.nombre || input.id}".` }
+    }
+    if (name === 'insert_interaccion_prospecto') {
+      const hoy = new Date().toISOString().split('T')[0]
+      const { data, error } = await supabaseAdmin.from('interacciones_prospecto').insert([{
+        prospecto_id: input.prospecto_id,
+        tipo: input.tipo || 'nota',
+        fecha: input.fecha || hoy,
+        nota: input.nota,
+      }]).select().single()
+      if (error) return { result: `Error al registrar interacción: ${error.message}` }
+      return {
+        result: `Interacción registrada. Tipo: ${data.tipo}, Fecha: ${data.fecha}. Nota: "${data.nota}".`,
+        table: 'interacciones_prospecto',
+        recordId: data.id,
+        label: `${data.tipo} · ${data.fecha}`,
+      }
+    }
     if (name === 'update_proyecto') {
       const fields = [
         'nombre','estado','avance_reforma',
@@ -1101,6 +1217,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto para buscarlo en En Estudio y crear el proyecto automáticamente. Para finalizar un proyecto usá update_proyecto con estado="cerrado" — aparecerá en HASU como operación finalizada.
+- COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
 
 REGLAS DE RESPUESTA — MUY IMPORTANTE:
 1. NUNCA muestres IDs, UUIDs ni códigos al usuario. Son internos. Usalos solo para llamar herramientas.
