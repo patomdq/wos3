@@ -30,6 +30,7 @@ type Gastos = Record<string, { estimado: number; real: number }>
 type Radar = { id: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
 type Estudio = { id: string; nombre?: string; precio_compra: number; precio_venta_objetivo: number; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string }
 type Proveedor = { id: string; nombre: string }
+type Visita = { id: string; radar_id: string; fecha: string; hora: string; responsable: string; notas_previas?: string; estado_post?: string; notas_post?: string; fotos_url?: string; gcal_event_id?: string; created_at: string }
 
 const SCRAPER_DATA = [
   { precio: 48000, dir: 'C/ Real 7', ciudad: 'Los Gallardos', hab: 3, m2: 85, tag: 'Reformar', epm: 565, fecha: 'hoy' },
@@ -118,6 +119,19 @@ export default function MercadoPage() {
   const [pvOpt, setPvOpt] = useState(0)
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState<string | null>(null)
+
+  // Visitas radar
+  const emptyVisitaForm = () => ({ fecha: today(), hora: '10:00', responsable: '', notas_previas: '' })
+  const [openVisitasId, setOpenVisitasId] = useState<string | null>(null)
+  const [visitasRadar, setVisitasRadar] = useState<Record<string, Visita[]>>({})
+  const [loadingVisitas, setLoadingVisitas] = useState<string | null>(null)
+  const [agendandoVisitaId, setAgendandoVisitaId] = useState<string | null>(null)
+  const [visitaForm, setVisitaForm] = useState(emptyVisitaForm())
+  const [savingVisita, setSavingVisita] = useState(false)
+  const [postVisitaId, setPostVisitaId] = useState<string | null>(null)
+  const [postVisitaRadarId, setPostVisitaRadarId] = useState<string | null>(null)
+  const [postVisitaForm, setPostVisitaForm] = useState({ estado_post: 'sigue_en_radar', notas_post: '', fotos_url: '' })
+  const [savingPostVisita, setSavingPostVisita] = useState(false)
 
   // Bitácora estudio
   const [openBitacoraId, setOpenBitacoraId] = useState<string | null>(null)
@@ -435,6 +449,67 @@ export default function MercadoPage() {
     setEditingBitacoraEntryId(b.id)
   }
 
+  // Visitas radar
+  const loadVisitasRadar = async (radarId: string) => {
+    if (visitasRadar[radarId]) return
+    setLoadingVisitas(radarId)
+    const { data } = await supabase.from('visitas_radar').select('*').eq('radar_id', radarId).order('fecha').order('hora')
+    setVisitasRadar(prev => ({ ...prev, [radarId]: data || [] }))
+    setLoadingVisitas(null)
+  }
+
+  const toggleVisitasRadar = (id: string) => {
+    if (openVisitasId === id) { setOpenVisitasId(null); return }
+    setOpenVisitasId(id)
+    loadVisitasRadar(id)
+  }
+
+  const saveVisita = async (r: Radar) => {
+    if (!visitaForm.fecha || !visitaForm.hora || !visitaForm.responsable) return
+    setSavingVisita(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/visitas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ radar_id: r.id, direccion: `${r.direccion}${r.ciudad ? ', '+r.ciudad : ''}`, ...visitaForm }),
+    })
+    setSavingVisita(false)
+    if (!res.ok) { const j = await res.json(); alert(j.error); return }
+    const { visita } = await res.json()
+    setVisitasRadar(prev => ({ ...prev, [r.id]: [visita, ...(prev[r.id] || [])] }))
+    setAgendandoVisitaId(null)
+    setVisitaForm(emptyVisitaForm())
+  }
+
+  const savePostVisita = async (visitaId: string, radarId: string) => {
+    setSavingPostVisita(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/visitas', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ id: visitaId, ...postVisitaForm }),
+    })
+    setSavingPostVisita(false)
+    if (!res.ok) { const j = await res.json(); alert(j.error); return }
+    const { visita } = await res.json()
+    setVisitasRadar(prev => ({ ...prev, [radarId]: (prev[radarId] || []).map(v => v.id === visitaId ? visita : v) }))
+    if (postVisitaForm.estado_post === 'pasa_a_estudio') {
+      const radarItem = radar.find(x => x.id === radarId)
+      if (radarItem) {
+        const { data: estudioNew } = await supabase.from('inmuebles_estudio').insert([{
+          direccion: radarItem.direccion, ciudad: radarItem.ciudad || null,
+          precio_compra: radarItem.precio || 0,
+          precio_venta_objetivo: Math.round((radarItem.precio || 0) * 1.45),
+          roi_estimado: 45, estado: 'en_estudio', analizado_en: today(),
+        }]).select().single()
+        if (estudioNew) setEstudio(prev => [estudioNew, ...prev])
+      }
+    }
+    setPostVisitaId(null)
+    setPostVisitaRadarId(null)
+    setPostVisitaForm({ estado_post: 'sigue_en_radar', notas_post: '', fotos_url: '' })
+  }
+
   // PDF
   const exportarPDF = () => {
     if (!res) return
@@ -571,40 +646,105 @@ export default function MercadoPage() {
             radar.length === 0 ? (
               <div className="text-center py-10 text-sm" style={{ color: '#555' }}>Sin inmuebles en radar todavía</div>
             ) : radar.map(r => (
-              <div key={r.id} className="rounded-2xl p-4 mb-2" style={CARD}>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-black text-[20px] text-white">{fmt(r.precio || 0)}</div>
-                    <div className="text-sm font-medium mt-0.5" style={{ color: '#ccc' }}>{r.direccion}{r.ciudad ? ` · ${r.ciudad}` : ''}</div>
-                    <div className="flex gap-3 mt-1">
-                      {r.habitaciones > 0 && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.habitaciones} hab</span>}
-                      {r.superficie > 0 && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.superficie} m²</span>}
-                      {r.fuente && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.fuente}</span>}
+              <div key={r.id} className="rounded-2xl mb-2 overflow-hidden" style={CARD}>
+                <div className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="font-black text-[20px] text-white">{fmt(r.precio || 0)}</div>
+                      <div className="text-sm font-medium mt-0.5" style={{ color: '#ccc' }}>{r.direccion}{r.ciudad ? ` · ${r.ciudad}` : ''}</div>
+                      <div className="flex gap-3 mt-1">
+                        {r.habitaciones > 0 && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.habitaciones} hab</span>}
+                        {r.superficie > 0 && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.superficie} m²</span>}
+                        {r.fuente && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.fuente}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
+                      <button onClick={() => openCalc(r.precio || 0, `${r.direccion}${r.ciudad ? ' · '+r.ciudad : ''}`, r.ciudad)}
+                        className="text-xs font-black px-3 py-2 rounded-xl"
+                        style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>
+                        → Calcular
+                      </button>
+                      <button onClick={() => openEditRadar(r)}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+                        style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc', border: '1px solid rgba(255,255,255,0.10)' }}
+                        title="Editar">✎</button>
+                      <button onClick={() => deleteRadarItem(r)}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+                        style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.22)' }}
+                        title="Eliminar">🗑</button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
-                    <button onClick={() => openCalc(r.precio || 0, `${r.direccion}${r.ciudad ? ' · '+r.ciudad : ''}`, r.ciudad)}
-                      className="text-xs font-black px-3 py-2 rounded-xl"
+                  {r.notas && <div className="mt-2 text-xs" style={{ color: '#888' }}>{r.notas}</div>}
+                  {r.url && (
+                    <a href={r.url} target="_blank" rel="noopener noreferrer"
+                      className="mt-2 text-xs font-bold inline-flex items-center gap-1"
+                      style={{ color: '#60A5FA' }}>
+                      🔗 Ver en Idealista
+                    </a>
+                  )}
+                </div>
+
+                {/* Visitas footer */}
+                <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#111' }}>
+                  <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#555' }}>
+                    Visitas{visitasRadar[r.id] ? ` (${visitasRadar[r.id].length})` : ''}
+                  </span>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => { setAgendandoVisitaId(r.id); setVisitaForm(emptyVisitaForm()) }}
+                      className="text-[11px] font-black px-2.5 py-1 rounded-lg"
                       style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>
-                      → Calcular
+                      + Agendar
                     </button>
-                    <button onClick={() => openEditRadar(r)}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
-                      style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc', border: '1px solid rgba(255,255,255,0.10)' }}
-                      title="Editar">✎</button>
-                    <button onClick={() => deleteRadarItem(r)}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
-                      style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.22)' }}
-                      title="Eliminar">🗑</button>
+                    <button onClick={() => toggleVisitasRadar(r.id)}
+                      className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                      style={{ background: openVisitasId === r.id ? 'rgba(242,110,31,0.18)' : 'rgba(255,255,255,0.06)', color: openVisitasId === r.id ? '#F26E1F' : '#888', border: `1px solid ${openVisitasId === r.id ? 'rgba(242,110,31,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
+                      {openVisitasId === r.id ? '▲' : '▼ Ver'}
+                    </button>
                   </div>
                 </div>
-                {r.notas && <div className="mt-2 text-xs" style={{ color: '#888' }}>{r.notas}</div>}
-                {r.url && (
-                  <a href={r.url} target="_blank" rel="noopener noreferrer"
-                    className="mt-2 text-xs font-bold inline-flex items-center gap-1"
-                    style={{ color: '#60A5FA' }}>
-                    🔗 Ver en Idealista
-                  </a>
+
+                {/* Visitas expandidas */}
+                {openVisitasId === r.id && (
+                  <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0D0D0D' }}>
+                    {loadingVisitas === r.id
+                      ? <div className="text-xs py-2" style={{ color: '#555' }}>Cargando...</div>
+                      : (visitasRadar[r.id] || []).length === 0
+                        ? <div className="text-xs py-2" style={{ color: '#555' }}>Sin visitas agendadas todavía.</div>
+                        : (visitasRadar[r.id] || []).map(v => (
+                          <div key={v.id} className="rounded-xl p-3 mb-2" style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-sm font-black text-white">{v.fecha} · {v.hora}</div>
+                                <div className="text-xs mt-0.5" style={{ color: '#ccc' }}>Resp: {v.responsable}</div>
+                                {v.notas_previas && <div className="text-xs mt-0.5" style={{ color: '#888' }}>{v.notas_previas}</div>}
+                              </div>
+                              <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                                {v.gcal_event_id && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.15)', color: '#60A5FA' }}>📅</span>}
+                                {!v.estado_post && (
+                                  <button onClick={() => { setPostVisitaId(v.id); setPostVisitaRadarId(r.id); setPostVisitaForm({ estado_post: 'sigue_en_radar', notas_post: '', fotos_url: '' }) }}
+                                    className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                                    style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>
+                                    Post-visita
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {v.estado_post && (
+                              <div className="mt-2 pt-2 flex gap-2 items-start" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex-shrink-0"
+                                  style={{
+                                    background: v.estado_post === 'pasa_a_estudio' ? 'rgba(34,197,94,0.15)' : v.estado_post === 'descartado' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
+                                    color: v.estado_post === 'pasa_a_estudio' ? '#22C55E' : v.estado_post === 'descartado' ? '#EF4444' : '#F59E0B',
+                                  }}>
+                                  {v.estado_post === 'pasa_a_estudio' ? '→ En Estudio' : v.estado_post === 'descartado' ? 'Descartado' : 'Sigue en Radar'}
+                                </span>
+                                {v.notas_post && <span className="text-xs flex-1" style={{ color: '#888' }}>{v.notas_post}</span>}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                    }
+                  </div>
                 )}
               </div>
             ))
@@ -1112,6 +1252,125 @@ export default function MercadoPage() {
                 <button onClick={saveEditRadar} disabled={savingEditRadar}
                   className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>
                   {savingEditRadar ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ═══ MODAL: AGENDAR VISITA ═══ */}
+      {agendandoVisitaId && (() => {
+        const radarItem = radar.find(r => r.id === agendandoVisitaId)
+        if (!radarItem) return null
+        return (
+          <>
+            <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setAgendandoVisitaId(null)} />
+            <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] overflow-y-auto" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '92vh', maxWidth: 480, margin: '0 auto' }}>
+              <div className="p-5 pb-8">
+                <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="font-black text-[17px] text-white">Agendar visita</div>
+                    <div className="text-xs mt-0.5" style={{ color: '#888' }}>{radarItem.direccion}{radarItem.ciudad ? `, ${radarItem.ciudad}` : ''}</div>
+                  </div>
+                  <button onClick={() => setAgendandoVisitaId(null)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#282828', color: '#888' }}>✕</button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Fecha *</label>
+                    <input type="date" value={visitaForm.fecha} onChange={e => setVisitaForm(f => ({ ...f, fecha: e.target.value }))}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP}
+                      onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Hora *</label>
+                    <input type="time" value={visitaForm.hora} onChange={e => setVisitaForm(f => ({ ...f, hora: e.target.value }))}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP}
+                      onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Responsable *</label>
+                    <input type="text" value={visitaForm.responsable} onChange={e => setVisitaForm(f => ({ ...f, responsable: e.target.value }))}
+                      placeholder="Patricio"
+                      className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]" style={INP}
+                      onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Notas previas</label>
+                    <textarea value={visitaForm.notas_previas} onChange={e => setVisitaForm(f => ({ ...f, notas_previas: e.target.value }))}
+                      placeholder="Piso vacío, llave con el portero..." rows={2}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium resize-none placeholder:text-[#555]" style={INP}
+                      onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-5">
+                  <button onClick={() => setAgendandoVisitaId(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+                  <button onClick={() => saveVisita(radarItem)} disabled={savingVisita || !visitaForm.responsable}
+                    className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>
+                    {savingVisita ? 'Agendando...' : '📅 Agendar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )
+      })()}
+
+      {/* ═══ MODAL: POST-VISITA ═══ */}
+      {postVisitaId && postVisitaRadarId && (
+        <>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => { setPostVisitaId(null); setPostVisitaRadarId(null) }} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] overflow-y-auto" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '92vh', maxWidth: 480, margin: '0 auto' }}>
+            <div className="p-5 pb-8">
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
+              <div className="flex items-center justify-between mb-4">
+                <div className="font-black text-[17px] text-white">Registrar resultado</div>
+                <button onClick={() => { setPostVisitaId(null); setPostVisitaRadarId(null) }} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#282828', color: '#888' }}>✕</button>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: '#888' }}>Estado post-visita *</label>
+                <div className="flex gap-2">
+                  {[
+                    { v: 'descartado', label: 'Descartado', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
+                    { v: 'sigue_en_radar', label: 'Sigue en Radar', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+                    { v: 'pasa_a_estudio', label: '→ En Estudio', color: '#22C55E', bg: 'rgba(34,197,94,0.15)' },
+                  ].map(opt => (
+                    <button key={opt.v} onClick={() => setPostVisitaForm(f => ({ ...f, estado_post: opt.v }))}
+                      className="flex-1 py-2 rounded-xl text-[11px] font-black"
+                      style={{
+                        background: postVisitaForm.estado_post === opt.v ? opt.bg : 'rgba(255,255,255,0.05)',
+                        color: postVisitaForm.estado_post === opt.v ? opt.color : '#666',
+                        border: `1px solid ${postVisitaForm.estado_post === opt.v ? opt.color + '60' : 'rgba(255,255,255,0.08)'}`,
+                      }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Notas de la visita</label>
+                <textarea value={postVisitaForm.notas_post} onChange={e => setPostVisitaForm(f => ({ ...f, notas_post: e.target.value }))}
+                  placeholder="Piso en buen estado, cocina renovada..." rows={3}
+                  className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium resize-none placeholder:text-[#555]" style={INP}
+                  onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link a fotos (Drive)</label>
+                <input type="url" value={postVisitaForm.fotos_url} onChange={e => setPostVisitaForm(f => ({ ...f, fotos_url: e.target.value }))}
+                  placeholder="https://drive.google.com/..."
+                  className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]" style={INP}
+                  onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+              </div>
+
+              <div className="flex gap-2">
+                <button onClick={() => { setPostVisitaId(null); setPostVisitaRadarId(null) }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+                <button onClick={() => savePostVisita(postVisitaId, postVisitaRadarId)} disabled={savingPostVisita}
+                  className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>
+                  {savingPostVisita ? 'Guardando...' : 'Guardar resultado'}
                 </button>
               </div>
             </div>

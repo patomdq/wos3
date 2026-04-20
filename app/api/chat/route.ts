@@ -370,6 +370,48 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'agendar_visita_radar',
+    description: 'Agenda una visita a un inmueble del Radar y crea un evento en Google Calendar. Usalo cuando el usuario diga "agenda visita a X el Y a las Z, responsable N".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        busqueda: { type: 'string', description: 'Dirección parcial del inmueble en radar. Ej: "Rulador 30"' },
+        fecha: { type: 'string', description: 'Fecha en formato YYYY-MM-DD. Interpretá fechas relativas.' },
+        hora: { type: 'string', description: 'Hora en formato HH:MM. Ej: "11:00"' },
+        responsable: { type: 'string', description: 'Nombre de la persona que va a la visita. Ej: "Patricio"' },
+        notas_previas: { type: 'string', description: 'Notas previas a la visita (opcional)' },
+      },
+      required: ['busqueda', 'fecha', 'hora', 'responsable'],
+    },
+  },
+  {
+    name: 'listar_visitas_radar',
+    description: 'Lista visitas agendadas. Usalo cuando el usuario pregunte "qué visitas hay", "visitas de esta semana", "visitas a X inmueble".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        fecha_desde: { type: 'string', description: 'Fecha inicio del rango YYYY-MM-DD (opcional, default hoy)' },
+        fecha_hasta: { type: 'string', description: 'Fecha fin del rango YYYY-MM-DD (opcional)' },
+        busqueda: { type: 'string', description: 'Filtrar por dirección del inmueble (opcional)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'registrar_resultado_visita',
+    description: 'Registra el resultado de una visita realizada (post-visita). Usalo cuando el usuario diga "registra visita a X: [descripción], [estado]". Estados: descartado, sigue_en_radar, pasa_a_estudio.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        busqueda: { type: 'string', description: 'Dirección parcial del inmueble en radar para encontrar la visita pendiente' },
+        estado_post: { type: 'string', enum: ['descartado', 'sigue_en_radar', 'pasa_a_estudio'], description: 'Resultado de la visita' },
+        notas_post: { type: 'string', description: 'Notas de la visita realizada' },
+        fotos_url: { type: 'string', description: 'Link a fotos en Drive (opcional)' },
+      },
+      required: ['busqueda', 'estado_post'],
+    },
+  },
+  {
     name: 'update_bitacora',
     description: 'Edita una entrada de bitácora existente.',
     input_schema: {
@@ -1422,6 +1464,122 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: data.nombre,
       }
     }
+    if (name === 'agendar_visita_radar') {
+      const res = await resolveInmueble('inmuebles_radar', input.busqueda)
+      if ('error' in res) return { result: res.error }
+      const inmueble = res.resolved
+      const direccion = `${inmueble.direccion}${inmueble.ciudad ? ', '+inmueble.ciudad : ''}`
+
+      const { data: visita, error: dbErr } = await supabaseAdmin
+        .from('visitas_radar')
+        .insert([{ radar_id: inmueble.id, fecha: input.fecha, hora: input.hora, responsable: input.responsable, notas_previas: input.notas_previas || null }])
+        .select().single()
+      if (dbErr) return { result: `Error al agendar: ${dbErr.message}` }
+
+      // Check for other visits same fecha+hora to group in GCal
+      const { data: mismaHora } = await supabaseAdmin
+        .from('visitas_radar')
+        .select('id, gcal_event_id, radar_id')
+        .eq('fecha', input.fecha)
+        .eq('hora', input.hora)
+        .not('id', 'eq', visita.id)
+        .not('gcal_event_id', 'is', null)
+        .limit(1)
+
+      const gcalToken = await getOrgAccessToken()
+      let gcalEventId: string | null = null
+      if (gcalToken) {
+        const addHour = (h: string) => { const [hh,mm] = h.split(':').map(Number); return `${String((hh+1)%24).padStart(2,'0')}:${String(mm).padStart(2,'0')}` }
+        const horaFin = addHour(input.hora)
+        let title: string
+        if (mismaHora && mismaHora.length > 0) {
+          const { data: todasVisitas } = await supabaseAdmin.from('visitas_radar').select('radar_id').eq('fecha', input.fecha).eq('hora', input.hora)
+          const radarIds = (todasVisitas || []).map((v: any) => v.radar_id)
+          const { data: inmuebles } = await supabaseAdmin.from('inmuebles_radar').select('id,direccion,ciudad').in('id', radarIds)
+          const titulos = (inmuebles || []).map((r: any) => `${r.direccion}${r.ciudad ? ', '+r.ciudad : ''}`).join(' · ')
+          title = `🏠 Visitas — ${titulos}`
+        } else {
+          title = `🏠 Visita — ${direccion}`
+        }
+        const created = await gcalCreateEvent(gcalToken, {
+          title, description: `Responsable: ${input.responsable}${input.notas_previas ? '\n'+input.notas_previas : ''}`,
+          startDateTime: `${input.fecha}T${input.hora}:00`,
+          endDateTime: `${input.fecha}T${horaFin}:00`,
+        })
+        gcalEventId = created?.id || null
+        if (gcalEventId) await supabaseAdmin.from('visitas_radar').update({ gcal_event_id: gcalEventId }).eq('id', visita.id)
+      }
+
+      const gcalMsg = gcalEventId ? ' Evento creado en Google Calendar.' : ''
+      return { result: `Visita agendada para ${inmueble.direccion} el ${input.fecha} a las ${input.hora}. Responsable: ${input.responsable}.${gcalMsg}` }
+    }
+
+    if (name === 'listar_visitas_radar') {
+      const hoy = new Date().toISOString().split('T')[0]
+      let query = supabaseAdmin
+        .from('visitas_radar')
+        .select('*, inmuebles_radar(direccion, ciudad)')
+        .gte('fecha', input.fecha_desde || hoy)
+        .order('fecha').order('hora')
+      if (input.fecha_hasta) query = (query as any).lte('fecha', input.fecha_hasta)
+      if (input.busqueda) {
+        // Filter by radar_id matching address
+        const { data: found } = await supabaseAdmin.from('inmuebles_radar').select('id').ilike('direccion', `%${input.busqueda}%`)
+        const ids = (found || []).map((x: any) => x.id)
+        if (ids.length > 0) query = (query as any).in('radar_id', ids)
+      }
+      const { data, error } = await query.limit(20)
+      if (error) return { result: `Error: ${error.message}` }
+      if (!data || data.length === 0) return { result: 'No hay visitas agendadas en ese período.' }
+      const lista = data.map((v: any) => {
+        const dir = v.inmuebles_radar?.direccion || 'Inmueble'
+        const ciudad = v.inmuebles_radar?.ciudad ? `, ${v.inmuebles_radar.ciudad}` : ''
+        const estado = v.estado_post ? ` · ${v.estado_post === 'pasa_a_estudio' ? '→ En Estudio' : v.estado_post === 'descartado' ? 'Descartado' : 'Sigue en Radar'}` : ''
+        return `· ${v.fecha} ${v.hora} — ${dir}${ciudad} — ${v.responsable}${estado}`
+      }).join('\n')
+      return { result: `Visitas (${data.length}):\n${lista}` }
+    }
+
+    if (name === 'registrar_resultado_visita') {
+      // Find latest pending visit for this inmueble
+      const resInm = await resolveInmueble('inmuebles_radar', input.busqueda)
+      if ('error' in resInm) return { result: resInm.error }
+      const inmueble = resInm.resolved
+
+      const { data: visitas, error: fetchErr } = await supabaseAdmin
+        .from('visitas_radar')
+        .select('*')
+        .eq('radar_id', inmueble.id)
+        .is('estado_post', null)
+        .order('fecha', { ascending: false })
+        .limit(1)
+      if (fetchErr) return { result: `Error: ${fetchErr.message}` }
+      if (!visitas || visitas.length === 0) return { result: `No encontré visitas pendientes de registro para "${inmueble.direccion}".` }
+
+      const visita = visitas[0]
+      const updates: Record<string,any> = { estado_post: input.estado_post }
+      if (input.notas_post) updates.notas_post = input.notas_post
+      if (input.fotos_url) updates.fotos_url = input.fotos_url
+
+      const { error: updErr } = await supabaseAdmin.from('visitas_radar').update(updates).eq('id', visita.id)
+      if (updErr) return { result: `Error: ${updErr.message}` }
+
+      let extraMsg = ''
+      if (input.estado_post === 'pasa_a_estudio') {
+        const { data: estudio, error: estErr } = await supabaseAdmin.from('inmuebles_estudio').insert([{
+          direccion: inmueble.direccion, ciudad: inmueble.ciudad || null,
+          precio_compra: inmueble.precio || 0,
+          precio_venta_objetivo: Math.round((inmueble.precio || 0) * 1.45),
+          roi_estimado: 45, estado: 'en_estudio', analizado_en: new Date().toISOString().split('T')[0],
+        }]).select().single()
+        if (!estErr && estudio) extraMsg = ` "${inmueble.direccion}" movido a En Estudio (ID: ${estudio.id}).`
+        else if (estErr) extraMsg = ` (Aviso: error al mover a En Estudio: ${estErr.message})`
+      }
+
+      const estadoLabel = input.estado_post === 'pasa_a_estudio' ? 'Pasa a En Estudio' : input.estado_post === 'descartado' ? 'Descartado' : 'Sigue en Radar'
+      return { result: `Visita registrada. Inmueble: "${inmueble.direccion}", Estado: ${estadoLabel}.${extraMsg}` }
+    }
+
     return { result: 'Herramienta no reconocida.' }
   } catch (e: any) {
     return { result: `Error interno: ${e.message}` }
@@ -1450,6 +1608,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
 - INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
+- VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
 
 REGLAS DE RESPUESTA — MUY IMPORTANTE:
