@@ -612,16 +612,30 @@ type ToolResult = { id: string; result: string; table?: string; recordId?: strin
 
 async function resolveInmueble(table: 'inmuebles_radar' | 'inmuebles_estudio', busqueda?: string, id?: string): Promise<{ resolved: { id: string; direccion: string; [k: string]: any } } | { error: string }> {
   if (id) {
-    const { data } = await supabaseAdmin.from(table).select('*').eq('id', id).single()
-    if (!data) return { error: `No encontré el inmueble con ID ${id}.` }
+    const { data, error } = await supabaseAdmin.from(table).select('*').eq('id', id).single()
+    if (error || !data) return { error: `No encontré el inmueble con ID ${id}.` }
     return { resolved: data }
   }
   if (!busqueda) return { error: 'Necesitás indicar el inmueble por ID o dirección.' }
-  const { data } = await supabaseAdmin.from(table).select('*').or(`direccion.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%`)
-  if (!data || data.length === 0) return { error: `No encontré ningún inmueble que coincida con "${busqueda}". Verificá la dirección.` }
+
+  // inmuebles_radar no tiene columna 'nombre' — solo buscar por direccion
+  // inmuebles_estudio tiene ambas columnas
+  let query = supabaseAdmin.from(table).select('*')
+  if (table === 'inmuebles_estudio') {
+    query = (query as any).or(`direccion.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%`)
+  } else {
+    query = (query as any).ilike('direccion', `%${busqueda}%`)
+  }
+
+  const { data, error } = await query
+  if (error) return { error: `Error al buscar en ${table}: ${error.message}` }
+  if (!data || data.length === 0) return { error: `No encontré ningún inmueble que coincida con "${busqueda}". Verificá la dirección exacta.` }
   if (data.length > 1) {
-    const lista = data.map((r: any) => `· ${r.nombre || r.direccion}${r.ciudad ? ', ' + r.ciudad : ''}`).join('\n')
-    return { error: `Encontré ${data.length} inmuebles que coinciden con "${busqueda}":\n${lista}\n\n¿Cuál querés modificar? Sé más específico con la dirección.` }
+    const lista = data.map((r: any) => {
+      const precio = r.precio || r.precio_compra
+      return `· ${r.nombre || r.direccion}${r.ciudad ? ', ' + r.ciudad : ''}${precio ? ' — ' + precio + '€' : ''}`
+    }).join('\n')
+    return { error: `Encontré ${data.length} inmuebles que coinciden con "${busqueda}":\n${lista}\n\n¿Cuál querés? Indicá ciudad o precio para ser más específico.` }
   }
   return { resolved: data[0] }
 }
