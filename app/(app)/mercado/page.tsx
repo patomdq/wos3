@@ -29,6 +29,7 @@ const CONCEPTOS_GASTOS = [
 type Gastos = Record<string, { estimado: number; real: number }>
 type Radar = { id: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
 type Estudio = { id: string; nombre?: string; precio_compra: number; precio_venta_objetivo: number; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string }
+type Proveedor = { id: string; nombre: string }
 
 const SCRAPER_DATA = [
   { precio: 48000, dir: 'C/ Real 7', ciudad: 'Los Gallardos', hab: 3, m2: 85, tag: 'Reformar', epm: 565, fecha: 'hoy' },
@@ -116,13 +117,24 @@ export default function MercadoPage() {
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState<string | null>(null)
 
+  // Bitácora estudio
+  const [openBitacoraId, setOpenBitacoraId] = useState<string | null>(null)
+  const [bitacoraEstudio, setBitacoraEstudio] = useState<Record<string, any[]>>({})
+  const [loadingBitacora, setLoadingBitacora] = useState<string | null>(null)
+  const [bitacoraForm, setBitacoraForm] = useState({ contenido: '', tipo: 'nota', autor: '', url: '', proveedor_id: '' })
+  const [savingBitacoraEstudio, setSavingBitacoraEstudio] = useState(false)
+  const [editingBitacoraEntryId, setEditingBitacoraEntryId] = useState<string | null>(null)
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
+
   useEffect(() => {
     Promise.all([
       supabase.from('inmuebles_radar').select('*').order('created_at', { ascending: false }),
       supabase.from('inmuebles_estudio').select('*').order('created_at', { ascending: false }),
-    ]).then(([r, e]) => {
+      supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre'),
+    ]).then(([r, e, p]) => {
       setRadar(r.data || [])
       setEstudio(e.data || [])
+      setProveedores(p.data || [])
       setLoading(false)
     })
   }, [])
@@ -353,6 +365,66 @@ export default function MercadoPage() {
     setEstudio(prev => prev.map(x => x.id === e.id ? { ...x, estado: 'comprado' } : x))
     setCreando(null)
     router.push('/proyectos')
+  }
+
+  // Bitácora estudio
+  const loadBitacoraEstudio = async (estudioId: string) => {
+    if (bitacoraEstudio[estudioId]) return
+    setLoadingBitacora(estudioId)
+    const { data } = await supabase.from('bitacora_estudio').select('*, proveedores(nombre)').eq('estudio_id', estudioId).order('created_at', { ascending: false })
+    setBitacoraEstudio(prev => ({ ...prev, [estudioId]: data || [] }))
+    setLoadingBitacora(null)
+  }
+
+  const toggleBitacoraEstudio = (id: string) => {
+    if (openBitacoraId === id) {
+      setOpenBitacoraId(null)
+    } else {
+      setOpenBitacoraId(id)
+      loadBitacoraEstudio(id)
+    }
+    setBitacoraForm({ contenido: '', tipo: 'nota', autor: '', url: '', proveedor_id: '' })
+    setEditingBitacoraEntryId(null)
+  }
+
+  const saveBitacoraEstudioEntry = async (estudioId: string) => {
+    if (!bitacoraForm.contenido.trim()) return
+    setSavingBitacoraEstudio(true)
+    const payload: any = {
+      estudio_id: estudioId,
+      contenido: bitacoraForm.contenido,
+      tipo: bitacoraForm.tipo || 'nota',
+      autor: bitacoraForm.autor || 'Usuario',
+      url: bitacoraForm.url || null,
+      proveedor_id: bitacoraForm.proveedor_id || null,
+    }
+    let data: any, error: any
+    if (editingBitacoraEntryId) {
+      ;({ data, error } = await supabase.from('bitacora_estudio').update({ contenido: payload.contenido, tipo: payload.tipo, url: payload.url, proveedor_id: payload.proveedor_id }).eq('id', editingBitacoraEntryId).select('*, proveedores(nombre)').single())
+    } else {
+      ;({ data, error } = await supabase.from('bitacora_estudio').insert([payload]).select('*, proveedores(nombre)').single())
+    }
+    setSavingBitacoraEstudio(false)
+    if (error) { alert(`Error: ${error.message}`); return }
+    if (data) {
+      setBitacoraEstudio(prev => {
+        const list = prev[estudioId] || []
+        if (editingBitacoraEntryId) return { ...prev, [estudioId]: list.map(x => x.id === editingBitacoraEntryId ? data : x) }
+        return { ...prev, [estudioId]: [data, ...list] }
+      })
+      setBitacoraForm({ contenido: '', tipo: 'nota', autor: '', url: '', proveedor_id: '' })
+      setEditingBitacoraEntryId(null)
+    }
+  }
+
+  const deleteBitacoraEstudioEntry = async (entryId: string, estudioId: string) => {
+    const { error } = await supabase.from('bitacora_estudio').delete().eq('id', entryId)
+    if (!error) setBitacoraEstudio(prev => ({ ...prev, [estudioId]: (prev[estudioId] || []).filter(b => b.id !== entryId) }))
+  }
+
+  const openEditBitacoraEntry = (b: any) => {
+    setBitacoraForm({ contenido: b.contenido, tipo: b.tipo || 'nota', autor: b.autor || '', url: b.url || '', proveedor_id: b.proveedor_id || '' })
+    setEditingBitacoraEntryId(b.id)
   }
 
   // PDF
@@ -617,6 +689,133 @@ export default function MercadoPage() {
                     Editar análisis
                   </button>
                 </div>
+
+                {/* ── Bitácora toggle ── */}
+                <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#111' }}>
+                  <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#555' }}>
+                    Bitácora{bitacoraEstudio[e.id] ? ` (${bitacoraEstudio[e.id].length})` : ''}
+                  </span>
+                  <button onClick={() => toggleBitacoraEstudio(e.id)}
+                    className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                    style={{ background: openBitacoraId === e.id ? 'rgba(242,110,31,0.18)' : 'rgba(255,255,255,0.06)', color: openBitacoraId === e.id ? '#F26E1F' : '#888', border: `1px solid ${openBitacoraId === e.id ? 'rgba(242,110,31,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
+                    {openBitacoraId === e.id ? '▲ Cerrar' : '▼ Ver bitácora'}
+                  </button>
+                </div>
+
+                {/* ── Bitácora expandida ── */}
+                {openBitacoraId === e.id && (
+                  <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0D0D0D' }}>
+                    {/* Formulario */}
+                    <div className="mb-4 rounded-xl p-3" style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div className="text-[10px] font-black uppercase tracking-wide mb-2" style={{ color: '#555' }}>
+                        {editingBitacoraEntryId ? 'Editar entrada' : 'Nueva entrada'}
+                      </div>
+                      <textarea
+                        value={bitacoraForm.contenido}
+                        onChange={ev => setBitacoraForm(f => ({ ...f, contenido: ev.target.value }))}
+                        placeholder="Visita realizada, llamada con API, precio negociable..."
+                        rows={2}
+                        className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium resize-none placeholder:text-[#555] mb-2"
+                        style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
+                        onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='rgba(255,255,255,0.10)'}
+                      />
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                          <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#555' }}>Tipo</label>
+                          <select value={bitacoraForm.tipo} onChange={ev => setBitacoraForm(f => ({ ...f, tipo: ev.target.value }))}
+                            className="w-full rounded-lg px-2 py-2 text-xs text-white outline-none font-medium"
+                            style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', appearance: 'none' as const }}>
+                            <option value="nota">📝 Nota</option>
+                            <option value="llamada">📞 Llamada</option>
+                            <option value="email">✉️ Email</option>
+                            <option value="visita">🏠 Visita</option>
+                            <option value="documento">📄 Documento</option>
+                            <option value="api">🤝 API</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#555' }}>Autor</label>
+                          <input type="text" value={bitacoraForm.autor} onChange={ev => setBitacoraForm(f => ({ ...f, autor: ev.target.value }))}
+                            placeholder="Patricio"
+                            className="w-full rounded-lg px-2 py-2 text-xs text-white outline-none font-medium placeholder:text-[#555]"
+                            style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
+                            onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                        </div>
+                      </div>
+                      <div className="mb-2">
+                        <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#555' }}>Link externo (Drive, Idealista, etc.)</label>
+                        <input type="url" value={bitacoraForm.url} onChange={ev => setBitacoraForm(f => ({ ...f, url: ev.target.value }))}
+                          placeholder="https://..."
+                          className="w-full rounded-lg px-2 py-2 text-xs text-white outline-none font-medium placeholder:text-[#555]"
+                          style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
+                          onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                      </div>
+                      {proveedores.length > 0 && (
+                        <div className="mb-2">
+                          <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#555' }}>Proveedor (opcional)</label>
+                          <select value={bitacoraForm.proveedor_id} onChange={ev => setBitacoraForm(f => ({ ...f, proveedor_id: ev.target.value }))}
+                            className="w-full rounded-lg px-2 py-2 text-xs text-white outline-none font-medium"
+                            style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', appearance: 'none' as const }}>
+                            <option value="">— Sin proveedor —</option>
+                            {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                          </select>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        {editingBitacoraEntryId && (
+                          <button onClick={() => { setBitacoraForm({ contenido: '', tipo: 'nota', autor: '', url: '', proveedor_id: '' }); setEditingBitacoraEntryId(null) }}
+                            className="flex-1 py-2.5 rounded-xl text-xs font-black" style={{ background: '#282828', color: '#888' }}>
+                            Cancelar
+                          </button>
+                        )}
+                        <button onClick={() => saveBitacoraEstudioEntry(e.id)} disabled={savingBitacoraEstudio || !bitacoraForm.contenido.trim()}
+                          className="flex-1 py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-40"
+                          style={{ background: '#F26E1F' }}>
+                          {savingBitacoraEstudio ? '...' : editingBitacoraEntryId ? 'Guardar cambios' : '+ Agregar entrada'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Timeline */}
+                    {loadingBitacora === e.id ? (
+                      <div className="py-4 text-center text-xs" style={{ color: '#555' }}>Cargando...</div>
+                    ) : !(bitacoraEstudio[e.id] || []).length ? (
+                      <div className="py-3 text-center text-xs" style={{ color: '#555' }}>Sin entradas todavía.</div>
+                    ) : (
+                      <div className="pl-5 relative">
+                        <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#282828' }} />
+                        {(bitacoraEstudio[e.id] || []).map((b: any) => {
+                          const TIPO_ICON: Record<string, string> = { nota: '📝', llamada: '📞', email: '✉️', visita: '🏠', documento: '📄', api: '🤝' }
+                          return (
+                            <div key={b.id} className="relative mb-4">
+                              <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background: '#F26E1F', border: '2px solid #0A0A0A' }} />
+                              <div className="flex items-center justify-between mb-0.5">
+                                <div className="text-[10px] font-bold font-mono tracking-wide" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                                  {new Date(b.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
+                                  {' · '}{TIPO_ICON[b.tipo] || '📝'} {(b.tipo || 'nota').toUpperCase()}
+                                </div>
+                                <div className="flex gap-1">
+                                  <button onClick={() => openEditBitacoraEntry(b)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: 'rgba(255,255,255,0.08)', color: '#fff' }}>✎</button>
+                                  <button onClick={() => deleteBitacoraEstudioEntry(b.id, e.id)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}>✕</button>
+                                </div>
+                              </div>
+                              <div className="text-sm font-bold text-white leading-relaxed">{b.contenido}</div>
+                              {b.url && (
+                                <a href={b.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold inline-flex items-center gap-1 mt-1" style={{ color: '#60A5FA' }}>
+                                  🔗 Ver link
+                                </a>
+                              )}
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {b.autor && <div className="text-xs font-bold" style={{ color: '#F26E1F' }}>{b.autor}</div>}
+                                {b.proveedores?.nombre && <div className="text-xs font-medium" style={{ color: '#888' }}>· {b.proveedores.nombre}</div>}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))
           }

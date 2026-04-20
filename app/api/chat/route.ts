@@ -298,6 +298,47 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'insert_bitacora_estudio',
+    description: 'Agrega una entrada a la bitácora de un inmueble En Estudio. Usalo cuando el usuario diga "agrega nota a [inmueble]", "agrega llamada a [inmueble]", "agrega visita a [inmueble]", "agrega link a [inmueble]", "registra [tipo] a [inmueble]" refiriéndose a un inmueble en estudio (no a un proyecto).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        busqueda: { type: 'string', description: 'Dirección, nombre o texto para buscar el inmueble en estudio. Ej: "Rulador 30"' },
+        contenido: { type: 'string', description: 'Texto de la entrada' },
+        tipo: { type: 'string', enum: ['nota', 'llamada', 'email', 'visita', 'documento', 'api'], description: 'Tipo de entrada. Default: nota. Si dice "agrega llamada" usar llamada, "agrega visita" usar visita, "agrega link/documento" usar documento.' },
+        url: { type: 'string', description: 'URL o link externo (Drive, Idealista, etc.) si aplica' },
+        autor: { type: 'string', description: 'Autor de la entrada. Default: Patricio' },
+      },
+      required: ['busqueda', 'contenido'],
+    },
+  },
+  {
+    name: 'update_bitacora_estudio',
+    description: 'Edita una entrada de bitácora de un inmueble En Estudio.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la entrada' },
+        contenido: { type: 'string' },
+        tipo: { type: 'string', enum: ['nota', 'llamada', 'email', 'visita', 'documento', 'api'] },
+        url: { type: 'string' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'delete_bitacora_estudio',
+    description: 'Elimina una entrada de bitácora de un inmueble En Estudio.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID de la entrada' },
+        contenido: { type: 'string', description: 'Contenido (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
     name: 'update_bitacora',
     description: 'Edita una entrada de bitácora existente.',
     input_schema: {
@@ -826,6 +867,44 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const { error } = await supabaseAdmin.from('bitacora').delete().eq('id', input.id)
       if (error) return { result: `Error al eliminar entrada: ${error.message}` }
       return { result: `Entrada de bitácora eliminada.` }
+    }
+    if (name === 'insert_bitacora_estudio') {
+      const { data: estudios, error: busqErr } = await supabaseAdmin
+        .from('inmuebles_estudio')
+        .select('id, nombre, direccion')
+        .or(`direccion.ilike.%${input.busqueda}%,nombre.ilike.%${input.busqueda}%`)
+        .limit(1)
+      if (busqErr) return { result: `Error al buscar: ${busqErr.message}` }
+      if (!estudios || estudios.length === 0) return { result: `No encontré ningún inmueble en estudio que coincida con "${input.busqueda}". Verificá el nombre o dirección.` }
+      const estudio = estudios[0]
+      const { data, error } = await supabaseAdmin.from('bitacora_estudio').insert([{
+        estudio_id: estudio.id,
+        contenido: input.contenido,
+        tipo: input.tipo || 'nota',
+        autor: input.autor || 'Patricio',
+        url: input.url || null,
+      }]).select().single()
+      if (error) return { result: `Error al guardar: ${error.message}` }
+      return {
+        result: `Entrada de bitácora agregada a "${estudio.nombre || estudio.direccion}". Tipo: ${data.tipo}, Contenido: "${data.contenido}"${input.url ? ', Link guardado.' : ''}. ID: ${data.id}.`,
+        table: 'bitacora_estudio',
+        recordId: data.id,
+        label: `${estudio.nombre || estudio.direccion} · ${data.tipo}`,
+      }
+    }
+    if (name === 'update_bitacora_estudio') {
+      const updates: Record<string,any> = {}
+      if (input.contenido !== undefined) updates.contenido = input.contenido
+      if (input.tipo !== undefined) updates.tipo = input.tipo
+      if (input.url !== undefined) updates.url = input.url
+      const { data, error } = await supabaseAdmin.from('bitacora_estudio').update(updates).eq('id', input.id).select().single()
+      if (error) return { result: `Error al editar: ${error.message}` }
+      return { result: `Entrada actualizada. Contenido: "${data.contenido}".`, table: 'bitacora_estudio', recordId: data.id, label: data.contenido.slice(0, 40) }
+    }
+    if (name === 'delete_bitacora_estudio') {
+      const { error } = await supabaseAdmin.from('bitacora_estudio').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar: ${error.message}` }
+      return { result: `Entrada de bitácora estudio eliminada.` }
     }
     if (name === 'listar_eventos') {
       const token = await getOrgAccessToken()
