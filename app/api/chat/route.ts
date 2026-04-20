@@ -314,6 +314,19 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'mover_radar_a_estudio',
+    description: 'Mueve un inmueble del Radar a En Estudio. Usalo cuando el usuario diga "pasá X a En Estudio", "mover X a En Estudio", "agregar X a estudio", "analizar X". Busca por dirección parcial y crea la entrada en inmuebles_estudio.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        busqueda: { type: 'string', description: 'Dirección o nombre parcial del inmueble en radar. Ej: "Rulador 30"' },
+        precio_compra: { type: 'number', description: 'Precio de compra (usa el del radar si no se indica)' },
+        notas: { type: 'string', description: 'Notas adicionales (opcional)' },
+      },
+      required: ['busqueda'],
+    },
+  },
+  {
     name: 'insert_bitacora_estudio',
     description: 'Agrega una entrada a la bitácora de un inmueble En Estudio. Usalo cuando el usuario diga "agrega nota a [inmueble]", "agrega llamada a [inmueble]", "agrega visita a [inmueble]", "agrega link a [inmueble]", "registra [tipo] a [inmueble]" refiriéndose a un inmueble en estudio (no a un proyecto).',
     input_schema: {
@@ -915,6 +928,32 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (error) return { result: `Error al eliminar entrada: ${error.message}` }
       return { result: `Entrada de bitácora eliminada.` }
     }
+    if (name === 'mover_radar_a_estudio') {
+      const resolved = await resolveInmueble('inmuebles_radar', input.busqueda)
+      if ('error' in resolved) return { result: resolved.error }
+      const r = resolved.resolved
+      const hoy = new Date().toISOString().split('T')[0]
+      const { data, error } = await supabaseAdmin.from('inmuebles_estudio').insert([{
+        radar_id: r.id,
+        nombre: r.direccion,
+        direccion: r.direccion,
+        ciudad: r.ciudad || null,
+        precio_compra: input.precio_compra || r.precio || null,
+        estado: 'en_estudio',
+        analizado_en: hoy,
+        notas: input.notas || null,
+        roi_estimado: 0,
+        precio_venta_objetivo: 0,
+      }]).select().single()
+      if (error) return { result: `Error al mover a estudio: ${error.message}` }
+      await supabaseAdmin.from('inmuebles_radar').update({ estado: 'convertido' }).eq('id', r.id)
+      return {
+        result: `"${r.direccion}" movido a En Estudio. ID: ${data.id}. Precio: ${data.precio_compra ?? 'sin especificar'}€. Podés completar el análisis de rentabilidad desde la sección Mercado → En Estudio.`,
+        table: 'inmuebles_estudio',
+        recordId: data.id,
+        label: `${r.direccion} → En Estudio`,
+      }
+    }
     if (name === 'insert_bitacora_estudio') {
       const { data: estudios, error: busqErr } = await supabaseAdmin
         .from('inmuebles_estudio')
@@ -1375,7 +1414,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
-- INMUEBLES RADAR/ESTUDIO: para editar, eliminar o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial que diga el usuario. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
+- INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial que diga el usuario. Para mover del radar a En Estudio usá mover_radar_a_estudio. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
 
 REGLAS DE RESPUESTA — MUY IMPORTANTE:

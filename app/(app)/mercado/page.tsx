@@ -87,6 +87,8 @@ export default function MercadoPage() {
   const [estudio, setEstudio] = useState<Estudio[]>([])
   const [loading, setLoading] = useState(true)
   const [creando, setCreando] = useState<string | null>(null)
+  const [updatingEstado, setUpdatingEstado] = useState<string | null>(null)
+  const [confirmandoCompra, setConfirmandoCompra] = useState<string | null>(null)
 
   // Radar form (crear)
   const [radarOpen, setRadarOpen] = useState(false)
@@ -309,21 +311,27 @@ export default function MercadoPage() {
   }
 
   // Eliminar estudio
-  const deleteEstudio = async (id: string) => {
-    if (!confirm('¿Eliminar este análisis?')) return
+  const deleteEstudio = async (id: string, nombre: string) => {
+    if (confirmandoCompra !== 'del_' + id) { setConfirmandoCompra('del_' + id); return }
+    setConfirmandoCompra(null)
     const { error } = await supabase.from('inmuebles_estudio').delete().eq('id', id)
-    if (!error) setEstudio(prev => prev.filter(e => e.id !== id))
+    if (error) { alert(`Error al eliminar: ${error.message}`); return }
+    setEstudio(prev => prev.filter(e => e.id !== id))
   }
 
   // Cambiar sub-estado de estudio
   const updateEstudioEstado = async (id: string, nuevoEstado: string) => {
+    setUpdatingEstado(id + '_' + nuevoEstado)
     const { error } = await supabase.from('inmuebles_estudio').update({ estado: nuevoEstado }).eq('id', id)
-    if (!error) setEstudio(prev => prev.map(e => e.id === id ? { ...e, estado: nuevoEstado } : e))
+    setUpdatingEstado(null)
+    if (error) { alert(`Error al cambiar estado: ${error.message}`); return }
+    setEstudio(prev => prev.map(e => e.id === id ? { ...e, estado: nuevoEstado } : e))
   }
 
   // Convertir estudio a proyecto (disparado por botón "Comprado")
   const crearProyectoDesdeEstudio = async (e: Estudio) => {
-    if (!confirm(`¿Marcar "${e.nombre || e.direccion}" como comprado y crear proyecto?`)) return
+    if (confirmandoCompra !== e.id) { setConfirmandoCompra(e.id); return }
+    setConfirmandoCompra(null)
     setCreando(e.id)
     const { data: proyecto, error } = await supabase.from('proyectos').insert([{
       nombre: e.nombre || e.direccion,
@@ -617,10 +625,17 @@ export default function MercadoPage() {
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-1">
                     <div className="font-black text-[22px] text-white tracking-tight">{fmt(e.precio_compra || 0)}</div>
-                    <button onClick={() => deleteEstudio(e.id)} className="text-xs font-bold px-2.5 py-1.5 rounded-lg ml-2 flex-shrink-0"
-                      style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}>
-                      Eliminar
-                    </button>
+                    {confirmandoCompra === 'del_' + e.id ? (
+                      <div className="flex gap-1.5 ml-2 flex-shrink-0">
+                        <button onClick={() => deleteEstudio(e.id, e.nombre || e.direccion)} className="text-xs font-black px-2.5 py-1.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.25)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.5)' }}>¿Seguro?</button>
+                        <button onClick={() => setConfirmandoCompra(null)} className="text-xs font-black px-2 py-1.5 rounded-lg" style={{ background: '#282828', color: '#888' }}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => deleteEstudio(e.id, e.nombre || e.direccion)} className="text-xs font-bold px-2.5 py-1.5 rounded-lg ml-2 flex-shrink-0"
+                        style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}>
+                        Eliminar
+                      </button>
+                    )}
                   </div>
                   <div className="text-sm font-medium mb-2" style={{ color: '#888' }}>{e.direccion}{e.ciudad ? ` · ${e.ciudad}` : ''}</div>
                   <div className="flex items-center gap-3 mt-1">
@@ -640,29 +655,44 @@ export default function MercadoPage() {
 
                 {/* Botones de estado — visibles solo si no está comprado */}
                 {e.estado !== 'comprado' && (
-                  <div className="flex gap-2 px-4 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="flex gap-2 px-4 py-2.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                     <span className="text-[10px] font-bold self-center flex-shrink-0 uppercase tracking-wide" style={{ color: '#555' }}>Estado:</span>
                     {(['ofertado', 'en_arras'] as const).map(s => {
                       const cfg = SUBESTADO_CFG[s]
                       const activo = (e.estado || 'en_estudio') === s
+                      const isUpdating = updatingEstado === e.id + '_' + (activo ? 'en_estudio' : s)
                       return (
-                        <button key={s} onClick={() => updateEstudioEstado(e.id, activo ? 'en_estudio' : s)}
-                          className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                        <button key={s}
+                          onClick={() => updateEstudioEstado(e.id, activo ? 'en_estudio' : s)}
+                          disabled={!!updatingEstado}
+                          className="text-[11px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50"
                           style={{
                             background: activo ? cfg.bg : 'rgba(255,255,255,0.05)',
                             color: activo ? cfg.color : '#666',
                             border: `1px solid ${activo ? cfg.color + '60' : 'rgba(255,255,255,0.08)'}`,
                           }}>
-                          {cfg.label}
+                          {isUpdating ? '...' : cfg.label}
                         </button>
                       )
                     })}
-                    <button onClick={() => crearProyectoDesdeEstudio(e)}
-                      disabled={creando === e.id}
-                      className="text-[11px] font-black px-2.5 py-1 rounded-lg ml-auto disabled:opacity-50"
-                      style={{ background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.35)' }}>
-                      {creando === e.id ? '...' : 'Comprado →'}
-                    </button>
+                    {confirmandoCompra === e.id ? (
+                      <div className="flex gap-1.5 ml-auto">
+                        <button onClick={() => crearProyectoDesdeEstudio(e)}
+                          disabled={creando === e.id}
+                          className="text-[11px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50"
+                          style={{ background: 'rgba(34,197,94,0.3)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.6)' }}>
+                          {creando === e.id ? '...' : '✓ Confirmar'}
+                        </button>
+                        <button onClick={() => setConfirmandoCompra(null)} className="text-[11px] font-black px-2 py-1 rounded-lg" style={{ background: '#282828', color: '#888' }}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => crearProyectoDesdeEstudio(e)}
+                        disabled={creando === e.id}
+                        className="text-[11px] font-black px-2.5 py-1 rounded-lg ml-auto disabled:opacity-50"
+                        style={{ background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.35)' }}>
+                        {creando === e.id ? '...' : 'Comprado →'}
+                      </button>
+                    )}
                   </div>
                 )}
                 {e.estado === 'comprado' && (
