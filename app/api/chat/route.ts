@@ -218,29 +218,45 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'update_radar',
-    description: 'Edita un inmueble del radar. Usalo cuando el usuario pida modificar o actualizar un inmueble del radar.',
+    description: 'Edita un inmueble del radar. Si tenés el ID del contexto usalo directamente; si no, pasá busqueda con la dirección parcial y el sistema la resuelve.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        id: { type: 'string', description: 'UUID del inmueble en radar' },
+        id: { type: 'string', description: 'UUID del inmueble (del contexto). Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Dirección parcial para encontrar el inmueble cuando no tenés el ID. Ej: "Rulador 30"' },
         direccion: { type: 'string' }, ciudad: { type: 'string' },
         precio: { type: 'number' }, habitaciones: { type: 'number' }, superficie: { type: 'number' },
         url: { type: 'string' }, fuente: { type: 'string' }, notas: { type: 'string' },
         estado: { type: 'string', enum: ['activo', 'descartado', 'convertido'] },
       },
-      required: ['id'],
+      required: [],
     },
   },
   {
     name: 'delete_radar',
-    description: 'Elimina un inmueble del radar. Usalo cuando el usuario pida borrar o quitar un inmueble del radar.',
+    description: 'Elimina un inmueble del radar. Si tenés el ID del contexto usalo directamente; si no, pasá busqueda con la dirección parcial.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        id: { type: 'string', description: 'UUID del inmueble a eliminar' },
+        id: { type: 'string', description: 'UUID del inmueble (del contexto). Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Dirección parcial para encontrar el inmueble cuando no tenés el ID.' },
         direccion: { type: 'string', description: 'Dirección (para confirmar)' },
       },
-      required: ['id'],
+      required: [],
+    },
+  },
+  {
+    name: 'update_estudio',
+    description: 'Cambia el estado o edita datos de un inmueble En Estudio. Usalo para "marcar como ofertado", "poner en arras", "descartar", etc. Si tenés el ID usalo; si no, pasá busqueda.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del inmueble en estudio (del contexto). Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Dirección o nombre parcial para encontrar el inmueble. Ej: "Rulador 30"' },
+        estado: { type: 'string', enum: ['en_estudio', 'ofertado', 'en_arras', 'descartado'], description: 'Nuevo estado' },
+        notas: { type: 'string' },
+      },
+      required: [],
     },
   },
   {
@@ -581,6 +597,22 @@ const TOOLS: Anthropic.Tool[] = [
 
 type ToolResult = { id: string; result: string; table?: string; recordId?: string; label?: string }
 
+async function resolveInmueble(table: 'inmuebles_radar' | 'inmuebles_estudio', busqueda?: string, id?: string): Promise<{ resolved: { id: string; direccion: string; [k: string]: any } } | { error: string }> {
+  if (id) {
+    const { data } = await supabaseAdmin.from(table).select('*').eq('id', id).single()
+    if (!data) return { error: `No encontré el inmueble con ID ${id}.` }
+    return { resolved: data }
+  }
+  if (!busqueda) return { error: 'Necesitás indicar el inmueble por ID o dirección.' }
+  const { data } = await supabaseAdmin.from(table).select('*').or(`direccion.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%`)
+  if (!data || data.length === 0) return { error: `No encontré ningún inmueble que coincida con "${busqueda}". Verificá la dirección.` }
+  if (data.length > 1) {
+    const lista = data.map((r: any) => `· ${r.nombre || r.direccion}${r.ciudad ? ', ' + r.ciudad : ''}`).join('\n')
+    return { error: `Encontré ${data.length} inmuebles que coinciden con "${busqueda}":\n${lista}\n\n¿Cuál querés modificar? Sé más específico con la dirección.` }
+  }
+  return { resolved: data[0] }
+}
+
 async function executeTool(name: string, input: Record<string, any>): Promise<{ result: string; table?: string; recordId?: string; label?: string }> {
   try {
     if (name === 'insert_movimiento') {
@@ -817,17 +849,32 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       return { result: `Cuenta bancaria eliminada: "${input.nombre || input.id}".` }
     }
     if (name === 'update_radar') {
+      const resolved = await resolveInmueble('inmuebles_radar', input.busqueda, input.id)
+      if ('error' in resolved) return { result: resolved.error }
       const fields = ['direccion','ciudad','precio','habitaciones','superficie','url','fuente','notas','estado']
       const updates: Record<string,any> = {}
       for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
-      const { data, error } = await supabaseAdmin.from('inmuebles_radar').update(updates).eq('id', input.id).select().single()
+      const { data, error } = await supabaseAdmin.from('inmuebles_radar').update(updates).eq('id', resolved.resolved.id).select().single()
       if (error) return { result: `Error al editar inmueble: ${error.message}` }
       return { result: `Inmueble actualizado. Dirección: "${data.direccion}", Precio: ${data.precio}€.`, table: 'inmuebles_radar', recordId: data.id, label: `${data.direccion} · ${data.precio}€` }
     }
     if (name === 'delete_radar') {
-      const { error } = await supabaseAdmin.from('inmuebles_radar').delete().eq('id', input.id)
+      const resolved = await resolveInmueble('inmuebles_radar', input.busqueda, input.id)
+      if ('error' in resolved) return { result: resolved.error }
+      const { error } = await supabaseAdmin.from('inmuebles_radar').delete().eq('id', resolved.resolved.id)
       if (error) return { result: `Error al eliminar: ${error.message}` }
-      return { result: `Inmueble eliminado del radar. Dirección: "${input.direccion || input.id}".` }
+      return { result: `Inmueble eliminado del radar. Dirección: "${resolved.resolved.direccion}".` }
+    }
+    if (name === 'update_estudio') {
+      const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
+      if ('error' in resolved) return { result: resolved.error }
+      const updates: Record<string,any> = {}
+      if (input.estado !== undefined) updates.estado = input.estado
+      if (input.notas !== undefined) updates.notas = input.notas
+      const { data, error } = await supabaseAdmin.from('inmuebles_estudio').update(updates).eq('id', resolved.resolved.id).select().single()
+      if (error) return { result: `Error al actualizar: ${error.message}` }
+      const nombre = data.nombre || data.direccion
+      return { result: `Inmueble "${nombre}" actualizado.${data.estado ? ' Estado: ' + data.estado + '.' : ''}`, table: 'inmuebles_estudio', recordId: data.id, label: `${nombre} · ${data.estado}` }
     }
     if (name === 'update_tarea') {
       const fields = ['titulo','descripcion','prioridad','estado','fecha_limite','asignado_a']
@@ -1328,6 +1375,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
+- INMUEBLES RADAR/ESTUDIO: para editar, eliminar o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial que diga el usuario. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
 
 REGLAS DE RESPUESTA — MUY IMPORTANTE:

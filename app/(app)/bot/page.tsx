@@ -74,12 +74,14 @@ export default function BotPage() {
         ].filter(Boolean).join('\n')
       } else {
         // Contexto global
-        const [{ count: activos }, { data: movs }, { data: tareas }, { data: proyectos }, { data: partidas }] = await Promise.all([
+        const [{ count: activos }, { data: movs }, { data: tareas }, { data: proyectos }, { data: partidas }, { data: radar }, { data: estudio }] = await Promise.all([
           supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta','reservado','con_oferta','en_arras']),
           supabase.from('movimientos').select('id,concepto,monto,fecha').order('fecha', { ascending: false }).limit(10),
           supabase.from('tareas').select('id,titulo,prioridad,estado').eq('estado', 'Pendiente').limit(5),
           supabase.from('proyectos').select('id,nombre,estado,ciudad').order('created_at'),
           supabase.from('partidas_reforma').select('id,nombre,presupuesto,estado').order('created_at', { ascending: false }).limit(10),
+          supabase.from('inmuebles_radar').select('id,direccion,ciudad,precio,estado').eq('estado', 'activo').order('created_at', { ascending: false }).limit(20),
+          supabase.from('inmuebles_estudio').select('id,nombre,direccion,ciudad,precio_compra,roi_estimado,estado').neq('estado', 'comprado').order('created_at', { ascending: false }).limit(20),
         ])
         ctx = [
           `Proyectos activos: ${activos ?? 0}`,
@@ -87,6 +89,8 @@ export default function BotPage() {
           movs?.length ? `Últimos movimientos (ID|Concepto|Monto|Fecha):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}`).join('\n')}` : '',
           tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
           partidas?.length ? `Partidas recientes (ID|Nombre|Presup|Estado):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.presupuesto}€|${p.estado}`).join('\n')}` : '',
+          radar?.length ? `Inmuebles en radar (ID|Dirección|Ciudad|Precio):\n${radar.map(r => `- ${r.id}|${r.direccion}|${r.ciudad ?? '-'}|${r.precio}€`).join('\n')}` : 'Radar: sin inmuebles activos.',
+          estudio?.length ? `Inmuebles en estudio (ID|Nombre/Dirección|Ciudad|Precio|ROI|Estado):\n${estudio.map(e => `- ${e.id}|${e.nombre || e.direccion}|${e.ciudad ?? '-'}|${e.precio_compra}€|${e.roi_estimado?.toFixed(1) ?? '-'}%|${e.estado}`).join('\n')}` : 'Estudio: sin inmuebles.',
         ].filter(Boolean).join('\n')
       }
 
