@@ -5,9 +5,28 @@ import { supabase } from '@/lib/supabase'
 import { useUser, canAccessProject } from '@/lib/user-context'
 import { authFetch } from '@/lib/auth-fetch'
 
-const ESTADOS = ['captado','analisis','ofertado','comprado','reforma','venta','cerrado']
-const ESTADO_LABEL: Record<string,string> = { captado:'Captado', analisis:'Análisis', ofertado:'Ofertado', comprado:'Comprado', reforma:'Reforma', venta:'Venta', cerrado:'Cerrado' }
-const ESTADO_COLOR: Record<string,string> = { captado:'#888', analisis:'#60A5FA', ofertado:'#F59E0B', comprado:'#22C55E', reforma:'#F26E1F', venta:'#a78bfa', cerrado:'#22C55E' }
+// ── Pipeline completo ────────────────────────────────────────────────────────
+// Acquisición: captado → analisis → ofertado → comprado → reforma
+// Venta:       venta → reservado → con_oferta → en_arras → vendido
+// Legacy:      cerrado (mostrado como Vendido)
+const ESTADOS_PIPELINE  = ['captado','analisis','ofertado']
+const ESTADOS_ACTIVOS   = ['comprado','reforma','venta','reservado','con_oferta','en_arras']
+const ESTADOS_VENDIDOS  = ['vendido','cerrado']
+const ESTADOS_TODOS     = [...ESTADOS_PIPELINE, ...ESTADOS_ACTIVOS, ...ESTADOS_VENDIDOS]
+
+const ESTADO_LABEL: Record<string,string> = {
+  captado:'Captado', analisis:'Análisis', ofertado:'Ofertado',
+  comprado:'Comprado', reforma:'Reforma',
+  venta:'En venta', reservado:'Reservado', con_oferta:'Ofertado', en_arras:'En arras',
+  vendido:'Vendido', cerrado:'Vendido',
+}
+const ESTADO_COLOR: Record<string,string> = {
+  captado:'#888', analisis:'#60A5FA', ofertado:'#F59E0B',
+  comprado:'#22C55E', reforma:'#F26E1F',
+  venta:'#a78bfa', reservado:'#F59E0B', con_oferta:'#F26E1F', en_arras:'#22C55E',
+  vendido:'#22C55E', cerrado:'#22C55E',
+}
+
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
 
 type Proyecto = {
@@ -44,6 +63,11 @@ export default function ProyectosPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
 
+  // Inline editing state
+  const [editAvance, setEditAvance]   = useState<Record<string, string>>({})
+  const [editPrecios, setEditPrecios] = useState<Record<string, { c: string; r: string; o: string }>>({})
+  const [saving, setSaving]           = useState<Record<string, boolean>>({})
+
   useEffect(() => {
     Promise.all([
       supabase.from('proyectos')
@@ -71,6 +95,54 @@ export default function ProyectosPage() {
     })
   }
 
+  // ── Inline edit helpers ──────────────────────────────────────────────────
+  const cambiarEstado = async (pid: string, nuevoEstado: string) => {
+    setSaving(s => ({ ...s, [pid]: true }))
+    const { error } = await supabase.from('proyectos').update({ estado: nuevoEstado }).eq('id', pid)
+    if (!error) setProyectos(prev => prev.map(x => x.id === pid ? { ...x, estado: nuevoEstado } : x))
+    setSaving(s => ({ ...s, [pid]: false }))
+  }
+
+  const guardarAvance = async (pid: string, val: string) => {
+    const n = Math.min(100, Math.max(0, parseInt(val) || 0))
+    setSaving(s => ({ ...s, [pid + '_av']: true }))
+    const { error } = await supabase.from('proyectos').update({ avance_reforma: n }).eq('id', pid)
+    if (!error) setProyectos(prev => prev.map(x => x.id === pid ? { ...x, avance_reforma: n } : x))
+    setEditAvance(e => { const n2 = { ...e }; delete n2[pid]; return n2 })
+    setSaving(s => ({ ...s, [pid + '_av']: false }))
+  }
+
+  const guardarPrecios = async (pid: string) => {
+    const ep = editPrecios[pid]
+    if (!ep) return
+    const updates: Record<string, number | null> = {
+      precio_venta_conservador: ep.c ? parseFloat(ep.c.replace(/\./g,'').replace(',','.')) : null,
+      precio_venta_realista:    ep.r ? parseFloat(ep.r.replace(/\./g,'').replace(',','.')) : null,
+      precio_venta_optimista:   ep.o ? parseFloat(ep.o.replace(/\./g,'').replace(',','.')) : null,
+    }
+    setSaving(s => ({ ...s, [pid + '_pr']: true }))
+    const { error } = await supabase.from('proyectos').update(updates).eq('id', pid)
+    if (!error) setProyectos(prev => prev.map(x => x.id === pid ? {
+      ...x,
+      precio_venta_conservador: updates.precio_venta_conservador,
+      precio_venta_realista:    updates.precio_venta_realista,
+      precio_venta_optimista:   updates.precio_venta_optimista,
+    } : x))
+    setEditPrecios(e => { const n2 = { ...e }; delete n2[pid]; return n2 })
+    setSaving(s => ({ ...s, [pid + '_pr']: false }))
+  }
+
+  const initEditPrecios = (p: Proyecto) => {
+    setEditPrecios(e => ({
+      ...e,
+      [p.id]: {
+        c: p.precio_venta_conservador ? String(p.precio_venta_conservador) : '',
+        r: p.precio_venta_realista    ? String(p.precio_venta_realista)    : '',
+        o: p.precio_venta_optimista   ? String(p.precio_venta_optimista)   : '',
+      }
+    }))
+  }
+
   const deleteProyecto = async (p: Proyecto, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm(`¿Eliminar el proyecto "${p.nombre}"? Esta acción no se puede deshacer.`)) return
@@ -79,17 +151,16 @@ export default function ProyectosPage() {
     else alert('Error al eliminar el proyecto.')
   }
 
-  const cerrarProyecto = async (p: Proyecto, e: React.MouseEvent) => {
+  const marcarVendido = async (p: Proyecto, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm(`¿Cerrar la operación "${p.nombre}"?\nEl proyecto pasará a "Operaciones finalizadas" en HASU.`)) return
-    const { error } = await supabase.from('proyectos').update({ estado: 'cerrado' }).eq('id', p.id)
-    if (!error) setProyectos(prev => prev.map(x => x.id === p.id ? { ...x, estado: 'cerrado' } : x))
-    else alert('Error al cerrar el proyecto.')
+    if (!confirm(`¿Marcar "${p.nombre}" como vendido?\nEl proyecto pasará a "Operaciones finalizadas".`)) return
+    await cambiarEstado(p.id, 'vendido')
   }
 
-  const visibles = proyectos.filter(p => canAccessProject(user?.permisos ?? null, p.id))
-  const activos  = visibles.filter(p => ['comprado','reforma','venta'].includes(p.estado))
-  const pipeline = visibles.filter(p => ['captado','analisis','ofertado'].includes(p.estado))
+  const visibles   = proyectos.filter(p => canAccessProject(user?.permisos ?? null, p.id))
+  const activos    = visibles.filter(p => ESTADOS_ACTIVOS.includes(p.estado))
+  const pipeline   = visibles.filter(p => ESTADOS_PIPELINE.includes(p.estado))
+  const finalizados = visibles.filter(p => ESTADOS_VENDIDOS.includes(p.estado))
 
   return (
     <div className="p-4" style={{ background: '#0A0A0A', minHeight: '100vh' }}>
@@ -103,66 +174,39 @@ export default function ProyectosPage() {
 
       {/* Dashboard */}
       {(() => {
-        const capitalTotal   = activos.reduce((s, p) => s + (p.inversion_hasu || p.precio_compra || 0), 0)
-        const benefTotal     = activos.reduce((s, p) => {
+        const capitalTotal = activos.reduce((s, p) => s + (p.inversion_hasu || p.precio_compra || 0), 0)
+        const benefTotal   = activos.reduce((s, p) => {
           const venta = p.precio_venta_realista || p.precio_venta_estimado || 0
           const inv   = p.valor_total_operacion || p.precio_compra || 0
           return s + (venta - inv)
         }, 0)
-        const roisValidos    = activos.filter(p => {
-          const inv = p.valor_total_operacion || p.precio_compra || 0
-          return inv > 0
-        })
-        const roiMedio       = roisValidos.length > 0
+        const roisValidos = activos.filter(p => (p.valor_total_operacion || p.precio_compra || 0) > 0)
+        const roiMedio    = roisValidos.length > 0
           ? roisValidos.reduce((s, p) => {
               const venta = p.precio_venta_realista || p.precio_venta_estimado || 0
               const inv   = p.valor_total_operacion || p.precio_compra || 0
               return s + ((venta - inv) / inv * 100)
             }, 0) / roisValidos.length
           : null
-        const enReforma      = activos.filter(p => p.estado === 'reforma')
-        const avanceMedio    = enReforma.length > 0
+        const enReforma   = activos.filter(p => p.estado === 'reforma')
+        const avanceMedio = enReforma.length > 0
           ? enReforma.reduce((s, p) => s + (p.avance_reforma || 0), 0) / enReforma.length
           : null
 
         const cards = [
-          {
-            icon: '🏠', label: 'Proyectos activos',
-            value: activos.length.toString(),
-            sub: pipeline.length > 0 ? `+ ${pipeline.length} en pipeline` : 'En cartera',
-            color: '#F26E1F', bg: 'rgba(242,110,31,0.12)',
-          },
-          {
-            icon: '💰', label: 'Capital HASU',
-            value: capitalTotal > 0 ? fmt(capitalTotal) : '—',
-            sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`,
-            color: '#60A5FA', bg: 'rgba(96,165,250,0.10)',
-          },
-          {
-            icon: '📈', label: 'Beneficio est.',
-            value: benefTotal !== 0 ? fmt(benefTotal) : '—',
-            sub: 'Escenario realista',
-            color: benefTotal >= 0 ? '#22C55E' : '#EF4444',
-            bg: benefTotal >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)',
-          },
-          {
-            icon: '⚡', label: roiMedio !== null ? 'ROI medio' : enReforma.length > 0 ? 'Avance medio' : 'ROI medio',
-            value: roiMedio !== null
-              ? `${roiMedio >= 0 ? '+' : ''}${roiMedio.toFixed(1)}%`
-              : avanceMedio !== null
-                ? `${Math.round(avanceMedio)}%`
-                : '—',
+          { icon: '🏠', label: 'Proyectos activos', value: activos.length.toString(), sub: pipeline.length > 0 ? `+ ${pipeline.length} en pipeline` : 'En cartera', color: '#F26E1F', bg: 'rgba(242,110,31,0.12)' },
+          { icon: '💰', label: 'Capital HASU', value: capitalTotal > 0 ? fmt(capitalTotal) : '—', sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`, color: '#60A5FA', bg: 'rgba(96,165,250,0.10)' },
+          { icon: '📈', label: 'Beneficio est.', value: benefTotal !== 0 ? fmt(benefTotal) : '—', sub: 'Escenario realista', color: benefTotal >= 0 ? '#22C55E' : '#EF4444', bg: benefTotal >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)' },
+          { icon: '⚡', label: roiMedio !== null ? 'ROI medio' : enReforma.length > 0 ? 'Avance medio' : 'ROI medio',
+            value: roiMedio !== null ? `${roiMedio >= 0 ? '+' : ''}${roiMedio.toFixed(1)}%` : avanceMedio !== null ? `${Math.round(avanceMedio)}%` : '—',
             sub: roiMedio !== null ? 'Sobre inversión total' : enReforma.length > 0 ? 'Obras en curso' : 'Sin datos aún',
             color: roiMedio !== null ? (roiMedio >= 0 ? '#22C55E' : '#EF4444') : '#a78bfa',
-            bg: roiMedio !== null ? (roiMedio >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)') : 'rgba(167,139,250,0.10)',
-          },
+            bg: roiMedio !== null ? (roiMedio >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)') : 'rgba(167,139,250,0.10)' },
         ]
-
         return (
           <div className="grid grid-cols-2 gap-3 mb-5">
             {cards.map(c => (
-              <div key={c.label} className="rounded-2xl p-4 flex flex-col gap-2"
-                style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div key={c.label} className="rounded-2xl p-4 flex flex-col gap-2" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <div className="flex items-center justify-between">
                   <div className="text-xl">{c.icon}</div>
                   <div className="w-2 h-2 rounded-full" style={{ background: c.color }} />
@@ -172,11 +216,6 @@ export default function ProyectosPage() {
                   <div className="text-[12px] font-black text-white">{c.label}</div>
                   <div className="text-[10px] font-medium mt-0.5" style={{ color: '#666' }}>{c.sub}</div>
                 </div>
-                {c.label === 'Avance medio' && avanceMedio !== null && (
-                  <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${avanceMedio}%`, background: c.color }} />
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -231,35 +270,31 @@ export default function ProyectosPage() {
               </div>
 
               {activos.map(p => {
-                const isExp = expanded.has(p.id)
-                const gastos = gastosMap[p.id] || 0
+                const isExp    = expanded.has(p.id)
+                const gastos   = gastosMap[p.id] || 0
                 const inversion = p.valor_total_operacion || p.precio_compra || 0
-                const ventaEst = p.precio_venta_estimado || 0
+                const ventaEst  = p.precio_venta_estimado || 0
 
-                // Usar escenarios almacenados si existen, sino calcular automáticamente desde precio_venta_estimado
                 const escenarios = [
-                  { label: 'Conservador', stored: p.precio_venta_conservador, mult: 0.90, color: '#888' },
-                  { label: 'Realista',    stored: p.precio_venta_realista,    mult: 1.00, color: '#F26E1F' },
-                  { label: 'Optimista',   stored: p.precio_venta_optimista,   mult: 1.10, color: '#22C55E' },
+                  { label: 'Conservador', stored: p.precio_venta_conservador, mult: 0.90, color: '#888', key: 'c' as const },
+                  { label: 'Realista',    stored: p.precio_venta_realista,    mult: 1.00, color: '#F26E1F', key: 'r' as const },
+                  { label: 'Optimista',   stored: p.precio_venta_optimista,   mult: 1.10, color: '#22C55E', key: 'o' as const },
                 ].map(s => {
-                  const venta    = s.stored ?? (ventaEst * s.mult)
-                  const benef    = venta - inversion
-                  const roi      = inversion > 0 ? (benef / inversion) * 100 : 0
-                  return { label: s.label, color: s.color, venta, benef, roi }
+                  const venta = s.stored ?? (ventaEst * s.mult)
+                  const benef = venta - inversion
+                  const roi   = inversion > 0 ? (benef / inversion) * 100 : 0
+                  return { ...s, venta, benef, roi }
                 })
 
                 const roiReal = escenarios[1].roi
-
                 const hoy = new Date()
                 const fechaCompra = p.fecha_compra ? new Date(p.fecha_compra) : null
                 const fechaFin    = p.fecha_salida_estimada ? new Date(p.fecha_salida_estimada) : null
                 const diasDesde   = fechaCompra ? Math.floor((hoy.getTime() - fechaCompra.getTime()) / 86400000) : null
-                const durMeses    = fechaCompra && fechaFin
-                  ? Math.round((fechaFin.getTime() - fechaCompra.getTime()) / (30.44 * 86400000))
-                  : null
-
-                const sem    = calcSemaforo(p, gastos)
-                const semCfg = SEM_CFG[sem]
+                const durMeses    = fechaCompra && fechaFin ? Math.round((fechaFin.getTime() - fechaCompra.getTime()) / (30.44 * 86400000)) : null
+                const sem     = calcSemaforo(p, gastos)
+                const semCfg  = SEM_CFG[sem]
+                const ep      = editPrecios[p.id]
 
                 return (
                   <div key={p.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -273,13 +308,31 @@ export default function ProyectosPage() {
                           <div className="text-xs font-medium mt-0.5" style={{ color: '#888' }}>
                             📍 {p.direccion || p.ciudad || '—'}
                           </div>
-                          <div className="flex gap-1.5 flex-wrap mt-1.5">
+                          {/* Badges row */}
+                          <div className="flex gap-1.5 flex-wrap mt-1.5 items-center">
                             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F' }}>
                               {p.porcentaje_hasu < 100 ? `JV ${p.porcentaje_hasu}%` : '100% HASU'}
                             </span>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${ESTADO_COLOR[p.estado]}20`, color: ESTADO_COLOR[p.estado] }}>
-                              {ESTADO_LABEL[p.estado]}
-                            </span>
+                            {/* ── Estado dropdown (inline edit) ── */}
+                            <select
+                              value={p.estado}
+                              disabled={saving[p.id]}
+                              onClick={e => e.stopPropagation()}
+                              onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
+                              className="text-[11px] font-bold px-2 py-0.5 rounded-full border-0 outline-none cursor-pointer appearance-none"
+                              style={{
+                                background: `${ESTADO_COLOR[p.estado] || '#888'}22`,
+                                color: ESTADO_COLOR[p.estado] || '#888',
+                                WebkitAppearance: 'none',
+                                MozAppearance: 'none',
+                              }}
+                            >
+                              {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
+                                <option key={e} value={e} style={{ background: '#1E1E1E', color: '#fff' }}>
+                                  {ESTADO_LABEL[e]}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -293,38 +346,99 @@ export default function ProyectosPage() {
                         </div>
                       </div>
 
-                      {/* Barra reforma */}
-                      <div className="mt-3">
-                        <div className="flex justify-between text-xs font-bold mb-1.5" style={{ color: '#888' }}>
-                          <span>Avance reforma</span>
-                          <span style={{ color: '#F26E1F' }}>{p.avance_reforma || 0}%</span>
+                      {/* Avance reforma con edición inline */}
+                      <div className="mt-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-xs font-bold" style={{ color: '#888' }}>Avance reforma</span>
+                          <div className="flex items-center gap-1.5">
+                            {/* – button */}
+                            <button
+                              onClick={() => {
+                                const cur = editAvance[p.id] !== undefined ? editAvance[p.id] : String(p.avance_reforma || 0)
+                                const val = String(Math.max(0, parseInt(cur||'0') - 5))
+                                setEditAvance(e => ({ ...e, [p.id]: val }))
+                              }}
+                              className="w-5 h-5 rounded text-xs font-black flex items-center justify-center"
+                              style={{ background: '#282828', color: '#888' }}>−</button>
+                            <input
+                              type="number" min="0" max="100"
+                              value={editAvance[p.id] !== undefined ? editAvance[p.id] : p.avance_reforma || 0}
+                              onChange={e => setEditAvance(prev => ({ ...prev, [p.id]: e.target.value }))}
+                              onBlur={e => { if (editAvance[p.id] !== undefined) guardarAvance(p.id, e.target.value) }}
+                              onKeyDown={e => { if (e.key === 'Enter') guardarAvance(p.id, editAvance[p.id] ?? String(p.avance_reforma||0)) }}
+                              className="w-10 text-center text-xs font-black text-white rounded outline-none"
+                              style={{ background: '#282828', border: '1px solid rgba(255,255,255,0.12)', MozAppearance:'textfield' }}
+                            />
+                            {/* + button */}
+                            <button
+                              onClick={() => {
+                                const cur = editAvance[p.id] !== undefined ? editAvance[p.id] : String(p.avance_reforma || 0)
+                                const val = String(Math.min(100, parseInt(cur||'0') + 5))
+                                setEditAvance(e => ({ ...e, [p.id]: val }))
+                              }}
+                              className="w-5 h-5 rounded text-xs font-black flex items-center justify-center"
+                              style={{ background: '#282828', color: '#F26E1F' }}>+</button>
+                            <span className="text-[11px] font-black" style={{ color: '#F26E1F' }}>%</span>
+                          </div>
                         </div>
-                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#282828' }}>
+                        <div className="h-1.5 rounded-full overflow-hidden cursor-pointer" style={{ background: '#282828' }}
+                          onClick={() => {
+                            const pct = editAvance[p.id] !== undefined ? parseInt(editAvance[p.id]||'0') : p.avance_reforma || 0
+                            if (pct > 0) guardarAvance(p.id, String(pct))
+                          }}>
                           <div className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${p.avance_reforma || 0}%`, background: '#F26E1F' }} />
+                            style={{ width: `${editAvance[p.id] !== undefined ? parseInt(editAvance[p.id]||'0') : p.avance_reforma || 0}%`, background: '#F26E1F' }} />
                         </div>
+                        {saving[p.id + '_av'] && <div className="text-[10px] mt-1" style={{ color: '#888' }}>Guardando…</div>}
                       </div>
                     </div>
 
                     {/* ── EXPANDED ── */}
-                    <div style={{
-                      maxHeight: isExp ? '900px' : '0',
-                      overflow: 'hidden',
-                      transition: 'max-height 0.38s cubic-bezier(0.4,0,0.2,1)',
-                    }}>
+                    <div style={{ maxHeight: isExp ? '1100px' : '0', overflow: 'hidden', transition: 'max-height 0.38s cubic-bezier(0.4,0,0.2,1)' }}>
                       <div className="px-4 pb-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
 
-                        {/* Escenarios */}
-                        <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: '#888' }}>Escenarios de venta</div>
+                        {/* ── Escenarios editables ── */}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#888' }}>Escenarios de venta</div>
+                          {!ep ? (
+                            <button onClick={() => initEditPrecios(p)}
+                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
+                              style={{ background: 'rgba(242,110,31,0.15)', color: '#F26E1F' }}>Editar ✎</button>
+                          ) : (
+                            <div className="flex gap-1.5">
+                              <button onClick={() => setEditPrecios(e => { const n2 = { ...e }; delete n2[p.id]; return n2 })}
+                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
+                                style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+                              <button onClick={() => guardarPrecios(p.id)}
+                                disabled={saving[p.id + '_pr']}
+                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50"
+                                style={{ background: '#F26E1F', color: '#fff' }}>
+                                {saving[p.id + '_pr'] ? 'Guardando…' : 'Guardar'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
                         <div className="grid grid-cols-3 gap-1.5 mb-3">
                           {escenarios.map(s => (
                             <div key={s.label} className="rounded-xl p-2.5 text-center" style={{ background: '#1E1E1E', border: `1px solid ${s.color}30` }}>
                               <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: s.color }}>{s.label}</div>
-                              <div className="font-black text-[13px] text-white leading-tight">{fmt(s.venta)}</div>
-                              <div className="text-[11px] font-semibold mt-0.5" style={{ color: '#aaa' }}>{s.benef >= 0 ? '+' : ''}{fmt(s.benef)}</div>
-                              <div className="text-[11px] font-bold mt-0" style={{ color: s.color }}>
-                                {s.roi >= 0 ? '+' : ''}{s.roi.toFixed(1)}% ROI
-                              </div>
+                              {ep ? (
+                                <input
+                                  type="number"
+                                  value={ep[s.key]}
+                                  onChange={e => setEditPrecios(prev => ({ ...prev, [p.id]: { ...prev[p.id], [s.key]: e.target.value } }))}
+                                  placeholder="€"
+                                  className="w-full text-center text-xs font-black text-white rounded outline-none py-0.5"
+                                  style={{ background: '#282828', border: `1px solid ${s.color}50`, MozAppearance: 'textfield' }}
+                                />
+                              ) : (
+                                <>
+                                  <div className="font-black text-[13px] text-white leading-tight">{fmt(s.venta)}</div>
+                                  <div className="text-[11px] font-semibold mt-0.5" style={{ color: '#aaa' }}>{s.benef >= 0 ? '+' : ''}{fmt(s.benef)}</div>
+                                  <div className="text-[11px] font-bold" style={{ color: s.color }}>{s.roi >= 0 ? '+' : ''}{s.roi.toFixed(1)}% ROI</div>
+                                </>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -332,9 +446,9 @@ export default function ProyectosPage() {
                         {/* Financiero */}
                         <div className="grid grid-cols-3 gap-1.5 mb-3">
                           {[
-                            { l: 'Inv. total',    v: inversion ? fmt(inversion) : '—', c: '#fff' },
-                            { l: 'Venta obj.',    v: ventaEst  ? fmt(ventaEst)  : '—', c: '#22C55E' },
-                            { l: 'Benef. real.',  v: ventaEst  ? (escenarios[1].benef >= 0 ? '+' : '') + fmt(escenarios[1].benef) : '—', c: escenarios[1].benef >= 0 ? '#22C55E' : '#EF4444' },
+                            { l: 'Inv. total',   v: inversion ? fmt(inversion) : '—', c: '#fff' },
+                            { l: 'Venta obj.',   v: ventaEst  ? fmt(ventaEst)  : '—', c: '#22C55E' },
+                            { l: 'Benef. real.', v: ventaEst  ? (escenarios[1].benef >= 0 ? '+' : '') + fmt(escenarios[1].benef) : '—', c: escenarios[1].benef >= 0 ? '#22C55E' : '#EF4444' },
                           ].map(k => (
                             <div key={k.l} className="rounded-xl p-2.5" style={{ background: '#1E1E1E' }}>
                               <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#666' }}>{k.l}</div>
@@ -348,9 +462,7 @@ export default function ProyectosPage() {
                           <div className="rounded-xl p-2.5" style={{ background: '#1E1E1E' }}>
                             <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#666' }}>F. compra · Duración</div>
                             <div className="text-sm font-bold text-white">
-                              {p.fecha_compra
-                                ? new Date(p.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})
-                                : '—'}
+                              {p.fecha_compra ? new Date(p.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) : '—'}
                               {durMeses !== null ? ` · ${durMeses}m` : ''}
                             </div>
                           </div>
@@ -359,11 +471,9 @@ export default function ProyectosPage() {
                             <div className="text-sm font-bold text-white">{diasDesde !== null ? `${diasDesde} días` : '—'}</div>
                           </div>
                           <div className="rounded-xl p-2.5 col-span-2" style={{ background: '#1E1E1E' }}>
-                            <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#666' }}>Fecha estimada fin de obra</div>
+                            <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#666' }}>Fecha estimada de salida</div>
                             <div className="text-sm font-bold text-white">
-                              {p.fecha_salida_estimada
-                                ? new Date(p.fecha_salida_estimada).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})
-                                : '—'}
+                              {p.fecha_salida_estimada ? new Date(p.fecha_salida_estimada).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'}) : '—'}
                             </div>
                           </div>
                         </div>
@@ -379,11 +489,11 @@ export default function ProyectosPage() {
                           </div>
                         </div>
 
-                        {/* Cerrar operación */}
-                        <button onClick={ev => cerrarProyecto(p, ev)}
+                        {/* Marcar como vendido */}
+                        <button onClick={ev => marcarVendido(p, ev)}
                           className="w-full py-3 rounded-xl text-sm font-black mb-2"
                           style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}>
-                          Cerrar operación ✓
+                          Marcar como Vendido ✓
                         </button>
 
                         {/* Abrir completo */}
@@ -407,21 +517,34 @@ export default function ProyectosPage() {
             </>
           )}
 
+          {/* Pipeline */}
           {pipeline.length > 0 && (
             <>
               <div className="font-black text-[15px] text-white mb-3 mt-2">En pipeline</div>
               {pipeline.map(p => (
-                <div key={p.id} className="rounded-2xl mb-2.5 p-4 flex gap-3 opacity-60"
-                  style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div key={p.id} className="rounded-2xl mb-2.5 p-4 flex gap-3"
+                  style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.7 }}>
                   <div onClick={() => router.push(`/proyectos/${p.id}`)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
                     <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: '#282828' }}>🏠</div>
                     <div className="flex-1 min-w-0">
                       <div className="font-black text-base text-white">{p.nombre}</div>
                       <div className="text-xs font-medium mt-1" style={{ color: '#888' }}>📍 {p.ciudad || '—'}</div>
-                      <div className="flex gap-1.5 mt-2">
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#282828', color: '#888' }}>
-                          {ESTADO_LABEL[p.estado]}
-                        </span>
+                      <div className="flex gap-1.5 mt-2 items-center">
+                        {/* Estado dropdown en pipeline */}
+                        <select
+                          value={p.estado}
+                          disabled={saving[p.id]}
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
+                          className="text-[11px] font-bold px-2 py-0.5 rounded-full border-0 outline-none cursor-pointer appearance-none"
+                          style={{ background: '#282828', color: '#888', WebkitAppearance: 'none', MozAppearance: 'none' }}
+                        >
+                          {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
+                            <option key={e} value={e} style={{ background: '#1E1E1E', color: '#fff' }}>
+                              {ESTADO_LABEL[e]}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -438,6 +561,49 @@ export default function ProyectosPage() {
                   </div>
                 </div>
               ))}
+            </>
+          )}
+
+          {/* Finalizados */}
+          {finalizados.length > 0 && (
+            <>
+              <div className="font-black text-[15px] text-white mb-3 mt-4" style={{ color: '#555' }}>Vendidos · {finalizados.length}</div>
+              {finalizados.map(p => {
+                const inversion = p.valor_total_operacion || p.precio_compra || 0
+                const venta     = p.precio_venta_real || p.precio_venta_realista || p.precio_venta_estimado || 0
+                const benef     = venta - inversion
+                const roi       = inversion > 0 ? (benef / inversion) * 100 : null
+                return (
+                  <div key={p.id} className="rounded-2xl mb-2.5 p-4 flex gap-3"
+                    style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', opacity: 0.55 }}>
+                    <div onClick={() => router.push(`/proyectos/${p.id}`)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
+                      <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: '#1E1E1E' }}>🏛️</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-black text-base text-white">{p.nombre}</div>
+                        <div className="text-xs font-medium mt-0.5" style={{ color: '#666' }}>📍 {p.ciudad || '—'}</div>
+                        <div className="mt-1.5">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
+                            Vendido
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      {roi !== null && (
+                        <>
+                          <div className="font-black text-[17px]" style={{ color: roi >= 0 ? '#22C55E' : '#EF4444' }}>
+                            {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
+                          </div>
+                          <div className="text-[11px] font-medium" style={{ color: '#666' }}>ROI real</div>
+                        </>
+                      )}
+                      <button onClick={e => deleteProyecto(p, e)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-sm mt-auto"
+                        style={{ background:'rgba(239,68,68,0.08)', color:'#EF4444' }}>✕</button>
+                    </div>
+                  </div>
+                )
+              })}
             </>
           )}
         </>

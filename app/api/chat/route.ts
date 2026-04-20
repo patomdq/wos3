@@ -415,7 +415,7 @@ const TOOLS: Anthropic.Tool[] = [
         ciudad: { type: 'string', description: 'Ciudad' },
         provincia: { type: 'string', description: 'Provincia' },
         tipo: { type: 'string', enum: ['piso', 'local', 'edificio', 'solar'], description: 'Tipo de inmueble' },
-        estado: { type: 'string', enum: ['captado', 'analisis', 'ofertado', 'comprado', 'reforma', 'venta', 'cerrado'], description: 'Estado actual en el pipeline' },
+        estado: { type: 'string', enum: ['captado', 'analisis', 'ofertado', 'comprado', 'reforma', 'venta', 'reservado', 'con_oferta', 'en_arras', 'vendido'], description: 'Estado actual en el pipeline. Venta: venta→reservado→con_oferta→en_arras→vendido' },
         precio_compra: { type: 'number', description: 'Precio de compra en euros' },
         precio_venta_conservador: { type: 'number', description: 'Precio de venta escenario conservador en euros' },
         precio_venta_realista: { type: 'number', description: 'Precio de venta escenario realista en euros' },
@@ -1248,7 +1248,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - proyectos, cuentas bancarias, movimientos, tareas, partidas de reforma, radar, bitácora, proveedores
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
-- TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto para buscarlo en En Estudio y crear el proyecto automáticamente. Para finalizar un proyecto usá update_proyecto con estado="cerrado" — aparecerá en HASU como operación finalizada.
+- TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
 
 REGLAS DE RESPUESTA — MUY IMPORTANTE:

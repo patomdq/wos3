@@ -12,7 +12,8 @@ const ESTADO_PROSPECTO_COLOR: Record<string,string> = {
   'Oferta recibida':'#F26E1F','En negociación':'#22C55E','Descartado':'#EF4444',
 }
 const TIPOS_INTERACCION = ['llamada','visita','mensaje','email','nota']
-const ESTADO_COLOR: Record<string,string> = { captado:'#888', analisis:'#60A5FA', ofertado:'#F59E0B', comprado:'#22C55E', reforma:'#F26E1F', venta:'#a78bfa', cerrado:'#22C55E' }
+const ESTADO_COLOR: Record<string,string> = { captado:'#888', analisis:'#60A5FA', ofertado:'#F59E0B', comprado:'#22C55E', reforma:'#F26E1F', venta:'#a78bfa', reservado:'#F59E0B', con_oferta:'#F26E1F', en_arras:'#22C55E', vendido:'#22C55E', cerrado:'#22C55E' }
+const ESTADO_LABEL_MAP: Record<string,string> = { captado:'Captado', analisis:'Análisis', ofertado:'Ofertado', comprado:'Comprado', reforma:'Reforma', venta:'En venta', reservado:'Reservado', con_oferta:'Ofertado', en_arras:'En arras', vendido:'Vendido', cerrado:'Vendido' }
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2}).format(n)
 const fmtK = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
 
@@ -612,7 +613,7 @@ export default function ProyectoDetalle() {
         </div>
         <div className="grid grid-cols-3 gap-2 relative">
           {[
-            { v: proyecto.estado ? proyecto.estado.charAt(0).toUpperCase()+proyecto.estado.slice(1) : '—', l:'Estado', c: ESTADO_COLOR[proyecto.estado]||'#fff' },
+            { v: proyecto.estado ? (ESTADO_LABEL_MAP[proyecto.estado] || proyecto.estado.charAt(0).toUpperCase()+proyecto.estado.slice(1)) : '—', l:'Estado', c: ESTADO_COLOR[proyecto.estado]||'#fff' },
             { v: `${proyecto.avance_reforma||0}%`, l:'Avance', c:'#fff' },
             { v: proyecto.precio_venta_estimado ? fmtK(proyecto.precio_venta_estimado) : '—', l:'Venta est.', c:'#22C55E' },
           ].map(k => (

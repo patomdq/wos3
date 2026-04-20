@@ -36,7 +36,8 @@ type TrackRow = {
 type SortKey = 'roi' | 'fecha' | 'duracion'
 type FilterKey = 'todos' | 'en_curso' | 'finalizado'
 
-const EN_CURSO = ['comprado','reforma','venta']
+const EN_CURSO = ['comprado','reforma','venta','reservado','con_oferta','en_arras']
+const VENDIDOS = ['vendido','cerrado']
 
 export default function HasuPage() {
   const router = useRouter()
@@ -123,7 +124,7 @@ export default function HasuPage() {
   const porMes     = Math.max(0, (OBJETIVO - totalCap) / mesesRest)
 
   // Track record metrics
-  const cerrados = trackRows.filter(r => r.estado === 'cerrado')
+  const cerrados = trackRows.filter(r => VENDIDOS.includes(r.estado))
   const getInv   = (r: TrackRow) => r.valor_total_operacion || r.precio_compra || 0
   const getVenta = (r: TrackRow) => r.precio_venta_real || r.precio_venta_estimado || 0
   const getBenef = (r: TrackRow) => getVenta(r) - getInv(r)
@@ -142,7 +143,7 @@ export default function HasuPage() {
   const filtered = trackRows
     .filter(r => {
       if (filter === 'en_curso')   return EN_CURSO.includes(r.estado)
-      if (filter === 'finalizado') return r.estado === 'cerrado'
+      if (filter === 'finalizado') return VENDIDOS.includes(r.estado)
       return true
     })
     .sort((a, b) => {
@@ -161,8 +162,8 @@ export default function HasuPage() {
     { icon: '📅', bg: 'rgba(96,165,250,0.12)', nombre: 'Calendario',          desc: 'Google Calendar · hola@hasu.in',      href: '/hasu/calendario' },
   ]
 
-  const ESTADO_COLOR: Record<string,string> = { comprado:'#22C55E', reforma:'#F26E1F', venta:'#a78bfa', cerrado:'#888', captado:'#555', analisis:'#60A5FA', ofertado:'#F59E0B' }
-  const ESTADO_LABEL: Record<string,string> = { comprado:'Comprado', reforma:'En reforma', venta:'En venta', cerrado:'Cerrado', captado:'Captado', analisis:'Análisis', ofertado:'Ofertado' }
+  const ESTADO_COLOR: Record<string,string> = { comprado:'#22C55E', reforma:'#F26E1F', venta:'#a78bfa', reservado:'#F59E0B', con_oferta:'#F26E1F', en_arras:'#22C55E', vendido:'#22C55E', cerrado:'#22C55E', captado:'#555', analisis:'#60A5FA', ofertado:'#F59E0B' }
+  const ESTADO_LABEL: Record<string,string> = { comprado:'Comprado', reforma:'En reforma', venta:'En venta', reservado:'Reservado', con_oferta:'Ofertado', en_arras:'En arras', vendido:'Vendido', cerrado:'Vendido', captado:'Captado', analisis:'Análisis', ofertado:'Ofertado' }
 
   return (
     <div className="p-4">
@@ -206,7 +207,7 @@ export default function HasuPage() {
             { l: 'Capital HASU',       v: fmt(totalCap),                           s: '▲ actualizado',           sc: '#22C55E' },
             { l: 'Faltan para 1M€',    v: fmt(Math.max(0, OBJETIVO - totalCap)),   s: `${pct.toFixed(1)}% alcanzado`, sc: '#888' },
             { l: 'Proyectos activos',  v: String(activos.length),                  s: `${proyectos.length} total`, sc: '#888' },
-            { l: 'ROI medio',          v: cerrados.length > 0 ? fmtPct(roiMedio) : '—', s: 'proyectos cerrados',   sc: '#888' },
+            { l: 'ROI medio',          v: cerrados.length > 0 ? fmtPct(roiMedio) : '—', s: 'proyectos vendidos',   sc: '#888' },
             { l: 'Inversores',         v: String(inversores),                      s: 'JV activos',               sc: '#888' },
             { l: 'Cuentas',            v: String(cuentas.length),                  s: 'activas',                  sc: '#888' },
           ].map(k => (
@@ -280,10 +281,10 @@ export default function HasuPage() {
         ) : (
           <div className="grid grid-cols-2 gap-2 mb-4">
             {[
-              { l: 'Total operaciones',   v: String(trackRows.length),                                      sub: `${cerrados.length} cerradas` },
+              { l: 'Total operaciones',   v: String(trackRows.length),                                      sub: `${cerrados.length} vendidas` },
               { l: 'Capital invertido',   v: totalInvertido > 0 ? fmtK(totalInvertido) : '—',               sub: 'acumulado' },
-              { l: 'Beneficio generado',  v: cerrados.length > 0 ? (totalBenef >= 0 ? '+' : '') + fmtK(totalBenef) : '—', sub: 'cerrados', c: totalBenef >= 0 ? '#22C55E' : '#EF4444' },
-              { l: 'ROI medio histórico', v: cerrados.length > 0 ? fmtPct(roiMedio) : '—',                  sub: 'media cerrados', c: roiMedio >= 0 ? '#22C55E' : '#EF4444' },
+              { l: 'Beneficio generado',  v: cerrados.length > 0 ? (totalBenef >= 0 ? '+' : '') + fmtK(totalBenef) : '—', sub: 'vendidos', c: totalBenef >= 0 ? '#22C55E' : '#EF4444' },
+              { l: 'ROI medio histórico', v: cerrados.length > 0 ? fmtPct(roiMedio) : '—',                  sub: 'media vendidos', c: roiMedio >= 0 ? '#22C55E' : '#EF4444' },
               { l: 'Tiempo medio',        v: tiempoMedio !== null ? `${tiempoMedio}m` : '—',                sub: 'por operación' },
             ].map((k, i) => (
               <div key={k.l} className={`rounded-xl p-3.5${i === 4 ? ' col-span-2' : ''}`} style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>

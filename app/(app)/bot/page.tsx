@@ -75,7 +75,7 @@ export default function BotPage() {
       } else {
         // Contexto global
         const [{ count: activos }, { data: movs }, { data: tareas }, { data: proyectos }, { data: partidas }] = await Promise.all([
-          supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta']),
+          supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta','reservado','con_oferta','en_arras']),
           supabase.from('movimientos').select('id,concepto,monto,fecha').order('fecha', { ascending: false }).limit(10),
           supabase.from('tareas').select('id,titulo,prioridad,estado').eq('estado', 'Pendiente').limit(5),
           supabase.from('proyectos').select('id,nombre,estado,ciudad').order('created_at'),
