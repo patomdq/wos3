@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { authFetch } from '@/lib/auth-fetch'
 
 const TABS = ['Finanzas','Reforma','Pendientes','Bitácora','Inversor','Docs','Comercialización']
 
@@ -261,7 +262,7 @@ export default function ProyectoDetalle() {
 
     // Sync to Google Calendar if partida has a fecha_inicio
     if (savedId && nuevaPartida.fecha_inicio) {
-      fetch('/api/google/create-event', {
+      authFetch('/api/google/create-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -286,7 +287,7 @@ export default function ProyectoDetalle() {
     await supabase.from('partidas_reforma').delete().eq('id', pid)
     setPartidas(p => p.filter(x => x.id !== pid))
     // Remove GCal event silently
-    fetch('/api/google/create-event', {
+    authFetch('/api/google/create-event', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ partida_id: pid }),

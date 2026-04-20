@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getOrgAccessToken, supabaseAdmin } from '@/lib/gcalToken'
 import { gcalListEvents } from '@/lib/googleCalendar'
+import { verifyAuth } from '@/lib/api-auth'
 
 // GET — returns events for a given month range
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const timeMin = searchParams.get('timeMin') || new Date().toISOString()
   const timeMax = searchParams.get('timeMax') || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()
@@ -16,7 +20,9 @@ export async function GET(req: Request) {
 }
 
 // POST — full sync from Google → store in eventos_gcal table
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const token = await getOrgAccessToken()
   if (!token) return NextResponse.json({ ok: false, error: 'Not connected' })
 

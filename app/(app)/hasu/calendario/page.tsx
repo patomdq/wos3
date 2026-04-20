@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { authFetch } from '@/lib/auth-fetch'
 
 type GCalEvent = {
   id: string
@@ -64,7 +65,7 @@ export default function CalendarioPage() {
     if (conn) {
       const timeMin = new Date(y, m, 1).toISOString()
       const timeMax = new Date(y, m + 1, 0, 23, 59, 59).toISOString()
-      const res = await fetch(`/api/google/sync?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`)
+      const res = await authFetch(`/api/google/sync?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`)
       const { events: evs } = await res.json()
       setEvents(evs || [])
     }
@@ -93,7 +94,7 @@ export default function CalendarioPage() {
 
   const disconnectGoogle = async () => {
     if (!confirm('¿Desconectar Google Calendar?')) return
-    await fetch('/api/google/disconnect', { method: 'POST' })
+    await authFetch('/api/google/disconnect', { method: 'POST' })
     setConnected(false)
     setEvents([])
     showToast('Google Calendar desconectado')
@@ -116,7 +117,7 @@ export default function CalendarioPage() {
       ? form.fecha
       : `${form.fecha}T${form.hora_fin}:00`
 
-    const res = await fetch('/api/google/create-event', {
+    const res = await authFetch('/api/google/create-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

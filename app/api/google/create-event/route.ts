@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOrgAccessToken, supabaseAdmin } from '@/lib/gcalToken'
 import { gcalCreateEvent, gcalUpdateEvent, gcalDeleteEvent } from '@/lib/googleCalendar'
+import { verifyAuth } from '@/lib/api-auth'
 
 // POST — create or update a calendar event linked to a partida
 // Body: { partida_id, proyecto_nombre, nombre, fecha_inicio, fecha_fin_estimada }
 export async function POST(req: NextRequest) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ ok: false, error: 'No autorizado' }, { status: 401 })
+
   const body = await req.json()
   const { partida_id, proyecto_nombre, nombre, fecha_inicio, fecha_fin_estimada } = body
 
@@ -58,6 +62,9 @@ export async function POST(req: NextRequest) {
 // DELETE — remove a calendar event linked to a partida
 // Body: { partida_id }
 export async function DELETE(req: NextRequest) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ ok: false, error: 'No autorizado' }, { status: 401 })
+
   const { partida_id } = await req.json()
   if (!partida_id) return NextResponse.json({ ok: false })
 

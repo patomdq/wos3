@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { authFetch } from '@/lib/auth-fetch'
 
 type UserRole = { id: string; user_id: string; role: string; email?: string; nombre?: string; permisos?: any }
 type Proyecto = { id: string; nombre: string }
@@ -113,7 +114,7 @@ export default function AdminPage() {
     setInviting(true)
     setInviteMsg('')
     try {
-      const res = await fetch('/api/invite', {
+      const res = await authFetch('/api/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: inviteEmail, role: inviteRole, nombre: inviteNombre }),

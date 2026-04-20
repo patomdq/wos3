@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifyAuth } from '@/lib/api-auth'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,6 +8,19 @@ const supabaseAdmin = createClient(
 )
 
 export async function POST(req: NextRequest) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  // Only admins can invite users
+  const { data: callerRole } = await supabaseAdmin
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', auth.userId)
+    .single()
+  if (callerRole?.role !== 'admin') {
+    return NextResponse.json({ error: 'Prohibido: se requiere rol admin' }, { status: 403 })
+  }
+
   try {
     const { email, role, nombre } = await req.json()
     if (!email || !role) return NextResponse.json({ error: 'email y role son requeridos' }, { status: 400 })

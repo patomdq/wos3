@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { verifyAuth } from '@/lib/api-auth'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
   const pid = params.id
   try {
     const { data: partidas } = await supabaseAdmin.from('partidas_reforma').select('id').eq('proyecto_id', pid)
@@ -21,6 +25,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     await supabaseAdmin.from('bitacora').delete().eq('proyecto_id', pid)
     await supabaseAdmin.from('documentos').delete().eq('proyecto_id', pid)
     await supabaseAdmin.from('proyecto_inversores').delete().eq('proyecto_id', pid)
+    // Delete prospectos and their interactions
+    const { data: prospectos } = await supabaseAdmin.from('prospectos').select('id').eq('proyecto_id', pid)
+    if (prospectos?.length) {
+      const prospIds = prospectos.map((p: any) => p.id)
+      await supabaseAdmin.from('interacciones_prospecto').delete().in('prospecto_id', prospIds)
+    }
+    await supabaseAdmin.from('prospectos').delete().eq('proyecto_id', pid)
     const { error } = await supabaseAdmin.from('proyectos').delete().eq('id', pid)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     return NextResponse.json({ ok: true })

@@ -1,7 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getOrgAccessToken, supabaseAdmin } from '@/lib/gcalToken'
+import { verifyAuth } from '@/lib/api-auth'
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
   try {
     // Revoke token at Google
     const token = await getOrgAccessToken()

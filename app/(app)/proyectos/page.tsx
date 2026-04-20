@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUser, canAccessProject } from '@/lib/user-context'
+import { authFetch } from '@/lib/auth-fetch'
 
 const ESTADOS = ['captado','analisis','ofertado','comprado','reforma','venta','cerrado']
 const ESTADO_LABEL: Record<string,string> = { captado:'Captado', analisis:'Análisis', ofertado:'Ofertado', comprado:'Comprado', reforma:'Reforma', venta:'Venta', cerrado:'Cerrado' }
@@ -73,7 +74,7 @@ export default function ProyectosPage() {
   const deleteProyecto = async (p: Proyecto, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm(`¿Eliminar el proyecto "${p.nombre}"? Esta acción no se puede deshacer.`)) return
-    const res = await fetch(`/api/proyectos/${p.id}`, { method: 'DELETE' })
+    const res = await authFetch(`/api/proyectos/${p.id}`, { method: 'DELETE' })
     if (res.ok) setProyectos(prev => prev.filter(x => x.id !== p.id))
     else alert('Error al eliminar el proyecto.')
   }

@@ -26,6 +26,7 @@ export default function BotPage() {
   const [typing, setTyping] = useState(false)
   const [historial, setHistorial] = useState<{role:string;content:string}[]>([])
   const [userId, setUserId] = useState<string>('')
+  const [sessionToken, setSessionToken] = useState<string>('')
   const [editState, setEditState] = useState<EditState | null>(null)
   const [editSaving, setEditSaving] = useState(false)
   const [proyectoNombre, setProyectoNombre] = useState('')
@@ -38,6 +39,7 @@ export default function BotPage() {
       const { data: { session } } = await supabase.auth.getSession()
       const uid = session?.user?.id || 'anon'
       setUserId(uid)
+      setSessionToken(session?.access_token || '')
 
       const stored = localStorage.getItem(`wos3_chat_${uid}${proyectoId ? '_' + proyectoId : ''}`)
       if (stored) {
@@ -116,7 +118,10 @@ export default function BotPage() {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {}),
+        },
         body: JSON.stringify({ messages: newHistorial, context: contextRef.current })
       })
       const { text: resp, toolResults } = await res.json()
@@ -135,7 +140,7 @@ export default function BotPage() {
   const clearChat = () => {
     setMsgs([WELCOME])
     setHistorial([])
-    if (userId) localStorage.removeItem(`wos3_chat_${userId}`)
+    if (userId) localStorage.removeItem(`wos3_chat_${userId}${proyectoId ? '_' + proyectoId : ''}`)
   }
 
   const deleteRecord = async (msgIdx: number, td: ToolData) => {
@@ -217,14 +222,26 @@ export default function BotPage() {
               {m.role === 'bot' ? 'W' : 'P'}
             </div>
             <div className="max-w-[calc(100vw-100px)] md:max-w-md">
-              <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5 rounded-2xl"
-                style={{
-                  background: m.role === 'bot' ? '#1E1E1E' : '#F26E1F',
-                  border: m.role === 'bot' ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                  color: '#fff',
-                  borderRadius: m.role === 'bot' ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
-                }}
-                dangerouslySetInnerHTML={{ __html: m.text }} />
+              {m.role === 'bot' ? (
+                <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5 rounded-2xl"
+                  style={{
+                    background: '#1E1E1E',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: '#fff',
+                    borderRadius: '4px 14px 14px 14px',
+                  }}
+                  dangerouslySetInnerHTML={{ __html: m.text }} />
+              ) : (
+                <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5 rounded-2xl"
+                  style={{
+                    background: '#F26E1F',
+                    color: '#fff',
+                    borderRadius: '14px 4px 14px 14px',
+                    whiteSpace: 'pre-wrap',
+                  }}>
+                  {m.text}
+                </div>
+              )}
 
               {/* Tool results with edit/delete */}
               {m.toolData?.map((td, ti) => (

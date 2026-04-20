@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
 import { getOrgAccessToken } from '@/lib/gcalToken'
 import { gcalCreateEvent } from '@/lib/googleCalendar'
+import { verifyAuth } from '@/lib/api-auth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabaseAdmin = createClient(
@@ -85,7 +86,8 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         id: { type: 'string', description: 'UUID del movimiento a editar' },
         concepto: { type: 'string', description: 'Nuevo concepto/descripción' },
-        monto: { type: 'number', description: 'Nuevo monto en euros (negativo para gastos, positivo para ingresos)' },
+        monto: { type: 'number', description: 'Nuevo monto en euros. Siempre positivo; el tipo determina el signo.' },
+        tipo: { type: 'string', enum: ['Gasto', 'Ingreso'], description: 'Nuevo tipo. Pasarlo si cambia o si se actualiza el monto para aplicar el signo correcto.' },
         fecha: { type: 'string', description: 'Nueva fecha YYYY-MM-DD' },
         categoria: { type: 'string', description: 'Nueva categoría' },
         proveedor: { type: 'string', description: 'Nuevo proveedor' },
@@ -623,7 +625,15 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'update_movimiento') {
       const updates: Record<string,any> = {}
       if (input.concepto !== undefined) updates.concepto = input.concepto
-      if (input.monto !== undefined) updates.monto = input.monto
+      if (input.monto !== undefined) {
+        // Normalize sign: if tipo is provided use it; otherwise preserve the raw value Claude sends
+        if (input.tipo) {
+          updates.monto = input.tipo === 'Gasto' ? -Math.abs(input.monto) : Math.abs(input.monto)
+        } else {
+          updates.monto = input.monto
+        }
+      }
+      if (input.tipo !== undefined) updates.tipo = input.tipo
       if (input.fecha !== undefined) updates.fecha = input.fecha
       if (input.categoria !== undefined) updates.categoria = input.categoria
       if (input.proveedor !== undefined) updates.proveedor = input.proveedor
@@ -836,8 +846,10 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const token = await getOrgAccessToken()
       if (!token) return { result: 'Google Calendar no está conectado.' }
       const { gcalUpdateEvent, gcalListEvents } = await import('@/lib/googleCalendar')
-      // Fetch current event to merge fields
-      const events = await gcalListEvents(token)
+      // Fetch current event with a wide date range so past events are included too
+      const past   = new Date(Date.now() - 365 * 86400000).toISOString()
+      const future = new Date(Date.now() + 365 * 86400000).toISOString()
+      const events = await gcalListEvents(token, past, future)
       const current = events.find(e => e.id === input.google_event_id)
       if (!current) return { result: `No encontré el evento con ID ${input.google_event_id}.` }
       const allDay = input.todo_el_dia ?? !current.start.dateTime
@@ -872,7 +884,13 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         : `${input.fecha}T${input.hora_inicio || '09:00'}:00`
       const endDT = allDay
         ? input.fecha
-        : `${input.fecha}T${input.hora_fin   || (String(parseInt((input.hora_inicio||'09').split(':')[0])+1).padStart(2,'0')+':00')}:00`
+        : (() => {
+            if (input.hora_fin) return `${input.fecha}T${input.hora_fin}:00`
+            const startH = parseInt((input.hora_inicio || '09').split(':')[0])
+            const endH   = (startH + 1) % 24
+            const endMin = startH >= 23 ? '59' : '00'
+            return `${input.fecha}T${String(endH).padStart(2,'0')}:${endMin}:00`
+          })()
 
       const created = await gcalCreateEvent(token, {
         title:         input.titulo,
@@ -904,6 +922,10 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const raiz = todas.find(p => p.nombre.toLowerCase().includes(needle))
       if (!raiz) return { result: `No encontré ninguna partida con el nombre "${input.partida_nombre}". Verificá el nombre.` }
 
+      // Fetch project name for GCal event titles
+      const { data: proyData } = await supabaseAdmin.from('proyectos').select('nombre').eq('id', input.proyecto_id).single()
+      const proyNombre = proyData?.nombre || ''
+
       const dias: number = input.dias
       const addDays = (dateStr: string, d: number): string => {
         const dt = new Date(dateStr)
@@ -926,7 +948,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
         const updates: Record<string,any> = {}
         if (p.fecha_fin_estimada) updates.fecha_fin_estimada = addDays(p.fecha_fin_estimada, dias)
-        if (p.fecha_inicio && currentId !== raiz.id) updates.fecha_inicio = addDays(p.fecha_inicio, dias)
+        if (p.fecha_inicio) updates.fecha_inicio = addDays(p.fecha_inicio, dias)
         if (dias > 0 && p.estado !== 'ok') updates.estado = 'retrasada'
 
         if (Object.keys(updates).length > 0) {
@@ -955,7 +977,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
             .select('google_event_id')
             .eq('partida_id', a.id)
             .single()
-          const title = `${partida.nombre} — ${input.proyecto_id}`
+          const title = `${partida.nombre} — ${proyNombre}`
           const startDT = a.updates.fecha_inicio || partida.fecha_inicio
           const endDT   = a.updates.fecha_fin_estimada || partida.fecha_fin_estimada || startDT
           if (gcalRow?.google_event_id) {
@@ -993,6 +1015,13 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       await supabaseAdmin.from('bitacora').delete().eq('proyecto_id', pid)
       await supabaseAdmin.from('documentos').delete().eq('proyecto_id', pid)
       await supabaseAdmin.from('proyecto_inversores').delete().eq('proyecto_id', pid)
+      // Delete prospectos and their interactions
+      const { data: prospectosDel } = await supabaseAdmin.from('prospectos').select('id').eq('proyecto_id', pid)
+      if (prospectosDel?.length) {
+        const prospIds = prospectosDel.map((p: any) => p.id)
+        await supabaseAdmin.from('interacciones_prospecto').delete().in('prospecto_id', prospIds)
+      }
+      await supabaseAdmin.from('prospectos').delete().eq('proyecto_id', pid)
       const { error } = await supabaseAdmin.from('proyectos').delete().eq('id', pid)
       if (error) return { result: `Error al eliminar proyecto: ${error.message}` }
       return { result: `Proyecto eliminado: "${input.nombre || input.id}".` }
@@ -1200,6 +1229,9 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await verifyAuth(req)
+  if (!auth) return NextResponse.json({ text: 'No autorizado.' }, { status: 401 })
+
   try {
     const { messages, context } = await req.json()
     const today = new Date().toISOString().split('T')[0]
