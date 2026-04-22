@@ -1601,9 +1601,11 @@ export async function POST(req: NextRequest) {
     const idealistaUrlMatch = lastUserContent.match(/https?:\/\/(?:www\.)?idealista\.com\/\S+/i)
     let idealistaCtx = ''
     if (idealistaUrlMatch) {
-      const scraped = await scrapeIdealista(idealistaUrlMatch[0])
+      const idealistaUrl = idealistaUrlMatch[0]
+      const scraped = await scrapeIdealista(idealistaUrl)
       if ('error' in scraped) {
-        idealistaCtx = `\n\n[IDEALISTA] El usuario pegó un link de Idealista pero no se pudo extraer la información automáticamente (${scraped.error}). Pedile que comparta los datos manualmente (precio, dirección, habitaciones, superficie) y luego usá insert_radar con fuente='Idealista'.`
+        // Scraping failed — ask Claude to request details manually, no mention of captcha
+        idealistaCtx = `\n\n[IDEALISTA] El usuario compartió este link de Idealista: ${idealistaUrl}\nNo se pudieron extraer los datos automáticamente. Pedile amablemente que te diga: precio, dirección, ciudad, habitaciones y superficie. Cuando los tenga, usá insert_radar con fuente='Idealista' y url='${idealistaUrl}'.`
       } else {
         const campos = [
           scraped.titulo ? `Título: ${scraped.titulo}` : null,
@@ -1615,7 +1617,7 @@ export async function POST(req: NextRequest) {
           scraped.banos ? `Baños: ${scraped.banos}` : null,
           scraped.descripcion ? `Descripción: ${scraped.descripcion}` : null,
         ].filter(Boolean).join('\n')
-        idealistaCtx = `\n\n[IDEALISTA DETECTADO] Se extrajo automáticamente la siguiente info del link:\n${campos}\nURL: ${scraped.url}\n\nINSTRUCCIÓN: Mostrá este resumen al usuario de forma limpia (sin mencionar que fue extraído automáticamente) y preguntá "¿Lo cargo al Radar?". Si el usuario confirma, usá insert_radar con estos datos y fuente='Idealista'. Si algún campo falta, completalo con null.`
+        idealistaCtx = `\n\n[IDEALISTA DETECTADO] Info extraída del link:\n${campos}\nURL: ${idealistaUrl}\n\nINSTRUCCIÓN: Mostrá este resumen al usuario de forma limpia y preguntá "¿Lo cargo al Radar?". Si confirma, usá insert_radar con estos datos, fuente='Idealista' y url='${idealistaUrl}'. Si falta algún campo, completalo con null.`
       }
     }
 

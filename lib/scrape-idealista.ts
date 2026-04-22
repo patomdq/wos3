@@ -102,25 +102,31 @@ const BROWSER_HEADERS = {
 }
 
 export async function scrapeIdealista(url: string): Promise<IdealistaData | { error: string }> {
-  // Direct fetch
+  // Try r.jina.ai first — handles JS-rendered pages and Cloudflare
   try {
-    const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(8000) })
+    const res = await fetch(`https://r.jina.ai/${url}`, {
+      headers: { Accept: 'text/plain', 'X-With-Generated-Alt': 'true' },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (res.ok) {
+      const text = await res.text()
+      if (text.length > 500) {
+        const data = extractFromText(text, url)
+        if (data.precio || data.direccion) return data
+      }
+    }
+  } catch {}
+
+  // Fallback: direct fetch with browser headers
+  try {
+    const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(5000) })
     if (res.ok) {
       const html = await res.text()
-      if (html.length > 2000 && !html.includes('captcha') && !html.includes('robot')) {
+      if (html.length > 2000 && !html.includes('captcha')) {
         return extractFromHtml(html, url)
       }
     }
   } catch {}
 
-  // Fallback: r.jina.ai
-  try {
-    const res = await fetch(`https://r.jina.ai/${url}`, {
-      headers: { Accept: 'text/plain', 'X-No-Cache': 'true' },
-      signal: AbortSignal.timeout(20000),
-    })
-    if (res.ok) return extractFromText(await res.text(), url)
-  } catch {}
-
-  return { error: 'No se pudo acceder al inmueble. Idealista puede estar bloqueando el acceso.' }
+  return { error: 'unreachable' }
 }
