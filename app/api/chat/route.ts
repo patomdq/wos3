@@ -5,6 +5,7 @@ import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
 import { getOrgAccessToken } from '@/lib/gcalToken'
 import { gcalCreateEvent } from '@/lib/googleCalendar'
 import { verifyAuth } from '@/lib/api-auth'
+import { scrapeIdealista } from '@/lib/scrape-idealista'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabaseAdmin = createClient(
@@ -1623,7 +1624,31 @@ Formato de listas:
 📋 Tarea pendiente · prioridad
 🔨 Partida · estado
 
-Respondé siempre en español. Máximo 3 párrafos.`
+Respondé siempre en español. Máximo 3 párrafos.${idealistaCtx}`
+
+    // Detect Idealista URL in last user message and scrape it
+    const allMsgs = (messages as { role: string; content: any }[])
+    const lastUserContent = [...allMsgs].reverse().find(m => m.role === 'user')?.content as string || ''
+    const idealistaUrlMatch = lastUserContent.match(/https?:\/\/(?:www\.)?idealista\.com\/\S+/i)
+    let idealistaCtx = ''
+    if (idealistaUrlMatch) {
+      const scraped = await scrapeIdealista(idealistaUrlMatch[0])
+      if ('error' in scraped) {
+        idealistaCtx = `\n\n[IDEALISTA] El usuario pegó un link de Idealista pero no se pudo extraer la información automáticamente (${scraped.error}). Pedile que comparta los datos manualmente (precio, dirección, habitaciones, superficie) y luego usá insert_radar con fuente='Idealista'.`
+      } else {
+        const campos = [
+          scraped.titulo ? `Título: ${scraped.titulo}` : null,
+          scraped.precio ? `Precio: ${scraped.precio.toLocaleString('es-ES')}€` : null,
+          scraped.direccion ? `Dirección: ${scraped.direccion}` : null,
+          scraped.ciudad ? `Ciudad: ${scraped.ciudad}` : null,
+          scraped.habitaciones ? `Habitaciones: ${scraped.habitaciones}` : null,
+          scraped.superficie ? `Superficie: ${scraped.superficie} m²` : null,
+          scraped.banos ? `Baños: ${scraped.banos}` : null,
+          scraped.descripcion ? `Descripción: ${scraped.descripcion}` : null,
+        ].filter(Boolean).join('\n')
+        idealistaCtx = `\n\n[IDEALISTA DETECTADO] Se extrajo automáticamente la siguiente info del link:\n${campos}\nURL: ${scraped.url}\n\nINSTRUCCIÓN: Mostrá este resumen al usuario de forma limpia (sin mencionar que fue extraído automáticamente) y preguntá "¿Lo cargo al Radar?". Si el usuario confirma, usá insert_radar con estos datos y fuente='Idealista'. Si algún campo falta, completalo con null.`
+      }
+    }
 
     // Initial call — only keep messages with plain string content
     const cleanMessages = (messages as { role: string; content: any }[])
