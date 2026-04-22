@@ -21,37 +21,53 @@ export function extractFromText(text: string, url: string): IdealistaData {
   const titleMatch = text.match(/^#\s+(.+)$/m) || text.match(/^Title:\s*(.+)$/m)
   const titulo = titleMatch?.[1]?.replace(/\s*\|\s*idealista.*$/i, '').trim() || null
 
+  // Price — find plausible real estate price in euros
   let precio: number | null = null
-  for (const m of text.matchAll(/([\d]+(?:[.,][\d]{3})*(?:[.,][\d]+)?)\s*€/g)) {
-    const n = parseEuros(m[1])
-    if (n && n > 10000 && n < 10_000_000) { precio = n; break }
+  const euroMatches = [...text.matchAll(/([\d]+(?:[.,][\d]{3})*(?:[.,][\d]{1,2})?)\s*€/g)]
+  for (const match of euroMatches) {
+    const val = parseEuros(match[1])
+    if (val && val > 10000 && val < 10_000_000) { precio = val; break }
   }
 
   const habMatch = text.match(/(\d+)\s*habitaci/i)
   const supMatch = text.match(/(\d+)\s*m[²2]/i)
   const banosMatch = text.match(/(\d+)\s*ba[ñn]o/i)
 
+  // Address — "por X€ en {address}" pattern (Idealista OG description)
   let direccion: string | null = null
-  const addrMatch = text.match(/(?:C\/|Calle|Avda?\.?|Plaza|Paseo|Ronda)\s+[^\n,·]{3,50}/i)
-  if (addrMatch) {
-    direccion = addrMatch[0].trim()
-  } else if (titulo) {
-    direccion = titulo.replace(/^(?:Piso|Casa|Ático|Dúplex|Estudio|Local|Solar)[^,]*(?:en|de)\s+/i, '').trim() || titulo
+  const porEnMatch = text.match(/por\s+[\d.,]+\s*€\s+en\s+([^,\n]{5,60})/i)
+  if (porEnMatch) {
+    direccion = porEnMatch[1].trim()
+  } else {
+    const streetMatch = text.match(/(?:C\/|Calle|Avda?\.?|Plaza|Paseo|Ronda)\s+[^\n,·]{3,50}/i)
+    if (streetMatch) {
+      direccion = streetMatch[0].trim()
+    } else if (titulo) {
+      direccion = titulo.replace(/^(?:Piso|Casa|Ático|Dúplex|Estudio|Local|Solar)[^,]*(?:en|de)\s+/i, '').trim() || titulo
+    }
   }
 
+  // City — after "en {address}, {city}" or from URL
   let ciudad: string | null = null
   const urlCity = url.match(/idealista\.com\/(?:venta|alquiler)-viviendas\/[^/]+\/([^/]+)\//)?.[1]
   if (urlCity) {
     ciudad = urlCity.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
   } else {
-    const cityMatch = titulo?.match(/,\s*([A-ZÁÉÍÓÚ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚ][a-záéíóúñ]+)*)$/)
-    ciudad = cityMatch?.[1] || null
+    const cityAfterComma = text.match(/en\s+[^,\n]+,\s*([A-ZÁÉÍÓÚ][a-záéíóúñ\s]{2,30})/i)?.[1]?.trim()
+    const cityFromTitle = titulo?.match(/,\s*([A-ZÁÉÍÓÚ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚ][a-záéíóúñ]+)*)$/)?.[1]
+    ciudad = cityAfterComma || cityFromTitle || null
   }
 
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 60)
   const descripcion = lines.find(l => !l.startsWith('#') && !l.match(/^\d/) && !l.match(/^http/))?.slice(0, 400) || null
 
-  return { precio, direccion, ciudad, habitaciones: habMatch ? parseInt(habMatch[1]) : null, superficie: supMatch ? parseInt(supMatch[1]) : null, banos: banosMatch ? parseInt(banosMatch[1]) : null, descripcion, url, titulo }
+  return {
+    precio, direccion, ciudad,
+    habitaciones: habMatch ? parseInt(habMatch[1]) : null,
+    superficie: supMatch ? parseInt(supMatch[1]) : null,
+    banos: banosMatch ? parseInt(banosMatch[1]) : null,
+    descripcion, url, titulo,
+  }
 }
 
 export function extractFromHtml(html: string, url: string): IdealistaData {
@@ -102,27 +118,50 @@ const BROWSER_HEADERS = {
 }
 
 export async function scrapeIdealista(url: string): Promise<IdealistaData | { error: string }> {
-  // Try r.jina.ai first — handles JS-rendered pages and Cloudflare
+  // 1. Firecrawl — anti-bot evasion, free tier 500/month (needs FIRECRAWL_API_KEY)
+  const firecrawlKey = process.env.FIRECRAWL_API_KEY
+  if (firecrawlKey) {
+    try {
+      const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${firecrawlKey}` },
+        body: JSON.stringify({ url, formats: ['markdown'], waitFor: 2000 }),
+        signal: AbortSignal.timeout(15000),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        const md: string = json.data?.markdown || ''
+        const meta = json.data?.metadata || {}
+        const combined = [meta.ogDescription, meta.description, md].filter(Boolean).join('\n')
+        if (combined.length > 100) {
+          const data = extractFromText(combined, url)
+          if (data.precio || data.direccion) return data
+        }
+      }
+    } catch {}
+  }
+
+  // 2. r.jina.ai fallback
   try {
     const res = await fetch(`https://r.jina.ai/${url}`, {
-      headers: { Accept: 'text/plain', 'X-With-Generated-Alt': 'true' },
+      headers: { Accept: 'text/plain', 'X-No-Cache': 'true' },
       signal: AbortSignal.timeout(8000),
     })
     if (res.ok) {
       const text = await res.text()
-      if (text.length > 500) {
+      if (text.length > 300) {
         const data = extractFromText(text, url)
         if (data.precio || data.direccion) return data
       }
     }
   } catch {}
 
-  // Fallback: direct fetch with browser headers
+  // 3. Direct fetch (works if Cloudflare isn't active on that page)
   try {
     const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(5000) })
     if (res.ok) {
       const html = await res.text()
-      if (html.length > 2000 && !html.includes('captcha')) {
+      if (html.length > 2000 && !html.includes('challenge-platform')) {
         return extractFromHtml(html, url)
       }
     }
