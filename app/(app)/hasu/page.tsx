@@ -31,6 +31,7 @@ type TrackRow = {
   valor_total_operacion: number | null; precio_compra: number | null
   precio_venta_real: number | null; precio_venta_estimado: number | null
   porcentaje_hasu: number
+  movimientos?: { tipo: string; monto: number }[]
 }
 
 type SortKey = 'roi' | 'fecha' | 'duracion'
@@ -93,7 +94,7 @@ export default function HasuPage() {
       supabase.from('proyectos').select('id,nombre,estado,precio_compra,precio_venta_estimado'),
       supabase.from('inversores').select('id', { count: 'exact' }),
       // track record — all projects + inversor info
-      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,fecha_compra,fecha_salida_estimada').order('created_at',{ascending:false}),
+      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,fecha_compra,fecha_salida_estimada,movimientos(tipo,monto)').order('created_at',{ascending:false}),
       supabase.from('proyecto_inversores').select('proyecto_id,inversores(nombre)'),
     ]).then(([c, p, inv, tr, pi]) => {
       setCuentas(c.data || [])
@@ -121,7 +122,10 @@ export default function HasuPage() {
 
   // Track record metrics
   const cerrados = trackRows.filter(r => VENDIDOS.includes(r.estado))
-  const getInv   = (r: TrackRow) => r.valor_total_operacion || r.precio_compra || 0
+  const getInv   = (r: TrackRow) => {
+    if (r.movimientos?.length) return r.movimientos.filter(m => m.monto < 0 || m.tipo === 'Gasto').reduce((s, m) => s + Math.abs(m.monto || 0), 0)
+    return r.valor_total_operacion || r.precio_compra || 0
+  }
   const getVenta = (r: TrackRow) => r.precio_venta_real || r.precio_venta_estimado || 0
   const getBenef = (r: TrackRow) => getVenta(r) - getInv(r)
   const getRoi   = (r: TrackRow) => { const i = getInv(r); return i > 0 ? (getBenef(r) / i) * 100 : 0 }
