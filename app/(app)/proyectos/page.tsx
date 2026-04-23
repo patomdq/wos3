@@ -64,9 +64,10 @@ export default function ProyectosPage() {
   const [loading, setLoading] = useState(true)
 
   // Inline editing state
-  const [editAvance, setEditAvance]   = useState<Record<string, string>>({})
-  const [editPrecios, setEditPrecios] = useState<Record<string, { c: string; r: string; o: string }>>({})
-  const [saving, setSaving]           = useState<Record<string, boolean>>({})
+  const [editAvance, setEditAvance]       = useState<Record<string, string>>({})
+  const [editPrecios, setEditPrecios]     = useState<Record<string, { c: string; r: string; o: string }>>({})
+  const [editFinalizado, setEditFinalizado] = useState<Record<string, { venta: string; inv: string }>>({})
+  const [saving, setSaving]               = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     Promise.all([
@@ -141,6 +142,20 @@ export default function ProyectosPage() {
         o: p.precio_venta_optimista   ? String(p.precio_venta_optimista)   : '',
       }
     }))
+  }
+
+  const guardarFinalizado = async (pid: string) => {
+    const ef = editFinalizado[pid]
+    if (!ef) return
+    const updates: Record<string, number | null> = {
+      precio_venta_real:    ef.venta ? parseFloat(ef.venta.replace(/\./g,'').replace(',','.')) : null,
+      valor_total_operacion: ef.inv  ? parseFloat(ef.inv.replace(/\./g,'').replace(',','.'))  : null,
+    }
+    setSaving(s => ({ ...s, [pid + '_fin']: true }))
+    const { error } = await supabase.from('proyectos').update(updates).eq('id', pid)
+    if (!error) setProyectos(prev => prev.map(x => x.id === pid ? { ...x, ...updates } : x))
+    setEditFinalizado(e => { const n2 = { ...e }; delete n2[pid]; return n2 })
+    setSaving(s => ({ ...s, [pid + '_fin']: false }))
   }
 
   const deleteProyecto = async (p: Proyecto, e: React.MouseEvent) => {
@@ -573,33 +588,88 @@ export default function ProyectosPage() {
                 const venta     = p.precio_venta_real || p.precio_venta_realista || p.precio_venta_estimado || 0
                 const benef     = venta - inversion
                 const roi       = inversion > 0 ? (benef / inversion) * 100 : null
+                const isExp     = expanded.has(p.id)
+                const ef        = editFinalizado[p.id]
                 return (
-                  <div key={p.id} className="rounded-2xl mb-2.5 p-4 flex gap-3"
-                    style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', opacity: 0.55 }}>
-                    <div onClick={() => router.push(`/proyectos/${p.id}`)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
-                      <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: '#1E1E1E' }}>🏛️</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-black text-base text-white">{p.nombre}</div>
-                        <div className="text-xs font-medium mt-0.5" style={{ color: '#666' }}>📍 {p.ciudad || '—'}</div>
-                        <div className="mt-1.5">
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
-                            Vendido
-                          </span>
+                  <div key={p.id} className="rounded-2xl mb-2.5 overflow-hidden"
+                    style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', opacity: 0.75 }}>
+                    <div className="p-4 flex gap-3">
+                      <div onClick={() => router.push(`/proyectos/${p.id}`)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
+                        <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: '#1E1E1E' }}>🏛️</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-black text-base text-white">{p.nombre}</div>
+                          <div className="text-xs font-medium mt-0.5" style={{ color: '#666' }}>📍 {p.ciudad || '—'}</div>
+                          <div className="mt-1.5">
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
+                              Vendido
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        {roi !== null && (
+                          <>
+                            <div className="font-black text-[17px]" style={{ color: roi >= 0 ? '#22C55E' : '#EF4444' }}>
+                              {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
+                            </div>
+                            <div className="text-[11px] font-medium" style={{ color: '#666' }}>ROI real</div>
+                          </>
+                        )}
+                        <div className="flex gap-1 mt-auto">
+                          <button onClick={e => { e.stopPropagation(); toggle(p.id) }}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                            style={{ background: 'rgba(242,110,31,0.12)', color: '#F26E1F' }}>✎</button>
+                          <button onClick={e => deleteProyecto(p, e)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                            style={{ background:'rgba(239,68,68,0.08)', color:'#EF4444' }}>✕</button>
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      {roi !== null && (
-                        <>
-                          <div className="font-black text-[17px]" style={{ color: roi >= 0 ? '#22C55E' : '#EF4444' }}>
-                            {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
-                          </div>
-                          <div className="text-[11px] font-medium" style={{ color: '#666' }}>ROI real</div>
-                        </>
-                      )}
-                      <button onClick={e => deleteProyecto(p, e)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-sm mt-auto"
-                        style={{ background:'rgba(239,68,68,0.08)', color:'#EF4444' }}>✕</button>
+                    {/* Expanded edit panel */}
+                    <div style={{ maxHeight: isExp ? '300px' : '0', overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
+                      <div className="px-4 pb-4 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#888' }}>Editar datos reales</div>
+                          {!ef ? (
+                            <button onClick={() => setEditFinalizado(e => ({ ...e, [p.id]: { venta: p.precio_venta_real ? String(p.precio_venta_real) : '', inv: p.valor_total_operacion ? String(p.valor_total_operacion) : '' } }))}
+                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
+                              style={{ background: 'rgba(242,110,31,0.15)', color: '#F26E1F' }}>Editar ✎</button>
+                          ) : (
+                            <div className="flex gap-1.5">
+                              <button onClick={() => setEditFinalizado(e => { const n2 = { ...e }; delete n2[p.id]; return n2 })}
+                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
+                                style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+                              <button onClick={() => guardarFinalizado(p.id)} disabled={saving[p.id + '_fin']}
+                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50"
+                                style={{ background: '#F26E1F', color: '#fff' }}>
+                                {saving[p.id + '_fin'] ? 'Guardando…' : 'Guardar'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { label: 'Precio venta real', key: 'venta' as const, placeholder: 'Ej. 69000' },
+                            { label: 'Inversión total',   key: 'inv'   as const, placeholder: 'Ej. 42000' },
+                          ].map(f => (
+                            <div key={f.key} className="rounded-xl p-2.5" style={{ background: '#1E1E1E' }}>
+                              <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>{f.label}</div>
+                              {ef ? (
+                                <input type="number" value={ef[f.key]}
+                                  onChange={e => setEditFinalizado(prev => ({ ...prev, [p.id]: { ...prev[p.id], [f.key]: e.target.value } }))}
+                                  placeholder={f.placeholder}
+                                  className="w-full text-xs font-black text-white rounded outline-none py-0.5 px-1"
+                                  style={{ background: '#282828', border: '1px solid rgba(242,110,31,0.4)', MozAppearance: 'textfield' }}
+                                />
+                              ) : (
+                                <div className="text-sm font-black text-white">
+                                  {f.key === 'venta' ? (p.precio_venta_real ? fmt(p.precio_venta_real) : '—') : (p.valor_total_operacion ? fmt(p.valor_total_operacion) : '—')}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )
