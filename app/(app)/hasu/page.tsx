@@ -118,10 +118,6 @@ export default function HasuPage() {
   // ── Derived ──────────────────────────────────────────────
   const activos    = proyectos.filter(p => EN_CURSO.includes(p.estado))
   const totalCap   = cuentas.reduce((s, c) => s + (c.saldo_actual || 0), 0)
-  const OBJETIVO   = 1_000_000
-  const pct        = Math.min((totalCap / OBJETIVO) * 100, 100)
-  const mesesRest  = monthsUntilDec2027()
-  const porMes     = Math.max(0, (OBJETIVO - totalCap) / mesesRest)
 
   // Track record metrics
   const cerrados = trackRows.filter(r => VENDIDOS.includes(r.estado))
@@ -134,6 +130,12 @@ export default function HasuPage() {
   const totalInvertido  = trackRows.reduce((s, r) => s + getInv(r), 0)
   const totalBenef      = cerrados.reduce((s, r) => s + getBenef(r), 0)
   const roiMedio        = cerrados.length > 0 ? cerrados.reduce((s, r) => s + getRoi(r), 0) / cerrados.length : 0
+
+  // Tracker objetivo 1M€ — usa beneficio neto de operaciones cerradas
+  const OBJETIVO   = 1_000_000
+  const pct        = Math.min((totalBenef / OBJETIVO) * 100, 100)
+  const mesesRest  = monthsUntilDec2027()
+  const porMes     = Math.max(0, (OBJETIVO - totalBenef) / mesesRest)
   const tiempoMedio     = (() => {
     const durs = trackRows.map(getDur).filter(Boolean) as number[]
     return durs.length > 0 ? Math.round(durs.reduce((a,b)=>a+b,0)/durs.length) : null
