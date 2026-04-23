@@ -562,8 +562,10 @@ export default function ProyectoDetalle() {
   )
   if (!proyecto) return <div className="p-4 text-center text-white">Proyecto no encontrado</div>
 
-  const ingresos = movimientos.filter(m => m.monto > 0 || m.tipo === 'Ingreso').reduce((s, m) => s + Math.abs(m.monto || m.total || 0), 0)
-  const gastos = movimientos.filter(m => m.monto < 0 || m.tipo === 'Gasto').reduce((s, m) => s + Math.abs(m.monto || m.total || 0), 0)
+  const CATS_CAPITAL = ['Transferencia', 'Aportación']
+  const ingresos       = movimientos.filter(m => (m.monto > 0 || m.tipo === 'Ingreso') && !CATS_CAPITAL.includes(m.categoria)).reduce((s, m) => s + Math.abs(m.monto || m.total || 0), 0)
+  const capitalAportado = movimientos.filter(m => CATS_CAPITAL.includes(m.categoria)).reduce((s, m) => s + Math.abs(m.monto || m.total || 0), 0)
+  const gastos         = movimientos.filter(m => m.monto < 0 || m.tipo === 'Gasto').reduce((s, m) => s + Math.abs(m.monto || m.total || 0), 0)
   const presupuestoTotal = partidas.reduce((s, p) => s + (p.presupuesto || 0), 0)
   const ejecutadoTotal = partidas.reduce((s, p) => s + (p.ejecutado || 0), 0)
 
@@ -640,14 +642,28 @@ export default function ProyectoDetalle() {
       {tab === 0 && (
         <div>
           {/* KPIs */}
-          <div className="grid grid-cols-2 gap-2.5 mb-3">
+          <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Ingresos</div>
               <div className="font-black text-[22px] text-white">{fmtK(ingresos)}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>venta + devoluciones</div>
             </div>
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Gastos</div>
               <div className="font-black text-[22px]" style={{ color: '#EF4444' }}>{fmtK(gastos)}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>compra + reforma + otros</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 mb-3">
+            <div className="rounded-xl p-3.5" style={CARD}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Beneficio</div>
+              <div className="font-black text-[22px]" style={{ color: ingresos - gastos >= 0 ? '#22C55E' : '#EF4444' }}>{fmtK(ingresos - gastos)}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>ingresos − gastos</div>
+            </div>
+            <div className="rounded-xl p-3.5" style={CARD}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Capital aportado</div>
+              <div className="font-black text-[22px]" style={{ color: '#60A5FA' }}>{fmtK(capitalAportado)}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>socios · no es ingreso</div>
             </div>
           </div>
 
