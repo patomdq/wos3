@@ -144,7 +144,7 @@ export default function MercadoPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('inmuebles_radar').select('*').order('created_at', { ascending: false }),
+      supabase.from('inmuebles_radar').select('*').neq('estado', 'convertido').order('created_at', { ascending: false }),
       supabase.from('inmuebles_estudio').select('*').order('created_at', { ascending: false }),
       supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre'),
     ]).then(([r, e, p]) => {
