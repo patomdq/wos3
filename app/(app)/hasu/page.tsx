@@ -339,7 +339,7 @@ export default function HasuPage() {
               <table className="w-full" style={{ minWidth: 780 }}>
                 <thead>
                   <tr style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    {['Proyecto','Tipo','Inversor','Compra','Venta','Dur.','Inv. Total','Beneficio','ROI','ROI Anual.','Estado'].map(h => (
+                    {['Proyecto','Tipo','Inversor','P. Compra','P. Venta','Dur.','Inv. Total','Beneficio','ROI','ROI Anual.','Estado'].map(h => (
                       <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
                         style={{ color: 'rgba(255,255,255,0.35)' }}>{h}</th>
                     ))}
@@ -370,8 +370,19 @@ export default function HasuPage() {
                         <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.5)' }}>
                           {r.inversor || (r.porcentaje_hasu >= 100 ? 'HASU' : '—')}
                         </td>
-                        <td className="px-3 py-2.5 text-xs font-mono whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.5)' }}>{compraDate}</td>
-                        <td className="px-3 py-2.5 text-xs font-mono whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.5)' }}>{ventaDate}</td>
+                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                          <div className="font-mono font-bold" style={{ color: '#fff' }}>
+                            {r.precio_compra ? fmtK(r.precio_compra) : '—'}
+                          </div>
+                          {compraDate !== '—' && <div className="text-[10px] mt-0.5" style={{ color: '#555' }}>{compraDate}</div>}
+                        </td>
+                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                          <div className="font-mono font-bold" style={{ color: r.precio_venta_real ? '#22C55E' : 'rgba(255,255,255,0.5)' }}>
+                            {getVenta(r) > 0 ? fmtK(getVenta(r)) : '—'}
+                            {!r.precio_venta_real && getVenta(r) > 0 && <span className="ml-1 text-[9px]" style={{ color: '#F59E0B' }}>est.</span>}
+                          </div>
+                          {ventaDate !== '—' && <div className="text-[10px] mt-0.5" style={{ color: '#555' }}>{ventaDate}</div>}
+                        </td>
                         <td className="px-3 py-2.5 text-xs font-bold whitespace-nowrap text-center" style={{ color: 'rgba(255,255,255,0.6)' }}>
                           {dur !== null ? `${dur}m` : '—'}
                         </td>
