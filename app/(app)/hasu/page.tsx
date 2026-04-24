@@ -126,13 +126,16 @@ export default function HasuPage() {
     if (r.movimientos?.length) return r.movimientos.filter(m => m.monto < 0 || m.tipo === 'Gasto').reduce((s, m) => s + Math.abs(m.monto || 0), 0)
     return r.valor_total_operacion || r.precio_compra || 0
   }
-  const getVenta = (r: TrackRow) => r.precio_venta_real || r.precio_venta_estimado || 0
-  const getBenef = (r: TrackRow) => getVenta(r) - getInv(r)
+  const getVenta    = (r: TrackRow) => r.precio_venta_real || r.precio_venta_estimado || 0
+  const getBenef    = (r: TrackRow) => getVenta(r) - getInv(r)
+  // HASU share: en JV solo contamos el % de Hasu; HASU 100% = beneficio completo
+  const getBenefHasu = (r: TrackRow) => getBenef(r) * ((r.porcentaje_hasu || 100) / 100)
   const getRoi   = (r: TrackRow) => { const i = getInv(r); return i > 0 ? (getBenef(r) / i) * 100 : 0 }
   const getDur   = (r: TrackRow) => duracionMeses(r.fecha_compra, r.fecha_salida_estimada)
 
   const totalInvertido  = trackRows.reduce((s, r) => s + getInv(r), 0)
-  const totalBenef      = cerrados.reduce((s, r) => s + getBenef(r), 0)
+  // Tracker 1M€: suma beneficio HASU (aplicando % en JVs)
+  const totalBenef      = cerrados.reduce((s, r) => s + getBenefHasu(r), 0)
   const roiMedio        = cerrados.length > 0 ? cerrados.reduce((s, r) => s + getRoi(r), 0) / cerrados.length : 0
 
   // Tracker objetivo 1M€ — usa beneficio neto de operaciones cerradas
@@ -187,8 +190,8 @@ export default function HasuPage() {
           <div className="absolute right-[-30px] top-[-30px] w-[130px] h-[130px] rounded-full pointer-events-none"
             style={{ background: 'radial-gradient(circle, rgba(242,110,31,0.12) 0%, transparent 70%)' }} />
           <div className="text-[11px] font-bold uppercase tracking-[1.5px] mb-2" style={{ color: '#888' }}>Objetivo Hasu · Dic 2027</div>
-          <div className="font-black text-[38px] text-white leading-none tracking-tight mb-1">{fmt(totalCap)}</div>
-          <div className="text-sm font-semibold mb-3" style={{ color: '#555' }}>de {fmt(OBJETIVO)}</div>
+          <div className="font-black text-[38px] text-white leading-none tracking-tight mb-1">{fmt(totalBenef)}</div>
+          <div className="text-sm font-semibold mb-3" style={{ color: '#555' }}>beneficio acumulado de {fmt(OBJETIVO)}</div>
           <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: '#282828' }}>
             <div className="h-full rounded-full transition-all duration-700"
               style={{ width: `${pct}%`, background: pct < 20 ? '#EF4444' : pct < 50 ? '#F59E0B' : '#22C55E' }} />
@@ -210,8 +213,8 @@ export default function HasuPage() {
       ) : (
         <div className="grid grid-cols-2 gap-2.5 mb-4">
           {[
-            { l: 'Capital HASU',       v: fmt(totalCap),                           s: '▲ actualizado',           sc: '#22C55E' },
-            { l: 'Faltan para 1M€',    v: fmt(Math.max(0, OBJETIVO - totalCap)),   s: `${pct.toFixed(1)}% alcanzado`, sc: '#888' },
+            { l: 'Beneficio HASU',     v: cerrados.length > 0 ? fmt(totalBenef) : '—', s: 'beneficio acumulado', sc: '#22C55E' },
+            { l: 'Faltan para 1M€',    v: fmt(Math.max(0, OBJETIVO - totalBenef)), s: `${pct.toFixed(1)}% alcanzado`, sc: '#888' },
             { l: 'Proyectos activos',  v: String(activos.length),                  s: `${proyectos.length} total`, sc: '#888' },
             { l: 'ROI medio',          v: cerrados.length > 0 ? fmtPct(roiMedio) : '—', s: 'proyectos vendidos',   sc: '#888' },
             { l: 'Inversores',         v: String(inversores),                      s: 'JV activos',               sc: '#888' },
@@ -377,6 +380,11 @@ export default function HasuPage() {
                         </td>
                         <td className="px-3 py-2.5 text-xs font-mono font-bold whitespace-nowrap" style={{ color: benef >= 0 ? '#22C55E' : '#EF4444' }}>
                           {inv > 0 ? (benef >= 0 ? '+' : '') + fmtK(benef) : '—'}
+                          {inv > 0 && r.porcentaje_hasu < 100 && (
+                            <div className="text-[10px] font-bold mt-0.5" style={{ color: '#F26E1F' }}>
+                              HASU {(benef * r.porcentaje_hasu / 100) >= 0 ? '+' : ''}{fmtK(benef * r.porcentaje_hasu / 100)}
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-2.5 text-xs font-bold whitespace-nowrap" style={{ color: roi >= 0 ? '#22C55E' : '#EF4444' }}>
                           {inv > 0 ? fmtPct(roi) : '—'}
