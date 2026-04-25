@@ -133,10 +133,14 @@ export default function HasuPage() {
   const getRoi   = (r: TrackRow) => { const i = getInv(r); return i > 0 ? (getBenef(r) / i) * 100 : 0 }
   const getDur   = (r: TrackRow) => duracionMeses(r.fecha_compra, r.fecha_salida_estimada)
 
-  // Capital invertido: solo operaciones cerradas/vendidas, aplicando % HASU
+  // Capital invertido HASU: operaciones cerradas aplicando % HASU
   const totalInvertido  = cerrados.reduce((s, r) => s + getInv(r) * ((r.porcentaje_hasu || 100) / 100), 0)
-  // Tracker 1M€: suma beneficio HASU (aplicando % en JVs)
+  // Capital total operaciones (suma JV completa, sin aplicar %)
+  const totalInvOps     = cerrados.reduce((s, r) => s + getInv(r), 0)
+  // Tracker 1M€: beneficio HASU (aplicando % en JVs)
   const totalBenef      = cerrados.reduce((s, r) => s + getBenefHasu(r), 0)
+  // Beneficio total operaciones (suma JV completa, sin aplicar %)
+  const totalBenefOps   = cerrados.reduce((s, r) => s + getBenef(r), 0)
   const roiMedio        = cerrados.length > 0 ? cerrados.reduce((s, r) => s + getRoi(r), 0) / cerrados.length : 0
 
   // Tracker objetivo 1M€ — usa beneficio neto de operaciones cerradas
@@ -286,24 +290,43 @@ export default function HasuPage() {
         {/* Resumen acumulado */}
         {loading ? (
           <div className="grid grid-cols-2 gap-2 mb-4">
-            {[1,2,3,4,5].map(i => <div key={i} className="h-18 rounded-xl animate-pulse" style={{ background: '#141414' }} />)}
+            {[1,2,3,4,5,6,7].map(i => <div key={i} className="h-18 rounded-xl animate-pulse" style={{ background: '#141414' }} />)}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {[
-              { l: 'Total operaciones',   v: String(trackRows.length),                                      sub: `${cerrados.length} vendidas` },
-              { l: 'Capital invertido',   v: totalInvertido > 0 ? fmtK(totalInvertido) : '—',               sub: 'acumulado' },
-              { l: 'Beneficio generado',  v: cerrados.length > 0 ? (totalBenef >= 0 ? '+' : '') + fmtK(totalBenef) : '—', sub: 'vendidos', c: totalBenef >= 0 ? '#22C55E' : '#EF4444' },
-              { l: 'ROI medio histórico', v: cerrados.length > 0 ? fmtPct(roiMedio) : '—',                  sub: 'media vendidos', c: roiMedio >= 0 ? '#22C55E' : '#EF4444' },
-              { l: 'Tiempo medio',        v: tiempoMedio !== null ? `${tiempoMedio}m` : '—',                sub: 'por operación' },
-            ].map((k, i) => (
-              <div key={k.l} className={`rounded-xl p-3.5${i === 4 ? ' col-span-2' : ''}`} style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{k.l}</div>
-                <div className="font-black text-[20px] leading-none" style={{ color: (k as any).c || '#fff' }}>{k.v}</div>
-                <div className="text-[11px] font-medium mt-1" style={{ color: '#555' }}>{k.sub}</div>
-              </div>
-            ))}
-          </div>
+          <>
+            {/* Bloque operaciones generales */}
+            <div className="text-[10px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#555' }}>Operaciones (total JV)</div>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {[
+                { l: 'Total operaciones',  v: String(trackRows.length),                                                       sub: `${cerrados.length} finalizadas` },
+                { l: 'Capital total',      v: totalInvOps > 0 ? fmtK(totalInvOps) : '—',                                     sub: 'invertido JV' },
+                { l: 'Benef. total',       v: cerrados.length > 0 ? (totalBenefOps >= 0 ? '+' : '') + fmtK(totalBenefOps) : '—', sub: 'operaciones cerradas', c: totalBenefOps >= 0 ? '#22C55E' : '#EF4444' },
+                { l: 'ROI medio',          v: cerrados.length > 0 ? fmtPct(roiMedio) : '—',                                  sub: 'media vendidos', c: roiMedio >= 0 ? '#22C55E' : '#EF4444' },
+                { l: 'Tiempo medio',       v: tiempoMedio !== null ? `${tiempoMedio}m` : '—',                                 sub: 'por operación' },
+              ].map((k, i) => (
+                <div key={k.l} className={`rounded-xl p-3.5${i === 4 ? ' col-span-2' : ''}`} style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{k.l}</div>
+                  <div className="font-black text-[20px] leading-none" style={{ color: (k as any).c || '#fff' }}>{k.v}</div>
+                  <div className="text-[11px] font-medium mt-1" style={{ color: '#555' }}>{k.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bloque HASU */}
+            <div className="text-[10px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#F26E1F' }}>Hasu</div>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {[
+                { l: 'Capital HASU',      v: totalInvertido > 0 ? fmtK(totalInvertido) : '—',                              sub: 'parte HASU invertida' },
+                { l: 'Beneficio HASU',    v: cerrados.length > 0 ? (totalBenef >= 0 ? '+' : '') + fmtK(totalBenef) : '—',  sub: 'beneficio acumulado', c: totalBenef >= 0 ? '#F26E1F' : '#EF4444' },
+              ].map((k) => (
+                <div key={k.l} className="rounded-xl p-3.5" style={{ background: '#1E1E1E', border: '1px solid rgba(242,110,31,0.18)' }}>
+                  <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{k.l}</div>
+                  <div className="font-black text-[20px] leading-none" style={{ color: (k as any).c || '#fff' }}>{k.v}</div>
+                  <div className="text-[11px] font-medium mt-1" style={{ color: '#555' }}>{k.sub}</div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {/* Filtros y orden */}
