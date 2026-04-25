@@ -133,7 +133,8 @@ export default function HasuPage() {
   const getRoi   = (r: TrackRow) => { const i = getInv(r); return i > 0 ? (getBenef(r) / i) * 100 : 0 }
   const getDur   = (r: TrackRow) => duracionMeses(r.fecha_compra, r.fecha_salida_estimada)
 
-  const totalInvertido  = trackRows.reduce((s, r) => s + getInv(r), 0)
+  // Capital invertido: solo operaciones cerradas/vendidas, aplicando % HASU
+  const totalInvertido  = cerrados.reduce((s, r) => s + getInv(r) * ((r.porcentaje_hasu || 100) / 100), 0)
   // Tracker 1M€: suma beneficio HASU (aplicando % en JVs)
   const totalBenef      = cerrados.reduce((s, r) => s + getBenefHasu(r), 0)
   const roiMedio        = cerrados.length > 0 ? cerrados.reduce((s, r) => s + getRoi(r), 0) / cerrados.length : 0
