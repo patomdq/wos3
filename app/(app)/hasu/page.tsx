@@ -339,7 +339,7 @@ export default function HasuPage() {
               <table className="w-full" style={{ minWidth: 780 }}>
                 <thead>
                   <tr style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    {['Proyecto','Tipo','Inversor','P. Compra','P. Venta','Dur.','Inv. Total','Beneficio','ROI','ROI Anual.','Estado'].map(h => (
+                    {['Proyecto','Tipo','Estructura','P. Compra','P. Venta','Dur.','Inv. Total','Benef. Total','Benef. HASU','ROI','ROI Anual.','Estado'].map(h => (
                       <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
                         style={{ color: 'rgba(255,255,255,0.35)' }}>{h}</th>
                     ))}
@@ -367,8 +367,11 @@ export default function HasuPage() {
                         <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.5)' }}>
                           {r.tipo || '—'}
                         </td>
-                        <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                          {r.inversor || (r.porcentaje_hasu >= 100 ? 'HASU' : '—')}
+                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                          {r.porcentaje_hasu >= 100
+                            ? <span className="font-bold px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>HASU 100%</span>
+                            : <span className="font-bold px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(242,110,31,0.12)', color: '#F26E1F' }}>JV {r.porcentaje_hasu}%</span>
+                          }
                         </td>
                         <td className="px-3 py-2.5 text-xs whitespace-nowrap">
                           <div className="font-mono font-bold" style={{ color: '#fff' }}>
@@ -391,11 +394,9 @@ export default function HasuPage() {
                         </td>
                         <td className="px-3 py-2.5 text-xs font-mono font-bold whitespace-nowrap" style={{ color: benef >= 0 ? '#22C55E' : '#EF4444' }}>
                           {inv > 0 ? (benef >= 0 ? '+' : '') + fmtK(benef) : '—'}
-                          {inv > 0 && r.porcentaje_hasu < 100 && (
-                            <div className="text-[10px] font-bold mt-0.5" style={{ color: '#F26E1F' }}>
-                              HASU {(benef * r.porcentaje_hasu / 100) >= 0 ? '+' : ''}{fmtK(benef * r.porcentaje_hasu / 100)}
-                            </div>
-                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-xs font-mono font-bold whitespace-nowrap" style={{ color: benef >= 0 ? '#F26E1F' : '#EF4444' }}>
+                          {inv > 0 ? (benef >= 0 ? '+' : '') + fmtK(benef * (r.porcentaje_hasu || 100) / 100) : '—'}
                         </td>
                         <td className="px-3 py-2.5 text-xs font-bold whitespace-nowrap" style={{ color: roi >= 0 ? '#22C55E' : '#EF4444' }}>
                           {inv > 0 ? fmtPct(roi) : '—'}
