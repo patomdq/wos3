@@ -7,6 +7,7 @@ const fmt  = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',curr
 const fmtS = (n: number) => (n >= 0 ? '+' : '') + fmt(n)
 
 const CATS_CAPITAL = ['Transferencia', 'Aportación']
+const CATS_OPERATIVO_EXCL = ['Transferencia', 'Aportación', 'Compra']
 
 type Movimiento = {
   id: string; concepto: string; monto: number; fecha: string
@@ -67,32 +68,27 @@ export default function FlujoCajaPage() {
   , [movimientos, filtroCuenta])
 
   // ── Totales ────────────────────────────────────────────────────
-  // Agrupa por proyecto para aplicar porcentaje_hasu al beneficio.
-  // Ingresos/Gastos "HASU" = ingresos_op/gastos × pct (proporcional al beneficio)
-  // Capital (Transferencia/Aportación) excluido de ingresos operativos
   const totals = useMemo(() => {
-    const byProject: Record<string, { ingresos: number; gastos: number; pct: number }> = {}
-
+    let entradas = 0, salidas = 0
+    // Para JV: beneficio operativo HASU = (ingresos_op - gastos_op) × pct
+    const byProject: Record<string, { ing: number; gas: number; pct: number }> = {}
     filtered.forEach(m => {
-      const pid = m.proyecto_id || '__hasu__'
-      const pct = (m.proyectos as any)?.porcentaje_hasu ?? 100
-      if (!byProject[pid]) byProject[pid] = { ingresos: 0, gastos: 0, pct }
-      if (m.monto > 0 && !CATS_CAPITAL.includes(m.categoria)) {
-        byProject[pid].ingresos += m.monto
-      } else if (m.monto < 0) {
-        byProject[pid].gastos += Math.abs(m.monto)
+      if (m.monto > 0) entradas += m.monto
+      else salidas += Math.abs(m.monto)
+      // operativo excluye Transferencia/Aportación/Compra para el cálculo HASU
+      if (!CATS_OPERATIVO_EXCL.includes(m.categoria)) {
+        const pid = m.proyecto_id || '__general__'
+        const pct = (m.proyectos as any)?.porcentaje_hasu ?? 100
+        if (!byProject[pid]) byProject[pid] = { ing: 0, gas: 0, pct }
+        if (m.monto > 0) byProject[pid].ing += m.monto
+        else byProject[pid].gas += Math.abs(m.monto)
       }
     })
-
-    let ingresos = 0, gastos = 0, ingresosHasu = 0, gastosHasu = 0
-    Object.values(byProject).forEach(({ ingresos: ing, gastos: gas, pct }) => {
-      const p = pct / 100
-      ingresos     += ing
-      gastos       += gas
-      ingresosHasu += ing * p
-      gastosHasu   += gas * p
+    let beneficioHasu = 0
+    Object.values(byProject).forEach(({ ing, gas, pct }) => {
+      beneficioHasu += (ing - gas) * (pct / 100)
     })
-    return { ingresos, gastos, balance: ingresos - gastos, ingresosHasu, gastosHasu, balanceHasu: ingresosHasu - gastosHasu }
+    return { entradas, salidas, saldo: entradas - salidas, beneficioHasu }
   }, [filtered])
 
   // Porcentaje y proyecto de la cuenta seleccionada (para label)
@@ -175,70 +171,42 @@ export default function FlujoCajaPage() {
         )}
       </div>
 
-      {/* KPIs — 6 tarjetas: Total | HASU */}
+      {/* KPIs */}
       {loading ? (
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {[1,2,3,4,5,6].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: '#141414' }} />)}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[1,2,3].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: '#141414' }} />)}
         </div>
       ) : (
-        <>
-          {/* Cabeceras columnas */}
-          <div className="grid grid-cols-2 gap-2 mb-1 px-1">
-            <div className="text-[10px] font-bold uppercase tracking-[1.5px] text-center" style={{ color: '#555' }}>
-              Total operativo
+        <div className="mb-4 space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-xl p-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Entradas</div>
+              <div className="font-black text-[15px]" style={{ color: '#22C55E' }}>{fmt(totals.entradas)}</div>
             </div>
-            <div className="text-[10px] font-bold uppercase tracking-[1.5px] text-center" style={{ color: isHasu ? '#555' : '#F26E1F' }}>
-              {isHasu ? 'HASU 100%' : `HASU ${cuentaInfo?.pct ?? '—'}%`}
+            <div className="rounded-xl p-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Salidas</div>
+              <div className="font-black text-[15px]" style={{ color: '#EF4444' }}>{fmt(totals.salidas)}</div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {/* Ingresos */}
-            <div className="rounded-xl p-3.5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Ingresos</div>
-              <div className="font-black text-[16px]" style={{ color: '#22C55E' }}>{fmt(totals.ingresos)}</div>
-              <div className="text-[9px] mt-0.5 font-medium" style={{ color: '#555' }}>excl. capital inversores</div>
-            </div>
-            <div className="rounded-xl p-3.5" style={{ background: '#141414', border: `1px solid ${isHasu ? 'rgba(255,255,255,0.08)' : 'rgba(242,110,31,0.2)'}` }}>
-              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Ingresos HASU</div>
-              <div className="font-black text-[16px]" style={{ color: '#22C55E' }}>{fmt(totals.ingresosHasu)}</div>
-              <div className="text-[9px] mt-0.5 font-medium" style={{ color: '#555' }}>
-                {isHasu ? '100%' : `× ${cuentaInfo?.pct}%`}
-              </div>
-            </div>
-
-            {/* Gastos */}
-            <div className="rounded-xl p-3.5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Gastos</div>
-              <div className="font-black text-[16px]" style={{ color: '#EF4444' }}>{fmt(totals.gastos)}</div>
-              <div className="text-[9px] mt-0.5 font-medium" style={{ color: '#555' }}>totales</div>
-            </div>
-            <div className="rounded-xl p-3.5" style={{ background: '#141414', border: `1px solid ${isHasu ? 'rgba(255,255,255,0.08)' : 'rgba(242,110,31,0.2)'}` }}>
-              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Gastos HASU</div>
-              <div className="font-black text-[16px]" style={{ color: '#EF4444' }}>{fmt(totals.gastosHasu)}</div>
-              <div className="text-[9px] mt-0.5 font-medium" style={{ color: '#555' }}>
-                {isHasu ? '100%' : `× ${cuentaInfo?.pct}%`}
-              </div>
-            </div>
-
-            {/* Balance */}
-            <div className="rounded-xl p-3.5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Balance total</div>
-              <div className="font-black text-[16px]" style={{ color: totals.balance >= 0 ? '#22C55E' : '#EF4444' }}>
-                {fmtS(totals.balance)}
-              </div>
-              <div className="text-[9px] mt-0.5 font-medium" style={{ color: '#555' }}>beneficio JV</div>
-            </div>
-            <div className="rounded-xl p-3.5" style={{ background: isHasu ? '#141414' : '#1a1000', border: `1px solid ${isHasu ? 'rgba(255,255,255,0.08)' : 'rgba(242,110,31,0.35)'}` }}>
-              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: isHasu ? '#888' : '#F26E1F' }}>Balance HASU</div>
-              <div className="font-black text-[16px]" style={{ color: totals.balanceHasu >= 0 ? (isHasu ? '#22C55E' : '#F26E1F') : '#EF4444' }}>
-                {fmtS(totals.balanceHasu)}
-              </div>
-              <div className="text-[9px] mt-0.5 font-medium" style={{ color: '#555' }}>
-                {isHasu ? '100%' : `benef. × ${cuentaInfo?.pct}%`}
+            <div className="rounded-xl p-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Saldo</div>
+              <div className="font-black text-[15px]" style={{ color: totals.saldo >= 0 ? '#22C55E' : '#EF4444' }}>
+                {fmtS(totals.saldo)}
               </div>
             </div>
           </div>
-        </>
+          {/* Bloque HASU — solo visible en JV */}
+          {!isHasu && cuentaInfo?.esJV && (
+            <div className="rounded-xl p-3.5" style={{ background: '#1a1000', border: '1px solid rgba(242,110,31,0.35)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#F26E1F' }}>
+                Beneficio operativo HASU {cuentaInfo.pct}%
+              </div>
+              <div className="font-black text-[18px]" style={{ color: totals.beneficioHasu >= 0 ? '#F26E1F' : '#EF4444' }}>
+                {fmtS(totals.beneficioHasu)}
+              </div>
+              <div className="text-[9px] mt-0.5" style={{ color: '#555' }}>excl. capital inversores y compra</div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Lista movimientos */}
