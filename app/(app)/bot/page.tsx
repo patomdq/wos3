@@ -34,6 +34,51 @@ export default function BotPage() {
   const taRef = useRef<HTMLTextAreaElement>(null)
   const contextRef = useRef('')
 
+  const loadContext = async () => {
+    let ctx = ''
+    if (proyectoId) {
+      const [{ data: proy }, { data: partidas }, { data: movs }, { data: tareas }, { data: prospectos }] = await Promise.all([
+        supabase.from('proyectos').select('id,nombre,estado,ciudad,precio_compra,avance_reforma').eq('id', proyectoId).single(),
+        supabase.from('partidas_reforma').select('id,nombre,estado,presupuesto,ejecutado,fecha_inicio,fecha_fin_estimada').eq('proyecto_id', proyectoId).order('orden'),
+        supabase.from('movimientos').select('id,concepto,monto,fecha,cuenta').eq('proyecto_id', proyectoId).order('fecha', { ascending: false }).limit(20),
+        supabase.from('tareas').select('id,titulo,prioridad,estado').eq('proyecto_id', proyectoId).eq('estado', 'Pendiente').limit(10),
+        supabase.from('prospectos').select('id,nombre,telefono,email,estado,mejor_oferta,proxima_visita').eq('proyecto_id', proyectoId).order('created_at', { ascending: false }),
+      ])
+      if (proy) setProyectoNombre(proy.nombre)
+      ctx = [
+        proy ? `Proyecto: ${proy.nombre} | ID: ${proy.id} | Estado: ${proy.estado} | Ciudad: ${proy.ciudad} | Compra: ${proy.precio_compra ?? '-'}€ | Avance: ${proy.avance_reforma ?? 0}%` : '',
+        partidas?.length ? `Partidas (ID|Nombre|Estado|Presup|Ejecutado|Inicio|FinEst):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.presupuesto}€|${p.ejecutado}€|${p.fecha_inicio??'-'}|${p.fecha_fin_estimada??'-'}`).join('\n')}` : '',
+        movs?.length ? `Movimientos (ID|Concepto|Monto|Fecha|Cuenta):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}|${m.cuenta??'-'}`).join('\n')}` : '',
+        tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
+        prospectos?.length ? `Prospectos Comercialización (ID|Nombre|Estado|Oferta|ProxVisita):\n${prospectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.mejor_oferta??'-'}€|${p.proxima_visita??'-'}`).join('\n')}` : 'Prospectos: sin datos aún.',
+      ].filter(Boolean).join('\n')
+    } else {
+      const [{ count: activos }, { data: movs }, { data: tareas }, { data: proyectos }, { data: partidas }, { data: radar }, { data: estudio }, { data: proveedores }, { data: prospectos }] = await Promise.all([
+        supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta','reservado','con_oferta','en_arras']),
+        supabase.from('movimientos').select('id,concepto,monto,fecha,cuenta,proyecto_id').order('fecha', { ascending: false }).limit(30),
+        supabase.from('tareas').select('id,titulo,prioridad,estado').eq('estado', 'Pendiente').limit(10),
+        supabase.from('proyectos').select('id,nombre,estado,ciudad,porcentaje_hasu,precio_compra,precio_venta_estimado').order('created_at'),
+        supabase.from('partidas_reforma').select('id,nombre,presupuesto,estado,proyecto_id').order('created_at', { ascending: false }).limit(10),
+        supabase.from('inmuebles_radar').select('id,direccion,ciudad,precio,estado').eq('estado', 'activo').order('created_at', { ascending: false }).limit(20),
+        supabase.from('inmuebles_estudio').select('id,nombre,direccion,ciudad,precio_compra,precio_venta_objetivo,roi_estimado,estado,superficie,habitaciones').neq('estado', 'comprado').order('created_at', { ascending: false }).limit(20),
+        supabase.from('proveedores').select('id,nombre,rubro,telefono').eq('activo', true).order('nombre').limit(30),
+        supabase.from('prospectos').select('id,proyecto_id,nombre,estado,mejor_oferta').order('created_at', { ascending: false }).limit(20),
+      ])
+      ctx = [
+        `Proyectos activos: ${activos ?? 0}`,
+        proyectos?.length ? `Proyectos (ID|Nombre|Estado|Ciudad|%HASU|PrecioCompra|PrecioVenta):\n${proyectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.ciudad ?? '-'}|${p.porcentaje_hasu ?? 100}%|${p.precio_compra ?? '-'}€|${p.precio_venta_estimado ?? '-'}€`).join('\n')}` : '',
+        movs?.length ? `Últimos movimientos (ID|Concepto|Monto|Fecha|Cuenta):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}|${m.cuenta ?? '-'}`).join('\n')}` : '',
+        tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
+        partidas?.length ? `Partidas recientes (ID|Nombre|Presup|Estado):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.presupuesto}€|${p.estado}`).join('\n')}` : '',
+        radar?.length ? `Inmuebles en radar (ID|Dirección|Ciudad|Precio):\n${radar.map(r => `- ${r.id}|${r.direccion}|${r.ciudad ?? '-'}|${r.precio}€`).join('\n')}` : 'Radar: sin inmuebles activos.',
+        estudio?.length ? `Inmuebles en estudio (ID|Nombre/Dirección|Ciudad|PrecioCompra|PrecioVenta|ROI|Estado|m²|Hab):\n${estudio.map(e => `- ${e.id}|${e.nombre || e.direccion}|${e.ciudad ?? '-'}|${e.precio_compra ?? '-'}€|${e.precio_venta_objetivo ?? '-'}€|${e.roi_estimado?.toFixed(1) ?? '-'}%|${e.estado}|${e.superficie ?? '-'}m²|${e.habitaciones ?? '-'}hab`).join('\n')}` : 'Estudio: sin inmuebles.',
+        proveedores?.length ? `Proveedores activos (ID|Nombre|Rubro|Tel):\n${proveedores.map(p => `- ${p.id}|${p.nombre}|${p.rubro ?? '-'}|${p.telefono ?? '-'}`).join('\n')}` : 'Proveedores: sin registros.',
+        prospectos?.length ? `Prospectos (ID|ProyectoID|Nombre|Estado|Oferta):\n${prospectos.map(p => `- ${p.id}|${p.proyecto_id ?? '-'}|${p.nombre}|${p.estado}|${p.mejor_oferta ?? '-'}€`).join('\n')}` : '',
+      ].filter(Boolean).join('\n')
+    }
+    contextRef.current = ctx
+  }
+
   useEffect(() => {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
@@ -53,48 +98,7 @@ export default function BotPage() {
         } catch {}
       }
 
-      let ctx = ''
-
-      if (proyectoId) {
-        // Contexto específico del proyecto — mínimo de tokens
-        const [{ data: proy }, { data: partidas }, { data: movs }, { data: tareas }, { data: prospectos }] = await Promise.all([
-          supabase.from('proyectos').select('id,nombre,estado,ciudad,precio_compra,avance_reforma').eq('id', proyectoId).single(),
-          supabase.from('partidas_reforma').select('id,nombre,estado,presupuesto,ejecutado,fecha_inicio,fecha_fin_estimada').eq('proyecto_id', proyectoId).order('orden'),
-          supabase.from('movimientos').select('id,concepto,monto,fecha').eq('proyecto_id', proyectoId).order('fecha', { ascending: false }).limit(8),
-          supabase.from('tareas').select('id,titulo,prioridad,estado').eq('proyecto_id', proyectoId).eq('estado', 'Pendiente').limit(5),
-          supabase.from('prospectos').select('id,nombre,telefono,email,estado,mejor_oferta,proxima_visita').eq('proyecto_id', proyectoId).order('created_at', { ascending: false }),
-        ])
-        if (proy) setProyectoNombre(proy.nombre)
-        ctx = [
-          proy ? `Proyecto: ${proy.nombre} | ID: ${proy.id} | Estado: ${proy.estado} | Ciudad: ${proy.ciudad} | Compra: ${proy.precio_compra ?? '-'}€ | Avance: ${proy.avance_reforma ?? 0}%` : '',
-          partidas?.length ? `Partidas (ID|Nombre|Estado|Presup|Ejecutado|Inicio|FinEst):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.presupuesto}€|${p.ejecutado}€|${p.fecha_inicio??'-'}|${p.fecha_fin_estimada??'-'}`).join('\n')}` : '',
-          movs?.length ? `Movimientos (ID|Concepto|Monto|Fecha):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}`).join('\n')}` : '',
-          tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
-          prospectos?.length ? `Prospectos Comercialización (ID|Nombre|Estado|Oferta|ProxVisita):\n${prospectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.mejor_oferta??'-'}€|${p.proxima_visita??'-'}`).join('\n')}` : 'Prospectos: sin datos aún.',
-        ].filter(Boolean).join('\n')
-      } else {
-        // Contexto global
-        const [{ count: activos }, { data: movs }, { data: tareas }, { data: proyectos }, { data: partidas }, { data: radar }, { data: estudio }] = await Promise.all([
-          supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta','reservado','con_oferta','en_arras']),
-          supabase.from('movimientos').select('id,concepto,monto,fecha').order('fecha', { ascending: false }).limit(10),
-          supabase.from('tareas').select('id,titulo,prioridad,estado').eq('estado', 'Pendiente').limit(5),
-          supabase.from('proyectos').select('id,nombre,estado,ciudad').order('created_at'),
-          supabase.from('partidas_reforma').select('id,nombre,presupuesto,estado').order('created_at', { ascending: false }).limit(10),
-          supabase.from('inmuebles_radar').select('id,direccion,ciudad,precio,estado').eq('estado', 'activo').order('created_at', { ascending: false }).limit(20),
-          supabase.from('inmuebles_estudio').select('id,nombre,direccion,ciudad,precio_compra,roi_estimado,estado').neq('estado', 'comprado').order('created_at', { ascending: false }).limit(20),
-        ])
-        ctx = [
-          `Proyectos activos: ${activos ?? 0}`,
-          proyectos?.length ? `Proyectos (ID|Nombre|Estado|Ciudad):\n${proyectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.ciudad}`).join('\n')}` : '',
-          movs?.length ? `Últimos movimientos (ID|Concepto|Monto|Fecha):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}`).join('\n')}` : '',
-          tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
-          partidas?.length ? `Partidas recientes (ID|Nombre|Presup|Estado):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.presupuesto}€|${p.estado}`).join('\n')}` : '',
-          radar?.length ? `Inmuebles en radar (ID|Dirección|Ciudad|Precio):\n${radar.map(r => `- ${r.id}|${r.direccion}|${r.ciudad ?? '-'}|${r.precio}€`).join('\n')}` : 'Radar: sin inmuebles activos.',
-          estudio?.length ? `Inmuebles en estudio (ID|Nombre/Dirección|Ciudad|Precio|ROI|Estado):\n${estudio.map(e => `- ${e.id}|${e.nombre || e.direccion}|${e.ciudad ?? '-'}|${e.precio_compra}€|${e.roi_estimado?.toFixed(1) ?? '-'}%|${e.estado}`).join('\n')}` : 'Estudio: sin inmuebles.',
-        ].filter(Boolean).join('\n')
-      }
-
-      contextRef.current = ctx
+      await loadContext()
     }
     init()
   }, [])
@@ -135,6 +139,11 @@ export default function BotPage() {
       const botMsg: Msg = { role: 'bot', text: html, time: now(), toolData: toolResults?.length ? toolResults : undefined }
       setMsgs(m => [...m, botMsg])
       setHistorial(h => [...h, { role: 'assistant', content: resp }])
+
+      // Refresh context after any tool use so subsequent messages see updated data
+      if (toolResults?.length) {
+        loadContext().catch(() => {})
+      }
     } catch {
       setTyping(false)
       setMsgs(m => [...m, { role: 'bot', text: 'Error de conexión. Intentá de nuevo.', time: now() }])

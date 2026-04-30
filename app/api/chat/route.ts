@@ -92,6 +92,8 @@ const TOOLS: Anthropic.Tool[] = [
         fecha: { type: 'string', description: 'Nueva fecha YYYY-MM-DD' },
         categoria: { type: 'string', description: 'Nueva categoría' },
         proveedor: { type: 'string', description: 'Nuevo proveedor' },
+        proyecto_id: { type: 'string', description: 'UUID del proyecto al que reasignar el movimiento. Usar null para desvincularlo.' },
+        cuenta: { type: 'string', description: 'Nueva cuenta bancaria' },
       },
       required: ['id'],
     },
@@ -248,7 +250,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'update_estudio',
-    description: 'Cambia el estado o edita datos de un inmueble En Estudio. Usalo para "marcar como ofertado", "poner en arras", "descartar", etc. Si tenés el ID usalo; si no, pasá busqueda.',
+    description: 'Edita datos de un inmueble En Estudio: estado, precio, ROI, notas, superficie, etc. Si tenés el ID usalo; si no, pasá busqueda.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -256,8 +258,63 @@ const TOOLS: Anthropic.Tool[] = [
         busqueda: { type: 'string', description: 'Dirección o nombre parcial para encontrar el inmueble. Ej: "Rulador 30"' },
         estado: { type: 'string', enum: ['en_estudio', 'ofertado', 'en_arras', 'descartado'], description: 'Nuevo estado' },
         notas: { type: 'string' },
+        nombre: { type: 'string', description: 'Nuevo nombre o alias del inmueble' },
+        precio_compra: { type: 'number', description: 'Precio de compra estimado en euros' },
+        precio_venta_objetivo: { type: 'number', description: 'Precio de venta objetivo en euros' },
+        roi_estimado: { type: 'number', description: 'ROI estimado en porcentaje (ej: 32.5)' },
+        ciudad: { type: 'string', description: 'Ciudad o municipio' },
+        superficie: { type: 'number', description: 'Superficie en m²' },
+        habitaciones: { type: 'number', description: 'Número de habitaciones' },
       },
       required: [],
+    },
+  },
+  {
+    name: 'insert_estudio',
+    description: 'Agrega un inmueble directamente a En Estudio sin pasar por el Radar. Usalo cuando el usuario quiera analizar un inmueble nuevo directamente.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre: { type: 'string', description: 'Nombre o alias del inmueble' },
+        direccion: { type: 'string', description: 'Dirección completa' },
+        ciudad: { type: 'string', description: 'Ciudad o municipio' },
+        precio_compra: { type: 'number', description: 'Precio de compra estimado en euros' },
+        precio_venta_objetivo: { type: 'number', description: 'Precio de venta objetivo en euros' },
+        roi_estimado: { type: 'number', description: 'ROI estimado en % (opcional, default 0)' },
+        superficie: { type: 'number', description: 'Superficie en m²' },
+        habitaciones: { type: 'number', description: 'Número de habitaciones' },
+        notas: { type: 'string', description: 'Notas u observaciones' },
+      },
+      required: ['direccion'],
+    },
+  },
+  {
+    name: 'insert_inversor',
+    description: 'Registra un nuevo inversor/socio JV y lo vincula a un proyecto. Usalo cuando el usuario indique un nuevo socio o coinversor para una operación.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre: { type: 'string', description: 'Nombre completo del inversor' },
+        email: { type: 'string', description: 'Email del inversor' },
+        proyecto_id: { type: 'string', description: 'UUID del proyecto al que se vincula' },
+        porcentaje: { type: 'number', description: 'Porcentaje de participación del inversor (ej: 50)' },
+      },
+      required: ['nombre', 'proyecto_id', 'porcentaje'],
+    },
+  },
+  {
+    name: 'update_inversor',
+    description: 'Edita datos de un inversor o cambia su porcentaje en un proyecto.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        inversor_id: { type: 'string', description: 'UUID del inversor' },
+        nombre: { type: 'string', description: 'Nuevo nombre' },
+        email: { type: 'string', description: 'Nuevo email' },
+        proyecto_id: { type: 'string', description: 'UUID del proyecto para actualizar el porcentaje' },
+        porcentaje: { type: 'number', description: 'Nuevo porcentaje de participación' },
+      },
+      required: ['inversor_id'],
     },
   },
   {
@@ -771,7 +828,6 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const updates: Record<string,any> = {}
       if (input.concepto !== undefined) updates.concepto = input.concepto
       if (input.monto !== undefined) {
-        // Normalize sign: if tipo is provided use it; otherwise preserve the raw value Claude sends
         if (input.tipo) {
           updates.monto = input.tipo === 'Gasto' ? -Math.abs(input.monto) : Math.abs(input.monto)
         } else {
@@ -782,6 +838,8 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (input.fecha !== undefined) updates.fecha = input.fecha
       if (input.categoria !== undefined) updates.categoria = input.categoria
       if (input.proveedor !== undefined) updates.proveedor = input.proveedor
+      if (input.proyecto_id !== undefined) updates.proyecto_id = input.proyecto_id || null
+      if (input.cuenta !== undefined) updates.cuenta = input.cuenta
       const { data, error } = await supabaseAdmin.from('movimientos').update(updates).eq('id', input.id).select().single()
       if (error) return { result: `Error al editar: ${error.message}` }
       return {
@@ -940,13 +998,69 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'update_estudio') {
       const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
+      const fields = ['estado', 'notas', 'nombre', 'precio_compra', 'precio_venta_objetivo', 'roi_estimado', 'ciudad', 'superficie', 'habitaciones']
       const updates: Record<string,any> = {}
-      if (input.estado !== undefined) updates.estado = input.estado
-      if (input.notas !== undefined) updates.notas = input.notas
+      for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
       const { data, error } = await supabaseAdmin.from('inmuebles_estudio').update(updates).eq('id', resolved.resolved.id).select().single()
       if (error) return { result: `Error al actualizar: ${error.message}` }
       const nombre = data.nombre || data.direccion
-      return { result: `Inmueble "${nombre}" actualizado.${data.estado ? ' Estado: ' + data.estado + '.' : ''}`, table: 'inmuebles_estudio', recordId: data.id, label: `${nombre} · ${data.estado}` }
+      const cambios = Object.keys(updates).join(', ')
+      return { result: `Inmueble "${nombre}" actualizado. Campos: ${cambios}.`, table: 'inmuebles_estudio', recordId: data.id, label: `${nombre} · ${data.estado}` }
+    }
+    if (name === 'insert_estudio') {
+      const hoy = new Date().toISOString().split('T')[0]
+      const { data, error } = await supabaseAdmin.from('inmuebles_estudio').insert([{
+        nombre: input.nombre || input.direccion,
+        direccion: input.direccion,
+        ciudad: input.ciudad || null,
+        precio_compra: input.precio_compra || null,
+        precio_venta_objetivo: input.precio_venta_objetivo || null,
+        roi_estimado: input.roi_estimado || 0,
+        superficie: input.superficie || null,
+        habitaciones: input.habitaciones || null,
+        notas: input.notas || null,
+        estado: 'en_estudio',
+        analizado_en: hoy,
+      }]).select().single()
+      if (error) return { result: `Error al crear inmueble en estudio: ${error.message}` }
+      return {
+        result: `Inmueble "${data.nombre || data.direccion}" agregado a En Estudio. ID: ${data.id}.`,
+        table: 'inmuebles_estudio',
+        recordId: data.id,
+        label: `${data.nombre || data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''}`,
+      }
+    }
+    if (name === 'insert_inversor') {
+      const { data: inv, error: invErr } = await supabaseAdmin.from('inversores').insert([{
+        nombre: input.nombre,
+        email: input.email || null,
+      }]).select().single()
+      if (invErr) return { result: `Error al crear inversor: ${invErr.message}` }
+      const { error: piErr } = await supabaseAdmin.from('proyecto_inversores').insert([{
+        proyecto_id: input.proyecto_id,
+        inversor_id: inv.id,
+        porcentaje: input.porcentaje,
+      }])
+      if (piErr) return { result: `Inversor creado (ID: ${inv.id}) pero no se pudo vincular al proyecto: ${piErr.message}` }
+      return {
+        result: `Inversor "${inv.nombre}" creado y vinculado al proyecto con ${input.porcentaje}% de participación.`,
+        table: 'inversores',
+        recordId: inv.id,
+        label: `${inv.nombre} · ${input.porcentaje}%`,
+      }
+    }
+    if (name === 'update_inversor') {
+      const invUpdates: Record<string,any> = {}
+      if (input.nombre !== undefined) invUpdates.nombre = input.nombre
+      if (input.email !== undefined) invUpdates.email = input.email
+      if (Object.keys(invUpdates).length > 0) {
+        const { error } = await supabaseAdmin.from('inversores').update(invUpdates).eq('id', input.inversor_id)
+        if (error) return { result: `Error al editar inversor: ${error.message}` }
+      }
+      if (input.porcentaje !== undefined && input.proyecto_id) {
+        await supabaseAdmin.from('proyecto_inversores').update({ porcentaje: input.porcentaje }).eq('inversor_id', input.inversor_id).eq('proyecto_id', input.proyecto_id)
+      }
+      return { result: `Inversor actualizado.` }
     }
     if (name === 'update_tarea') {
       const fields = ['titulo','descripcion','prioridad','estado','fecha_limite','asignado_a']
@@ -1634,7 +1748,8 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
-- INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
+- INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. Para agregar directamente a En Estudio sin pasar por Radar usá insert_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio (ahora soporta todos los campos).
+- INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
 
@@ -1658,7 +1773,7 @@ Respondé siempre en español. Máximo 3 párrafos.${idealistaCtx}`
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content as string }))
 
     let response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
       tools: TOOLS,
@@ -1684,7 +1799,7 @@ Respondé siempre en español. Máximo 3 párrafos.${idealistaCtx}`
       ]
 
       response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         system: systemPrompt,
         tools: TOOLS,
