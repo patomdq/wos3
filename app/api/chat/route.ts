@@ -1806,8 +1806,10 @@ REGLAS DE RESPUESTA — MUY IMPORTANTE:
 
 USO EFICIENTE DE HERRAMIENTAS — CRÍTICO:
 - Para resultados financieros de un proyecto (beneficio, ROI, etc.) usá los datos del contexto (campos: Compra, CostoTotal, VentaReal). NO llames listar_movimientos_proyecto para responder esto.
-- Fórmula: beneficio_neto = VentaReal - CostoTotal. Parte HASU = beneficio_neto × (%HASU/100).
-- Si CostoTotal no está disponible en el contexto: CostoTotal = Compra + gastos estimados (pedile al usuario o indicá que falta ese dato).
+- Fórmula: beneficio_neto = VentaReal - CostoTotal. Parte HASU = beneficio_neto × (%HASU/100). Siempre llamarlo BENEFICIO NETO (CostoTotal ya incluye compra + reforma + gastos).
+- Duración de operación: calculá los meses exactos entre FechaCompra y FechaSalida. Si FechaSalida no está, usá la fecha de hoy. Hacé el cálculo antes de escribir — nunca corrijas inline.
+- ROI anualizado = ROI × (12 / meses_duración).
+- Si CostoTotal no está en el contexto: indicá que falta ese dato sin inventar.
 - Solo usá listar_movimientos_proyecto cuando el usuario pida EXPLÍCITAMENTE ver el detalle de gastos, movimientos o desglose de costos de un proyecto.
 - Solo usá listar_partidas_proyecto cuando el usuario pida comparar partidas entre proyectos o ver el detalle de partidas específicas.
 
