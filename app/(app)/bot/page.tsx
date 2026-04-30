@@ -57,7 +57,7 @@ export default function BotPage() {
         supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta','reservado','con_oferta','en_arras']),
         supabase.from('movimientos').select('id,concepto,monto,fecha,cuenta,proyecto_id').order('fecha', { ascending: false }).limit(30),
         supabase.from('tareas').select('id,titulo,prioridad,estado').eq('estado', 'Pendiente').limit(10),
-        supabase.from('proyectos').select('id,nombre,estado,ciudad,porcentaje_hasu,precio_compra,precio_venta_estimado').order('created_at'),
+        supabase.from('proyectos').select('id,nombre,estado,ciudad,porcentaje_hasu,precio_compra,precio_venta_real,precio_venta_estimado,valor_total_operacion,socio_nombre,fecha_compra,fecha_salida_estimada').order('created_at'),
         supabase.from('partidas_reforma').select('id,nombre,presupuesto,estado,proyecto_id').order('created_at', { ascending: false }).limit(10),
         supabase.from('inmuebles_radar').select('id,direccion,ciudad,precio,estado').eq('estado', 'activo').order('created_at', { ascending: false }).limit(20),
         supabase.from('inmuebles_estudio').select('id,nombre,direccion,ciudad,precio_compra,precio_venta_objetivo,roi_estimado,estado,superficie,habitaciones').neq('estado', 'comprado').order('created_at', { ascending: false }).limit(20),
@@ -66,7 +66,7 @@ export default function BotPage() {
       ])
       ctx = [
         `Proyectos activos: ${activos ?? 0}`,
-        proyectos?.length ? `Proyectos (ID|Nombre|Estado|Ciudad|%HASU|PrecioCompra|PrecioVenta):\n${proyectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.ciudad ?? '-'}|${p.porcentaje_hasu ?? 100}%|${p.precio_compra ?? '-'}€|${p.precio_venta_estimado ?? '-'}€`).join('\n')}` : '',
+        proyectos?.length ? `Proyectos (ID|Nombre|Estado|Ciudad|%HASU|Socio|Compra|CostoTotal|VentaReal|VentaEst|FechaCompra|FechaSalida):\n${proyectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.ciudad ?? '-'}|${p.porcentaje_hasu ?? 100}%|${p.socio_nombre ?? '-'}|${p.precio_compra ?? '-'}€|${p.valor_total_operacion ?? '-'}€|${p.precio_venta_real ?? '-'}€|${p.precio_venta_estimado ?? '-'}€|${p.fecha_compra ?? '-'}|${p.fecha_salida_estimada ?? '-'}`).join('\n')}` : '',
         movs?.length ? `Últimos movimientos (ID|Concepto|Monto|Fecha|Cuenta):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}|${m.cuenta ?? '-'}`).join('\n')}` : '',
         tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
         partidas?.length ? `Partidas recientes (ID|Nombre|Presup|Estado):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.presupuesto}€|${p.estado}`).join('\n')}` : '',

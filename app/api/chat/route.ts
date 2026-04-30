@@ -684,6 +684,30 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'listar_movimientos_proyecto',
+    description: 'Trae todos los movimientos de un proyecto específico. Usalo SOLO cuando el usuario pida detalle de gastos, desglose de costos, o análisis de movimientos de un proyecto concreto. NO usarlo para responder preguntas de resultado general — eso está en el contexto de proyectos.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        proyecto_id: { type: 'string', description: 'UUID del proyecto' },
+        categoria: { type: 'string', description: 'Filtrar por categoría (opcional). Ej: Reforma, Materiales, Mano de obra' },
+      },
+      required: ['proyecto_id'],
+    },
+  },
+  {
+    name: 'listar_partidas_proyecto',
+    description: 'Trae las partidas de reforma de uno o varios proyectos. Usalo cuando el usuario pida comparar partidas entre proyectos (ej: "compara la cocina de los últimos 3 proyectos") o ver el detalle de partidas de un proyecto. Pasá un array de proyecto_ids para comparación.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        proyecto_ids: { type: 'array', items: { type: 'string' }, description: 'Array de UUIDs de proyectos a consultar' },
+        nombre_partida: { type: 'string', description: 'Filtrar por nombre de partida (opcional). Ej: "cocina", "baño", "pintura". Búsqueda parcial.' },
+      },
+      required: ['proyecto_ids'],
+    },
+  },
+  {
     name: 'update_proyecto',
     description: 'Actualiza datos de un proyecto existente. Usalo para: cambiar el estado en el pipeline, actualizar el avance de obra, actualizar los escenarios de precio de venta (conservador/realista/optimista), o modificar cualquier dato del proyecto. Necesitás el ID del proyecto.',
     input_schema: {
@@ -1558,6 +1582,26 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: `${data.tipo} · ${data.fecha}`,
       }
     }
+    if (name === 'listar_movimientos_proyecto') {
+      let query = supabaseAdmin.from('movimientos').select('id,concepto,monto,fecha,categoria,tipo,cuenta,proveedor').eq('proyecto_id', input.proyecto_id).order('fecha', { ascending: false })
+      if (input.categoria) query = (query as any).ilike('categoria', `%${input.categoria}%`)
+      const { data, error } = await query
+      if (error) return { result: `Error al traer movimientos: ${error.message}` }
+      if (!data?.length) return { result: 'No hay movimientos registrados para este proyecto.' }
+      const ingresos = data.filter((m: any) => m.monto > 0).reduce((s: number, m: any) => s + m.monto, 0)
+      const gastos = data.filter((m: any) => m.monto < 0).reduce((s: number, m: any) => s + m.monto, 0)
+      const lista = data.map((m: any) => `- ${m.fecha} | ${m.tipo} | ${m.categoria ?? '-'} | ${m.concepto} | ${m.monto}€${m.proveedor ? ' | ' + m.proveedor : ''}`).join('\n')
+      return { result: `Movimientos del proyecto (${data.length} registros):\nTotal ingresos: ${ingresos}€ | Total gastos: ${gastos}€ | Saldo: ${ingresos + gastos}€\n\n${lista}` }
+    }
+    if (name === 'listar_partidas_proyecto') {
+      let query = supabaseAdmin.from('partidas_reforma').select('id,proyecto_id,nombre,categoria,presupuesto,ejecutado,estado').in('proyecto_id', input.proyecto_ids).order('orden')
+      if (input.nombre_partida) query = (query as any).ilike('nombre', `%${input.nombre_partida}%`)
+      const { data, error } = await query
+      if (error) return { result: `Error al traer partidas: ${error.message}` }
+      if (!data?.length) return { result: 'No se encontraron partidas para los proyectos indicados.' }
+      const lista = data.map((p: any) => `- ProyID:${p.proyecto_id} | ${p.nombre} | ${p.categoria} | Presup:${p.presupuesto}€ | Ejecutado:${p.ejecutado}€ | ${p.estado}`).join('\n')
+      return { result: `Partidas encontradas (${data.length}):\n${lista}` }
+    }
     if (name === 'update_proyecto') {
       const fields = [
         'nombre','estado','avance_reforma',
@@ -1759,6 +1803,13 @@ REGLAS DE RESPUESTA — MUY IMPORTANTE:
 3. SIEMPRE que el usuario pregunte por tareas (pendientes, en curso, etc.) sin estar en contexto de un proyecto específico, ANTES de listar nada preguntá: "¿Te referís a las tareas de un proyecto en particular o las generales?" — NO listés tareas sin hacer esta pregunta primero.
 4. Respuestas cortas y limpias. Solo la info que el usuario necesita ver. Sin columnas técnicas.
 5. Para editar o eliminar, buscá el ID en el contexto sin mostrárselo al usuario.
+
+USO EFICIENTE DE HERRAMIENTAS — CRÍTICO:
+- Para resultados financieros de un proyecto (beneficio, ROI, etc.) usá los datos del contexto (campos: Compra, CostoTotal, VentaReal). NO llames listar_movimientos_proyecto para responder esto.
+- Fórmula: beneficio_neto = VentaReal - CostoTotal. Parte HASU = beneficio_neto × (%HASU/100).
+- Si CostoTotal no está disponible en el contexto: CostoTotal = Compra + gastos estimados (pedile al usuario o indicá que falta ese dato).
+- Solo usá listar_movimientos_proyecto cuando el usuario pida EXPLÍCITAMENTE ver el detalle de gastos, movimientos o desglose de costos de un proyecto.
+- Solo usá listar_partidas_proyecto cuando el usuario pida comparar partidas entre proyectos o ver el detalle de partidas específicas.
 
 Formato de listas:
 ✅ Tarea completada · detalle
