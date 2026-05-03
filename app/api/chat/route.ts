@@ -1924,7 +1924,7 @@ Respondé siempre en español. Máximo 3 párrafos.${idealistaCtx}`
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content as string }))
 
     let response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
       tools: TOOLS,
@@ -1950,7 +1950,7 @@ Respondé siempre en español. Máximo 3 párrafos.${idealistaCtx}`
       ]
 
       response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
+        model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
         max_tokens: 1024,
         system: systemPrompt,
         tools: TOOLS,
