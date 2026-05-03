@@ -6,6 +6,8 @@ import { getOrgAccessToken } from '@/lib/gcalToken'
 import { gcalCreateEvent } from '@/lib/googleCalendar'
 import { verifyAuth } from '@/lib/api-auth'
 import { scrapeIdealista } from '@/lib/scrape-idealista'
+import { calcEscenarios, calcCostoTotal, calcGastosFijos } from '@/lib/formulas'
+import { buscarComparables } from '@/lib/search-comparables'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabaseAdmin = createClient(
@@ -681,6 +683,25 @@ const TOOLS: Anthropic.Tool[] = [
         nota: { type: 'string', description: 'Descripción de la interacción o nota' },
       },
       required: ['prospecto_id', 'nota'],
+    },
+  },
+  {
+    name: 'analizar_inversion',
+    description: 'Analiza si una operación inmobiliaria es viable. Busca comparables en web para validar el precio de venta, calcula el precio máximo de compra y el ROI para 3 escenarios (Conservador 30%, Realista 50%, Optimista 70%). Usalo cuando el usuario pida analizar una inversión, calcular ROI, o saber cuánto puede pagar por un inmueble.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        zona: { type: 'string', description: 'Ciudad o zona del inmueble. Ej: "Zurgena, Almería"' },
+        superficie: { type: 'number', description: 'Superficie en m²' },
+        habitaciones: { type: 'number', description: 'Número de habitaciones (opcional)' },
+        precio_ofertado: { type: 'number', description: 'Precio al que está ofertado / precio pedido por el vendedor en euros' },
+        coste_reforma: { type: 'number', description: 'Coste estimado de reforma en euros' },
+        precio_venta_orientativo: { type: 'number', description: 'Precio de venta objetivo estimado por el usuario (opcional). Si no se indica, se busca via web.' },
+        tipo: { type: 'string', enum: ['HASU', 'JV'], description: 'Tipo de operación: HASU (100% propio) o JV (joint venture con socio)' },
+        porcentaje_hasu: { type: 'number', description: 'Porcentaje de HASU en la operación (0-100). Default 100 para HASU, el acordado para JV.' },
+        socio: { type: 'string', description: 'Nombre del socio JV si aplica' },
+      },
+      required: ['zona', 'superficie', 'precio_ofertado', 'coste_reforma'],
     },
   },
   {
@@ -1582,6 +1603,82 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: `${data.tipo} · ${data.fecha}`,
       }
     }
+    if (name === 'analizar_inversion') {
+      const { zona, superficie, habitaciones, precio_ofertado, coste_reforma, precio_venta_orientativo, tipo = 'HASU', porcentaje_hasu = 100, socio } = input
+
+      // 1. Buscar comparables en web para validar/ajustar precio de venta
+      const busqueda = await buscarComparables(zona, superficie, habitaciones)
+
+      // 2. Determinar precio de venta final
+      let precioVenta: number
+      let fuenteVenta: string
+      if (precio_venta_orientativo) {
+        if (busqueda.precioSugerido) {
+          const diff = Math.abs(precio_venta_orientativo - busqueda.precioSugerido) / busqueda.precioSugerido
+          if (diff > 0.15) {
+            // diferencia >15% → alertar y usar el del usuario igual
+            fuenteVenta = `orientativo del usuario (${precio_venta_orientativo.toLocaleString('es-ES')}€) — web sugiere ${busqueda.precioSugerido.toLocaleString('es-ES')}€ (diferencia ${Math.round(diff * 100)}%)`
+          } else {
+            fuenteVenta = `orientativo del usuario, validado con comparables web (±${Math.round(diff * 100)}%)`
+          }
+        } else {
+          fuenteVenta = 'orientativo del usuario (sin comparables web disponibles)'
+        }
+        precioVenta = precio_venta_orientativo
+      } else if (busqueda.precioSugerido) {
+        precioVenta = busqueda.precioSugerido
+        fuenteVenta = `estimado por comparables web — ${busqueda.precioMedioM2}€/m² × ${superficie}m²`
+      } else {
+        return { result: 'No se pudo determinar el precio de venta. Por favor indicá un precio de venta orientativo.' }
+      }
+
+      // 3. Calcular escenarios
+      const escenarios = calcEscenarios(precioVenta, coste_reforma)
+      const gastos = calcGastosFijos(precio_ofertado)
+      const costoOfertado = calcCostoTotal(precio_ofertado, coste_reforma)
+      const beneficioOfertado = precioVenta - costoOfertado
+      const roiOfertado = beneficioOfertado / costoOfertado
+
+      const fmt = (n: number) => n.toLocaleString('es-ES') + '€'
+      const fmtPct = (n: number) => (n * 100).toFixed(1) + '%'
+
+      // 4. Línea de evaluación del precio ofertado
+      const roiLabel = roiOfertado >= 0.70 ? '🟢 excelente' : roiOfertado >= 0.50 ? '🟢 sólido' : roiOfertado >= 0.30 ? '🟡 aceptable' : '🔴 por debajo del mínimo'
+      const evaluacion = `**Precio ofertado: ${fmt(precio_ofertado)}** → ROI ${fmtPct(roiOfertado)} (${roiLabel})`
+
+      // 5. Formatear escenarios
+      const lineasEscenarios = escenarios.map(e => {
+        const parteHasu = Math.floor(e.beneficioNeto * (porcentaje_hasu / 100))
+        const hasuLabel = porcentaje_hasu < 100 ? ` | HASU (${porcentaje_hasu}%): ${fmt(parteHasu)}` : ''
+        return `**${e.label} (${Math.round(e.roiTarget * 100)}%):** comprá máximo ${fmt(e.precioMaxCompra)} — beneficio neto ${fmt(e.beneficioNeto)}${hasuLabel}`
+      }).join('\n')
+
+      // 6. Comparables
+      const lineasComp = busqueda.comparables.length
+        ? busqueda.comparables.slice(0, 3).map(c => `- ${c.titulo?.slice(0, 50) ?? 'Inmueble'} | ${fmt(c.precio)}${c.precioM2 ? ' · ' + c.precioM2 + '€/m²' : ''}`).join('\n')
+        : 'Sin comparables encontrados'
+
+      // 7. Gastos
+      const tipoLabel = tipo === 'JV' ? `JV ${porcentaje_hasu}% HASU${socio ? ' / ' + (100 - porcentaje_hasu) + '% ' + socio : ''}` : 'HASU 100%'
+
+      const result = [
+        `## Análisis de inversión — ${zona} (${superficie}m²${habitaciones ? ', ' + habitaciones + 'hab' : ''})`,
+        `**Tipo:** ${tipoLabel}`,
+        `**Precio venta usado:** ${fmt(precioVenta)} _(${fuenteVenta})_`,
+        `**Gastos estimados (ITP + notaría + registro):** ${fmt(gastos)}`,
+        '',
+        `### Evaluación del precio ofertado`,
+        evaluacion,
+        '',
+        `### Precio máximo de compra por escenario`,
+        lineasEscenarios,
+        '',
+        `### Comparables web`,
+        lineasComp,
+      ].join('\n')
+
+      return { result }
+    }
     if (name === 'listar_movimientos_proyecto') {
       let query = supabaseAdmin.from('movimientos').select('id,concepto,monto,fecha,categoria,tipo,cuenta,proveedor').eq('proyecto_id', input.proyecto_id).order('fecha', { ascending: false })
       if (input.categoria) query = (query as any).ilike('categoria', `%${input.categoria}%`)
@@ -1791,6 +1888,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - proyectos, cuentas bancarias, movimientos, tareas, partidas de reforma, radar, bitácora, proveedores
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
+- ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
 - INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. Para agregar directamente a En Estudio sin pasar por Radar usá insert_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio (ahora soporta todos los campos).
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
