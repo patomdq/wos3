@@ -271,6 +271,18 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'delete_estudio',
+    description: 'Elimina un inmueble en estado En Estudio. Si tenés el ID del contexto usalo directamente; si no, pasá busqueda con la dirección parcial.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del inmueble en estudio (del contexto). Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Dirección o nombre parcial para encontrar el inmueble cuando no tenés el ID.' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'update_estudio',
     description: 'Edita datos de un inmueble En Estudio: estado, precios de venta por escenario, ROI, notas, superficie, etc. Si tenés el ID usalo; si no, pasá busqueda.',
     input_schema: {
@@ -1064,6 +1076,14 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (error) return { result: `Error al eliminar: ${error.message}` }
       return { result: `Inmueble eliminado del radar. Dirección: "${resolved.resolved.direccion}".` }
     }
+    if (name === 'delete_estudio') {
+      const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
+      if ('error' in resolved) return { result: resolved.error }
+      const nombreElim = resolved.resolved.nombre || resolved.resolved.direccion
+      const { error } = await supabaseAdmin.from('inmuebles_estudio').delete().eq('id', resolved.resolved.id)
+      if (error) return { result: `Error al eliminar: ${error.message}` }
+      return { result: `Inmueble eliminado de En Estudio: "${nombreElim}".` }
+    }
     if (name === 'update_estudio') {
       const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
@@ -1095,7 +1115,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }]).select().single()
       if (error) return { result: `Error al crear inmueble en estudio: ${error.message}` }
       return {
-        result: `Inmueble "${data.nombre || data.direccion}" agregado a En Estudio. ID: ${data.id}.`,
+        result: `✅ Inmueble registrado en En Estudio — ${data.nombre || data.direccion}`,
         table: 'inmuebles_estudio',
         recordId: data.id,
         label: `${data.nombre || data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''}`,
@@ -1204,8 +1224,11 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         }
       }
       if (movidos.length === 0) return { result: 'No se pudo mover ningún inmueble.' }
+      const nombresMovidos = movidos.map(m => m.replace(/^"|".*$/g, '').trim()).join(', ')
       return {
-        result: `Listo. ${movidos.length === 1 ? movidos[0] + ' movido' : movidos.join(' y ') + ' movidos'} a En Estudio. Podés completar el análisis desde Mercado → En Estudio.`,
+        result: movidos.length === 1
+          ? `✅ Inmueble registrado en En Estudio — ${nombresMovidos}`
+          : `✅ Inmuebles registrados en En Estudio — ${nombresMovidos}`,
         table: 'inmuebles_estudio',
         label: movidos.join(', '),
       }
@@ -1962,7 +1985,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
-- INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. Para agregar directamente a En Estudio sin pasar por Radar usá insert_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio (ahora soporta todos los campos).
+- INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. Para agregar directamente a En Estudio sin pasar por Radar usá insert_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR un inmueble en Radar usá delete_radar; para ELIMINAR uno en En Estudio usá delete_estudio.
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
@@ -1973,6 +1996,7 @@ REGLAS DE RESPUESTA — MUY IMPORTANTE:
 3. SIEMPRE que el usuario pregunte por tareas (pendientes, en curso, etc.) sin estar en contexto de un proyecto específico, ANTES de listar nada preguntá: "¿Te referís a las tareas de un proyecto en particular o las generales?" — NO listés tareas sin hacer esta pregunta primero.
 4. Respuestas cortas y limpias. Solo la info que el usuario necesita ver. Sin columnas técnicas.
 5. Para editar o eliminar, buscá el ID en el contexto sin mostrárselo al usuario.
+6. Cuando insert_estudio o mover_radar_a_estudio tienen éxito, respondé ÚNICAMENTE con el texto exacto del resultado de la herramienta — sin resumen de datos, sin preguntas adicionales, sin texto extra.
 
 USO EFICIENTE DE HERRAMIENTAS — CRÍTICO:
 - Para resultados financieros de un proyecto (beneficio, ROI, etc.) usá los datos del contexto (campos: Compra, CostoTotal, VentaReal). NO llames listar_movimientos_proyecto para responder esto.
