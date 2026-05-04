@@ -16,39 +16,34 @@ export interface ResultadoBusqueda {
   fuente: string
 }
 
-const PORTALES = [
-  { host: 'idealista.com',    nombre: 'Idealista' },
-  { host: 'fotocasa.es',      nombre: 'Fotocasa' },
-  { host: 'pisos.com',        nombre: 'Pisos.com' },
-  { host: 'habitaclia.com',   nombre: 'Habitaclia' },
-  { host: 'yaencontre.com',   nombre: 'Yaencontre' },
-  { host: 'kyero.com',        nombre: 'Kyero' },
-  { host: 'inmobiliaria.com', nombre: 'Inmobiliaria.com' },
-  { host: 'globaliza.com',    nombre: 'Globaliza' },
-]
-
-function detectPortal(url: string): string | null {
-  for (const p of PORTALES) {
-    if (url.includes(p.host)) return p.nombre
-  }
-  return null
+// Normalizes zona to a Fotocasa-compatible URL slug
+function toSlug(zona: string): string {
+  return zona
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
 }
 
-// Returns true only for individual listing pages (not search results or market reports)
-function isListingUrl(url: string): boolean {
-  return (
-    /idealista\.com\/inmueble\/\d+/i.test(url) ||
-    /fotocasa\.es\/ficha\//i.test(url) ||
-    /pisos\.com\/.+-\d+\.htm/i.test(url) ||
-    /habitaclia\.com\/.+\/\d+/i.test(url) ||
-    /yaencontre\.com\/.+-\d{5,}/i.test(url) ||
-    /kyero\.com\/property\//i.test(url)
-  )
+// Builds multiple targeted Fotocasa URLs to maximize distinct listings
+function buildFotocasaUrls(zona: string, habitaciones?: number): string[] {
+  const slug = toSlug(zona)
+  const habValues = habitaciones
+    ? Array.from(new Set([habitaciones, habitaciones <= 2 ? 3 : 2]))
+    : [2, 3]
+  const barrios = ['todas-las-zonas', 'centro']
+  const urls: string[] = []
+  for (const barrio of barrios) {
+    for (const hab of habValues) {
+      urls.push(`https://www.fotocasa.es/es/comprar/viviendas/${slug}/${barrio}/${hab}-habitaciones/l`)
+    }
+  }
+  return Array.from(new Set(urls))
 }
 
 function parsePrice(text: string): number | null {
-  // Look for standalone prices (not per-m² prices like "1.200€/m²")
-  const matches = [...text.matchAll(/([\d]{2,3}(?:[.,][\d]{3})*)\s*€(?!\s*\/\s*m)/g)]
+  const matches = Array.from(text.matchAll(/([\d]{2,3}(?:[.,][\d]{3})*)\s*€(?!\s*\/\s*m)/g))
   for (const m of matches) {
     const val = parseInt(m[1].replace(/\./g, '').replace(',', ''))
     if (val > 20_000 && val < 3_000_000) return val
@@ -57,8 +52,7 @@ function parsePrice(text: string): number | null {
 }
 
 function extractSurface(text: string): number | null {
-  // Prefer explicit "X m²" over other patterns; ignore values that look like year or address numbers
-  const matches = [...text.matchAll(/(\d{2,4})\s*m[²2]/gi)]
+  const matches = Array.from(text.matchAll(/(\d{2,4})\s*m[²2]/gi))
   for (const m of matches) {
     const v = parseInt(m[1])
     if (v >= 25 && v <= 1000) return v
@@ -67,23 +61,171 @@ function extractSurface(text: string): number | null {
 }
 
 function extractDireccion(text: string, url: string): string | null {
-  // 1. Explicit street pattern
   const street = text.match(/(?:C\/|Calle|Avda?\.?|Avenida|Plaza|Paseo|Ronda|Camino|Urbanización)\s+[^\n,·|]{3,60}/i)
   if (street) return street[0].replace(/\s+/g, ' ').trim()
 
-  // 2. "Piso/Casa en X, Barrio, Ciudad" title pattern
   const enTitle = text.match(/(?:Piso|Casa|Ático|Dúplex|Apartamento|Vivienda)[^,\n]*?(?:en|de)\s+([A-ZÁÉÍÓÚ][^\n,·|]{4,60})/i)
   if (enTitle) return enTitle[1].trim()
 
-  // 3. Extract zone from Idealista URL: /venta-viviendas/{city}/{zone}/
-  const idUrl = url.match(/idealista\.com\/[^/]+\/([^/]+)\/([^/]+)\//i)
-  if (idUrl) return `${idUrl[2].replace(/-/g, ' ')}, ${idUrl[1].replace(/-/g, ' ')}`
-
-  // 4. Fotocasa URL zone
   const fcUrl = url.match(/fotocasa\.es\/[^/]+\/([^/]+)\/([^/]+)\//i)
   if (fcUrl) return `${fcUrl[2].replace(/-/g, ' ')}, ${fcUrl[1].replace(/-/g, ' ')}`
 
   return null
+}
+
+function isValidComparable(precio: number, pm2: number | null): boolean {
+  return precio > 20_000 && precio < 3_000_000 && (!pm2 || (pm2 >= 200 && pm2 <= 8_000))
+}
+
+// Fetches a single Fotocasa listing page and extracts the first property found.
+// Fotocasa server-renders the first listing — subsequent ones require JS.
+async function fetchFotocasaPage(url: string): Promise<Comparable | null> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9',
+      },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+
+    // 1. __NEXT_DATA__ — contains server-rendered page props
+    const nextMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i)
+    if (nextMatch) {
+      try {
+        const data = JSON.parse(nextMatch[1])
+        const pageProps = data?.props?.pageProps ?? {}
+        const listings: any[] =
+          pageProps.initialListings ??
+          pageProps.listings ??
+          pageProps.ads ??
+          pageProps.items ??
+          pageProps.properties ??
+          []
+        if (listings.length > 0) {
+          const first = listings[0]
+          const precio: number | undefined = first.price ?? first.precio ?? first.amount
+          const sup: number | undefined = first.surface ?? first.superficie ?? first.sqm ?? first.area
+          if (precio && precio > 20_000 && precio < 3_000_000) {
+            const pm2 = sup && sup > 20 ? Math.floor(precio / sup) : null
+            if (isValidComparable(precio, pm2)) {
+              const listingUrl: string = first.url ?? first.link ?? url
+              return {
+                precio: Math.floor(precio),
+                superficie: sup ? Math.round(sup) : null,
+                habitaciones: first.rooms ?? first.habitaciones ?? null,
+                precioM2: pm2,
+                titulo: (first.title ?? first.name ?? first.titulo ?? '').slice(0, 80) || null,
+                direccion: first.address ?? first.direction ?? extractDireccion('', listingUrl),
+                url: listingUrl.startsWith('http') ? listingUrl : `https://www.fotocasa.es${listingUrl}`,
+                portal: 'Fotocasa',
+              }
+            }
+          }
+        }
+      } catch { /* malformed JSON — fall through */ }
+    }
+
+    // 2. JSON-LD structured data (schema.org RealEstateListing / Offer)
+    const ldMatches = Array.from(html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi))
+    for (const match of ldMatches) {
+      try {
+        const ld = JSON.parse(match[1])
+        const items: any[] = Array.isArray(ld) ? ld : [ld]
+        for (const item of items) {
+          const precio: number | undefined = item.price ?? item.offers?.price
+          if (!precio || precio < 20_000) continue
+          const sup: number | undefined = item.floorSize?.value ?? null
+          const pm2 = sup ? Math.floor(precio / sup) : null
+          if (!isValidComparable(precio, pm2)) continue
+          const listingUrl: string = item.url ?? url
+          return {
+            precio: Math.floor(precio),
+            superficie: sup ? Math.round(sup) : null,
+            habitaciones: null,
+            precioM2: pm2,
+            titulo: (item.name ?? '').slice(0, 80) || null,
+            direccion: item.address?.streetAddress ?? extractDireccion(item.name ?? '', listingUrl),
+            url: listingUrl,
+            portal: 'Fotocasa',
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    // 3. OG meta tags — minimal but reliable for the page's featured listing
+    const ogTitle = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i)?.[1] ?? ''
+    const ogDesc  = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i)?.[1] ?? ''
+    const ogUrl   = html.match(/<meta[^>]+property="og:url"[^>]+content="([^"]+)"/i)?.[1] ?? url
+    const text = `${ogTitle} ${ogDesc}`
+    const precio = parsePrice(text)
+    if (!precio) return null
+    const sup = extractSurface(text)
+    const pm2 = sup && sup > 20 ? Math.floor(precio / sup) : null
+    if (!isValidComparable(precio, pm2)) return null
+
+    return {
+      precio,
+      superficie: sup,
+      habitaciones: null,
+      precioM2: pm2,
+      titulo: ogTitle.replace(/\s*[-–|].*$/, '').trim().slice(0, 80) || null,
+      direccion: extractDireccion(text, ogUrl),
+      url: ogUrl,
+      portal: 'Fotocasa',
+    }
+  } catch {
+    return null
+  }
+}
+
+// Firecrawl fallback — targeted to Fotocasa listing pages only
+async function firecrawlFallback(
+  zona: string,
+  habitaciones: number | undefined,
+  key: string,
+): Promise<Comparable[]> {
+  const hab = habitaciones ? `${habitaciones} habitaciones` : '2 o 3 habitaciones'
+  const query = `site:fotocasa.es/es/comprar/vivienda piso en venta ${zona} ${hab} precio m²`
+  try {
+    const res = await fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ query, limit: 8, scrapeOptions: { formats: ['markdown'] } }),
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (!res.ok) return []
+    const json = await res.json()
+    const results: any[] = json.data ?? []
+    const out: Comparable[] = []
+    for (const r of results) {
+      const url: string = r.url ?? ''
+      if (!/fotocasa\.es/i.test(url)) continue
+      if (/noticias|informe|estadistica|calculadora|hipoteca|blog|indice-precio/i.test(url)) continue
+      const text = [r.title, r.description, r.markdown].filter(Boolean).join('\n')
+      const precio = parsePrice(text)
+      if (!precio) continue
+      const sup = extractSurface(text)
+      const pm2 = sup && sup > 20 ? Math.floor(precio / sup) : null
+      if (!isValidComparable(precio, pm2)) continue
+      out.push({
+        precio,
+        superficie: sup,
+        habitaciones: text.match(/(\d)\s*habitaci/i) ? parseInt(text.match(/(\d)\s*habitaci/i)![1]) : null,
+        precioM2: pm2,
+        titulo: (r.title ?? '').replace(/\s*[-–|].*$/, '').trim().slice(0, 80) || null,
+        direccion: extractDireccion(text, url),
+        url,
+        portal: 'Fotocasa',
+      })
+    }
+    return out
+  } catch {
+    return []
+  }
 }
 
 export async function buscarComparables(
@@ -93,90 +235,46 @@ export async function buscarComparables(
 ): Promise<ResultadoBusqueda> {
   const empty: ResultadoBusqueda = { comparables: [], precioMedioM2: null, precioSugerido: null, fuente: 'sin datos' }
 
-  const firecrawlKey = process.env.FIRECRAWL_API_KEY
-  if (!firecrawlKey) return empty
+  // 1. Direct Fotocasa page fetching — one listing per URL, multiple barrios
+  const urls = buildFotocasaUrls(zona, habitaciones)
+  const settled = await Promise.allSettled(urls.map(fetchFotocasaPage))
 
-  const hab = habitaciones ? `${habitaciones} habitaciones` : ''
-  // Target portal listings explicitly
-  const query = `piso en venta ${zona} ${hab} ${superficie}m2 idealista fotocasa inmueble €`.trim()
-
-  try {
-    const res = await fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${firecrawlKey}` },
-      body: JSON.stringify({
-        query,
-        limit: 10,
-        scrapeOptions: { formats: ['markdown'] },
-      }),
-      signal: AbortSignal.timeout(18000),
-    })
-
-    if (!res.ok) return empty
-    const json = await res.json()
-    const results: any[] = json.data || []
-
-    const comparables: Comparable[] = []
-
-    for (const r of results) {
-      const url: string = r.url || ''
-      const portal = detectPortal(url)
-
-      // Skip results that are clearly not property listings (news, reports, calculators)
-      const isReport = /noticias|informe|estadística|calculadora|hipoteca|blog|ayuntamiento|wikipedia/i.test(url)
-      if (isReport) continue
-
-      const text = [r.title, r.description, r.markdown].filter(Boolean).join('\n')
-      const precio = parsePrice(text)
-
-      // A comparable must have a price. If not from a listing URL, must also have surface.
-      const sup = extractSurface(text)
-      if (!precio) continue
-      if (!isListingUrl(url) && !sup) continue
-
-      // Sanity check: price/m² must be plausible (200–8000 €/m²) when both are available
-      const pm2 = sup && sup > 20 ? Math.floor(precio / sup) : null
-      if (pm2 && (pm2 < 200 || pm2 > 8000)) continue
-
-      // Extract address/title
-      const direccion = extractDireccion(text, url)
-      const titulo = (r.title || '').replace(/\s*[-–|].*$/, '').trim().slice(0, 80) || null
-
-      comparables.push({
-        precio,
-        superficie: sup,
-        habitaciones: text.match(/(\d)\s*habitaci/i) ? parseInt(text.match(/(\d)\s*habitaci/i)![1]) : null,
-        precioM2: pm2,
-        titulo,
-        direccion,
-        url,
-        portal,
-      })
+  const seen = new Set<string>()
+  const comparables: Comparable[] = []
+  for (const r of settled) {
+    if (r.status === 'fulfilled' && r.value && !seen.has(r.value.url)) {
+      seen.add(r.value.url)
+      comparables.push(r.value)
     }
+  }
 
-    // Prefer listing-URL comparables; sort by how "complete" the data is
-    const ranked = comparables.sort((a, b) => {
-      const scoreA = (isListingUrl(a.url) ? 4 : 0) + (a.superficie ? 2 : 0) + (a.direccion ? 1 : 0)
-      const scoreB = (isListingUrl(b.url) ? 4 : 0) + (b.superficie ? 2 : 0) + (b.direccion ? 1 : 0)
-      return scoreB - scoreA
-    })
-
-    const top = ranked.slice(0, 5)
-
-    const preciosM2 = top.filter(c => c.precioM2 && c.precioM2 > 200 && c.precioM2 < 8000).map(c => c.precioM2!)
-    const precioMedioM2 = preciosM2.length >= 2
-      ? Math.floor(preciosM2.reduce((a, b) => a + b, 0) / preciosM2.length)
-      : null
-    const precioSugerido = precioMedioM2 ? Math.floor(precioMedioM2 * superficie) : null
-
-    return {
-      comparables: top,
-      precioMedioM2,
-      // Only suggest price when backed by at least 2 comparables with surface data
-      precioSugerido,
-      fuente: `web search: "${query}"`,
+  // 2. Supplement with Firecrawl if fewer than 3 results
+  if (comparables.length < 3) {
+    const key = process.env.FIRECRAWL_API_KEY
+    if (key) {
+      const fallback = await firecrawlFallback(zona, habitaciones, key)
+      for (const c of fallback) {
+        if (!seen.has(c.url)) {
+          seen.add(c.url)
+          comparables.push(c)
+        }
+      }
     }
-  } catch {
-    return empty
+  }
+
+  if (comparables.length === 0) return empty
+
+  const top = comparables.slice(0, 5)
+  const preciosM2 = top.filter(c => c.precioM2 && c.precioM2 > 200).map(c => c.precioM2!)
+  const precioMedioM2 = preciosM2.length >= 2
+    ? Math.floor(preciosM2.reduce((a, b) => a + b, 0) / preciosM2.length)
+    : (preciosM2.length === 1 ? preciosM2[0] : null)
+  const precioSugerido = precioMedioM2 ? Math.floor(precioMedioM2 * superficie) : null
+
+  return {
+    comparables: top,
+    precioMedioM2,
+    precioSugerido,
+    fuente: 'Fotocasa',
   }
 }

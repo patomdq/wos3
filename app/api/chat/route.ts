@@ -272,7 +272,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'update_estudio',
-    description: 'Edita datos de un inmueble En Estudio: estado, precio, ROI, notas, superficie, etc. Si tenés el ID usalo; si no, pasá busqueda.',
+    description: 'Edita datos de un inmueble En Estudio: estado, precios de venta por escenario, ROI, notas, superficie, etc. Si tenés el ID usalo; si no, pasá busqueda.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -282,7 +282,9 @@ const TOOLS: Anthropic.Tool[] = [
         notas: { type: 'string' },
         nombre: { type: 'string', description: 'Nuevo nombre o alias del inmueble' },
         precio_compra: { type: 'number', description: 'Precio de compra estimado en euros' },
-        precio_venta_objetivo: { type: 'number', description: 'Precio de venta objetivo en euros' },
+        precio_venta_conservador: { type: 'number', description: 'Precio de venta escenario conservador en euros' },
+        precio_venta_realista:    { type: 'number', description: 'Precio de venta escenario realista en euros' },
+        precio_venta_optimista:   { type: 'number', description: 'Precio de venta escenario optimista en euros' },
         roi_estimado: { type: 'number', description: 'ROI estimado en porcentaje (ej: 32.5)' },
         ciudad: { type: 'string', description: 'Ciudad o municipio' },
         superficie: { type: 'number', description: 'Superficie en m²' },
@@ -301,7 +303,9 @@ const TOOLS: Anthropic.Tool[] = [
         direccion: { type: 'string', description: 'Dirección completa' },
         ciudad: { type: 'string', description: 'Ciudad o municipio' },
         precio_compra: { type: 'number', description: 'Precio de compra estimado en euros' },
-        precio_venta_objetivo: { type: 'number', description: 'Precio de venta objetivo en euros' },
+        precio_venta_conservador: { type: 'number', description: 'Precio de venta escenario conservador en euros' },
+        precio_venta_realista:    { type: 'number', description: 'Precio de venta escenario realista en euros' },
+        precio_venta_optimista:   { type: 'number', description: 'Precio de venta escenario optimista en euros' },
         roi_estimado: { type: 'number', description: 'ROI estimado en % (opcional, default 0)' },
         superficie: { type: 'number', description: 'Superficie en m²' },
         habitaciones: { type: 'number', description: 'Número de habitaciones' },
@@ -1063,7 +1067,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'update_estudio') {
       const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const fields = ['estado', 'notas', 'nombre', 'precio_compra', 'precio_venta_objetivo', 'roi_estimado', 'ciudad', 'superficie', 'habitaciones']
+      const fields = ['estado', 'notas', 'nombre', 'precio_compra', 'precio_venta_conservador', 'precio_venta_realista', 'precio_venta_optimista', 'roi_estimado', 'ciudad', 'superficie', 'habitaciones']
       const updates: Record<string,any> = {}
       for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
       const { data, error } = await supabaseAdmin.from('inmuebles_estudio').update(updates).eq('id', resolved.resolved.id).select().single()
@@ -1079,7 +1083,9 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         direccion: input.direccion,
         ciudad: input.ciudad || null,
         precio_compra: input.precio_compra || null,
-        precio_venta_objetivo: input.precio_venta_objetivo || null,
+        precio_venta_conservador: input.precio_venta_conservador || null,
+        precio_venta_realista:    input.precio_venta_realista    || null,
+        precio_venta_optimista:   input.precio_venta_optimista   || null,
         roi_estimado: input.roi_estimado || 0,
         superficie: input.superficie || null,
         habitaciones: input.habitaciones || null,
@@ -1191,7 +1197,6 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
           analizado_en: hoy,
           notas: input.notas || null,
           roi_estimado: 0,
-          precio_venta_objetivo: 0,
         }]).select().single()
         if (!error && data) {
           await supabaseAdmin.from('inmuebles_radar').update({ estado: 'convertido' }).eq('id', r.id)
@@ -1470,7 +1475,10 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         tipo: 'piso',
         estado: 'comprado',
         precio_compra: input.precio_compra || estudio.precio_compra || null,
-        precio_venta_estimado: estudio.precio_venta_objetivo || null,
+        precio_venta_conservador: estudio.precio_venta_conservador || null,
+        precio_venta_realista:    estudio.precio_venta_realista    || null,
+        precio_venta_optimista:   estudio.precio_venta_optimista   || null,
+        precio_venta_estimado:    estudio.precio_venta_realista || estudio.precio_venta_optimista || estudio.precio_venta_conservador || null,
         porcentaje_hasu: 100,
         fecha_compra: input.fecha_compra || hoy,
         notas: input.notas || null,
@@ -1662,53 +1670,64 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const fmt = (n: number) => n.toLocaleString('es-ES') + '€'
       const fmtPct = (n: number) => (n * 100).toFixed(1) + '%'
 
-      // 4. Línea de evaluación del precio ofertado
+      // 4. Evaluación del precio ofertado
       const roiLabel = roiOfertado >= 0.70 ? '🟢 excelente' : roiOfertado >= 0.50 ? '🟢 sólido' : roiOfertado >= 0.30 ? '🟡 aceptable' : '🔴 por debajo del mínimo'
       const evaluacion = `**Precio ofertado: ${fmt(precio_ofertado)}** → ROI ${fmtPct(roiOfertado)} (${roiLabel})`
 
-      // 5. Formatear escenarios
-      const lineasEscenarios = escenarios.map(e => {
-        const parteHasu = Math.floor(e.beneficioNeto * (porcentaje_hasu / 100))
-        const hasuLabel = porcentaje_hasu < 100 ? ` | HASU (${porcentaje_hasu}%): ${fmt(parteHasu)}` : ''
-        return `**${e.label} (${Math.round(e.roiTarget * 100)}%):** comprá máximo ${fmt(e.precioMaxCompra)} — beneficio neto ${fmt(e.beneficioNeto)}${hasuLabel}`
-      }).join('\n')
+      // 5. Tabla de escenarios con precio/m² como referencia base
+      const pm2Header = busqueda.precioMedioM2
+        ? `_Base: ${busqueda.precioMedioM2}€/m² × ${superficie}m² = ${fmt(precioVenta)} precio de venta estimado_`
+        : `_Base: precio de venta ${fmt(precioVenta)}_`
 
-      // 6. Comparables — mostrar con enlace, dirección, superficie, precio
-      let lineasComp: string
+      const tablaEscenarios = [
+        '| Escenario | ROI | Compra máxima | Beneficio neto' + (porcentaje_hasu < 100 ? ` | HASU (${porcentaje_hasu}%)` : '') + ' |',
+        '|-----------|-----|--------------|---------------' + (porcentaje_hasu < 100 ? '|----------' : '') + '|',
+        ...escenarios.map(e => {
+          const parteHasu = Math.floor(e.beneficioNeto * (porcentaje_hasu / 100))
+          const hasuCol = porcentaje_hasu < 100 ? ` | ${fmt(parteHasu)}` : ''
+          return `| ${e.label} | ${Math.round(e.roiTarget * 100)}% | **${fmt(e.precioMaxCompra)}** | ${fmt(e.beneficioNeto)}${hasuCol} |`
+        }),
+      ].join('\n')
+
+      // 6. Tabla de comparables Fotocasa
+      let tablaComp: string
       if (busqueda.comparables.length === 0) {
-        lineasComp = '⚠️ No se encontraron comparables verificables en portales inmobiliarios para esta búsqueda. Validá el precio de venta manualmente en Idealista o Fotocasa antes de tomar decisiones.'
+        tablaComp = '⚠️ Sin comparables verificables en Fotocasa para esta búsqueda. Validá el precio de venta manualmente antes de tomar decisiones.'
       } else {
-        const filas = busqueda.comparables.map(c => {
-          const label = c.direccion || c.titulo || 'Inmueble'
-          const sup = c.superficie ? `${c.superficie}m²` : '—'
-          const hab = c.habitaciones ? ` · ${c.habitaciones}hab` : ''
-          const pm2 = c.precioM2 ? ` · ${c.precioM2}€/m²` : ''
-          const portal = c.portal ? ` _(${c.portal})_` : ''
-          return `- [${label}](${c.url}) | ${sup}${hab} | **${fmt(c.precio)}**${pm2}${portal}`
-        })
-        const nota = busqueda.precioMedioM2
-          ? `\n_Precio medio: ${busqueda.precioMedioM2}€/m² sobre ${busqueda.comparables.filter(c => c.precioM2).length} comparable${busqueda.comparables.filter(c => c.precioM2).length !== 1 ? 's' : ''} con superficie._`
+        const conM2 = busqueda.comparables.filter(c => c.precioM2).length
+        const resumen = busqueda.precioMedioM2
+          ? `**Precio medio mercado: ${busqueda.precioMedioM2}€/m²** _(${conM2} comparable${conM2 !== 1 ? 's' : ''} con superficie)_`
           : ''
-        lineasComp = filas.join('\n') + nota
+        const filas = [
+          '| Inmueble | m² | Hab | Precio total | €/m² |',
+          '|----------|-----|-----|-------------|------|',
+          ...busqueda.comparables.map(c => {
+            const label = `[${(c.direccion || c.titulo || 'Ver anuncio').slice(0, 45)}](${c.url})`
+            const sup = c.superficie ? `${c.superficie}` : '—'
+            const hab = c.habitaciones ? `${c.habitaciones}` : '—'
+            const pm2 = c.precioM2 ? `${c.precioM2}` : '—'
+            return `| ${label} | ${sup} | ${hab} | **${fmt(c.precio)}** | ${pm2} |`
+          }),
+        ].join('\n')
+        tablaComp = resumen ? resumen + '\n\n' + filas : filas
       }
 
-      // 7. Gastos
+      // 7. Componer output final
       const tipoLabel = tipo === 'JV' ? `JV ${porcentaje_hasu}% HASU${socio ? ' / ' + (100 - porcentaje_hasu) + '% ' + socio : ''}` : 'HASU 100%'
 
       const result = [
         `## Análisis de inversión — ${zona} (${superficie}m²${habitaciones ? ', ' + habitaciones + 'hab' : ''})`,
-        `**Tipo:** ${tipoLabel}`,
-        `**Precio venta usado:** ${fmt(precioVenta)} _(${fuenteVenta})_`,
-        `**Gastos estimados (ITP + notaría + registro):** ${fmt(gastos)}`,
+        `**Tipo:** ${tipoLabel} · **Gastos fijos (ITP + notaría + registro):** ${fmt(gastos)}`,
+        '',
+        `### Comparables Fotocasa`,
+        tablaComp,
+        '',
+        `### Precio máximo de compra por escenario`,
+        pm2Header,
+        tablaEscenarios,
         '',
         `### Evaluación del precio ofertado`,
         evaluacion,
-        '',
-        `### Precio máximo de compra por escenario`,
-        lineasEscenarios,
-        '',
-        `### Comparables web`,
-        lineasComp,
       ].join('\n')
 
       return { result }
@@ -1859,8 +1878,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         const { data: estudio, error: estErr } = await supabaseAdmin.from('inmuebles_estudio').insert([{
           direccion: inmueble.direccion, ciudad: inmueble.ciudad || null,
           precio_compra: inmueble.precio || 0,
-          precio_venta_objetivo: Math.round((inmueble.precio || 0) * 1.45),
-          roi_estimado: 45, estado: 'en_estudio', analizado_en: new Date().toISOString().split('T')[0],
+          roi_estimado: 0, estado: 'en_estudio', analizado_en: new Date().toISOString().split('T')[0],
         }]).select().single()
         if (!estErr && estudio) extraMsg = ` "${inmueble.direccion}" movido a En Estudio (ID: ${estudio.id}).`
         else if (estErr) extraMsg = ` (Aviso: error al mover a En Estudio: ${estErr.message})`

@@ -62,7 +62,7 @@ export default function BotPage() {
         supabase.from('proyectos').select('id,nombre,estado,ciudad,porcentaje_hasu,precio_compra,precio_venta_real,precio_venta_estimado,valor_total_operacion,socio_nombre,fecha_compra,fecha_salida_estimada').order('created_at'),
         supabase.from('partidas_reforma').select('id,nombre,presupuesto,estado,proyecto_id').order('created_at', { ascending: false }).limit(10),
         supabase.from('inmuebles_radar').select('id,direccion,ciudad,precio,estado').eq('estado', 'activo').order('created_at', { ascending: false }).limit(20),
-        supabase.from('inmuebles_estudio').select('id,nombre,direccion,ciudad,precio_compra,precio_venta_objetivo,roi_estimado,estado,superficie,habitaciones').neq('estado', 'comprado').order('created_at', { ascending: false }).limit(20),
+        supabase.from('inmuebles_estudio').select('id,nombre,direccion,ciudad,precio_compra,precio_venta_conservador,precio_venta_realista,precio_venta_optimista,roi_estimado,estado,superficie,habitaciones').neq('estado', 'comprado').order('created_at', { ascending: false }).limit(20),
         supabase.from('proveedores').select('id,nombre,rubro,telefono').eq('activo', true).order('nombre').limit(30),
         supabase.from('prospectos').select('id,proyecto_id,nombre,estado,mejor_oferta').order('created_at', { ascending: false }).limit(20),
       ])
@@ -73,7 +73,7 @@ export default function BotPage() {
         tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
         partidas?.length ? `Partidas recientes (ID|Nombre|Presup|Estado):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.presupuesto}€|${p.estado}`).join('\n')}` : '',
         radar?.length ? `Inmuebles en radar (ID|Dirección|Ciudad|Precio):\n${radar.map(r => `- ${r.id}|${r.direccion}|${r.ciudad ?? '-'}|${r.precio}€`).join('\n')}` : 'Radar: sin inmuebles activos.',
-        estudio?.length ? `Inmuebles en estudio (ID|Nombre/Dirección|Ciudad|PrecioCompra|PrecioVenta|ROI|Estado|m²|Hab):\n${estudio.map(e => `- ${e.id}|${e.nombre || e.direccion}|${e.ciudad ?? '-'}|${e.precio_compra ?? '-'}€|${e.precio_venta_objetivo ?? '-'}€|${e.roi_estimado?.toFixed(1) ?? '-'}%|${e.estado}|${e.superficie ?? '-'}m²|${e.habitaciones ?? '-'}hab`).join('\n')}` : 'Estudio: sin inmuebles.',
+        estudio?.length ? `Inmuebles en estudio (ID|Nombre/Dirección|Ciudad|PrecioCompra|PvConservador|PvRealista|PvOptimista|ROI|Estado|m²|Hab):\n${estudio.map(e => `- ${e.id}|${e.nombre || e.direccion}|${e.ciudad ?? '-'}|${e.precio_compra ?? '-'}€|${e.precio_venta_conservador ?? '-'}€|${e.precio_venta_realista ?? '-'}€|${e.precio_venta_optimista ?? '-'}€|${e.roi_estimado?.toFixed(1) ?? '-'}%|${e.estado}|${e.superficie ?? '-'}m²|${e.habitaciones ?? '-'}hab`).join('\n')}` : 'Estudio: sin inmuebles.',
         proveedores?.length ? `Proveedores activos (ID|Nombre|Rubro|Tel):\n${proveedores.map(p => `- ${p.id}|${p.nombre}|${p.rubro ?? '-'}|${p.telefono ?? '-'}`).join('\n')}` : 'Proveedores: sin registros.',
         prospectos?.length ? `Prospectos (ID|ProyectoID|Nombre|Estado|Oferta):\n${prospectos.map(p => `- ${p.id}|${p.proyecto_id ?? '-'}|${p.nombre}|${p.estado}|${p.mejor_oferta ?? '-'}€`).join('\n')}` : '',
       ].filter(Boolean).join('\n')

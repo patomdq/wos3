@@ -28,7 +28,7 @@ const CONCEPTOS_GASTOS = [
 
 type Gastos = Record<string, { estimado: number; real: number }>
 type Radar = { id: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
-type Estudio = { id: string; nombre?: string; precio_compra: number; precio_venta_objetivo: number; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string }
+type Estudio = { id: string; nombre?: string; precio_compra: number; precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string }
 type Proveedor = { id: string; nombre: string }
 type Visita = { id: string; radar_id: string; fecha: string; hora: string; responsable: string; notas_previas?: string; estado_post?: string; notas_post?: string; fotos_url?: string; gcal_event_id?: string; created_at: string }
 
@@ -73,8 +73,10 @@ function calcResultados(gastos: Gastos, pvPes: number, pvReal: number, pvOpt: nu
   const pv = [pvPes, pvReal, pvOpt]
   const ben = pv.map(p => toNum(p) - totalReal)
   const rent = ben.map(b => (b / totalReal) * 100)
-  const m = Math.max(1, toNum(meses))
-  const anual = rent.map(r => { const a = (Math.pow(1 + r / 100, 12 / m) - 1) * 100; return isFinite(a) ? a : 0 })
+  // ROI anualizado solo si hay duración cargada; fórmula lineal: ROI × (12 / meses)
+  const anual: (number | null)[] = meses > 0
+    ? rent.map(r => r * (12 / meses))
+    : [null, null, null]
   return { totalEst, totalReal, ben, rent, anual }
 }
 
@@ -112,7 +114,7 @@ export default function MercadoPage() {
   const [editingEstudioId, setEditingEstudioId] = useState<string | null>(null)
   const [nombre, setNombre] = useState('')
   const [ciudad, setCiudad] = useState('')
-  const [duracionMeses, setDuracionMeses] = useState(12)
+  const [duracionMeses, setDuracionMeses] = useState(0)
   const [gastos, setGastos] = useState<Gastos>(emptyGastos)
   const [pvPes, setPvPes] = useState(0)
   const [pvReal, setPvReal] = useState(0)
@@ -267,25 +269,15 @@ export default function MercadoPage() {
     setGastos(g)
     setNombre(addr)
     setCiudad(ciu)
-    const pv = estudioItem?.precio_venta_objetivo || Math.round(precio * 1.45)
-    setPvReal(pv)
-    setPvPes(Math.round(pv * 0.85))
-    setPvOpt(Math.round(pv * 1.15))
-    setDuracionMeses(12)
+    setPvPes(estudioItem?.precio_venta_conservador || 0)
+    setPvReal(estudioItem?.precio_venta_realista   || 0)
+    setPvOpt(estudioItem?.precio_venta_optimista   || 0)
+    setDuracionMeses(0)
     setEditingEstudioId(estudioItem?.id || null)
     setSavedId(null)
     setCalcOpen(true)
   }
 
-  // Cuando cambia pvReal: auto-calcular ±15%
-  const handlePvRealChange = (val: string) => {
-    const n = parseFloat(val) || 0
-    setPvReal(n)
-    if (n > 0) {
-      setPvPes(Math.round(n * 0.85))
-      setPvOpt(Math.round(n * 1.15))
-    }
-  }
 
   const updateGasto = (id: string, tipo: 'estimado' | 'real', val: string) => {
     setGastos(prev => ({ ...prev, [id]: { ...prev[id], [tipo]: parseFloat(val) || 0 } }))
@@ -300,7 +292,9 @@ export default function MercadoPage() {
     const payload = {
       nombre,
       precio_compra: toNum(gastos.precio_compra.estimado) || toNum(gastos.precio_compra.real),
-      precio_venta_objetivo: pvReal || pvOpt || pvPes,
+      precio_venta_conservador: pvPes || null,
+      precio_venta_realista:    pvReal || null,
+      precio_venta_optimista:   pvOpt || null,
       roi_estimado: res.rent[1] || res.rent[0],
       direccion: nombre,
       ciudad,
@@ -354,7 +348,10 @@ export default function MercadoPage() {
       tipo: 'piso',
       estado: 'comprado',
       precio_compra: e.precio_compra || null,
-      precio_venta_estimado: e.precio_venta_objetivo || null,
+      precio_venta_conservador: e.precio_venta_conservador || null,
+      precio_venta_realista:    e.precio_venta_realista    || null,
+      precio_venta_optimista:   e.precio_venta_optimista   || null,
+      precio_venta_estimado: e.precio_venta_realista || e.precio_venta_optimista || e.precio_venta_conservador || null,
       porcentaje_hasu: 100,
       fecha_compra: new Date().toISOString().split('T')[0],
     }]).select().single()
@@ -499,8 +496,7 @@ export default function MercadoPage() {
         const { data: estudioNew } = await supabase.from('inmuebles_estudio').insert([{
           direccion: radarItem.direccion, ciudad: radarItem.ciudad || null,
           precio_compra: radarItem.precio || 0,
-          precio_venta_objetivo: Math.round((radarItem.precio || 0) * 1.45),
-          roi_estimado: 45, estado: 'en_estudio', analizado_en: today(),
+          roi_estimado: 0, estado: 'en_estudio', analizado_en: today(),
         }]).select().single()
         if (estudioNew) setEstudio(prev => [estudioNew, ...prev])
       }
@@ -575,9 +571,9 @@ export default function MercadoPage() {
       doc.text('ROI Anualizado', 196, y + 5.5, { align: 'right' }); y += 8
 
       const ESC_PDF = [
-        { nombre: 'Conservador (−15%)', pv: pvPes, idx: 0 },
-        { nombre: 'Realista', pv: pvReal, idx: 1 },
-        { nombre: 'Optimista (+15%)', pv: pvOpt, idx: 2 },
+        { nombre: 'Conservador', pv: pvPes, idx: 0 },
+        { nombre: 'Realista',    pv: pvReal, idx: 1 },
+        { nombre: 'Optimista',   pv: pvOpt,  idx: 2 },
       ]
       doc.setFont('helvetica', 'normal')
       ESC_PDF.forEach(esc => {
@@ -588,7 +584,8 @@ export default function MercadoPage() {
         doc.setTextColor(...col)
         doc.text(fmt2(res.ben[esc.idx]), 130, y + 5, { align: 'right' })
         doc.text(fmtPct(res.rent[esc.idx]), 163, y + 5, { align: 'right' })
-        doc.text(fmtPct(res.anual[esc.idx]), 196, y + 5, { align: 'right' })
+        const anualVal = res.anual[esc.idx]
+        doc.text(anualVal !== null ? fmtPct(anualVal) : '—', 196, y + 5, { align: 'right' })
         doc.setDrawColor(220,220,220); doc.setTextColor(...negro); doc.line(14, y+8, 196, y+8); y += 9
       })
 
@@ -606,9 +603,9 @@ export default function MercadoPage() {
   const CARD = { background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }
   const INP = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', color: '#fff' }
   const ESC_UI = [
-    { label: 'Conservador', sub: '−15%', pv: pvPes, setPv: setPvPes, idx: 0, color: '#EF4444' },
-    { label: 'Realista', sub: 'base', pv: pvReal, setPv: (v: number) => {}, idx: 1, color: '#F59E0B' },
-    { label: 'Optimista', sub: '+15%', pv: pvOpt, setPv: setPvOpt, idx: 2, color: '#22C55E' },
+    { label: 'Conservador', pv: pvPes, idx: 0, color: '#EF4444' },
+    { label: 'Realista',    pv: pvReal, idx: 1, color: '#F59E0B' },
+    { label: 'Optimista',   pv: pvOpt,  idx: 2, color: '#22C55E' },
   ]
 
   return (
@@ -780,7 +777,9 @@ export default function MercadoPage() {
                   <div className="text-sm font-medium mb-2" style={{ color: '#888' }}>{e.direccion}{e.ciudad ? ` · ${e.ciudad}` : ''}</div>
                   <div className="flex items-center gap-3 mt-1">
                     <div className="font-black text-sm" style={{ color: '#22C55E' }}>↗ ROI {e.roi_estimado?.toFixed(1)}%</div>
-                    <div className="text-xs" style={{ color: '#555' }}>· Venta obj. {fmt(e.precio_venta_objetivo || 0)}</div>
+                    {e.precio_venta_conservador && <div className="text-xs font-mono" style={{ color: '#EF4444' }}>↓ {fmt(e.precio_venta_conservador)}</div>}
+                    {e.precio_venta_realista    && <div className="text-xs font-mono" style={{ color: '#F59E0B' }}> {fmt(e.precio_venta_realista)}</div>}
+                    {e.precio_venta_optimista   && <div className="text-xs font-mono" style={{ color: '#22C55E' }}>↑ {fmt(e.precio_venta_optimista)}</div>}
                     {(() => {
                       const cfg = SUBESTADO_CFG[e.estado || 'en_estudio'] || SUBESTADO_CFG.en_estudio
                       return (
@@ -1411,7 +1410,7 @@ export default function MercadoPage() {
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Duración (meses)</label>
-                <input type="number" value={duracionMeses || ''} onChange={e => setDuracionMeses(parseFloat(e.target.value) || 12)}
+                <input type="number" value={duracionMeses || ''} onChange={e => setDuracionMeses(parseFloat(e.target.value) || 0)} placeholder="opcional"
                   className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium"
                   style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
               </div>
@@ -1454,35 +1453,35 @@ export default function MercadoPage() {
               )}
             </div>
 
-            {/* Precio realista + auto-escenarios */}
-            <div className="text-[11px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#888' }}>Precio de venta estimado</div>
-            <div className="mb-2">
-              <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#F59E0B' }}>Realista (base)</label>
-              <input type="number" value={pvReal || ''}
-                onChange={e => handlePvRealChange(e.target.value)}
-                className="w-full rounded-xl px-3 py-3 text-base text-white outline-none font-black font-mono"
-                style={{ background: '#1E1E1E', border: '2px solid #F59E0B' }}
-                placeholder="Ej: 95000" />
-            </div>
-            <div className="text-[10px] font-medium mb-3" style={{ color: '#555' }}>
-              Los escenarios conservador (−15%) y optimista (+15%) se calculan automáticamente. Podés ajustarlos manualmente.
-            </div>
-            <div className="grid grid-cols-2 gap-2 mb-5">
+            {/* Tres escenarios de precio de venta — campos independientes */}
+            <div className="text-[11px] font-bold uppercase tracking-[1px] mb-3" style={{ color: '#888' }}>Precio de venta por escenario</div>
+            <div className="grid grid-cols-3 gap-2 mb-5">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#EF4444' }}>Conservador (−15%)</label>
+                <label className="block text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#EF4444' }}>Conservador</label>
                 <input type="number" value={pvPes || ''}
                   onChange={e => setPvPes(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-xl px-2 py-2.5 text-sm text-white outline-none font-mono text-center"
+                  className="w-full rounded-xl px-2 py-2.5 text-sm outline-none font-mono text-center"
                   style={{ background: '#0A0A0A', border: '1.5px solid rgba(239,68,68,0.4)', color: '#EF4444' }}
-                  onFocus={e => e.target.style.borderColor='#EF4444'} onBlur={e => e.target.style.borderColor='rgba(239,68,68,0.4)'} />
+                  onFocus={e => e.target.style.borderColor='#EF4444'} onBlur={e => e.target.style.borderColor='rgba(239,68,68,0.4)'}
+                  placeholder="€" />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#22C55E' }}>Optimista (+15%)</label>
+                <label className="block text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#F59E0B' }}>Realista</label>
+                <input type="number" value={pvReal || ''}
+                  onChange={e => setPvReal(parseFloat(e.target.value) || 0)}
+                  className="w-full rounded-xl px-2 py-2.5 text-sm outline-none font-mono text-center"
+                  style={{ background: '#0A0A0A', border: '1.5px solid rgba(245,158,11,0.4)', color: '#F59E0B' }}
+                  onFocus={e => e.target.style.borderColor='#F59E0B'} onBlur={e => e.target.style.borderColor='rgba(245,158,11,0.4)'}
+                  placeholder="€" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#22C55E' }}>Optimista</label>
                 <input type="number" value={pvOpt || ''}
                   onChange={e => setPvOpt(parseFloat(e.target.value) || 0)}
-                  className="w-full rounded-xl px-2 py-2.5 text-sm text-white outline-none font-mono text-center"
+                  className="w-full rounded-xl px-2 py-2.5 text-sm outline-none font-mono text-center"
                   style={{ background: '#0A0A0A', border: '1.5px solid rgba(34,197,94,0.4)', color: '#22C55E' }}
-                  onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(34,197,94,0.4)'} />
+                  onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(34,197,94,0.4)'}
+                  placeholder="€" />
               </div>
             </div>
 
@@ -1491,21 +1490,37 @@ export default function MercadoPage() {
               <>
                 <div className="text-[11px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#888' }}>Resultados por escenario</div>
                 <div className="rounded-xl overflow-hidden mb-5" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="grid grid-cols-[80px_1fr_1fr_1fr] px-3 py-2" style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="grid grid-cols-[90px_1fr_1fr_1fr] px-3 py-2" style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                     <div />
                     {ESC_UI.map(esc => (
                       <div key={esc.label} className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: esc.color }}>
-                        {esc.label}<div style={{ fontSize:9, opacity:0.7 }}>{esc.sub}</div>
+                        {esc.label}
                       </div>
                     ))}
                   </div>
                   {[
-                    { label: 'P. Venta', vals: ESC_UI.map(e => fmt(toNum(e.pv))), colors: ESC_UI.map(() => '#fff') },
-                    { label: 'Beneficio', vals: ESC_UI.map((e,i) => (res.ben[i] >= 0 ? '+' : '') + fmt(res.ben[i])), colors: ESC_UI.map((_,i) => res.ben[i] >= 0 ? '#22C55E' : '#EF4444') },
-                    { label: 'ROI', vals: ESC_UI.map((_,i) => fmtPct(res.rent[i])), colors: ESC_UI.map((_,i) => res.rent[i] >= 15 ? '#22C55E' : res.rent[i] >= 0 ? '#F59E0B' : '#EF4444') },
-                    { label: 'ROI anual', vals: ESC_UI.map((_,i) => fmtPct(res.anual[i])), colors: ESC_UI.map((_,i) => res.anual[i] >= 15 ? '#22C55E' : res.anual[i] >= 0 ? '#F59E0B' : '#EF4444') },
+                    {
+                      label: 'P. Venta',
+                      vals: ESC_UI.map(e => fmt(toNum(e.pv))),
+                      colors: ESC_UI.map(() => '#fff'),
+                    },
+                    {
+                      label: 'Beneficio',
+                      vals: ESC_UI.map((_,i) => (res.ben[i] >= 0 ? '+' : '') + fmt(res.ben[i])),
+                      colors: ESC_UI.map((_,i) => res.ben[i] >= 0 ? '#22C55E' : '#EF4444'),
+                    },
+                    {
+                      label: 'ROI oper.',
+                      vals: ESC_UI.map((_,i) => fmtPct(res.rent[i])),
+                      colors: ESC_UI.map((_,i) => res.rent[i] >= 15 ? '#22C55E' : res.rent[i] >= 0 ? '#F59E0B' : '#EF4444'),
+                    },
+                    {
+                      label: `ROI anual${duracionMeses > 0 ? ` (${duracionMeses}m)` : ''}`,
+                      vals: ESC_UI.map((_,i) => res.anual[i] !== null ? fmtPct(res.anual[i]!) : '—'),
+                      colors: ESC_UI.map((_,i) => res.anual[i] === null ? '#555' : res.anual[i] >= 15 ? '#22C55E' : res.anual[i] >= 0 ? '#F59E0B' : '#EF4444'),
+                    },
                   ].map((row, ri) => (
-                    <div key={row.label} className="grid grid-cols-[80px_1fr_1fr_1fr] px-3 py-2.5 items-center"
+                    <div key={row.label} className="grid grid-cols-[90px_1fr_1fr_1fr] px-3 py-2.5 items-center"
                       style={{ borderTop: ri > 0 ? '1px solid rgba(255,255,255,0.06)' : undefined, background: '#141414' }}>
                       <div className="text-xs font-bold" style={{ color: '#888' }}>{row.label}</div>
                       {row.vals.map((v, i) => (
