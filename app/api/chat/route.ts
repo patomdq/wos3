@@ -1642,7 +1642,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
             fuenteVenta = `orientativo del usuario, validado con comparables web (±${Math.round(diff * 100)}%)`
           }
         } else {
-          fuenteVenta = 'orientativo del usuario (sin comparables web disponibles)'
+          fuenteVenta = 'orientativo del usuario ⚠️ sin comparables verificables en portales'
         }
         precioVenta = precio_venta_orientativo
       } else if (busqueda.precioSugerido) {
@@ -1673,10 +1673,24 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         return `**${e.label} (${Math.round(e.roiTarget * 100)}%):** comprá máximo ${fmt(e.precioMaxCompra)} — beneficio neto ${fmt(e.beneficioNeto)}${hasuLabel}`
       }).join('\n')
 
-      // 6. Comparables
-      const lineasComp = busqueda.comparables.length
-        ? busqueda.comparables.slice(0, 3).map(c => `- ${c.titulo?.slice(0, 50) ?? 'Inmueble'} | ${fmt(c.precio)}${c.precioM2 ? ' · ' + c.precioM2 + '€/m²' : ''}`).join('\n')
-        : 'Sin comparables encontrados'
+      // 6. Comparables — mostrar con enlace, dirección, superficie, precio
+      let lineasComp: string
+      if (busqueda.comparables.length === 0) {
+        lineasComp = '⚠️ No se encontraron comparables verificables en portales inmobiliarios para esta búsqueda. Validá el precio de venta manualmente en Idealista o Fotocasa antes de tomar decisiones.'
+      } else {
+        const filas = busqueda.comparables.map(c => {
+          const label = c.direccion || c.titulo || 'Inmueble'
+          const sup = c.superficie ? `${c.superficie}m²` : '—'
+          const hab = c.habitaciones ? ` · ${c.habitaciones}hab` : ''
+          const pm2 = c.precioM2 ? ` · ${c.precioM2}€/m²` : ''
+          const portal = c.portal ? ` _(${c.portal})_` : ''
+          return `- [${label}](${c.url}) | ${sup}${hab} | **${fmt(c.precio)}**${pm2}${portal}`
+        })
+        const nota = busqueda.precioMedioM2
+          ? `\n_Precio medio: ${busqueda.precioMedioM2}€/m² sobre ${busqueda.comparables.filter(c => c.precioM2).length} comparable${busqueda.comparables.filter(c => c.precioM2).length !== 1 ? 's' : ''} con superficie._`
+          : ''
+        lineasComp = filas.join('\n') + nota
+      }
 
       // 7. Gastos
       const tipoLabel = tipo === 'JV' ? `JV ${porcentaje_hasu}% HASU${socio ? ' / ' + (100 - porcentaje_hasu) + '% ' + socio : ''}` : 'HASU 100%'
