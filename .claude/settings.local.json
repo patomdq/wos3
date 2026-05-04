@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(xargs ls:*)",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "Bash(npx tsc:*)",
+      "mcp__claude_ai_Vercel__list_deployments"
+    ]
+  }
+}

@@ -17,6 +17,26 @@ const supabaseAdmin = createClient(
 
 const TOOLS: Anthropic.Tool[] = [
   {
+    name: 'insert_documento',
+    description: 'Guarda en la base de datos el análisis de una imagen enviada por el usuario (factura, presupuesto, foto de inmueble o documento). Llamarlo SIEMPRE después de analizar una imagen adjunta.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre: { type: 'string', description: 'Nombre descriptivo. Ej: "Factura Fontanería 2024-05-04"' },
+        tipo: { type: 'string', enum: ['factura', 'presupuesto', 'foto_inmueble', 'documento'], description: 'Tipo de documento detectado' },
+        proyecto_id: { type: 'string', description: 'UUID del proyecto al que asociar. Omitir si no hay proyecto en contexto.' },
+        descripcion_ia: { type: 'string', description: 'Descripción completa del análisis: contenido de la imagen y datos clave extraídos.' },
+        datos_ia: {
+          type: 'object' as const,
+          description: 'Datos estructurados: para factura/presupuesto incluye proveedor, importe, fecha, concepto; para foto_inmueble incluye estado, superficie_estimada, observaciones; para documento incluye partes, fechas, condiciones.',
+          properties: {},
+          additionalProperties: true,
+        },
+      },
+      required: ['nombre', 'tipo', 'descripcion_ia'],
+    },
+  },
+  {
     name: 'insert_movimiento',
     description: 'Registra un gasto o ingreso financiero en un proyecto. Usalo cuando el usuario pida registrar, cargar o agregar un gasto o ingreso.',
     input_schema: {
@@ -1836,6 +1856,26 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       return { result: `Visita registrada. Inmueble: "${inmueble.direccion}", Estado: ${estadoLabel}.${extraMsg}` }
     }
 
+    if (name === 'insert_documento') {
+      const { data, error } = await supabaseAdmin.from('documentos').insert([{
+        nombre: input.nombre,
+        tipo: input.tipo,
+        proyecto_id: input.proyecto_id || null,
+        descripcion_ia: input.descripcion_ia,
+        datos_ia: input.datos_ia || null,
+        url: null,
+        fecha_subida: new Date().toISOString(),
+        subido_por: 'Bot (Vision)',
+      }]).select().single()
+      if (error) return { result: `Error al guardar documento: ${error.message}` }
+      return {
+        result: `Documento guardado. ID: ${data.id}. Tipo: ${data.tipo}, Nombre: "${data.nombre}"${input.proyecto_id ? ', vinculado al proyecto.' : ', sin proyecto asignado aún.'}`,
+        table: 'documentos',
+        recordId: data.id,
+        label: `${data.nombre} · ${data.tipo}`,
+      }
+    }
+
     return { result: 'Herramienta no reconocida.' }
   } catch (e: any) {
     return { result: `Error interno: ${e.message}` }
@@ -1847,7 +1887,7 @@ export async function POST(req: NextRequest) {
   if (!auth) return NextResponse.json({ text: 'No autorizado.' }, { status: 401 })
 
   try {
-    const { messages, context } = await req.json()
+    const { messages, context, imageData, mediaType } = await req.json()
     const today = new Date().toISOString().split('T')[0]
 
     // Detect Idealista URL in last user message and scrape it
@@ -1916,12 +1956,35 @@ Formato de listas:
 📋 Tarea pendiente · prioridad
 🔨 Partida · estado
 
-Respondé siempre en español. Máximo 3 párrafos.${idealistaCtx}`
+Respondé siempre en español. Máximo 3 párrafos.
 
-    // Initial call — only keep messages with plain string content
-    const cleanMessages = allMsgs
+ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
+- Determiná el tipo automáticamente analizando su contenido visual.
+- **Factura o presupuesto** → extraé: proveedor, importe total, fecha, concepto/descripción del trabajo. Luego mostrá el resumen y preguntá "¿A qué operación imputamos este gasto?". Cuando el usuario indique el proyecto, llamá insert_documento (con proyecto_id) y después insert_movimiento con los datos extraídos.
+- **Foto de inmueble** → describí el estado general (instalaciones, materiales, acabados), estimá superficie si es posible, listá observaciones relevantes para la reforma. Llamá insert_documento con tipo='foto_inmueble'.
+- **Documento** (contrato, nota, informe, etc.) → extraé información clave: partes, fechas, importes, condiciones relevantes. Llamá insert_documento con tipo='documento'.
+- Si no hay operación/proyecto en contexto cuando se necesite asociar, preguntá antes de guardar con insert_documento.${idealistaCtx}`
+
+    // Build clean messages — allow content to be string or content array (for vision)
+    type CleanMsg = { role: 'user' | 'assistant'; content: string | Anthropic.ContentBlockParam[] }
+    const cleanMessages: CleanMsg[] = allMsgs
       .filter(m => typeof m.content === 'string' && m.content.trim() !== '')
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content as string }))
+
+    // If image attached, inject into last user message as vision content block
+    if (imageData && mediaType) {
+      const lastUserIdx = cleanMessages.reduce((found, m, i) => m.role === 'user' ? i : found, -1)
+      if (lastUserIdx >= 0) {
+        const text = cleanMessages[lastUserIdx].content as string
+        cleanMessages[lastUserIdx] = {
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: imageData } },
+            { type: 'text', text: text || 'Analiza esta imagen.' },
+          ],
+        }
+      }
+    }
 
     let response = await anthropic.messages.create({
       model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
@@ -1943,10 +2006,10 @@ Respondé siempre en español. Máximo 3 párrafos.${idealistaCtx}`
         })
       )
 
-      const newMessages = [
+      const newMessages: CleanMsg[] = [
         ...cleanMessages,
-        { role: 'assistant' as const, content: response.content },
-        { role: 'user' as const, content: results }
+        { role: 'assistant' as const, content: response.content as unknown as Anthropic.ContentBlockParam[] },
+        { role: 'user' as const, content: results as unknown as Anthropic.ContentBlockParam[] },
       ]
 
       response = await anthropic.messages.create({

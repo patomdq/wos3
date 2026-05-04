@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 type ToolData = { id: string; result: string; table?: string; recordId?: string; label?: string }
-type Msg = { role: 'bot' | 'user'; text: string; time: string; toolData?: ToolData[] }
+type Msg = { role: 'bot' | 'user'; text: string; time: string; toolData?: ToolData[]; imagePreview?: string }
 
 const QUICK = ['📄 Factura', '💰 Saldo HASU', '🔨 Estado obra', '📋 Liquidación', '📅 ¿Qué tareas hay?']
 
@@ -30,8 +30,10 @@ export default function BotPage() {
   const [editState, setEditState] = useState<EditState | null>(null)
   const [editSaving, setEditSaving] = useState(false)
   const [proyectoNombre, setProyectoNombre] = useState('')
+  const [attachedImage, setAttachedImage] = useState<{ file: File; preview: string; base64: string; mediaType: string } | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const contextRef = useRef('')
 
   const loadContext = async () => {
@@ -111,26 +113,50 @@ export default function BotPage() {
     }
   }, [msgs, userId])
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) { alert('La imagen no puede superar 10 MB.'); return }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string
+      const base64 = dataUrl.split(',')[1]
+      setAttachedImage({ file, preview: dataUrl, base64, mediaType: file.type })
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const removeImage = () => setAttachedImage(null)
+
   const send = async (text: string) => {
-    if (!text.trim()) return
+    if (!text.trim() && !attachedImage) return
     const t = now()
-    const userMsg: Msg = { role: 'user', text, time: t }
+    const displayText = text || (attachedImage ? '📎 Imagen adjunta' : '')
+    const userMsg: Msg = { role: 'user', text: displayText, time: t, imagePreview: attachedImage?.preview }
     setMsgs(m => [...m, userMsg])
     setInput('')
     if (taRef.current) taRef.current.style.height = 'auto'
+    const img = attachedImage
+    setAttachedImage(null)
     setTyping(true)
 
-    const newHistorial = [...historial, { role: 'user', content: text }]
+    // In historial store text only (no base64 — too large for re-sends)
+    const historialText = img ? `[Imagen adjunta: ${img.file.name}] ${text}`.trim() : text
+    const newHistorial = [...historial, { role: 'user', content: historialText }]
     setHistorial(newHistorial)
 
     try {
+      const body: Record<string, unknown> = { messages: newHistorial, context: contextRef.current }
+      if (img) { body.imageData = img.base64; body.mediaType = img.mediaType }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {}),
         },
-        body: JSON.stringify({ messages: newHistorial, context: contextRef.current })
+        body: JSON.stringify(body),
       })
       const { text: resp, toolResults } = await res.json()
       setTyping(false)
@@ -245,14 +271,25 @@ export default function BotPage() {
                   }}
                   dangerouslySetInnerHTML={{ __html: m.text }} />
               ) : (
-                <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5 rounded-2xl"
-                  style={{
-                    background: '#F26E1F',
-                    color: '#fff',
-                    borderRadius: '14px 4px 14px 14px',
-                    whiteSpace: 'pre-wrap',
-                  }}>
-                  {m.text}
+                <div style={{ borderRadius: '14px 4px 14px 14px', overflow: 'hidden' }}>
+                  {m.imagePreview && (
+                    <img src={m.imagePreview} alt="adjunto" className="w-full max-w-[220px] object-cover block"
+                      style={{ borderRadius: m.text && m.text !== '📎 Imagen adjunta' ? '14px 4px 0 0' : '14px 4px 14px 14px', maxHeight: 180 }} />
+                  )}
+                  {m.text && m.text !== '📎 Imagen adjunta' && (
+                    <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5"
+                      style={{
+                        background: '#F26E1F',
+                        color: '#fff',
+                        borderRadius: m.imagePreview ? '0 0 14px 14px' : '14px 4px 14px 14px',
+                        whiteSpace: 'pre-wrap',
+                      }}>
+                      {m.text}
+                    </div>
+                  )}
+                  {m.imagePreview && (!m.text || m.text === '📎 Imagen adjunta') && (
+                    <div className="text-xs font-semibold px-2 pt-1.5 pb-0.5" style={{ color: '#888' }}>📎 Imagen</div>
+                  )}
                 </div>
               )}
 
@@ -313,19 +350,37 @@ export default function BotPage() {
         ))}
       </div>
 
+      {/* Image preview strip */}
+      {attachedImage && (
+        <div className="flex items-center gap-2 px-3.5 py-2 flex-shrink-0" style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="relative flex-shrink-0">
+            <img src={attachedImage.preview} alt="preview" className="w-14 h-14 object-cover rounded-lg" />
+            <button onClick={removeImage}
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black"
+              style={{ background: '#EF4444', color: '#fff' }}>✕</button>
+          </div>
+          <div className="text-xs font-medium truncate max-w-[160px]" style={{ color: '#888' }}>{attachedImage.file.name}</div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="flex gap-2 px-3.5 py-2.5 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: '#141414' }}>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleImageSelect} />
+        <button onClick={() => fileRef.current?.click()}
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-base"
+          style={{ background: attachedImage ? 'rgba(242,110,31,0.18)' : '#1E1E1E', border: `1.5px solid ${attachedImage ? '#F26E1F' : 'rgba(255,255,255,0.08)'}`, color: attachedImage ? '#F26E1F' : '#555' }}
+          title="Adjuntar imagen">📎</button>
         <textarea ref={taRef} value={input}
           onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px' }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
-          placeholder="Escribí un mensaje…" rows={1}
+          placeholder={attachedImage ? 'Añadí un comentario (opcional)…' : 'Escribí un mensaje…'} rows={1}
           className="flex-1 rounded-xl px-3.5 py-3 text-sm text-white outline-none resize-none font-medium placeholder:text-[#555]"
           style={{ background: '#1E1E1E', border: '1.5px solid rgba(255,255,255,0.08)', maxHeight: 80, lineHeight: 1.4 }}
           onFocus={e => e.target.style.borderColor = '#F26E1F'}
           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
         <button onClick={() => send(input)}
           className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg text-white flex-shrink-0"
-          style={{ background: '#F26E1F' }}>↑</button>
+          style={{ background: (input.trim() || attachedImage) ? '#F26E1F' : '#282828' }}>↑</button>
       </div>
 
       {/* Edit sheet */}
