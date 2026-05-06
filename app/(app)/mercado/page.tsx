@@ -28,7 +28,7 @@ const CONCEPTOS_GASTOS = [
 
 type Gastos = Record<string, { estimado: number; real: number }>
 type Radar = { id: string; titulo?: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
-type Estudio = { id: string; titulo?: string; nombre?: string; precio_compra: number; precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string }
+type Estudio = { id: string; titulo?: string; nombre?: string; precio_compra: number; precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string; notas?: string; url?: string; gastos_json?: Record<string, {estimado: number; real: number}> }
 type Proveedor = { id: string; nombre: string }
 type Visita = { id: string; radar_id: string; fecha: string; hora: string; responsable: string; notas_previas?: string; estado_post?: string; notas_post?: string; fotos_url?: string; gcal_event_id?: string; created_at: string }
 
@@ -113,6 +113,8 @@ export default function MercadoPage() {
   const [calcOpen, setCalcOpen] = useState(false)
   const [editingEstudioId, setEditingEstudioId] = useState<string | null>(null)
   const [tituloEstudio, setTituloEstudio] = useState('')
+  const [notasEstudio, setNotasEstudio] = useState('')
+  const [urlEstudio, setUrlEstudio] = useState('')
   const [nombre, setNombre] = useState('')
   const [ciudad, setCiudad] = useState('')
   const [duracionMeses, setDuracionMeses] = useState(0)
@@ -267,10 +269,13 @@ export default function MercadoPage() {
 
   // Abrir calculadora (nuevo o editar estudio)
   const openCalc = (precio: number, addr: string, ciu: string = '', estudioItem?: Estudio) => {
-    const g = emptyGastos()
-    g.precio_compra.estimado = precio
+    const g = estudioItem?.gastos_json
+      ? { ...emptyGastos(), ...estudioItem.gastos_json }
+      : (() => { const eg = emptyGastos(); eg.precio_compra.estimado = precio; return eg })()
     setGastos(g)
     setTituloEstudio(estudioItem?.titulo || '')
+    setNotasEstudio(estudioItem?.notas || '')
+    setUrlEstudio(estudioItem?.url || '')
     setNombre(addr)
     setCiudad(ciu)
     setPvPes(estudioItem?.precio_venta_conservador || 0)
@@ -293,7 +298,7 @@ export default function MercadoPage() {
   const guardar = async () => {
     if (!res) return
     setSaving(true)
-    const payload = {
+    const basePayload = {
       titulo: tituloEstudio || null,
       nombre,
       precio_compra: toNum(gastos.precio_compra.estimado) || toNum(gastos.precio_compra.real),
@@ -303,18 +308,21 @@ export default function MercadoPage() {
       roi_estimado: res.rent[1] || res.rent[0],
       direccion: nombre,
       ciudad,
-      estado: 'en_estudio',
+      notas: notasEstudio || null,
+      url: urlEstudio || null,
+      gastos_json: gastos,
       analizado_en: today(),
     }
     let data: any, error: any
     if (editingEstudioId) {
-      ;({ data, error } = await supabase.from('inmuebles_estudio').update(payload).eq('id', editingEstudioId).select().single())
+      // No incluir estado para no pisar subestado (ofertado, en_arras, etc.)
+      ;({ data, error } = await supabase.from('inmuebles_estudio').update(basePayload).eq('id', editingEstudioId).select().single())
       if (!error && data) {
         setEstudio(prev => prev.map(e => e.id === editingEstudioId ? data : e))
         setSavedId(data.id)
       }
     } else {
-      ;({ data, error } = await supabase.from('inmuebles_estudio').insert([payload]).select().single())
+      ;({ data, error } = await supabase.from('inmuebles_estudio').insert([{ ...basePayload, estado: 'en_estudio' }]).select().single())
       if (!error && data) {
         setEstudio(prev => [data, ...prev])
         setSavedId(data.id)
@@ -799,6 +807,14 @@ export default function MercadoPage() {
                       )
                     })()}
                   </div>
+                  {e.url && (
+                    <a href={e.url} target="_blank" rel="noopener noreferrer"
+                      className="mt-2 text-xs font-bold inline-flex items-center gap-1"
+                      style={{ color: '#60A5FA' }}>
+                      🔗 Ver anuncio
+                    </a>
+                  )}
+                  {e.notas && <div className="mt-2 text-xs" style={{ color: '#888' }}>{e.notas}</div>}
                 </div>
 
                 {/* Botones de estado — visibles solo si no está comprado */}
@@ -1512,6 +1528,25 @@ export default function MercadoPage() {
                   style={{ background: '#0A0A0A', border: '1.5px solid rgba(34,197,94,0.4)', color: '#22C55E' }}
                   onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(34,197,94,0.4)'}
                   placeholder="€" />
+              </div>
+            </div>
+
+            {/* Link y Observaciones */}
+            <div className="grid grid-cols-1 gap-3 mb-5">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link (Idealista u otra fuente)</label>
+                <input type="url" value={urlEstudio} onChange={e => setUrlEstudio(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]"
+                  style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Observaciones</label>
+                <textarea value={notasEstudio} onChange={e => setNotasEstudio(e.target.value)}
+                  placeholder="Notas, condiciones, contacto..."
+                  rows={2}
+                  className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium resize-none placeholder:text-[#555]"
+                  style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
               </div>
             </div>
 
