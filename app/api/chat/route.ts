@@ -325,6 +325,7 @@ const TOOLS: Anthropic.Tool[] = [
         roi_estimado: { type: 'number', description: 'ROI estimado en % (opcional, default 0)' },
         superficie: { type: 'number', description: 'Superficie en m²' },
         habitaciones: { type: 'number', description: 'Número de habitaciones' },
+        duracion_meses: { type: 'number', description: 'Duración estimada de la operación en meses' },
         notas: { type: 'string', description: 'Notas u observaciones' },
       },
       required: ['direccion'],
@@ -1092,7 +1093,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'update_estudio') {
       const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const fields = ['titulo', 'estado', 'notas', 'nombre', 'precio_compra', 'precio_venta_conservador', 'precio_venta_realista', 'precio_venta_optimista', 'roi_estimado', 'ciudad', 'superficie', 'habitaciones']
+      const fields = ['titulo', 'estado', 'notas', 'nombre', 'precio_compra', 'precio_venta_conservador', 'precio_venta_realista', 'precio_venta_optimista', 'roi_estimado', 'ciudad', 'superficie', 'habitaciones', 'duracion_meses']
       const updates: Record<string,any> = {}
       for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
       const { data, error } = await supabaseAdmin.from('inmuebles_estudio').update(updates).eq('id', resolved.resolved.id).select().single()
@@ -1115,6 +1116,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         roi_estimado: input.roi_estimado || 0,
         superficie: input.superficie || null,
         habitaciones: input.habitaciones || null,
+        duracion_meses: input.duracion_meses || null,
         notas: input.notas || null,
         estado: 'en_estudio',
         analizado_en: hoy,

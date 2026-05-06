@@ -28,7 +28,7 @@ const CONCEPTOS_GASTOS = [
 
 type Gastos = Record<string, { estimado: number; real: number }>
 type Radar = { id: string; titulo?: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
-type Estudio = { id: string; titulo?: string; nombre?: string; precio_compra: number; precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string; notas?: string; url?: string; gastos_json?: Record<string, {estimado: number; real: number}> }
+type Estudio = { id: string; titulo?: string; nombre?: string; precio_compra: number; precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string; notas?: string; url?: string; duracion_meses?: number; gastos_json?: Record<string, {estimado: number; real: number}> }
 type Proveedor = { id: string; nombre: string }
 type Visita = { id: string; radar_id: string; fecha: string; hora: string; responsable: string; notas_previas?: string; estado_post?: string; notas_post?: string; fotos_url?: string; gcal_event_id?: string; created_at: string }
 
@@ -281,7 +281,7 @@ export default function MercadoPage() {
     setPvPes(estudioItem?.precio_venta_conservador || 0)
     setPvReal(estudioItem?.precio_venta_realista   || 0)
     setPvOpt(estudioItem?.precio_venta_optimista   || 0)
-    setDuracionMeses(0)
+    setDuracionMeses(estudioItem?.duracion_meses || 0)
     setEditingEstudioId(estudioItem?.id || null)
     setSavedId(null)
     setCalcOpen(true)
@@ -310,6 +310,7 @@ export default function MercadoPage() {
       ciudad,
       notas: notasEstudio || null,
       url: urlEstudio || null,
+      duracion_meses: duracionMeses || null,
       gastos_json: gastos,
       analizado_en: today(),
     }
@@ -1455,8 +1456,8 @@ export default function MercadoPage() {
                   style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Duración (meses)</label>
-                <input type="number" value={duracionMeses || ''} onChange={e => setDuracionMeses(parseFloat(e.target.value) || 0)} placeholder="opcional"
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#F26E1F' }}>Duración (meses) *</label>
+                <input type="number" value={duracionMeses || ''} onChange={e => setDuracionMeses(parseFloat(e.target.value) || 0)} placeholder="ej: 6"
                   className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium"
                   style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
               </div>
