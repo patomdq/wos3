@@ -157,6 +157,7 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: 'object' as const,
       properties: {
+        titulo: { type: 'string', description: 'Título o nombre corto del inmueble (ej: "Piso Rulador", "Oportunidad Vera")' },
         direccion: { type: 'string', description: 'Dirección del inmueble' },
         ciudad: { type: 'string', description: 'Ciudad o municipio' },
         precio: { type: 'number', description: 'Precio de venta pedido en euros' },
@@ -249,6 +250,7 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         id: { type: 'string', description: 'UUID del inmueble (del contexto). Opcional si se usa busqueda.' },
         busqueda: { type: 'string', description: 'Dirección parcial para encontrar el inmueble cuando no tenés el ID. Ej: "Rulador 30"' },
+        titulo: { type: 'string', description: 'Título o nombre corto del inmueble' },
         direccion: { type: 'string' }, ciudad: { type: 'string' },
         precio: { type: 'number' }, habitaciones: { type: 'number' }, superficie: { type: 'number' },
         url: { type: 'string' }, fuente: { type: 'string' }, notas: { type: 'string' },
@@ -291,6 +293,7 @@ const TOOLS: Anthropic.Tool[] = [
         id: { type: 'string', description: 'UUID del inmueble en estudio (del contexto). Opcional si se usa busqueda.' },
         busqueda: { type: 'string', description: 'Dirección o nombre parcial para encontrar el inmueble. Ej: "Rulador 30"' },
         estado: { type: 'string', enum: ['en_estudio', 'ofertado', 'en_arras', 'descartado'], description: 'Nuevo estado' },
+        titulo: { type: 'string', description: 'Título o nombre corto del inmueble' },
         notas: { type: 'string' },
         nombre: { type: 'string', description: 'Nuevo nombre o alias del inmueble' },
         precio_compra: { type: 'number', description: 'Precio de compra estimado en euros' },
@@ -311,6 +314,7 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: 'object' as const,
       properties: {
+        titulo: { type: 'string', description: 'Título o nombre corto del inmueble (ej: "Piso Vera", "Oportunidad Zurgena")' },
         nombre: { type: 'string', description: 'Nombre o alias del inmueble' },
         direccion: { type: 'string', description: 'Dirección completa' },
         ciudad: { type: 'string', description: 'Ciudad o municipio' },
@@ -976,6 +980,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     }
     if (name === 'insert_radar') {
       const radarRow: Record<string, any> = {
+        titulo: input.titulo || null,
         direccion: input.direccion,
         ciudad: input.ciudad || null,
         precio: input.precio,
@@ -1062,7 +1067,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'update_radar') {
       const resolved = await resolveInmueble('inmuebles_radar', input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const fields = ['direccion','ciudad','precio','habitaciones','superficie','url','fuente','notas','estado']
+      const fields = ['titulo','direccion','ciudad','precio','habitaciones','superficie','url','fuente','notas','estado']
       const updates: Record<string,any> = {}
       for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
       const { data, error } = await supabaseAdmin.from('inmuebles_radar').update(updates).eq('id', resolved.resolved.id).select().single()
@@ -1087,7 +1092,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'update_estudio') {
       const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const fields = ['estado', 'notas', 'nombre', 'precio_compra', 'precio_venta_conservador', 'precio_venta_realista', 'precio_venta_optimista', 'roi_estimado', 'ciudad', 'superficie', 'habitaciones']
+      const fields = ['titulo', 'estado', 'notas', 'nombre', 'precio_compra', 'precio_venta_conservador', 'precio_venta_realista', 'precio_venta_optimista', 'roi_estimado', 'ciudad', 'superficie', 'habitaciones']
       const updates: Record<string,any> = {}
       for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
       const { data, error } = await supabaseAdmin.from('inmuebles_estudio').update(updates).eq('id', resolved.resolved.id).select().single()
@@ -1099,6 +1104,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'insert_estudio') {
       const hoy = new Date().toISOString().split('T')[0]
       const { data, error } = await supabaseAdmin.from('inmuebles_estudio').insert([{
+        titulo: input.titulo || null,
         nombre: input.nombre || input.direccion,
         direccion: input.direccion,
         ciudad: input.ciudad || null,
@@ -1115,7 +1121,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }]).select().single()
       if (error) return { result: `Error al crear inmueble en estudio: ${error.message}` }
       return {
-        result: `✅ Inmueble registrado en En Estudio — ${data.nombre || data.direccion}`,
+        result: `✅ Inmueble registrado en En Estudio — ${data.titulo || data.nombre || data.direccion}`,
         table: 'inmuebles_estudio',
         recordId: data.id,
         label: `${data.nombre || data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''}`,

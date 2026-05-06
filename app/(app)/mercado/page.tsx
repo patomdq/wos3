@@ -27,8 +27,8 @@ const CONCEPTOS_GASTOS = [
 ]
 
 type Gastos = Record<string, { estimado: number; real: number }>
-type Radar = { id: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
-type Estudio = { id: string; nombre?: string; precio_compra: number; precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string }
+type Radar = { id: string; titulo?: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
+type Estudio = { id: string; titulo?: string; nombre?: string; precio_compra: number; precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string }
 type Proveedor = { id: string; nombre: string }
 type Visita = { id: string; radar_id: string; fecha: string; hora: string; responsable: string; notas_previas?: string; estado_post?: string; notas_post?: string; fotos_url?: string; gcal_event_id?: string; created_at: string }
 
@@ -81,7 +81,7 @@ function calcResultados(gastos: Gastos, pvPes: number, pvReal: number, pvOpt: nu
 }
 
 type ScraperItem = { precio: number; dir: string; ciudad: string; hab: number; m2: number; tag: string; epm: number; fecha: string; url: string }
-const emptyRadarForm = () => ({ direccion: '', ciudad: '', precio: '', habitaciones: '', superficie: '', estado: 'reformar', fuente: 'WhatsApp', notas: '', url: '' })
+const emptyRadarForm = () => ({ titulo: '', direccion: '', ciudad: '', precio: '', habitaciones: '', superficie: '', estado: 'reformar', fuente: 'WhatsApp', notas: '', url: '' })
 
 export default function MercadoPage() {
   const router = useRouter()
@@ -112,6 +112,7 @@ export default function MercadoPage() {
   // Calculadora
   const [calcOpen, setCalcOpen] = useState(false)
   const [editingEstudioId, setEditingEstudioId] = useState<string | null>(null)
+  const [tituloEstudio, setTituloEstudio] = useState('')
   const [nombre, setNombre] = useState('')
   const [ciudad, setCiudad] = useState('')
   const [duracionMeses, setDuracionMeses] = useState(0)
@@ -184,6 +185,7 @@ export default function MercadoPage() {
     if (!radarForm.direccion || !radarForm.precio) return
     setSavingRadar(true)
     const radarPayload: Record<string, any> = {
+      titulo: radarForm.titulo || null,
       direccion: radarForm.direccion,
       ciudad: radarForm.ciudad,
       precio: parseFloat(radarForm.precio) || 0,
@@ -229,7 +231,7 @@ export default function MercadoPage() {
   const openEditRadar = (r: Radar) => {
     setEditRadar(r)
     setEditRadarForm({
-      direccion: r.direccion || '', ciudad: r.ciudad || '',
+      titulo: r.titulo || '', direccion: r.direccion || '', ciudad: r.ciudad || '',
       precio: String(r.precio || ''), habitaciones: String(r.habitaciones || ''),
       superficie: String(r.superficie || ''), estado: r.estado || 'activo',
       fuente: r.fuente || 'WhatsApp', notas: r.notas || '', url: r.url || '',
@@ -239,6 +241,7 @@ export default function MercadoPage() {
     if (!editRadar) return
     setSavingEditRadar(true)
     const payload: Record<string,any> = {
+      titulo: editRadarForm.titulo || null,
       direccion: editRadarForm.direccion,
       ciudad: editRadarForm.ciudad,
       precio: parseFloat(editRadarForm.precio) || 0,
@@ -267,6 +270,7 @@ export default function MercadoPage() {
     const g = emptyGastos()
     g.precio_compra.estimado = precio
     setGastos(g)
+    setTituloEstudio(estudioItem?.titulo || '')
     setNombre(addr)
     setCiudad(ciu)
     setPvPes(estudioItem?.precio_venta_conservador || 0)
@@ -290,6 +294,7 @@ export default function MercadoPage() {
     if (!res) return
     setSaving(true)
     const payload = {
+      titulo: tituloEstudio || null,
       nombre,
       precio_compra: toNum(gastos.precio_compra.estimado) || toNum(gastos.precio_compra.real),
       precio_venta_conservador: pvPes || null,
@@ -647,12 +652,13 @@ export default function MercadoPage() {
                 <div className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="font-black text-[20px] text-white">{fmt(r.precio || 0)}</div>
-                      <div className="text-sm font-medium mt-0.5" style={{ color: '#ccc' }}>{r.direccion}{r.ciudad ? ` · ${r.ciudad}` : ''}</div>
-                      <div className="flex gap-3 mt-1">
-                        {r.habitaciones > 0 && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.habitaciones} hab</span>}
-                        {r.superficie > 0 && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.superficie} m²</span>}
-                        {r.fuente && <span className="text-xs font-medium" style={{ color: '#888' }}>{r.fuente}</span>}
+                      {r.titulo && <div className="font-black text-[18px] text-white leading-tight">{r.titulo}</div>}
+                      <div className={r.titulo ? 'text-xs font-medium mt-0.5' : 'font-black text-[18px] text-white leading-tight'} style={{ color: r.titulo ? '#888' : '#fff' }}>{r.direccion}{r.ciudad ? ` · ${r.ciudad}` : ''}</div>
+                      <div className="flex gap-3 mt-1.5">
+                        <span className="text-sm font-black font-mono" style={{ color: '#F26E1F' }}>{fmt(r.precio || 0)}</span>
+                        {r.habitaciones > 0 && <span className="text-xs font-medium" style={{ color: '#666' }}>{r.habitaciones} hab</span>}
+                        {r.superficie > 0 && <span className="text-xs font-medium" style={{ color: '#666' }}>{r.superficie} m²</span>}
+                        {r.fuente && <span className="text-xs font-medium" style={{ color: '#666' }}>{r.fuente}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
@@ -761,7 +767,11 @@ export default function MercadoPage() {
               <div key={e.id} className="rounded-2xl mb-3 overflow-hidden" style={CARD}>
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-1">
-                    <div className="font-black text-[22px] text-white tracking-tight">{fmt(e.precio_compra || 0)}</div>
+                    <div className="flex-1 mr-2">
+                      {e.titulo && <div className="font-black text-[18px] text-white leading-tight">{e.titulo}</div>}
+                      <div className={e.titulo ? 'text-xs font-medium mt-0.5' : 'font-black text-[18px] text-white leading-tight'} style={{ color: e.titulo ? '#888' : '#fff' }}>{e.direccion}{e.ciudad ? ` · ${e.ciudad}` : ''}</div>
+                      <div className="text-sm font-black font-mono mt-1" style={{ color: '#F26E1F' }}>{fmt(e.precio_compra || 0)}</div>
+                    </div>
                     {confirmandoCompra === 'del_' + e.id ? (
                       <div className="flex gap-1.5 ml-2 flex-shrink-0">
                         <button onClick={() => deleteEstudio(e.id, e.nombre || e.direccion)} className="text-xs font-black px-2.5 py-1.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.25)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.5)' }}>¿Seguro?</button>
@@ -774,7 +784,6 @@ export default function MercadoPage() {
                       </button>
                     )}
                   </div>
-                  <div className="text-sm font-medium mb-2" style={{ color: '#888' }}>{e.direccion}{e.ciudad ? ` · ${e.ciudad}` : ''}</div>
                   <div className="flex items-center gap-3 mt-1">
                     <div className="font-black text-sm" style={{ color: '#22C55E' }}>↗ ROI {e.roi_estimado?.toFixed(1)}%</div>
                     {e.precio_venta_conservador && <div className="text-xs font-mono" style={{ color: '#EF4444' }}>↓ {fmt(e.precio_venta_conservador)}</div>}
@@ -1105,6 +1114,13 @@ export default function MercadoPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Título</label>
+                  <input type="text" value={radarForm.titulo} onChange={e => setRadarForm(f => ({ ...f, titulo: e.target.value }))}
+                    placeholder="Ej: Piso Vera centro, Oportunidad Zurgena..."
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]"
+                    style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+                <div className="col-span-2">
                   <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Dirección *</label>
                   <input type="text" value={radarForm.direccion} onChange={e => setRadarForm(f => ({ ...f, direccion: e.target.value }))}
                     placeholder="C/ Mayor 4"
@@ -1202,6 +1218,13 @@ export default function MercadoPage() {
                 <button onClick={() => setEditRadar(null)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#282828', color: '#888' }}>✕</button>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Título</label>
+                  <input type="text" value={editRadarForm.titulo} onChange={e => setEditRadarForm(f => ({ ...f, titulo: e.target.value }))}
+                    placeholder="Ej: Piso Vera centro"
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]" style={INP}
+                    onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Dirección</label>
                   <input type="text" value={editRadarForm.direccion} onChange={e => setEditRadarForm(f => ({ ...f, direccion: e.target.value }))}
@@ -1394,8 +1417,15 @@ export default function MercadoPage() {
           </div>
 
           <div className="p-4 pb-10">
-            {/* Nombre y ciudad */}
+            {/* Título, dirección y ciudad */}
             <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="col-span-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Título</label>
+                <input type="text" value={tituloEstudio} onChange={e => setTituloEstudio(e.target.value)}
+                  placeholder="Ej: Piso Vera centro, Oportunidad Zurgena..."
+                  className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]"
+                  style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+              </div>
               <div className="col-span-2">
                 <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Dirección</label>
                 <input type="text" value={nombre} onChange={e => setNombre(e.target.value)}
