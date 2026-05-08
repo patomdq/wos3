@@ -475,7 +475,7 @@ export async function POST(req: NextRequest) {
     if (!data.precio_venta_est && data.ciudad && data.metros) {
       try {
         const res = await buscarComparables(data.ciudad, data.metros, data.habitaciones ?? undefined)
-        console.log('comparables:', JSON.stringify({ zona: data.ciudad, metros: data.metros, found: res.comparables.length, precioM2: res.precioMedioM2, sugerido: res.precioSugerido, fuente: res.fuente }))
+        console.error('comparables result:', JSON.stringify({ zona: data.ciudad, metros: data.metros, found: res.comparables.length, precioM2: res.precioMedioM2, sugerido: res.precioSugerido }))
         if (res.precioSugerido) {
           data.precio_venta_est = res.precioSugerido
           ventaDesdeComparables = { precio: res.precioSugerido, precioM2: res.precioMedioM2 }
@@ -485,7 +485,7 @@ export async function POST(req: NextRequest) {
         console.error('buscarComparables error:', err?.message)
       }
     } else {
-      console.log('comparables skip:', JSON.stringify({ tienePrecioVenta: !!data.precio_venta_est, ciudad: data.ciudad, metros: data.metros }))
+      console.error('comparables skip:', JSON.stringify({ tienePrecioVenta: !!data.precio_venta_est, ciudad: data.ciudad, metros: data.metros }))
     }
 
     // ROI fields
