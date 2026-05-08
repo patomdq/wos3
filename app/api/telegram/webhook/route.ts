@@ -456,6 +456,94 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
   ].filter((l): l is string => l !== null && l !== undefined).join('\n')
 }
 
+// ── Bitácora handler ─────────────────────────────────────────────────────────
+
+const NOTE_KEYWORDS = /\b(bita[ck]ora|agrega|anota|apunta|actualiza|oferta|avance|seguimiento|nota)\b/i
+
+async function handleBitacora(chatId: number, text: string, autor: string): Promise<boolean> {
+  if (!NOTE_KEYWORDS.test(text)) return false
+
+  // Extract property reference + note from Claude
+  let extracted: { inmueble: string | null; tipo: string | null; contenido: string | null } = { inmueble: null, tipo: null, contenido: null }
+  try {
+    const res = await anthropic.messages.create({
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: `Del siguiente mensaje extrae la referencia al inmueble y el contenido de la nota. Responde SOLO con JSON válido.
+
+Formato:
+{
+  "inmueble": "descripción del inmueble mencionado (ciudad, tipo, nombre) o null",
+  "tipo": "oferta | visita | negociacion | nota | otro",
+  "contenido": "texto de la nota a registrar"
+}
+
+Mensaje: "${text}"`,
+      }],
+    })
+    const c = res.content[0]
+    if (c.type === 'text') extracted = JSON.parse(c.text.match(/\{[\s\S]*\}/)?.[0] ?? '{}')
+  } catch { return false }
+
+  if (!extracted.contenido) return false
+
+  // Search inmuebles_estudio first, then inmuebles_radar
+  const terms = extracted.inmueble?.split(/\s+/).filter(w => w.length > 2) ?? []
+  const likeFilters = terms.map(t => `titulo.ilike.%${t}%,ciudad.ilike.%${t}%`).join(',')
+
+  let estudioId: string | null = null
+  let radarId: string | null = null
+  let nombreInmueble = extracted.inmueble ?? 'inmueble'
+
+  if (likeFilters) {
+    const { data: estudio } = await supabase
+      .from('inmuebles_estudio')
+      .select('id, titulo, ciudad')
+      .or(likeFilters)
+      .limit(1)
+      .single()
+    if (estudio) { estudioId = estudio.id; nombreInmueble = estudio.titulo ?? estudio.ciudad ?? nombreInmueble }
+  }
+
+  if (!estudioId && likeFilters) {
+    const { data: radar } = await supabase
+      .from('inmuebles_radar')
+      .select('id, titulo, ciudad')
+      .or(likeFilters)
+      .neq('estado', 'pendiente_tg')
+      .limit(1)
+      .single()
+    if (radar) { radarId = radar.id; nombreInmueble = radar.titulo ?? radar.ciudad ?? nombreInmueble }
+  }
+
+  if (!estudioId && !radarId) {
+    await sendMessage(chatId, `❌ No encontré "${extracted.inmueble}" en el Radar ni en Estudio. Verificá el nombre.`)
+    return true
+  }
+
+  const fecha = new Date().toISOString()
+  const tipo = extracted.tipo ?? 'nota'
+  const contenido = extracted.contenido
+
+  if (estudioId) {
+    const { error } = await supabase.from('bitacora_estudio').insert({
+      estudio_id: estudioId, fecha, tipo, contenido, autor,
+    })
+    if (error) { await sendMessage(chatId, '❌ Error al guardar en bitácora.'); return true }
+  } else if (radarId) {
+    // Radar no tiene tabla bitácora — appenda a notas
+    const { data: r } = await supabase.from('inmuebles_radar').select('notas').eq('id', radarId).single()
+    const notasActuales = r?.notas ?? ''
+    const nuevaNota = `[${new Date().toLocaleDateString('es-ES')}] ${contenido}`
+    await supabase.from('inmuebles_radar').update({ notas: notasActuales ? `${notasActuales}\n${nuevaNota}` : nuevaNota }).eq('id', radarId)
+  }
+
+  await sendMessage(chatId, `✅ Anotado en bitácora de "${nombreInmueble}"\n\n📝 ${contenido}`)
+  return true
+}
+
 // ── Callback query handler (botones inline) ──────────────────────────────────
 
 async function handleCallbackQuery(cb: TgCallbackQuery) {
@@ -535,6 +623,14 @@ export async function POST(req: NextRequest) {
 
   const urlMatch = text.match(/https?:\/\/(?:www\.)?(?:idealista\.com|fotocasa\.es)[^\s]*/i)
   const hasPhotos = !!(message.photo?.length)
+
+  // Bitácora — detect note commands and route before new-entry processing
+  try {
+    const handled = await handleBitacora(chatId, text, telegramUser)
+    if (handled) return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('handleBitacora error:', e)
+  }
 
   let data: ExtractedData = {}
   let origen: string
