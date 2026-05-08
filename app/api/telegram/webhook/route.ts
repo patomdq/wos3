@@ -342,7 +342,10 @@ async function extractFromImages(base64Images: string[], captionText?: string): 
 // ── ROI calculation & formatting ──────────────────────────────────────────────
 
 function fmt(n: number): string {
-  if (n >= 1000) return `${Math.round(n / 1000)}k`
+  if (n >= 1000) {
+    const k = n / 1000
+    return (Number.isInteger(k) || k >= 10) ? `${Math.round(k)}k` : `${k.toFixed(1)}k`
+  }
   return `${Math.round(n)}`
 }
 
@@ -407,7 +410,8 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
   const reforma = reforma_estimada ?? 0
   const venta = precio_venta_est
 
-  const gastos = Math.floor(compra * 0.02) + 1000
+  const itp = Math.floor(compra * 0.02)
+  const notariaRegistro = 1000
   const costoTotal = calcCostoTotal(compra, reforma)
   const beneficio = venta - costoTotal
   const roi = calcROI(venta, compra, reforma) * 100
@@ -435,7 +439,8 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     `Coste total estimado: ${fmt(costoTotal)}€`,
     `  └ Compra: ${fmt(compra)}€`,
     `  └ Reforma: ${fmt(reforma)}€`,
-    `  └ Gastos (ITP + notaría): ${fmt(gastos)}€`,
+    `  └ Notaría + Registro: ${fmt(notariaRegistro)}€`,
+    `  └ ITP (2%): ${fmt(itp)}€`,
     '',
     `Precio venta estimado: ${fmt(venta)}€`,
     `Beneficio neto: ${fmt(beneficio)}€`,
