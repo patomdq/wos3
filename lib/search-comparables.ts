@@ -14,6 +14,9 @@ export interface ResultadoBusqueda {
   precioMedioM2: number | null
   precioSugerido: number | null
   fuente: string
+  precioNotariadoM2: number | null
+  precioNotariadoSugerido: number | null
+  fuenteNotariado: string | null
 }
 
 // Normalizes zona to a Fotocasa-compatible URL slug
@@ -234,58 +237,75 @@ export async function buscarComparables(
   habitaciones?: number,
 ): Promise<ResultadoBusqueda> {
   const { buscarPrecioMunicipio } = await import('./precios-municipio')
-  const empty: ResultadoBusqueda = { comparables: [], precioMedioM2: null, precioSugerido: null, fuente: 'sin datos' }
 
-  // 1. Portal del Notariado — cierres reales escriturados (fuente prioritaria)
+  // Notarial reference — always fetched, shown as context alongside Fotocasa
   const ref = buscarPrecioMunicipio(zona)
-  if (ref?.fuente === 'notariado') {
-    return {
-      comparables: [],
-      precioMedioM2: ref.precioM2,
-      precioSugerido: Math.floor(ref.precioM2 * superficie),
-      fuente: ref.nivel === 'notariado_municipio' ? 'notariado_municipio' : 'notariado_provincia',
-    }
+  const precioNotariadoM2 = ref?.precioM2 ?? null
+  const precioNotariadoSugerido = precioNotariadoM2 ? Math.floor(precioNotariadoM2 * superficie) : null
+  const fuenteNotariado = ref
+    ? (ref.nivel === 'notariado_municipio' ? 'notariado_municipio' :
+       ref.nivel === 'notariado_provincia' ? 'notariado_provincia' :
+       ref.nivel === 'municipio' ? 'tabla_referencia_municipio' : 'tabla_referencia_provincia')
+    : null
+
+  const empty: ResultadoBusqueda = {
+    comparables: [],
+    precioMedioM2: null,
+    precioSugerido: null,
+    fuente: 'sin datos',
+    precioNotariadoM2,
+    precioNotariadoSugerido,
+    fuenteNotariado,
   }
 
-  // 2. Fotocasa scraping — fallback cuando no hay datos notariales
+  // Fotocasa scraping — product-specific (pisos, filtered by habitaciones)
   const urls = buildFotocasaUrls(zona, habitaciones)
   const settled = await Promise.allSettled(urls.map(fetchFotocasaPage))
 
   const seen = new Set<string>()
-  const comparables: Comparable[] = []
+  const allComparables: Comparable[] = []
   for (const r of settled) {
     if (r.status === 'fulfilled' && r.value && !seen.has(r.value.url)) {
       seen.add(r.value.url)
-      comparables.push(r.value)
+      allComparables.push(r.value)
     }
   }
 
-  // 3. Firecrawl si Fotocasa devuelve menos de 3
-  if (comparables.length < 3) {
+  // Firecrawl fallback if fewer than 3 results
+  if (allComparables.length < 3) {
     const key = process.env.FIRECRAWL_API_KEY
     if (key) {
       const fallback = await firecrawlFallback(zona, habitaciones, key)
       for (const c of fallback) {
         if (!seen.has(c.url)) {
           seen.add(c.url)
-          comparables.push(c)
+          allComparables.push(c)
         }
       }
     }
   }
 
-  // 4. Tabla estimación MITMA — cuando Fotocasa tampoco tiene datos
-  if (comparables.length === 0) {
-    if (ref) {
+  // No Fotocasa data — fall back to notarial/MITMA for ROI estimate
+  if (allComparables.length === 0) {
+    if (precioNotariadoM2 && precioNotariadoSugerido) {
       return {
         comparables: [],
-        precioMedioM2: ref.precioM2,
-        precioSugerido: Math.floor(ref.precioM2 * superficie),
-        fuente: ref.nivel === 'municipio' ? 'tabla_referencia_municipio' : 'tabla_referencia_provincia',
+        precioMedioM2: precioNotariadoM2,
+        precioSugerido: precioNotariadoSugerido,
+        fuente: fuenteNotariado ?? 'sin datos',
+        precioNotariadoM2,
+        precioNotariadoSugerido,
+        fuenteNotariado,
       }
     }
     return empty
   }
+
+  // Filter by surface ±40% for product-specific pricing (use unfiltered if too few matches)
+  const withSurface = allComparables.filter(
+    c => c.superficie && c.superficie >= superficie * 0.6 && c.superficie <= superficie * 1.4,
+  )
+  const comparables = withSurface.length >= 2 ? withSurface : allComparables
 
   const top = comparables.slice(0, 5)
   const preciosM2 = top.filter(c => c.precioM2 && c.precioM2 > 200).map(c => c.precioM2!)
@@ -298,6 +318,9 @@ export async function buscarComparables(
     comparables: top,
     precioMedioM2,
     precioSugerido,
-    fuente: 'Fotocasa',
+    fuente: 'fotocasa',
+    precioNotariadoM2,
+    precioNotariadoSugerido,
+    fuenteNotariado,
   }
 }

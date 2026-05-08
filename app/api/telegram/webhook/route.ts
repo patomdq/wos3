@@ -337,7 +337,15 @@ function fmt(n: number): string {
   return `${Math.round(n)}`
 }
 
-function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: { precio: number; precioM2: number | null; fuente: string }): string {
+interface VentaComparables {
+  precio: number
+  precioM2: number | null
+  fuente: string
+  precioNotariadoM2: number | null
+  fuenteNotariado: string | null
+}
+
+function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaComparables): string {
   const { direccion, precio_pedido, reforma_estimada, precio_venta_est } = data
 
   const header = [
@@ -355,14 +363,35 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: { precio: nu
 
   let comparablesNote = ''
   if (ventaDesdeComparables) {
-    const f = ventaDesdeComparables.fuente
-    const fuenteLabel =
-      f === 'notariado_municipio' ? 'Portal Notariado — cierres reales (mar 2025 - feb 2026)' :
-      f === 'notariado_provincia' ? 'Portal Notariado provincia — cierres reales (mar 2025 - feb 2026)' :
-      f === 'tabla_referencia_municipio' ? 'tabla referencia municipio (MITMA)' :
-      f === 'tabla_referencia_provincia' ? 'tabla referencia provincia (MITMA)' :
-      'Fotocasa ⚠️ precio de oferta, no cierre real'
-    comparablesNote = `\n📊 Precio venta estimado — ${fuenteLabel}${ventaDesdeComparables.precioM2 ? ` (${ventaDesdeComparables.precioM2}€/m²)` : ''}`
+    const lines: string[] = []
+    const { fuente, precioM2, precioNotariadoM2, fuenteNotariado } = ventaDesdeComparables
+
+    if (fuente === 'fotocasa' && precioM2) {
+      const surfLabel = data.metros ? ` pisos ~${data.metros}m²` : ''
+      lines.push(`📊 Fotocasa${surfLabel}: ${precioM2}€/m² ⚠️ precio oferta`)
+    }
+
+    if (precioNotariadoM2 && fuenteNotariado) {
+      const notLabel =
+        fuenteNotariado === 'notariado_municipio' ? 'Notariado municipio — cierres reales (mar25-feb26)' :
+        fuenteNotariado === 'notariado_provincia' ? 'Notariado provincia — cierres reales (mar25-feb26)' :
+        fuenteNotariado === 'tabla_referencia_municipio' ? 'MITMA municipio' :
+        'MITMA provincia'
+      lines.push(`📊 ${notLabel}: ${precioNotariadoM2}€/m²`)
+    }
+
+    if (fuente !== 'fotocasa' && !precioNotariadoM2 && precioM2) {
+      // Single-source fallback (old behavior)
+      const fuenteLabel =
+        fuente === 'notariado_municipio' ? 'Notariado — cierres reales (mar25-feb26)' :
+        fuente === 'notariado_provincia' ? 'Notariado provincia — cierres reales (mar25-feb26)' :
+        fuente === 'tabla_referencia_municipio' ? 'MITMA municipio' :
+        fuente === 'tabla_referencia_provincia' ? 'MITMA provincia' :
+        'Fotocasa ⚠️ precio oferta'
+      lines.push(`📊 ${fuenteLabel}: ${precioM2}€/m²`)
+    }
+
+    if (lines.length > 0) comparablesNote = '\n' + lines.join('\n')
   }
 
   const compra = precio_pedido
@@ -546,13 +575,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Auto-estimate sale price from comparables if not provided
-    let ventaDesdeComparables: { precio: number; precioM2: number | null; fuente: string } | undefined
+    let ventaDesdeComparables: VentaComparables | undefined
     if (!data.precio_venta_est && data.ciudad && data.metros) {
       try {
         const res = await buscarComparables(data.ciudad, data.metros, data.habitaciones ?? undefined)
         if (res.precioSugerido) {
           data.precio_venta_est = res.precioSugerido
-          ventaDesdeComparables = { precio: res.precioSugerido, precioM2: res.precioMedioM2, fuente: res.fuente }
+          ventaDesdeComparables = {
+            precio: res.precioSugerido,
+            precioM2: res.precioMedioM2,
+            fuente: res.fuente,
+            precioNotariadoM2: res.precioNotariadoM2,
+            fuenteNotariado: res.fuenteNotariado,
+          }
         }
       } catch (e: unknown) {
         const err = e as { message?: string }
