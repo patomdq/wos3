@@ -119,6 +119,81 @@ function parseJsonFromClaude(raw: string): ExtractedData {
   }
 }
 
+// Parse "75k", "75.000", "75000", "75" (context: real estate, assume thousands if < 1000)
+function parsePrice(raw: string): number | null {
+  const s = raw.replace(/\s/g, '').toLowerCase()
+  const kMatch = s.match(/^([\d.,]+)k$/)
+  if (kMatch) return Math.round(parseFloat(kMatch[1].replace(',', '.')) * 1000)
+  const mMatch = s.match(/^([\d.,]+)m$/)
+  if (mMatch) return Math.round(parseFloat(mMatch[1].replace(',', '.')) * 1_000_000)
+  const plain = parseFloat(s.replace(/\./g, '').replace(',', '.'))
+  if (isNaN(plain)) return null
+  return plain < 1000 ? plain * 1000 : plain
+}
+
+// Regex-based fallback — works offline, no API call needed
+function extractFromTextRegex(text: string): ExtractedData {
+  const pricePattern = /[\d.,]+k?m?/gi
+
+  // precio_pedido — "piden X", "precio X", "sale a X€", "X€"
+  let precio_pedido: number | null = null
+  const pidMatch = text.match(/(?:piden?|precio(?:\s+de\s+compra)?|sale\s+por|cuesta|oferta)\s+([\d.,]+\s*k?)/i)
+  if (pidMatch) precio_pedido = parsePrice(pidMatch[1])
+
+  // reforma_estimada — "reforma X", "reformar X", "arreglo X"
+  let reforma_estimada: number | null = null
+  const refMatch = text.match(/(?:reforma\s+(?:estimada?\s+)?|reformar\s+(?:por\s+)?|arreglo\s+)([\d.,]+\s*k?)/i)
+  if (refMatch) reforma_estimada = parsePrice(refMatch[1])
+
+  // precio_venta_est — "salir a X", "vender a X", "vale X", "puede salir"
+  let precio_venta_est: number | null = null
+  const ventaMatch = text.match(/(?:salir?\s+a\s+|vender?\s+(?:a\s+|por\s+)?|puede\s+salir\s+a\s+|venta\s+(?:estimada?\s+)?(?:a\s+|de\s+)?)([\d.,]+\s*k?)/i)
+  if (ventaMatch) precio_venta_est = parsePrice(ventaMatch[1])
+
+  // If we only found one price and it's precio_pedido, look for other prices by position
+  const allPrices = [...text.matchAll(/([\d.,]+\s*k)/gi)].map(m => parsePrice(m[1])).filter(Boolean) as number[]
+  if (allPrices.length >= 2 && !precio_venta_est) {
+    // Largest price is usually venta, smallest is compra
+    const sorted = [...allPrices].sort((a, b) => a - b)
+    if (!precio_pedido) precio_pedido = sorted[0]
+    precio_venta_est = sorted[sorted.length - 1]
+  }
+
+  // direccion — street patterns + city after comma
+  let direccion: string | null = null
+  const streetMatch = text.match(/(?:C\/|Calle|Avd?a?\.?\s+|Plaza\s+|Paseo\s+|Ronda\s+|c\/)[^\n,\.]{3,50}/i)
+  if (streetMatch) {
+    direccion = streetMatch[0].trim()
+  } else {
+    // First meaningful segment before price info
+    const firstPart = text.split(/\.\s+|\n/)[0].replace(/(piden|precio|reforma|sale|vende)[^]*$/i, '').trim()
+    if (firstPart.length > 5) direccion = firstPart
+  }
+
+  // ciudad — after comma following address, or standalone city name
+  let ciudad: string | null = null
+  const cityMatch = text.match(/,\s*([A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]{2,25})(?:\.|,|\s*\.|$)/m)
+  if (cityMatch) ciudad = cityMatch[1].trim()
+
+  // habitaciones / metros
+  const habMatch = text.match(/(\d+)\s*hab/i)
+  const metrosMatch = text.match(/(\d+)\s*m[²2]?(?:\s|$)/i)
+
+  void pricePattern // suppress unused warning
+
+  return {
+    direccion: direccion || null,
+    precio_pedido,
+    reforma_estimada,
+    precio_venta_est,
+    habitaciones: habMatch ? parseInt(habMatch[1]) : null,
+    banos: null,
+    metros: metrosMatch ? parseInt(metrosMatch[1]) : null,
+    ciudad,
+    descripcion: null,
+  }
+}
+
 async function extractFromText(text: string): Promise<ExtractedData> {
   if (!text.trim()) return {}
   try {
@@ -131,7 +206,8 @@ async function extractFromText(text: string): Promise<ExtractedData> {
     return content.type === 'text' ? parseJsonFromClaude(content.text) : {}
   } catch (e) {
     console.error('extractFromText error:', e)
-    return {}
+    // Fallback: regex extraction so the bot still works without AI
+    return extractFromTextRegex(text)
   }
 }
 
