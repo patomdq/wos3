@@ -68,6 +68,7 @@ interface ExtractedData {
   metros?: number | null
   ciudad?: string | null
   descripcion?: string | null
+  duracion_meses?: number | null
 }
 
 // ── Telegram helpers ─────────────────────────────────────────────────────────
@@ -176,7 +177,8 @@ Formato:
   "banos": número entero o null,
   "metros": número o null,
   "ciudad": string o null,
-  "descripcion": string o null
+  "descripcion": string o null,
+  "duracion_meses": número entero o null
 }
 
 Reglas:
@@ -184,6 +186,7 @@ Reglas:
 - precio_venta_est = precio al que se podría vender tras reforma
 - "75k" = 75000, "120k" = 120000, "1.2M" = 1200000
 - "piden 85" en contexto inmobiliario = 85000
+- duracion_meses = duración estimada de la operación ("6 meses" → 6, "1 año" → 12, "2 años" → 24)
 - Si no hay info, pon null`
 
 function parseJsonFromClaude(raw: string): ExtractedData {
@@ -267,9 +270,14 @@ function extractFromTextRegex(text: string): ExtractedData {
   // Use ciudad as direccion fallback
   if (!direccion && ciudad) direccion = ciudad
 
-  // habitaciones / metros
+  // habitaciones / metros / duración
   const habMatch = text.match(/(\d+)\s*hab/i)
   const metrosMatch = text.match(/(\d{2,4})\s*m[²2]/i)
+  const mesesMatch = text.match(/(\d+)\s*mes(?:es)?/i)
+  const aniosMatch = text.match(/(\d+)\s*a[ñn]o[s]?/i)
+  let duracion_meses: number | null = null
+  if (mesesMatch) duracion_meses = parseInt(mesesMatch[1])
+  else if (aniosMatch) duracion_meses = parseInt(aniosMatch[1]) * 12
 
   void pricePattern // suppress unused warning
 
@@ -283,6 +291,7 @@ function extractFromTextRegex(text: string): ExtractedData {
     metros: metrosMatch ? parseInt(metrosMatch[1]) : null,
     ciudad,
     descripcion: null,
+    duracion_meses,
   }
 }
 
@@ -403,6 +412,11 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
   const beneficio = venta - costoTotal
   const roi = calcROI(venta, compra, reforma) * 100
 
+  const duracion = data.duracion_meses ?? null
+  const roiAnualizado = duracion && duracion > 0
+    ? (Math.pow(1 + roi / 100, 12 / duracion) - 1) * 100
+    : null
+
   let semaforo: string
   if (roi < 30) semaforo = '🔴 ROI < 30% — No entra según criterios Wallest'
   else if (roi <= 50) semaforo = '🟡 ROI 30-50% — Analizar bien antes de avanzar'
@@ -425,7 +439,8 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     '',
     `Precio venta estimado: ${fmt(venta)}€`,
     `Beneficio neto: ${fmt(beneficio)}€`,
-    `ROI: ${roi.toFixed(1)}%`,
+    `ROI total: ${roi.toFixed(1)}%`,
+    roiAnualizado !== null ? `ROI anualizado (${duracion}m): ${roiAnualizado.toFixed(1)}%` : null,
     '',
     semaforo,
     '',
@@ -433,7 +448,7 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     `Para ROI 30%: ${fmt(max30)}€`,
     `Para ROI 50%: ${fmt(max50)}€`,
     `Para ROI 70%: ${fmt(max70)}€`,
-  ].filter(l => l !== undefined).join('\n')
+  ].filter((l): l is string => l !== null && l !== undefined).join('\n')
 }
 
 // ── Callback query handler (botones inline) ──────────────────────────────────
@@ -636,6 +651,7 @@ export async function POST(req: NextRequest) {
         fuente: origen,
         reforma_estimada: data.reforma_estimada,
         precio_venta_est: data.precio_venta_est,
+        duracion_meses: data.duracion_meses ?? null,
         fotos: fotoIds.length > 0 ? fotoIds : null,
         roi_calculado,
         precio_max_30,
