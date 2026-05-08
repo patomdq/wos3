@@ -35,9 +35,17 @@ interface TgMessage {
   photo?: TgPhoto[]
 }
 
+interface TgCallbackQuery {
+  id: string
+  from: { id: number; first_name: string }
+  message?: { message_id: number; chat: { id: number }; text?: string }
+  data?: string
+}
+
 interface TgUpdate {
   update_id: number
   message?: TgMessage
+  callback_query?: TgCallbackQuery
 }
 
 interface ExtractedData {
@@ -54,16 +62,42 @@ interface ExtractedData {
 
 // ── Telegram helpers ─────────────────────────────────────────────────────────
 
-async function sendMessage(chatId: number, text: string) {
+async function sendMessage(chatId: number, text: string, replyMarkup?: object) {
   const tgApi = `https://api.telegram.org/bot${BOT_TOKEN}`
   try {
     await fetch(`${tgApi}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify({ chat_id: chatId, text, ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
     })
   } catch (e) {
     console.error('sendMessage error:', e)
+  }
+}
+
+async function editMessage(chatId: number, messageId: number, text: string) {
+  const tgApi = `https://api.telegram.org/bot${BOT_TOKEN}`
+  try {
+    await fetch(`${tgApi}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId, text }),
+    })
+  } catch (e) {
+    console.error('editMessage error:', e)
+  }
+}
+
+async function answerCallbackQuery(callbackQueryId: string, text?: string) {
+  const tgApi = `https://api.telegram.org/bot${BOT_TOKEN}`
+  try {
+    await fetch(`${tgApi}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
+    })
+  } catch (e) {
+    console.error('answerCallbackQuery error:', e)
   }
 }
 
@@ -244,7 +278,7 @@ function fmt(n: number): string {
   return `${Math.round(n)}`
 }
 
-function buildResponse(data: ExtractedData, savedOk: boolean): string {
+function buildAnalysis(data: ExtractedData): string {
   const { direccion, precio_pedido, reforma_estimada, precio_venta_est } = data
 
   const header = [
@@ -256,15 +290,8 @@ function buildResponse(data: ExtractedData, savedOk: boolean): string {
   if (!precio_venta_est) missing.push('Precio de venta estimado no proporcionado')
   if (reforma_estimada == null) missing.push('Reforma estimada no proporcionada')
 
-  const footer = savedOk
-    ? '✅ Subido a Radar en WOS3'
-    : '⚠️ Error al guardar en Radar — revisar WOS3'
-
   if (missing.length > 0 || !precio_pedido || !precio_venta_est) {
-    const warn = missing.length > 0
-      ? `\n\n⚠️ Faltan datos para calcular ROI:\n${missing.map(m => `- ${m}`).join('\n')}\n\n${footer} sin análisis — completar en WOS3`
-      : `\n\n${footer}`
-    return header + warn
+    return header + `\n\n⚠️ Faltan datos para el ROI:\n${missing.map(m => `- ${m}`).join('\n')}`
   }
 
   const compra = precio_pedido
@@ -305,9 +332,45 @@ function buildResponse(data: ExtractedData, savedOk: boolean): string {
     `Para ROI 30%: ${fmt(max30)}€`,
     `Para ROI 50%: ${fmt(max50)}€`,
     `Para ROI 70%: ${fmt(max70)}€`,
-    '',
-    footer,
   ].join('\n')
+}
+
+// ── Callback query handler (botones inline) ──────────────────────────────────
+
+async function handleCallbackQuery(cb: TgCallbackQuery) {
+  const chatId = cb.message?.chat.id
+  const messageId = cb.message?.message_id
+  if (!chatId || !messageId || !cb.data) return
+
+  const [action, id] = cb.data.split(':')
+
+  if (action === 'confirm') {
+    const { error } = await supabase
+      .from('inmuebles_radar')
+      .update({ estado: 'activo' })
+      .eq('id', id)
+      .eq('estado', 'pendiente_tg')
+
+    if (error) {
+      await answerCallbackQuery(cb.id, '❌ Error al confirmar')
+    } else {
+      await answerCallbackQuery(cb.id, '✅ Subido al Radar')
+      await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n✅ Subido a Radar en WOS3')
+    }
+  } else if (action === 'discard') {
+    const { error } = await supabase
+      .from('inmuebles_radar')
+      .delete()
+      .eq('id', id)
+      .eq('estado', 'pendiente_tg')
+
+    if (error) {
+      await answerCallbackQuery(cb.id, '❌ Error al descartar')
+    } else {
+      await answerCallbackQuery(cb.id, '🗑️ Descartado')
+      await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n🗑️ Descartado — no subido al Radar')
+    }
+  }
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────────
@@ -330,6 +393,12 @@ export async function POST(req: NextRequest) {
     update = await req.json()
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 })
+  }
+
+  // Handle button presses
+  if (update.callback_query) {
+    await handleCallbackQuery(update.callback_query)
+    return NextResponse.json({ ok: true })
   }
 
   const message = update.message
@@ -411,34 +480,50 @@ export async function POST(req: NextRequest) {
       else semaforo = 'verde'
     }
 
-    // Save to Supabase
-    const { error } = await supabase.from('inmuebles_radar').insert({
-      titulo: data.direccion || text.slice(0, 80) || 'Telegram — sin título',
-      direccion: data.direccion,
-      ciudad: data.ciudad,
-      precio: data.precio_pedido,
-      habitaciones: data.habitaciones,
-      superficie: data.metros,
-      banos: data.banos,
-      notas: data.descripcion,
-      url: urlMatch?.[0] ?? null,
-      fuente: origen,
-      reforma_estimada: data.reforma_estimada,
-      precio_venta_est: data.precio_venta_est,
-      fotos: fotoIds.length > 0 ? fotoIds : null,
-      roi_calculado,
-      precio_max_30,
-      precio_max_50,
-      precio_max_70,
-      semaforo,
-      telegram_user: telegramUser,
-      estado: 'activo',
-      fecha_recibido: new Date().toISOString().split('T')[0],
-    })
+    // Save as pending — waits for user confirmation before appearing in Radar
+    const { data: inserted, error } = await supabase
+      .from('inmuebles_radar')
+      .insert({
+        titulo: data.direccion || text.slice(0, 80) || 'Telegram — sin título',
+        direccion: data.direccion,
+        ciudad: data.ciudad,
+        precio: data.precio_pedido,
+        habitaciones: data.habitaciones,
+        superficie: data.metros,
+        banos: data.banos,
+        notas: data.descripcion,
+        url: urlMatch?.[0] ?? null,
+        fuente: origen,
+        reforma_estimada: data.reforma_estimada,
+        precio_venta_est: data.precio_venta_est,
+        fotos: fotoIds.length > 0 ? fotoIds : null,
+        roi_calculado,
+        precio_max_30,
+        precio_max_50,
+        precio_max_70,
+        semaforo,
+        telegram_user: telegramUser,
+        estado: 'pendiente_tg',
+        fecha_recibido: new Date().toISOString().split('T')[0],
+      })
+      .select('id')
+      .single()
 
-    if (error) console.error('Supabase insert error:', error)
+    if (error) {
+      console.error('Supabase insert error:', error)
+      await sendMessage(chatId, buildAnalysis(data) + '\n\n❌ Error al guardar — intenta de nuevo.')
+      return NextResponse.json({ ok: true })
+    }
 
-    await sendMessage(chatId, buildResponse(data, !error))
+    const recordId = inserted.id
+    const analysisText = buildAnalysis(data)
+    const replyMarkup = {
+      inline_keyboard: [[
+        { text: '✅ Subir al Radar', callback_data: `confirm:${recordId}` },
+        { text: '🗑️ Descartar', callback_data: `discard:${recordId}` },
+      ]],
+    }
+    await sendMessage(chatId, analysisText, replyMarkup)
   } catch (err) {
     console.error('Webhook error:', err)
     await sendMessage(chatId, '❌ Error procesando el mensaje. Intenta de nuevo.')
