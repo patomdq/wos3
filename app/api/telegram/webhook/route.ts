@@ -353,14 +353,7 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     `💰 Precio pedido: ${precio_pedido ? fmt(precio_pedido) + '€' : 'No informado'}`,
   ].join('\n')
 
-  const missing: string[] = []
-  if (!precio_venta_est) missing.push('Precio de venta estimado no proporcionado')
-  if (reforma_estimada == null) missing.push('Reforma estimada no proporcionada')
-
-  if (missing.length > 0 || !precio_pedido || !precio_venta_est) {
-    return header + `\n\n⚠️ Faltan datos para el ROI:\n${missing.map(m => `- ${m}`).join('\n')}`
-  }
-
+  // Build market reference lines — shown regardless of whether ROI can be calculated
   let comparablesNote = ''
   if (ventaDesdeComparables) {
     const lines: string[] = []
@@ -381,7 +374,6 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     }
 
     if (fuente !== 'fotocasa' && !precioNotariadoM2 && precioM2) {
-      // Single-source fallback (old behavior)
       const fuenteLabel =
         fuente === 'notariado_municipio' ? 'Notariado — cierres reales (mar25-feb26)' :
         fuente === 'notariado_provincia' ? 'Notariado provincia — cierres reales (mar25-feb26)' :
@@ -392,6 +384,14 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     }
 
     if (lines.length > 0) comparablesNote = '\n' + lines.join('\n')
+  }
+
+  const missing: string[] = []
+  if (!precio_venta_est) missing.push('Precio de venta estimado no proporcionado')
+  if (reforma_estimada == null) missing.push('Reforma estimada no proporcionada')
+
+  if (missing.length > 0 || !precio_pedido || !precio_venta_est) {
+    return header + comparablesNote + `\n\n⚠️ Faltan datos para el ROI:\n${missing.map(m => `- ${m}`).join('\n')}`
   }
 
   const compra = precio_pedido
@@ -579,15 +579,20 @@ export async function POST(req: NextRequest) {
     if (!data.precio_venta_est && data.ciudad && data.metros) {
       try {
         const res = await buscarComparables(data.ciudad, data.metros, data.habitaciones ?? undefined)
-        if (res.precioSugerido) {
-          data.precio_venta_est = res.precioSugerido
+        if (res.precioMedioM2 || res.precioNotariadoM2) {
           ventaDesdeComparables = {
-            precio: res.precioSugerido,
+            precio: res.precioSugerido ?? 0,
             precioM2: res.precioMedioM2,
             fuente: res.fuente,
             precioNotariadoM2: res.precioNotariadoM2,
             fuenteNotariado: res.fuenteNotariado,
           }
+        }
+        // Only auto-fill precio_venta_est when Fotocasa estimate is meaningfully above purchase price
+        // (avoids ROI calc on mixed unreformed/reformed market data)
+        const minVenta = (data.precio_pedido ?? 0) * 1.1
+        if (res.precioSugerido && res.fuente === 'fotocasa' && res.precioSugerido > minVenta) {
+          data.precio_venta_est = res.precioSugerido
         }
       } catch (e: unknown) {
         const err = e as { message?: string }
