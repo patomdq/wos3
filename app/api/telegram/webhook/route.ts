@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { calcCostoTotal, calcROI, calcPrecioMaxCompra } from '@/lib/formulas'
 import { scrapeIdealista } from '@/lib/scrape-idealista'
+import { buscarComparables } from '@/lib/search-comparables'
 
 export const maxDuration = 60
 
@@ -278,7 +279,7 @@ function fmt(n: number): string {
   return `${Math.round(n)}`
 }
 
-function buildAnalysis(data: ExtractedData): string {
+function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: { precio: number; precioM2: number | null }): string {
   const { direccion, precio_pedido, reforma_estimada, precio_venta_est } = data
 
   const header = [
@@ -293,6 +294,10 @@ function buildAnalysis(data: ExtractedData): string {
   if (missing.length > 0 || !precio_pedido || !precio_venta_est) {
     return header + `\n\n⚠️ Faltan datos para el ROI:\n${missing.map(m => `- ${m}`).join('\n')}`
   }
+
+  const comparablesNote = ventaDesdeComparables
+    ? `\n📊 Precio venta estimado por comparables Fotocasa${ventaDesdeComparables.precioM2 ? ` (${ventaDesdeComparables.precioM2}€/m²)` : ''}`
+    : ''
 
   const compra = precio_pedido
   const reforma = reforma_estimada ?? 0
@@ -314,6 +319,7 @@ function buildAnalysis(data: ExtractedData): string {
 
   return [
     header,
+    comparablesNote,
     '',
     '📊 ANÁLISIS RÁPIDO',
     '──────────────────',
@@ -332,7 +338,7 @@ function buildAnalysis(data: ExtractedData): string {
     `Para ROI 30%: ${fmt(max30)}€`,
     `Para ROI 50%: ${fmt(max50)}€`,
     `Para ROI 70%: ${fmt(max70)}€`,
-  ].join('\n')
+  ].filter(l => l !== undefined).join('\n')
 }
 
 // ── Callback query handler (botones inline) ──────────────────────────────────
@@ -460,6 +466,20 @@ export async function POST(req: NextRequest) {
       data = await extractFromText(text)
     }
 
+    // Auto-estimate sale price from comparables if not provided
+    let ventaDesdeComparables: { precio: number; precioM2: number | null } | undefined
+    if (!data.precio_venta_est && data.ciudad && data.metros) {
+      try {
+        const res = await buscarComparables(data.ciudad, data.metros, data.habitaciones ?? undefined)
+        if (res.precioSugerido) {
+          data.precio_venta_est = res.precioSugerido
+          ventaDesdeComparables = { precio: res.precioSugerido, precioM2: res.precioMedioM2 }
+        }
+      } catch (e) {
+        console.error('buscarComparables error:', e)
+      }
+    }
+
     // ROI fields
     let roi_calculado: number | null = null
     let precio_max_30: number | null = null
@@ -511,12 +531,12 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('Supabase insert error:', error)
-      await sendMessage(chatId, buildAnalysis(data) + '\n\n❌ Error al guardar — intenta de nuevo.')
+      await sendMessage(chatId, buildAnalysis(data, ventaDesdeComparables) + '\n\n❌ Error al guardar — intenta de nuevo.')
       return NextResponse.json({ ok: true })
     }
 
     const recordId = inserted.id
-    const analysisText = buildAnalysis(data)
+    const analysisText = buildAnalysis(data, ventaDesdeComparables)
     const replyMarkup = {
       inline_keyboard: [[
         { text: '✅ Subir al Radar', callback_data: `confirm:${recordId}` },
