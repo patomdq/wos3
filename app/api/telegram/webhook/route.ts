@@ -27,6 +27,13 @@ interface TgPhoto {
   file_size?: number
 }
 
+interface TgVoice {
+  file_id: string
+  duration: number
+  mime_type?: string
+  file_size?: number
+}
+
 interface TgMessage {
   message_id: number
   from?: { id: number; first_name: string; last_name?: string; username?: string }
@@ -34,6 +41,8 @@ interface TgMessage {
   text?: string
   caption?: string
   photo?: TgPhoto[]
+  voice?: TgVoice
+  audio?: TgVoice
 }
 
 interface TgCallbackQuery {
@@ -73,6 +82,41 @@ async function sendMessage(chatId: number, text: string, replyMarkup?: object) {
     })
   } catch (e) {
     console.error('sendMessage error:', e)
+  }
+}
+
+async function transcribeAudio(fileId: string, mimeType?: string): Promise<string | null> {
+  const tgApi = `https://api.telegram.org/bot${BOT_TOKEN}`
+  const openaiKey = process.env.OPENAI_API_KEY
+  if (!openaiKey) return null
+  try {
+    const fileRes = await fetch(`${tgApi}/getFile?file_id=${fileId}`)
+    const fileJson = await fileRes.json()
+    if (!fileJson.ok) return null
+    const audioRes = await fetch(`${TG_FILE_API}/${fileJson.result.file_path}`, {
+      signal: AbortSignal.timeout(15000),
+    })
+    const audioBuffer = await audioRes.arrayBuffer()
+    const ext = mimeType?.includes('ogg') ? 'ogg' : mimeType?.includes('mp4') ? 'mp4' : 'ogg'
+    const form = new FormData()
+    form.append('file', new Blob([audioBuffer], { type: mimeType || 'audio/ogg' }), `audio.${ext}`)
+    form.append('model', 'whisper-1')
+    form.append('language', 'es')
+    const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${openaiKey}` },
+      body: form,
+      signal: AbortSignal.timeout(30000),
+    })
+    if (!whisperRes.ok) {
+      console.error('Whisper error:', whisperRes.status, await whisperRes.text())
+      return null
+    }
+    const json = await whisperRes.json()
+    return json.text || null
+  } catch (e: unknown) {
+    console.error('transcribeAudio error:', (e as { message?: string })?.message)
+    return null
   }
 }
 
@@ -215,7 +259,7 @@ function extractFromTextRegex(text: string): ExtractedData {
 
   // habitaciones / metros
   const habMatch = text.match(/(\d+)\s*hab/i)
-  const metrosMatch = text.match(/(\d{2,4})\s*m[²2]/i)
+  const metrosMatch = text.match(/(\d+)\s*m[²2]?(?:\s|$)/i)
 
   void pricePattern // suppress unused warning
 
@@ -451,6 +495,19 @@ export async function POST(req: NextRequest) {
         if (extra.precio_venta_est) data.precio_venta_est = extra.precio_venta_est
         if (extra.reforma_estimada != null) data.reforma_estimada = extra.reforma_estimada
       }
+    } else if (message.voice || message.audio) {
+      // Modo D — audio / nota de voz
+      origen = 'telegram_foto'
+      const audioMsg = message.voice || message.audio!
+      await sendMessage(chatId, '🎙️ Procesando audio...')
+      const transcript = await transcribeAudio(audioMsg.file_id, audioMsg.mime_type)
+      if (transcript) {
+        data = await extractFromText(transcript)
+        if (!data.descripcion) data.descripcion = transcript.slice(0, 300)
+      } else {
+        await sendMessage(chatId, '❌ No pude transcribir el audio. Enviá el mensaje como texto.')
+        return NextResponse.json({ ok: true })
+      }
     } else if (hasPhotos) {
       // Modo A/C — fotos o capturas
       origen = 'telegram_captura'
@@ -475,7 +532,7 @@ export async function POST(req: NextRequest) {
     if (!data.precio_venta_est && data.ciudad && data.metros) {
       try {
         const res = await buscarComparables(data.ciudad, data.metros, data.habitaciones ?? undefined)
-        console.error('comparables result:', JSON.stringify({ zona: data.ciudad, metros: data.metros, found: res.comparables.length, precioM2: res.precioMedioM2, sugerido: res.precioSugerido }))
+        console.log('comparables:', JSON.stringify({ zona: data.ciudad, metros: data.metros, found: res.comparables.length, precioM2: res.precioMedioM2, sugerido: res.precioSugerido, fuente: res.fuente }))
         if (res.precioSugerido) {
           data.precio_venta_est = res.precioSugerido
           ventaDesdeComparables = { precio: res.precioSugerido, precioM2: res.precioMedioM2 }
@@ -485,7 +542,7 @@ export async function POST(req: NextRequest) {
         console.error('buscarComparables error:', err?.message)
       }
     } else {
-      console.error('comparables skip:', JSON.stringify({ tienePrecioVenta: !!data.precio_venta_est, ciudad: data.ciudad, metros: data.metros }))
+      console.log('comparables skip:', JSON.stringify({ tienePrecioVenta: !!data.precio_venta_est, ciudad: data.ciudad, metros: data.metros }))
     }
 
     // ROI fields
