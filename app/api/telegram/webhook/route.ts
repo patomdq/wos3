@@ -349,7 +349,7 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
   const { direccion, precio_pedido, reforma_estimada, precio_venta_est } = data
 
   const header = [
-    `📍 ${direccion || 'Inmueble sin dirección'}`,
+    `📍 ${direccion || data.ciudad || 'Inmueble sin dirección'}`,
     `💰 Precio pedido: ${precio_pedido ? fmt(precio_pedido) + '€' : 'No informado'}`,
   ].join('\n')
 
