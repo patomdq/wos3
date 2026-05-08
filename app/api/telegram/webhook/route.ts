@@ -215,7 +215,7 @@ function extractFromTextRegex(text: string): ExtractedData {
 
   // habitaciones / metros
   const habMatch = text.match(/(\d+)\s*hab/i)
-  const metrosMatch = text.match(/(\d+)\s*m[²2]?(?:\s|$)/i)
+  const metrosMatch = text.match(/(\d{2,4})\s*m[²2]/i)
 
   void pricePattern // suppress unused warning
 
