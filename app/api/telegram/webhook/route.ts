@@ -185,13 +185,16 @@ function extractFromTextRegex(text: string): ExtractedData {
   const ventaMatch = text.match(/(?:salir?\s+a\s+|vender?\s+(?:a\s+|por\s+)?|puede\s+salir\s+a\s+|venta\s+(?:estimada?\s+)?(?:a\s+|de\s+)?)([\d.,]+\s*k?)/i)
   if (ventaMatch) precio_venta_est = parsePrice(ventaMatch[1])
 
-  // If we only found one price and it's precio_pedido, look for other prices by position
-  const allPrices = [...text.matchAll(/([\d.,]+\s*k)/gi)].map(m => parsePrice(m[1])).filter(Boolean) as number[]
+  // If still no precio_venta_est, look for other k-prices excluding reforma
+  const allPrices = [...text.matchAll(/([\d.,]+\s*k)/gi)]
+    .map(m => parsePrice(m[1]))
+    .filter((p): p is number => p !== null && p !== reforma_estimada)
   if (allPrices.length >= 2 && !precio_venta_est) {
-    // Largest price is usually venta, smallest is compra
     const sorted = [...allPrices].sort((a, b) => a - b)
     if (!precio_pedido) precio_pedido = sorted[0]
-    precio_venta_est = sorted[sorted.length - 1]
+    // Only set venta if it's clearly higher than asking price
+    const maxPrice = sorted[sorted.length - 1]
+    if (precio_pedido && maxPrice > precio_pedido) precio_venta_est = maxPrice
   }
 
   // direccion — street patterns + city after comma
