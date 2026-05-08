@@ -242,8 +242,9 @@ async function extractFromText(text: string): Promise<ExtractedData> {
     })
     const content = res.content[0]
     return content.type === 'text' ? parseJsonFromClaude(content.text) : {}
-  } catch (e) {
-    console.error('extractFromText error:', e)
+  } catch (e: unknown) {
+    const err = e as { status?: number; message?: string; error?: unknown }
+    console.error('extractFromText error:', JSON.stringify({ status: err?.status, message: err?.message, error: err?.error }))
     // Fallback: regex extraction so the bot still works without AI
     return extractFromTextRegex(text)
   }
@@ -474,13 +475,17 @@ export async function POST(req: NextRequest) {
     if (!data.precio_venta_est && data.ciudad && data.metros) {
       try {
         const res = await buscarComparables(data.ciudad, data.metros, data.habitaciones ?? undefined)
+        console.log('comparables:', JSON.stringify({ zona: data.ciudad, metros: data.metros, found: res.comparables.length, precioM2: res.precioMedioM2, sugerido: res.precioSugerido, fuente: res.fuente }))
         if (res.precioSugerido) {
           data.precio_venta_est = res.precioSugerido
           ventaDesdeComparables = { precio: res.precioSugerido, precioM2: res.precioMedioM2 }
         }
-      } catch (e) {
-        console.error('buscarComparables error:', e)
+      } catch (e: unknown) {
+        const err = e as { message?: string }
+        console.error('buscarComparables error:', err?.message)
       }
+    } else {
+      console.log('comparables skip:', JSON.stringify({ tienePrecioVenta: !!data.precio_venta_est, ciudad: data.ciudad, metros: data.metros }))
     }
 
     // ROI fields
