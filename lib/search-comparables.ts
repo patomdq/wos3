@@ -236,7 +236,18 @@ export async function buscarComparables(
   const { buscarPrecioMunicipio } = await import('./precios-municipio')
   const empty: ResultadoBusqueda = { comparables: [], precioMedioM2: null, precioSugerido: null, fuente: 'sin datos' }
 
-  // 1. Direct Fotocasa page fetching — one listing per URL, multiple barrios
+  // 1. Portal del Notariado — cierres reales escriturados (fuente prioritaria)
+  const ref = buscarPrecioMunicipio(zona)
+  if (ref?.fuente === 'notariado') {
+    return {
+      comparables: [],
+      precioMedioM2: ref.precioM2,
+      precioSugerido: Math.floor(ref.precioM2 * superficie),
+      fuente: ref.nivel === 'notariado_municipio' ? 'notariado_municipio' : 'notariado_provincia',
+    }
+  }
+
+  // 2. Fotocasa scraping — fallback cuando no hay datos notariales
   const urls = buildFotocasaUrls(zona, habitaciones)
   const settled = await Promise.allSettled(urls.map(fetchFotocasaPage))
 
@@ -249,7 +260,7 @@ export async function buscarComparables(
     }
   }
 
-  // 2. Supplement with Firecrawl if fewer than 3 results
+  // 3. Firecrawl si Fotocasa devuelve menos de 3
   if (comparables.length < 3) {
     const key = process.env.FIRECRAWL_API_KEY
     if (key) {
@@ -263,9 +274,8 @@ export async function buscarComparables(
     }
   }
 
-  // 3. Tabla de referencia MITMA — fallback cuando Fotocasa no tiene datos
+  // 4. Tabla estimación MITMA — cuando Fotocasa tampoco tiene datos
   if (comparables.length === 0) {
-    const ref = buscarPrecioMunicipio(zona)
     if (ref) {
       return {
         comparables: [],

@@ -1,46 +1,57 @@
-// Precios de referencia €/m² vivienda libre segunda mano
-// Fuente: MITMA / Registradores de España — Q1 2025
-// Actualizar trimestralmente con datos oficiales del Ministerio de Vivienda
-// https://www.mivau.gob.es/vivienda/estadisticas
+// Precios de referencia €/m² vivienda libre — cierres reales escriturados
+// Fuente primaria: Portal Estadístico del Notariado — mar 2025 / feb 2026
+// Fuente secundaria: estimaciones MITMA / Registradores de España — Q1 2025
 
 export interface PrecioReferencia {
   precioM2: number
-  nivel: 'municipio' | 'provincia'
-  fuente: 'tabla_referencia'
+  nivel: 'notariado_municipio' | 'notariado_provincia' | 'municipio' | 'provincia'
+  fuente: 'notariado' | 'tabla_referencia'
 }
 
-// ── Municipios ────────────────────────────────────────────────────────────────
-// Foco en Almería (zona operativa HASU) + capitales nacionales
+// ── Portal del Notariado — datos reales de cierres escriturados ───────────────
+// Período: marzo 2025 – febrero 2026 (informe 08/05/2026)
+
+const NOTARIADO_MUNICIPIOS: Record<string, number> = {
+  'albox': 644,
+  'pulpi': 2006,
+  'cuevas del almanzora': 918,
+  'vera': 1661,
+  'mojacar': 1962,
+  'garrucha': 1295,
+  'huercal-overa': 814,
+  'huercal overa': 814,
+  'olula del rio': 559,
+  'cantoria': 650,
+  'turre': 1185,
+  'carboneras': 1466,
+  'los gallardos': 1126,
+  'gallardos': 1126,
+  'antas': 922,
+  'zurgena': 990,
+  'nijar': 977,
+  'huercal de almeria': 1012,
+  'vicar': 890,
+  'roquetas de mar': 1408,
+}
+
+const NOTARIADO_PROVINCIAS: Record<string, number> = {
+  'almeria': 1206,
+}
+
+// ── Estimaciones MITMA / mercado (municipios sin datos notariales) ─────────────
 
 const MUNICIPIOS: Record<string, number> = {
-  // Almería provincia — datos de mercado real
+  // Almería provincia — municipios no cubiertos por notariado
   'almeria': 1350,
-  'roquetas de mar': 1400,
   'el ejido': 1050,
-  'vera': 1100,
-  'mojacar': 2200,
-  'garrucha': 1500,
-  'carboneras': 1600,
   'adra': 900,
   'berja': 700,
-  'huercal-overa': 850,
-  'huercal overa': 850,
-  'cuevas del almanzora': 750,
-  'pulpi': 750,
-  'albox': 700,
-  'zurgena': 650,
-  'turre': 900,
-  'nijar': 1000,
-  'olula del rio': 700,
   'baza': 650,
   'guadix': 750,
-  'vicar': 1000,
   'aguadulce': 1300,
-  'antas': 750,
   'bedar': 900,
-  'lubrин': 700,
   'lubrin': 700,
-  'cantoria': 650,
+  'lubrin': 700,
 
   // Murcia provincia (frontera con Almería)
   'lorca': 750,
@@ -50,7 +61,7 @@ const MUNICIPIOS: Record<string, number> = {
   'murcia': 1250,
   'cartagena': 1300,
 
-  // Málaga (segunda zona habitual)
+  // Málaga
   'malaga': 2800,
   'marbella': 4200,
   'torremolinos': 2600,
@@ -81,7 +92,6 @@ const MUNICIPIOS: Record<string, number> = {
   'palma': 3200,
   'las palmas de gran canaria': 2100,
   'santa cruz de tenerife': 1900,
-  'murcia': 1250,
   'vitoria': 2400,
   'gijon': 1400,
   'la coruna': 1800,
@@ -100,10 +110,8 @@ const MUNICIPIOS: Record<string, number> = {
   'donostia': 4500,
 }
 
-// ── Provincias (fallback) ─────────────────────────────────────────────────────
-
 const PROVINCIAS: Record<string, number> = {
-  'almeria': 1100,
+  'almeria': 1206,
   'cadiz': 1500,
   'cordoba': 1000,
   'granada': 1300,
@@ -159,30 +167,32 @@ function normalize(s: string): string {
     .trim()
 }
 
+function matchRecord(slug: string, record: Record<string, number>): number | null {
+  if (record[slug] !== undefined) return record[slug]
+  for (const [key, precio] of Object.entries(record)) {
+    if (slug.includes(key) || key.includes(slug)) return precio
+  }
+  return null
+}
+
 export function buscarPrecioMunicipio(ciudad: string): PrecioReferencia | null {
   const slug = normalize(ciudad)
 
-  // Exact municipality match
-  if (MUNICIPIOS[slug] !== undefined) {
-    return { precioM2: MUNICIPIOS[slug], nivel: 'municipio', fuente: 'tabla_referencia' }
-  }
+  // 1. Notariado municipio — cierres reales escriturados (prioritario)
+  const nm = matchRecord(slug, NOTARIADO_MUNICIPIOS)
+  if (nm !== null) return { precioM2: nm, nivel: 'notariado_municipio', fuente: 'notariado' }
 
-  // Partial match — city name contained in key or vice versa
-  for (const [key, precio] of Object.entries(MUNICIPIOS)) {
-    if (slug.includes(key) || key.includes(slug)) {
-      return { precioM2: precio, nivel: 'municipio', fuente: 'tabla_referencia' }
-    }
-  }
+  // 2. Notariado provincia
+  const np = matchRecord(slug, NOTARIADO_PROVINCIAS)
+  if (np !== null) return { precioM2: np, nivel: 'notariado_provincia', fuente: 'notariado' }
 
-  // Province fallback
-  if (PROVINCIAS[slug] !== undefined) {
-    return { precioM2: PROVINCIAS[slug], nivel: 'provincia', fuente: 'tabla_referencia' }
-  }
-  for (const [key, precio] of Object.entries(PROVINCIAS)) {
-    if (slug.includes(key) || key.includes(slug)) {
-      return { precioM2: precio, nivel: 'provincia', fuente: 'tabla_referencia' }
-    }
-  }
+  // 3. Estimación municipio (MITMA)
+  const em = matchRecord(slug, MUNICIPIOS)
+  if (em !== null) return { precioM2: em, nivel: 'municipio', fuente: 'tabla_referencia' }
+
+  // 4. Estimación provincia (MITMA)
+  const ep = matchRecord(slug, PROVINCIAS)
+  if (ep !== null) return { precioM2: ep, nivel: 'provincia', fuente: 'tabla_referencia' }
 
   return null
 }

@@ -355,11 +355,14 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: { precio: nu
 
   let comparablesNote = ''
   if (ventaDesdeComparables) {
+    const f = ventaDesdeComparables.fuente
     const fuenteLabel =
-      ventaDesdeComparables.fuente === 'tabla_referencia_municipio' ? 'tabla referencia municipio (MITMA)' :
-      ventaDesdeComparables.fuente === 'tabla_referencia_provincia' ? 'tabla referencia provincia (MITMA)' :
-      'comparables Fotocasa'
-    comparablesNote = `\n📊 Precio venta estimado por ${fuenteLabel}${ventaDesdeComparables.precioM2 ? ` (${ventaDesdeComparables.precioM2}€/m²)` : ''}`
+      f === 'notariado_municipio' ? 'Portal Notariado — cierres reales (mar 2025 - feb 2026)' :
+      f === 'notariado_provincia' ? 'Portal Notariado provincia — cierres reales (mar 2025 - feb 2026)' :
+      f === 'tabla_referencia_municipio' ? 'tabla referencia municipio (MITMA)' :
+      f === 'tabla_referencia_provincia' ? 'tabla referencia provincia (MITMA)' :
+      'Fotocasa ⚠️ precio de oferta, no cierre real'
+    comparablesNote = `\n📊 Precio venta estimado — ${fuenteLabel}${ventaDesdeComparables.precioM2 ? ` (${ventaDesdeComparables.precioM2}€/m²)` : ''}`
   }
 
   const compra = precio_pedido
