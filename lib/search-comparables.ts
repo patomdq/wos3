@@ -233,6 +233,7 @@ export async function buscarComparables(
   superficie: number,
   habitaciones?: number,
 ): Promise<ResultadoBusqueda> {
+  const { buscarPrecioMunicipio } = await import('./precios-municipio')
   const empty: ResultadoBusqueda = { comparables: [], precioMedioM2: null, precioSugerido: null, fuente: 'sin datos' }
 
   // 1. Direct Fotocasa page fetching — one listing per URL, multiple barrios
@@ -262,7 +263,19 @@ export async function buscarComparables(
     }
   }
 
-  if (comparables.length === 0) return empty
+  // 3. Tabla de referencia MITMA — fallback cuando Fotocasa no tiene datos
+  if (comparables.length === 0) {
+    const ref = buscarPrecioMunicipio(zona)
+    if (ref) {
+      return {
+        comparables: [],
+        precioMedioM2: ref.precioM2,
+        precioSugerido: Math.floor(ref.precioM2 * superficie),
+        fuente: ref.nivel === 'municipio' ? 'tabla_referencia_municipio' : 'tabla_referencia_provincia',
+      }
+    }
+    return empty
+  }
 
   const top = comparables.slice(0, 5)
   const preciosM2 = top.filter(c => c.precioM2 && c.precioM2 > 200).map(c => c.precioM2!)

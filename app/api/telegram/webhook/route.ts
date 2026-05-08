@@ -259,7 +259,7 @@ function extractFromTextRegex(text: string): ExtractedData {
 
   // habitaciones / metros
   const habMatch = text.match(/(\d+)\s*hab/i)
-  const metrosMatch = text.match(/(\d+)\s*m[²2]?(?:\s|$)/i)
+  const metrosMatch = text.match(/(\d{2,4})\s*m[²2]/i)
 
   void pricePattern // suppress unused warning
 
@@ -327,7 +327,7 @@ function fmt(n: number): string {
   return `${Math.round(n)}`
 }
 
-function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: { precio: number; precioM2: number | null }): string {
+function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: { precio: number; precioM2: number | null; fuente: string }): string {
   const { direccion, precio_pedido, reforma_estimada, precio_venta_est } = data
 
   const header = [
@@ -343,9 +343,14 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: { precio: nu
     return header + `\n\n⚠️ Faltan datos para el ROI:\n${missing.map(m => `- ${m}`).join('\n')}`
   }
 
-  const comparablesNote = ventaDesdeComparables
-    ? `\n📊 Precio venta estimado por comparables Fotocasa${ventaDesdeComparables.precioM2 ? ` (${ventaDesdeComparables.precioM2}€/m²)` : ''}`
-    : ''
+  let comparablesNote = ''
+  if (ventaDesdeComparables) {
+    const fuenteLabel =
+      ventaDesdeComparables.fuente === 'tabla_referencia_municipio' ? 'tabla referencia municipio (MITMA)' :
+      ventaDesdeComparables.fuente === 'tabla_referencia_provincia' ? 'tabla referencia provincia (MITMA)' :
+      'comparables Fotocasa'
+    comparablesNote = `\n📊 Precio venta estimado por ${fuenteLabel}${ventaDesdeComparables.precioM2 ? ` (${ventaDesdeComparables.precioM2}€/m²)` : ''}`
+  }
 
   const compra = precio_pedido
   const reforma = reforma_estimada ?? 0
@@ -528,21 +533,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Auto-estimate sale price from comparables if not provided
-    let ventaDesdeComparables: { precio: number; precioM2: number | null } | undefined
+    let ventaDesdeComparables: { precio: number; precioM2: number | null; fuente: string } | undefined
     if (!data.precio_venta_est && data.ciudad && data.metros) {
       try {
         const res = await buscarComparables(data.ciudad, data.metros, data.habitaciones ?? undefined)
-        console.log('comparables:', JSON.stringify({ zona: data.ciudad, metros: data.metros, found: res.comparables.length, precioM2: res.precioMedioM2, sugerido: res.precioSugerido, fuente: res.fuente }))
         if (res.precioSugerido) {
           data.precio_venta_est = res.precioSugerido
-          ventaDesdeComparables = { precio: res.precioSugerido, precioM2: res.precioMedioM2 }
+          ventaDesdeComparables = { precio: res.precioSugerido, precioM2: res.precioMedioM2, fuente: res.fuente }
         }
       } catch (e: unknown) {
         const err = e as { message?: string }
         console.error('buscarComparables error:', err?.message)
       }
-    } else {
-      console.log('comparables skip:', JSON.stringify({ tienePrecioVenta: !!data.precio_venta_est, ciudad: data.ciudad, metros: data.metros }))
     }
 
     // ROI fields
