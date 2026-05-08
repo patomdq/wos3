@@ -247,15 +247,25 @@ function extractFromTextRegex(text: string): ExtractedData {
   if (streetMatch) {
     direccion = streetMatch[0].trim()
   } else {
-    // First meaningful segment before price info
-    const firstPart = text.split(/\.\s+|\n/)[0].replace(/(piden|precio|reforma|sale|vende)[^]*$/i, '').trim()
+    const firstPart = text.split(/\.\s+|\n/)[0]
+      .replace(/(piden|precio|reforma|sale|vende)[^]*$/i, '')
+      .replace(/,?\s*\d[\d.,]*\s*(?:m[²2]|hab|k\b)[^]*/gi, '')
+      .trim()
     if (firstPart.length > 5) direccion = firstPart
   }
 
-  // ciudad — after comma following address, or standalone city name
+  // ciudad — after comma following address, or "en Ciudad" pattern
   let ciudad: string | null = null
   const cityMatch = text.match(/,\s*([A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]{2,25})(?:\.|,|\s*\.|$)/m)
-  if (cityMatch) ciudad = cityMatch[1].trim()
+  if (cityMatch) {
+    ciudad = cityMatch[1].trim()
+  } else {
+    const enMatch = text.match(/\ben\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]{2,25})(?:,|\.|\s*$)/i)
+    if (enMatch) ciudad = enMatch[1].trim()
+  }
+
+  // Use ciudad as direccion fallback
+  if (!direccion && ciudad) direccion = ciudad
 
   // habitaciones / metros
   const habMatch = text.match(/(\d+)\s*hab/i)
