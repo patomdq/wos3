@@ -31,6 +31,7 @@ type TrackRow = {
   valor_total_operacion: number | null; precio_compra: number | null
   precio_venta_real: number | null; precio_venta_estimado: number | null
   porcentaje_hasu: number
+  inversion_hasu: number | null
   movimientos?: { tipo: string; monto: number }[]
 }
 
@@ -55,15 +56,13 @@ export default function HasuPage() {
       supabase.from('cuentas_bancarias').select('*').eq('activa', true).order('created_at'),
       supabase.from('proyectos').select('id,nombre,estado,precio_compra,precio_venta_estimado'),
       supabase.from('inversores').select('id', { count: 'exact' }),
-      // track record — all projects + inversor info
-      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,fecha_compra,fecha_salida_estimada,movimientos(tipo,monto)').order('created_at',{ascending:false}),
+      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,inversion_hasu,fecha_compra,fecha_salida_estimada,movimientos(tipo,monto)').order('created_at',{ascending:false}),
       supabase.from('proyecto_inversores').select('proyecto_id,inversores(nombre)'),
     ]).then(([c, p, inv, tr, pi]) => {
       setCuentas(c.data || [])
       setProyectos(p.data || [])
       setInversores(inv.count || 0)
 
-      // Build inversor lookup
       const invMap: Record<string, string> = {}
       ;(pi.data || []).forEach((r: any) => {
         if (r.inversores?.nombre) invMap[r.proyecto_id] = r.inversores.nombre
@@ -78,40 +77,44 @@ export default function HasuPage() {
     })
   }, [])
 
-  // ── Derived ──────────────────────────────────────────────
-  const activos    = proyectos.filter(p => EN_CURSO.includes(p.estado))
+  // ── Helpers de fila — única fuente de verdad para tabla, tfoot y tarjetas ──
+  const activos = proyectos.filter(p => EN_CURSO.includes(p.estado))
 
-  // Track record metrics
-  const cerrados = trackRows.filter(r => VENDIDOS.includes(r.estado))
-  const getInv   = (r: TrackRow) => {
-    if (r.movimientos?.length) return r.movimientos.filter(m => m.monto < 0 || m.tipo === 'Gasto').reduce((s, m) => s + Math.abs(m.monto || 0), 0)
-    return r.valor_total_operacion || r.precio_compra || 0
+  const getInv     = (r: TrackRow) => r.valor_total_operacion || r.precio_compra || 0
+  const getInvHasu = (r: TrackRow): number | null => {
+    if (r.inversion_hasu && r.inversion_hasu > 0) return r.inversion_hasu
+    if ((r.porcentaje_hasu || 0) >= 100) return r.valor_total_operacion || r.precio_compra || 0
+    return null
   }
-  const getVenta    = (r: TrackRow) => r.precio_venta_real || r.precio_venta_estimado || 0
-  const getBenef    = (r: TrackRow) => getVenta(r) - getInv(r)
-  // HASU share: en JV solo contamos el % de Hasu; HASU 100% = beneficio completo
+  const getVenta     = (r: TrackRow) => r.precio_venta_real || r.precio_venta_estimado || 0
+  const getBenef     = (r: TrackRow) => getVenta(r) - getInv(r)
   const getBenefHasu = (r: TrackRow) => getBenef(r) * ((r.porcentaje_hasu || 100) / 100)
-  const getRoi   = (r: TrackRow) => { const i = getInv(r); return i > 0 ? (getBenef(r) / i) * 100 : 0 }
-  const getDur   = (r: TrackRow) => duracionMeses(r.fecha_compra, r.fecha_salida_estimada)
+  const getRoi       = (r: TrackRow) => { const i = getInvHasu(r) ?? getInv(r); return i > 0 ? (getBenefHasu(r) / i) * 100 : 0 }
+  const getDur       = (r: TrackRow) => duracionMeses(r.fecha_compra, r.fecha_salida_estimada)
 
-  // Capital invertido HASU: operaciones cerradas aplicando % HASU
-  const totalInvertido  = cerrados.reduce((s, r) => s + getInv(r) * ((r.porcentaje_hasu || 100) / 100), 0)
-  // Capital total operaciones (suma JV completa, sin aplicar %)
-  const totalInvOps     = cerrados.reduce((s, r) => s + getInv(r), 0)
-  // Tracker 1M€: beneficio HASU (aplicando % en JVs)
-  const totalBenef      = cerrados.reduce((s, r) => s + getBenefHasu(r), 0)
-  // Beneficio total operaciones (suma JV completa, sin aplicar %)
-  const totalBenefOps   = cerrados.reduce((s, r) => s + getBenef(r), 0)
-  const roiMedio        = cerrados.length > 0 ? cerrados.reduce((s, r) => s + getRoi(r), 0) / cerrados.length : 0
+  // Objetivo 1M€ — solo operaciones con precio de venta real confirmado
+  const cerradosReal   = trackRows.filter(r => r.precio_venta_real && r.precio_venta_real > 0)
+  const totalBenefReal = cerradosReal.reduce((s, r) => s + getBenefHasu(r), 0)
+  const OBJETIVO       = 1_000_000
+  const pct            = Math.min((totalBenefReal / OBJETIVO) * 100, 100)
+  const mesesRest      = monthsUntilDec2027()
+  const porMes         = Math.max(0, (OBJETIVO - totalBenefReal) / mesesRest)
 
-  // Tracker objetivo 1M€ — usa beneficio neto de operaciones cerradas
-  const OBJETIVO   = 1_000_000
-  const pct        = Math.min((totalBenef / OBJETIVO) * 100, 100)
-  const mesesRest  = monthsUntilDec2027()
-  const porMes     = Math.max(0, (OBJETIVO - totalBenef) / mesesRest)
-  const tiempoMedio     = (() => {
+  // Totales globales — misma fuente que el pie de tabla con filtro "Todos"
+  const trWithVenta  = trackRows.filter(r => getVenta(r) > 0 && getInv(r) > 0)
+  const trCapTotal   = trackRows.reduce((s, r) => s + getInv(r), 0)
+  const trCapHasu    = trackRows.reduce((s, r) => s + (getInvHasu(r) ?? 0), 0)
+  const trBenefTotal = trWithVenta.reduce((s, r) => s + getBenef(r), 0)
+  const trBenefHasu  = trWithVenta.reduce((s, r) => s + getBenefHasu(r), 0)
+  const trRoiMedio   = trWithVenta.length > 0 ? trWithVenta.reduce((s, r) => s + getRoi(r), 0) / trWithVenta.length : 0
+  const trDurMedia   = (() => {
     const durs = trackRows.map(getDur).filter(Boolean) as number[]
-    return durs.length > 0 ? Math.round(durs.reduce((a,b)=>a+b,0)/durs.length) : null
+    return durs.length > 0 ? Math.round(durs.reduce((a, b) => a + b, 0) / durs.length) : null
+  })()
+  const trRoiAnual   = (() => {
+    const rows = trWithVenta.filter(r => getDur(r) !== null)
+    if (!rows.length) return null
+    return rows.reduce((s, r) => s + (roiAnualizado(getRoi(r), getDur(r)) ?? 0), 0) / rows.length
   })()
 
   // Filter + sort
@@ -124,7 +127,6 @@ export default function HasuPage() {
     .sort((a, b) => {
       if (sortBy === 'roi')      return getRoi(b) - getRoi(a)
       if (sortBy === 'duracion') return (getDur(b) ?? 0) - (getDur(a) ?? 0)
-      // fecha
       return (b.fecha_compra || '').localeCompare(a.fecha_compra || '')
     })
 
@@ -156,7 +158,7 @@ export default function HasuPage() {
           <div className="absolute right-[-30px] top-[-30px] w-[130px] h-[130px] rounded-full pointer-events-none"
             style={{ background: 'radial-gradient(circle, rgba(242,110,31,0.12) 0%, transparent 70%)' }} />
           <div className="text-[11px] font-bold uppercase tracking-[1.5px] mb-2" style={{ color: '#888' }}>Objetivo Hasu · Dic 2027</div>
-          <div className="font-black text-[38px] text-white leading-none tracking-tight mb-1">{fmt(totalBenef)}</div>
+          <div className="font-black text-[38px] text-white leading-none tracking-tight mb-1">{fmt(totalBenefReal)}</div>
           <div className="text-sm font-semibold mb-3" style={{ color: '#555' }}>beneficio acumulado de {fmt(OBJETIVO)}</div>
           <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: '#282828' }}>
             <div className="h-full rounded-full transition-all duration-700"
@@ -179,12 +181,12 @@ export default function HasuPage() {
       ) : (
         <div className="grid grid-cols-2 gap-2.5 mb-4">
           {[
-            { l: 'Beneficio HASU',     v: cerrados.length > 0 ? fmt(totalBenef) : '—', s: 'beneficio acumulado', sc: '#22C55E' },
-            { l: 'Faltan para 1M€',    v: fmt(Math.max(0, OBJETIVO - totalBenef)), s: `${pct.toFixed(1)}% alcanzado`, sc: '#888' },
-            { l: 'Proyectos activos',  v: String(activos.length),                  s: `${proyectos.length} total`, sc: '#888' },
-            { l: 'ROI medio',          v: cerrados.length > 0 ? fmtPct(roiMedio) : '—', s: 'proyectos vendidos',   sc: '#888' },
-            { l: 'Inversores',         v: String(inversores),                      s: 'JV activos',               sc: '#888' },
-            { l: 'Cuentas',            v: String(cuentas.length),                  s: 'activas',                  sc: '#888' },
+            { l: 'Beneficio HASU',    v: fmt(totalBenefReal),                               s: 'beneficio acumulado',       sc: '#22C55E' },
+            { l: 'Faltan para 1M€',   v: fmt(Math.max(0, OBJETIVO - totalBenefReal)),        s: `${pct.toFixed(1)}% alcanzado`, sc: '#888' },
+            { l: 'Proyectos activos', v: String(activos.length),                             s: `${proyectos.length} total`, sc: '#888' },
+            { l: 'ROI medio',         v: trWithVenta.length > 0 ? fmtPct(trRoiMedio) : '—', s: 'media operaciones',         sc: '#888' },
+            { l: 'Inversores',        v: String(inversores),                                 s: 'JV activos',                sc: '#888' },
+            { l: 'Cuentas',           v: String(cuentas.length),                             s: 'activas',                   sc: '#888' },
           ].map(k => (
             <div key={k.l} className="rounded-xl p-3.5" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{k.l}</div>
@@ -211,46 +213,54 @@ export default function HasuPage() {
       <div className="mt-6 mb-2">
         <div className="text-[11px] font-bold uppercase tracking-[1px] mb-4" style={{ color: '#888' }}>Track Record</div>
 
-        {/* Resumen acumulado */}
+        {/* Tarjetas — misma fuente que el pie de tabla */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {[1,2,3,4,5,6,7].map(i => <div key={i} className="h-18 rounded-xl animate-pulse" style={{ background: '#141414' }} />)}
+          <div className="grid grid-cols-2 gap-2.5 mb-5">
+            {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: '#141414' }} />)}
           </div>
         ) : (
-          <>
-            {/* Bloque operaciones generales */}
-            <div className="text-[10px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#555' }}>Operaciones (total JV)</div>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              {[
-                { l: 'Total operaciones',  v: String(trackRows.length),                                                       sub: `${cerrados.length} finalizadas` },
-                { l: 'Capital total',      v: totalInvOps > 0 ? fmtK(totalInvOps) : '—',                                     sub: 'invertido JV' },
-                { l: 'Benef. total',       v: cerrados.length > 0 ? (totalBenefOps >= 0 ? '+' : '') + fmtK(totalBenefOps) : '—', sub: 'operaciones cerradas', c: totalBenefOps >= 0 ? '#22C55E' : '#EF4444' },
-                { l: 'ROI medio',          v: cerrados.length > 0 ? fmtPct(roiMedio) : '—',                                  sub: 'media vendidos', c: roiMedio >= 0 ? '#22C55E' : '#EF4444' },
-                { l: 'Tiempo medio',       v: tiempoMedio !== null ? `${tiempoMedio}m` : '—',                                 sub: 'por operación' },
-              ].map((k, i) => (
-                <div key={k.l} className={`rounded-xl p-3.5${i === 4 ? ' col-span-2' : ''}`} style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{k.l}</div>
-                  <div className="font-black text-[20px] leading-none" style={{ color: (k as any).c || '#fff' }}>{k.v}</div>
-                  <div className="text-[11px] font-medium mt-1" style={{ color: '#555' }}>{k.sub}</div>
-                </div>
-              ))}
+          <div className="grid grid-cols-2 gap-2.5 mb-5">
+            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Operaciones</div>
+              <div className="font-black text-[28px] text-white leading-none">{trackRows.length}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>{cerradosReal.length} con venta real</div>
             </div>
-
-            {/* Bloque HASU */}
-            <div className="text-[10px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#F26E1F' }}>Hasu</div>
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              {[
-                { l: 'Capital HASU',      v: totalInvertido > 0 ? fmtK(totalInvertido) : '—',                              sub: 'parte HASU invertida' },
-                { l: 'Beneficio HASU',    v: cerrados.length > 0 ? (totalBenef >= 0 ? '+' : '') + fmtK(totalBenef) : '—',  sub: 'beneficio acumulado', c: totalBenef >= 0 ? '#F26E1F' : '#EF4444' },
-              ].map((k) => (
-                <div key={k.l} className="rounded-xl p-3.5" style={{ background: '#1E1E1E', border: '1px solid rgba(242,110,31,0.18)' }}>
-                  <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{k.l}</div>
-                  <div className="font-black text-[20px] leading-none" style={{ color: (k as any).c || '#fff' }}>{k.v}</div>
-                  <div className="text-[11px] font-medium mt-1" style={{ color: '#555' }}>{k.sub}</div>
-                </div>
-              ))}
+            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Duración media</div>
+              <div className="font-black text-[28px] text-white leading-none">{trDurMedia !== null ? `${trDurMedia}m` : '—'}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>por operación</div>
             </div>
-          </>
+            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Capital total JV</div>
+              <div className="font-black text-[28px] text-white leading-none">{trCapTotal > 0 ? fmtK(trCapTotal) : '—'}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>invertido en operaciones</div>
+            </div>
+            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(242,110,31,0.2)' }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#F26E1F' }}>Capital HASU</div>
+              <div className="font-black text-[28px] text-white leading-none">{trCapHasu > 0 ? fmtK(trCapHasu) : '—'}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>parte HASU invertida</div>
+            </div>
+            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Benef. total JV</div>
+              <div className="font-black text-[28px] text-white leading-none">{trWithVenta.length > 0 ? (trBenefTotal >= 0 ? '+' : '') + fmtK(trBenefTotal) : '—'}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>suma operaciones con venta</div>
+            </div>
+            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(242,110,31,0.2)' }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#F26E1F' }}>Benef. HASU</div>
+              <div className="font-black text-[28px] text-white leading-none">{trWithVenta.length > 0 ? (trBenefHasu >= 0 ? '+' : '') + fmtK(trBenefHasu) : '—'}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>parte HASU del beneficio</div>
+            </div>
+            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>ROI HASU medio</div>
+              <div className="font-black text-[28px] text-white leading-none">{trWithVenta.length > 0 ? fmtPct(trRoiMedio) : '—'}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>media operaciones</div>
+            </div>
+            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>ROI anualizado</div>
+              <div className="font-black text-[28px] text-white leading-none">{trRoiAnual !== null ? fmtPct(trRoiAnual) : '—'}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>media anualizada</div>
+            </div>
+          </div>
         )}
 
         {/* Filtros y orden */}
@@ -276,7 +286,7 @@ export default function HasuPage() {
           </div>
         </div>
 
-        {/* Tabla */}
+        {/* Tabla — no modificar */}
         {loading ? (
           <div className="h-32 rounded-xl animate-pulse" style={{ background: '#141414' }} />
         ) : filtered.length === 0 ? (
@@ -284,22 +294,25 @@ export default function HasuPage() {
         ) : (
           <div className="rounded-2xl overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="overflow-x-auto">
-              <table className="w-full" style={{ minWidth: 780 }}>
+              <table className="w-full" style={{ minWidth: 820 }}>
                 <thead>
-                  <tr style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    {['Proyecto','Tipo','Estructura','P. Compra','P. Venta','Dur.','Inv. Total','Benef. Total','Benef. HASU','ROI','ROI Anual.','Estado'].map(h => (
-                      <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
-                        style={{ color: 'rgba(255,255,255,0.35)' }}>{h}</th>
+                  <tr style={{ background: '#1A1A1A', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    {['Proyecto','Tipo','Estructura','P. Compra','P. Venta','Dur.','Inv. Total','Inv. HASU','Benef. Total','Benef. HASU','ROI HASU','ROI Anual.','Estado'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
+                        style={{ color: 'rgba(255,255,255,0.4)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((r, i) => {
-                    const inv     = getInv(r)
-                    const benef   = getBenef(r)
-                    const roi     = getRoi(r)
-                    const dur     = getDur(r)
-                    const roiAnu  = roiAnualizado(roi, dur)
+                    const inv      = getInv(r)
+                    const invHasu  = getInvHasu(r)
+                    const hasVenta = getVenta(r) > 0
+                    const benef    = getBenef(r)
+                    const benefHasu = benef * ((r.porcentaje_hasu || 100) / 100)
+                    const roi      = getRoi(r)
+                    const dur      = getDur(r)
+                    const roiAnu   = roiAnualizado(roi, dur)
                     const estColor = ESTADO_COLOR[r.estado] || '#888'
                     const ventaDate = r.fecha_salida_estimada
                       ? new Date(r.fecha_salida_estimada).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})
@@ -309,52 +322,55 @@ export default function HasuPage() {
                       : '—'
                     return (
                       <tr key={r.id} style={{ borderBottom: i < filtered.length-1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                        <td className="px-3 py-2.5 text-sm font-bold text-white whitespace-nowrap max-w-[140px]">
+                        <td className="px-4 py-3 text-sm font-bold text-white whitespace-nowrap max-w-[150px]">
                           <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.nombre}</div>
                         </td>
-                        <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                        <td className="px-4 py-3 text-sm whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.45)' }}>
                           {r.tipo || '—'}
                         </td>
-                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                        <td className="px-4 py-3 text-sm whitespace-nowrap">
                           {r.porcentaje_hasu >= 100
-                            ? <span className="font-bold px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>HASU 100%</span>
-                            : <span className="font-bold px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(242,110,31,0.12)', color: '#F26E1F' }}>JV {r.porcentaje_hasu}%</span>
+                            ? <span className="font-bold px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}>100%</span>
+                            : <span className="font-bold px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}>JV {r.porcentaje_hasu}%</span>
                           }
                         </td>
-                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
-                          <div className="font-mono font-bold" style={{ color: '#fff' }}>
+                        <td className="px-4 py-3 text-sm whitespace-nowrap">
+                          <div className="font-mono font-bold text-white">
                             {r.precio_compra ? fmtK(r.precio_compra) : '—'}
                           </div>
-                          {compraDate !== '—' && <div className="text-[10px] mt-0.5" style={{ color: '#555' }}>{compraDate}</div>}
+                          {compraDate !== '—' && <div className="text-[11px] mt-0.5" style={{ color: '#555' }}>{compraDate}</div>}
                         </td>
-                        <td className="px-3 py-2.5 text-xs whitespace-nowrap">
-                          <div className="font-mono font-bold" style={{ color: r.precio_venta_real ? '#22C55E' : 'rgba(255,255,255,0.5)' }}>
+                        <td className="px-4 py-3 text-sm whitespace-nowrap">
+                          <div className="font-mono font-bold text-white">
                             {getVenta(r) > 0 ? fmtK(getVenta(r)) : '—'}
-                            {!r.precio_venta_real && getVenta(r) > 0 && <span className="ml-1 text-[9px]" style={{ color: '#F59E0B' }}>est.</span>}
+                            {!r.precio_venta_real && getVenta(r) > 0 && <span className="ml-1 text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>est.</span>}
                           </div>
-                          {ventaDate !== '—' && <div className="text-[10px] mt-0.5" style={{ color: '#555' }}>{ventaDate}</div>}
+                          {ventaDate !== '—' && <div className="text-[11px] mt-0.5" style={{ color: '#555' }}>{ventaDate}</div>}
                         </td>
-                        <td className="px-3 py-2.5 text-xs font-bold whitespace-nowrap text-center" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                        <td className="px-4 py-3 text-sm font-bold whitespace-nowrap text-center" style={{ color: 'rgba(255,255,255,0.55)' }}>
                           {dur !== null ? `${dur}m` : '—'}
                         </td>
-                        <td className="px-3 py-2.5 text-xs font-mono font-bold whitespace-nowrap" style={{ color: '#fff' }}>
+                        <td className="px-4 py-3 text-sm font-mono font-bold text-white whitespace-nowrap">
                           {inv > 0 ? fmtK(inv) : '—'}
                         </td>
-                        <td className="px-3 py-2.5 text-xs font-mono font-bold whitespace-nowrap" style={{ color: benef >= 0 ? '#22C55E' : '#EF4444' }}>
-                          {inv > 0 ? (benef >= 0 ? '+' : '') + fmtK(benef) : '—'}
+                        <td className="px-4 py-3 text-sm font-mono font-bold whitespace-nowrap" style={{ color: invHasu !== null ? '#fff' : '#444' }}>
+                          {invHasu !== null ? fmtK(invHasu) : '—'}
                         </td>
-                        <td className="px-3 py-2.5 text-xs font-mono font-bold whitespace-nowrap" style={{ color: benef >= 0 ? '#F26E1F' : '#EF4444' }}>
-                          {inv > 0 ? (benef >= 0 ? '+' : '') + fmtK(benef * (r.porcentaje_hasu || 100) / 100) : '—'}
+                        <td className="px-4 py-3 text-sm font-mono font-bold text-white whitespace-nowrap">
+                          {inv > 0 && hasVenta ? (benef >= 0 ? '+' : '') + fmtK(benef) : '—'}
                         </td>
-                        <td className="px-3 py-2.5 text-xs font-bold whitespace-nowrap" style={{ color: roi >= 0 ? '#22C55E' : '#EF4444' }}>
-                          {inv > 0 ? fmtPct(roi) : '—'}
+                        <td className="px-4 py-3 text-sm font-mono font-bold text-white whitespace-nowrap">
+                          {inv > 0 && hasVenta ? (benefHasu >= 0 ? '+' : '') + fmtK(benefHasu) : '—'}
                         </td>
-                        <td className="px-3 py-2.5 text-xs font-bold whitespace-nowrap" style={{ color: (roiAnu ?? 0) >= 0 ? '#60A5FA' : '#EF4444' }}>
-                          {roiAnu !== null ? fmtPct(roiAnu) : '—'}
+                        <td className="px-4 py-3 text-sm font-bold whitespace-nowrap" style={{ color: hasVenta ? (roi >= 0 ? '#22C55E' : '#EF4444') : '#444' }}>
+                          {inv > 0 && hasVenta ? fmtPct(roi) : '—'}
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: `${estColor}20`, color: estColor }}>
+                        <td className="px-4 py-3 text-sm font-bold whitespace-nowrap" style={{ color: hasVenta && roiAnu !== null ? (roiAnu >= 0 ? '#22C55E' : '#EF4444') : '#444' }}>
+                          {roiAnu !== null && hasVenta ? fmtPct(roiAnu) : '—'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                            style={{ background: `${estColor}18`, color: estColor }}>
                             {ESTADO_LABEL[r.estado] || r.estado}
                           </span>
                         </td>
@@ -362,6 +378,57 @@ export default function HasuPage() {
                     )
                   })}
                 </tbody>
+                {(() => {
+                  const withVenta   = filtered.filter(r => getVenta(r) > 0 && getInv(r) > 0)
+                  const withDur     = filtered.filter(r => getDur(r) !== null)
+                  const withRoiAnu  = filtered.filter(r => {
+                    const dur = getDur(r); const roi = getRoi(r)
+                    return getVenta(r) > 0 && dur !== null && roiAnualizado(roi, dur) !== null
+                  })
+                  const totalInv     = filtered.reduce((s, r) => s + getInv(r), 0)
+                  const totalInvH    = filtered.reduce((s, r) => s + (getInvHasu(r) ?? 0), 0)
+                  const totalBenef   = withVenta.reduce((s, r) => s + getBenef(r), 0)
+                  const totalBenefH  = withVenta.reduce((s, r) => s + getBenefHasu(r), 0)
+                  const roiMedioTbl  = withVenta.length > 0 ? withVenta.reduce((s, r) => s + getRoi(r), 0) / withVenta.length : null
+                  const roiAnuMedio  = withRoiAnu.length > 0
+                    ? withRoiAnu.reduce((s, r) => { const d = getDur(r); return s + (roiAnualizado(getRoi(r), d) ?? 0) }, 0) / withRoiAnu.length
+                    : null
+                  const durMedia     = withDur.length > 0 ? Math.round(withDur.reduce((s, r) => s + (getDur(r) ?? 0), 0) / withDur.length) : null
+                  return (
+                    <tfoot>
+                      <tr style={{ borderTop: '2px solid rgba(255,255,255,0.1)', background: '#1A1A1A' }}>
+                        <td className="px-4 py-3 text-xs font-black uppercase tracking-wide whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          {filtered.length} operaciones
+                        </td>
+                        <td colSpan={2} />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3 text-sm font-black text-center whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                          {durMedia !== null ? `${durMedia}m` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-black font-mono text-white whitespace-nowrap">
+                          {totalInv > 0 ? fmtK(totalInv) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-black font-mono text-white whitespace-nowrap">
+                          {totalInvH > 0 ? fmtK(totalInvH) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-black font-mono text-white whitespace-nowrap">
+                          {withVenta.length > 0 ? (totalBenef >= 0 ? '+' : '') + fmtK(totalBenef) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-black font-mono text-white whitespace-nowrap">
+                          {withVenta.length > 0 ? (totalBenefH >= 0 ? '+' : '') + fmtK(totalBenefH) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-black whitespace-nowrap" style={{ color: roiMedioTbl !== null ? (roiMedioTbl >= 0 ? '#22C55E' : '#EF4444') : '#444' }}>
+                          {roiMedioTbl !== null ? fmtPct(roiMedioTbl) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-black whitespace-nowrap" style={{ color: roiAnuMedio !== null ? (roiAnuMedio >= 0 ? '#22C55E' : '#EF4444') : '#444' }}>
+                          {roiAnuMedio !== null ? fmtPct(roiAnuMedio) : '—'}
+                        </td>
+                        <td className="px-4 py-3" />
+                      </tr>
+                    </tfoot>
+                  )
+                })()}
               </table>
             </div>
           </div>
