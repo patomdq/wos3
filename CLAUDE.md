@@ -74,6 +74,8 @@ Pendiente técnico detectado:
   - Pato quiere poder invitar desde el bot directamente sin ir al calendario
 
 Bugs detectados:
+- 🐛 Bot muestra tareas antiguas junto a las nuevas — la lista de agenda_tasks no filtra por estado ni fecha, acumula todo
+  - Fix: mostrar solo tareas pendientes / de hoy en adelante, no el histórico completo
 - ⚠️ Bot tarda mucho en responder a "avance de obra" — verificado que SÍ funciona y graba correctamente
   - El bot se quedó "escribiendo" ~1-2 min antes de responder
   - Ambas acciones (avance_reforma 80% + evento calendario) se grabaron correctamente
