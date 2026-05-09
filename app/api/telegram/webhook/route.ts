@@ -489,7 +489,7 @@ Formato:
 {
   "accion": "crear" | "eliminar" | "listar",
   "titulo": "título del evento o null",
-  "fecha": "YYYY-MM-DD o null (calcula fechas relativas como 'mañana', 'lunes', etc.)",
+  "fecha": "YYYY-MM-DD o null. Para 'listar': si el usuario dice 'hoy', 'mañana', 'el lunes', etc., calculá la fecha exacta y ponla aquí. Si no especifica día (ej: 'próximos eventos'), dejá null.",
   "hora_inicio": "HH:MM o null",
   "hora_fin": "HH:MM o null",
   "descripcion": "descripción o null",
@@ -556,18 +556,28 @@ Mensaje: "${text.replace(/"/g, "'")}"` }],
   }
 
   if (intent.accion === 'listar') {
-    const tMin = new Date().toISOString()
-    const tMax = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    // Si Claude resolvió una fecha concreta (hoy, mañana), usar solo ese día
+    const targetDate = intent.fecha || null
+    let tMin: string, tMax: string, label: string
+    if (targetDate) {
+      tMin = new Date(targetDate + 'T00:00:00').toISOString()
+      tMax = new Date(targetDate + 'T23:59:59').toISOString()
+      label = targetDate === today ? 'hoy' : targetDate
+    } else {
+      tMin = new Date().toISOString()
+      tMax = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      label = 'los próximos 7 días'
+    }
     const events = await gcalListEvents(accessToken, tMin, tMax)
-    if (events.length === 0) { await sendMessage(chatId, '📅 Sin eventos en los próximos 7 días.'); return true }
-    const lines = events.slice(0, 10).map(e => {
-      const date = (e.start.dateTime || e.start.date || '').slice(0, 10)
+    if (events.length === 0) { await sendMessage(chatId, `📅 Sin eventos para ${label}.`); return true }
+    const lines = events.slice(0, 15).map(e => {
       const time = e.start.dateTime
         ? new Date(e.start.dateTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' })
         : 'Todo el día'
-      return `📍 ${date} ${time} — ${e.summary || 'Sin título'}`
+      return `📍 ${time} — ${e.summary || 'Sin título'}`
     })
-    await sendMessage(chatId, `📅 Próximos eventos:\n\n${lines.join('\n')}`)
+    const header = targetDate ? `📅 Eventos del ${label}:` : `📅 Próximos eventos:`
+    await sendMessage(chatId, `${header}\n\n${lines.join('\n')}`)
     return true
   }
 
