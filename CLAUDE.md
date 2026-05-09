@@ -39,31 +39,32 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
-**Última sesión — 08/05/2026**
+**Última sesión — 09/05/2026**
 
 Hecho hoy:
-- Bot Telegram `@wos3radar_bot` creado y conectado a WOS3
-- Webhook `POST /api/telegram/webhook` implementado con 4 modos:
-  - Modo A: texto libre → Claude + fallback regex
-  - Modo B: links Idealista/Fotocasa → scraping automático
-  - Modo C: fotos/capturas → Claude Vision
-  - Modo D: audio/nota de voz → Whisper API (OpenAI)
-- Comparables Fotocasa automáticos si falta precio_venta_est
-- Confirmación con botones inline antes de subir al Radar
-- Migración Supabase: 10 columnas nuevas en `inmuebles_radar`
+- Bot Telegram: precio dual Fotocasa + Notariado lado a lado
+- Fotocasa filtrado por superficie ±40% para comparables específicos al producto
+- No auto-estima precio_venta si Fotocasa < precio_pedido × 1.1 (evita ROI negativo con datos incorrectos)
+- Bot muestra referencias de mercado aunque falten datos para ROI
+- Duración de operación extraída del mensaje → ROI anualizado calculado y mostrado
+- Gastos desglosados: Notaría+Registro 1k y ITP 2% por separado
+- fmt() mejorado: muestra decimales para valores < 10k (ej: 1.3k)
+- Handler bitácora en bot Telegram: detecta "agrega/nota/oferta" y graba en bitacora_estudio
+- Fix chat WOS3: token fresco en cada request (evita "No autorizado" tras 1h)
+- Fix búsqueda inmuebles_estudio: incluye titulo y ciudad en OR (resolvía mal "Duplex Pulpi")
+- Columna duracion_meses agregada a inmuebles_radar
+- Policies anon en bitacora_estudio para operaciones con anon key
 
 Pendiente / en prueba:
-- Modo D (audio): Pato necesita cargar créditos en OpenAI (error 429)
-- Modo C (Vision): funciona con créditos Anthropic activos
+- Modo D audio Telegram: bloqueado sin créditos OpenAI
 
 Próxima tarea acordada:
-- Probar bot completo cuando OpenAI tenga créditos
+- Módulos de resumen HASU no coinciden con tabla real (pendiente resolver)
 - Siguiente feature a definir con Pato
 
 Bloqueos abiertos:
-- OpenAI: sin créditos → Modo D (audio) bloqueado
+- OpenAI: sin créditos → Modo D (audio Telegram) bloqueado
 - Idealista API: sin respuesta, usando web search como fallback
-- SUPABASE_SERVICE_KEY: pendiente en Vercel para invites reales
 
 ---
 
@@ -76,7 +77,10 @@ Bloqueos abiertos:
 | Bot Telegram → Radar | ✅ producción |
 | Análisis de inversión | ✅ producción |
 | Imágenes en chat | ✅ producción |
+| Bitácora via bot (Telegram + chat WOS3) | ✅ producción |
+| ROI anualizado en bot | ✅ producción |
 | Audio bot Telegram (Whisper) | ⏳ bloqueado — sin créditos OpenAI |
+| Módulos HASU vs tabla real | ⏳ pendiente |
 | Evaluador cambio de uso 🔴🟡🟢 | ⏳ pendiente |
 | Evaluador tipología edificio | ⏳ pendiente |
 | Módulo edificios / multivivienda | ⏳ pendiente |
