@@ -67,10 +67,11 @@ Pendiente / en prueba:
 - Verificar briefing en producción mañana a las 8:00 (primera ejecución real del cron)
 
 Bugs detectados:
-- 🐛 Bot no responde a "registra un avance de obra en chalet las dalias de un 80%"
-  - El bot se quedó "escribiendo" indefinidamente sin responder
-  - Probable causa: el intent "avance de obra" no tiene handler propio — cae en extracción de inmueble y falla
-  - Fix necesario: detectar "avance de obra / avance reforma / % obra" y actualizar campo `avance_reforma` en tabla `proyectos`
+- ⚠️ Bot tarda mucho en responder a "avance de obra" — verificado que SÍ funciona y graba correctamente
+  - El bot se quedó "escribiendo" ~1-2 min antes de responder
+  - Ambas acciones (avance_reforma 80% + evento calendario) se grabaron correctamente
+  - Probable causa: cold start de Vercel + Claude API en la misma request
+  - A vigilar: si se repite con frecuencia, separar el handler de avance de obra para que sea más rápido
 
 Próximas tareas acordadas (domingo 10/05/2026):
 
