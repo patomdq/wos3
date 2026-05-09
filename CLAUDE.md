@@ -66,10 +66,18 @@ Pendiente / en prueba:
 - Modo D audio Telegram: bloqueado sin créditos OpenAI
 - Verificar briefing en producción mañana a las 8:00 (primera ejecución real del cron)
 
-Próxima tarea acordada (domingo 10/05/2026):
-- Revisar módulo Proyectos en WOS3: los números no coinciden con el área HASU
-- Objetivo: que toda la sección Proyectos esté supeditada a los movimientos de la tabla maestra de HASU
-- La tabla maestra de HASU es la fuente de verdad — WOS3 debe leerla y reflejarla, no calcular por su cuenta
+Próximas tareas acordadas (domingo 10/05/2026):
+
+1. Revisar módulo Proyectos en WOS3: los números no coinciden con el área HASU
+   - Objetivo: que toda la sección Proyectos esté supeditada a los movimientos de la tabla maestra de HASU
+   - La tabla maestra de HASU es la fuente de verdad — WOS3 debe leerla y reflejarla, no calcular por su cuenta
+
+2. Sistema de @menciones en bitácora (como Trello)
+   - Cada usuario tiene su @handle (ej: @pato, @silvia, @jl)
+   - Cuando alguien escribe una nota en la bitácora de cualquier proyecto y menciona un @usuario, ese usuario recibe alerta por Telegram
+   - La alerta incluye: proyecto, quién escribió, y el contenido de la nota
+   - Sin esto las notas con preguntas quedan sin respuesta porque nadie se entera
+   - Requiere: tabla de usuarios con chat_id de Telegram, parser de @menciones en bitácora, envío por bot
 
 Bloqueos abiertos:
 - OpenAI: sin créditos → Modo D (audio Telegram) bloqueado
@@ -95,7 +103,8 @@ Bloqueos abiertos:
 | ROI anualizado en bot | ✅ producción |
 | Morning Briefing automático (Telegram 8:00 AM) | ✅ producción |
 | Audio bot Telegram (Whisper) | ⏳ bloqueado — sin créditos OpenAI |
-| Módulos HASU vs tabla real | ⏳ pendiente |
+| Proyectos WOS3 alineado con tabla maestra HASU | ⏳ pendiente |
+| @menciones en bitácora con alerta Telegram | ⏳ pendiente |
 | Evaluador cambio de uso 🔴🟡🟢 | ⏳ pendiente |
 | Evaluador tipología edificio | ⏳ pendiente |
 | Módulo edificios / multivivienda | ⏳ pendiente |
