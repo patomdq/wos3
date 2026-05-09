@@ -470,7 +470,7 @@ function addOneHour(time: string): string {
   return `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-const CALENDAR_KEYWORDS = /\b(agenda\s+(?!en\s+bitácora|una?\s+nota|apunta)|crea\s+evento|nuevo\s+evento|nueva\s+cita|cancela\s+evento|borra\s+evento|elimina\s+evento|modifica\s+evento|qué\s+tengo|próximos\s+eventos?)\b/i
+const CALENDAR_KEYWORDS = /\b(agenda\s+(?!en\s+bitácora|una?\s+nota|apunta)|crea\s+evento|nuevo\s+evento|nueva\s+cita|cancela\s+evento|borra\s+evento|elimina\s+evento|modifica\s+evento|qué\s+tengo|próximos?\s+eventos?|eventos?\s+(de\s+)?(hoy|mañana|esta\s+semana)|tengo\s+(algo\s+)?(hoy|mañana)|qué\s+(hay|eventos?)\s+(hoy|mañana|esta\s+semana))\b/i
 const TASK_KEYWORDS     = /\b(nueva\s+tarea|tarea\s+personal|tarea\s+(de\s+)?trabajo|marca\s+(la\s+)?tarea|borra\s+(la\s+)?tarea|elimina\s+(la\s+)?tarea|mis\s+tareas|lista\s+(de\s+)?tareas?|agrega?\s+tarea)\b/i
 
 async function handleCalendarCommand(chatId: number, text: string): Promise<boolean> {
