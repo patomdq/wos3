@@ -66,6 +66,12 @@ Pendiente / en prueba:
 - Modo D audio Telegram: bloqueado sin créditos OpenAI
 - Verificar briefing en producción mañana a las 8:00 (primera ejecución real del cron)
 
+Bugs detectados:
+- 🐛 Bot no responde a "registra un avance de obra en chalet las dalias de un 80%"
+  - El bot se quedó "escribiendo" indefinidamente sin responder
+  - Probable causa: el intent "avance de obra" no tiene handler propio — cae en extracción de inmueble y falla
+  - Fix necesario: detectar "avance de obra / avance reforma / % obra" y actualizar campo `avance_reforma` en tabla `proyectos`
+
 Próximas tareas acordadas (domingo 10/05/2026):
 
 1. Revisar módulo Proyectos en WOS3: los números no coinciden con el área HASU
