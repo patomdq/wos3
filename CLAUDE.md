@@ -54,9 +54,17 @@ Hecho hoy:
 - Fix búsqueda inmuebles_estudio: incluye titulo y ciudad en OR (resolvía mal "Duplex Pulpi")
 - Columna duracion_meses agregada a inmuebles_radar
 - Policies anon en bitacora_estudio para operaciones con anon key
+- **Morning Briefing automático**: endpoint `/api/telegram/morning-briefing` + cron Vercel `0 6 * * *` (8:00 Madrid)
+  - Lee Supabase en paralelo: objetivo 1M€, operaciones activas, radar, última compra
+  - Alertas automáticas: días sin compra >30, proyectos parados >14 días, fecha clave <7 días
+  - Google Calendar integrado — eventos del día desde cuenta org
+  - Foco del día generado por Claude API en imperativo ≤15 palabras
+  - Solo llega a Pato (TELEGRAM_CHAT_ID_PATO = 5816771550)
+  - Si Supabase falla → envía igual con aviso de error
 
 Pendiente / en prueba:
 - Modo D audio Telegram: bloqueado sin créditos OpenAI
+- Verificar briefing en producción mañana a las 8:00 (primera ejecución real del cron)
 
 Próxima tarea acordada:
 - Módulos de resumen HASU no coinciden con tabla real (pendiente resolver)
@@ -65,6 +73,11 @@ Próxima tarea acordada:
 Bloqueos abiertos:
 - OpenAI: sin créditos → Modo D (audio Telegram) bloqueado
 - Idealista API: sin respuesta, usando web search como fallback
+
+**Variables de entorno críticas (producción Vercel)**
+- `TELEGRAM_BOT_TOKEN` — bot activo
+- `TELEGRAM_CHAT_ID_PATO` — 5816771550 (añadida 09/05/2026)
+- `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_KEY`, `NEXT_PUBLIC_SUPABASE_URL/ANON_KEY` — ya existían
 
 ---
 
@@ -79,6 +92,7 @@ Bloqueos abiertos:
 | Imágenes en chat | ✅ producción |
 | Bitácora via bot (Telegram + chat WOS3) | ✅ producción |
 | ROI anualizado en bot | ✅ producción |
+| Morning Briefing automático (Telegram 8:00 AM) | ✅ producción |
 | Audio bot Telegram (Whisper) | ⏳ bloqueado — sin créditos OpenAI |
 | Módulos HASU vs tabla real | ⏳ pendiente |
 | Evaluador cambio de uso 🔴🟡🟢 | ⏳ pendiente |
