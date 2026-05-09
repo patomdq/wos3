@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { authFetch } from '@/lib/auth-fetch'
+import { supabase } from '@/lib/supabase'
 
 type GCalEvent = {
   id: string; summary: string; description?: string
@@ -44,13 +45,6 @@ const STATE_ICON: Record<TaskState, string>    = { pendiente:'○', en_proceso:'
 const STATE_COLOR: Record<TaskState, string>   = { pendiente:'rgba(255,255,255,0.3)', en_proceso:'#F59E0B', hecho:'#22C55E' }
 const STATE_LABEL: Record<TaskState, string>   = { pendiente:'Pendiente', en_proceso:'En proceso', hecho:'Hecho' }
 
-function loadTasks(): Task[] {
-  if (typeof window === 'undefined') return []
-  try { return JSON.parse(localStorage.getItem('hasu_tasks') || '[]') } catch { return [] }
-}
-function saveTasks(tasks: Task[]) {
-  if (typeof window !== 'undefined') localStorage.setItem('hasu_tasks', JSON.stringify(tasks))
-}
 
 export default function CalendarioPage() {
   const router = useRouter()
@@ -76,16 +70,33 @@ export default function CalendarioPage() {
   const [taskCat,   setTaskCat]   = useState<TaskCat>('personal')
   const [newTask,   setNewTask]   = useState('')
 
-  useEffect(() => { setTasks(loadTasks()) }, [])
+  useEffect(() => {
+    supabase.from('agenda_tasks').select('id, title, category, status').order('created_at')
+      .then(({ data }) => {
+        if (data) setTasks(data.map(r => ({ id: r.id, texto: r.title, categoria: r.category as TaskCat, estado: r.status as TaskState })))
+      })
+  }, [])
 
-  const mutateTasks = (next: Task[]) => { setTasks(next); saveTasks(next) }
-  const addTask = () => {
+  const addTask = async () => {
     if (!newTask.trim()) return
-    mutateTasks([...tasks, { id: Date.now().toString(), texto: newTask.trim(), categoria: taskCat, estado: 'pendiente' }])
-    setNewTask('')
+    const { data, error } = await supabase.from('agenda_tasks')
+      .insert({ title: newTask.trim(), category: taskCat, status: 'pendiente' }).select().single()
+    if (!error && data) {
+      setTasks(prev => [...prev, { id: data.id, texto: data.title, categoria: data.category as TaskCat, estado: data.status as TaskState }])
+      setNewTask('')
+    }
   }
-  const toggleTask = (id: string) => mutateTasks(tasks.map(t => t.id === id ? { ...t, estado: STATE_NEXT[t.estado] } : t))
-  const deleteTask = (id: string) => mutateTasks(tasks.filter(t => t.id !== id))
+  const toggleTask = async (id: string) => {
+    const task = tasks.find(t => t.id === id)
+    if (!task) return
+    const next = STATE_NEXT[task.estado]
+    const { error } = await supabase.from('agenda_tasks').update({ status: next }).eq('id', id)
+    if (!error) setTasks(prev => prev.map(t => t.id === id ? { ...t, estado: next } : t))
+  }
+  const deleteTask = async (id: string) => {
+    const { error } = await supabase.from('agenda_tasks').delete().eq('id', id)
+    if (!error) setTasks(prev => prev.filter(t => t.id !== id))
+  }
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
 

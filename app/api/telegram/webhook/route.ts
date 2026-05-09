@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 import { calcCostoTotal, calcROI, calcPrecioMaxCompra } from '@/lib/formulas'
 import { scrapeIdealista } from '@/lib/scrape-idealista'
 import { buscarComparables } from '@/lib/search-comparables'
+import { gcalCreateEvent, gcalDeleteEvent, gcalListEvents } from '@/lib/googleCalendar'
+import { getOrgAccessToken } from '@/lib/gcalToken'
 
 export const maxDuration = 60
 
@@ -456,6 +458,195 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
   ].filter((l): l is string => l !== null && l !== undefined).join('\n')
 }
 
+// ── Agenda helpers ────────────────────────────────────────────────────────────
+
+type TaskState = 'pendiente' | 'en_proceso' | 'hecho'
+const TASK_STATE_NEXT: Record<TaskState, TaskState> = { pendiente: 'en_proceso', en_proceso: 'hecho', hecho: 'pendiente' }
+const TASK_STATE_ICON: Record<TaskState, string>    = { pendiente: '○', en_proceso: '◑', hecho: '✓' }
+const TASK_STATE_LABEL: Record<TaskState, string>   = { pendiente: 'Pendiente', en_proceso: 'En proceso', hecho: 'Hecho' }
+
+function addOneHour(time: string): string {
+  const [h, m] = time.split(':').map(Number)
+  return `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+const CALENDAR_KEYWORDS = /\b(agenda\s+(?!en\s+bitácora|una?\s+nota|apunta)|crea\s+evento|nuevo\s+evento|nueva\s+cita|cancela\s+evento|borra\s+evento|elimina\s+evento|modifica\s+evento|qué\s+tengo|próximos\s+eventos?)\b/i
+const TASK_KEYWORDS     = /\b(nueva\s+tarea|tarea\s+personal|tarea\s+(de\s+)?trabajo|marca\s+(la\s+)?tarea|borra\s+(la\s+)?tarea|elimina\s+(la\s+)?tarea|mis\s+tareas|lista\s+(de\s+)?tareas?|agrega?\s+tarea)\b/i
+
+async function handleCalendarCommand(chatId: number, text: string): Promise<boolean> {
+  if (!CALENDAR_KEYWORDS.test(text)) return false
+
+  const today = new Date().toISOString().split('T')[0]
+  let intent: { accion: string; titulo?: string; fecha?: string; hora_inicio?: string; hora_fin?: string; descripcion?: string; todo_el_dia?: boolean; titulo_buscar?: string } = { accion: 'crear' }
+
+  try {
+    const res = await anthropic.messages.create({
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
+      max_tokens: 400,
+      messages: [{ role: 'user', content: `Extrae acción e info del evento del siguiente mensaje. Hoy es ${today} (zona horaria Europe/Madrid). Responde SOLO JSON válido sin texto extra.
+
+Formato:
+{
+  "accion": "crear" | "eliminar" | "listar",
+  "titulo": "título del evento o null",
+  "fecha": "YYYY-MM-DD o null (calcula fechas relativas como 'mañana', 'lunes', etc.)",
+  "hora_inicio": "HH:MM o null",
+  "hora_fin": "HH:MM o null",
+  "descripcion": "descripción o null",
+  "todo_el_dia": true | false,
+  "titulo_buscar": "nombre aproximado del evento a eliminar o null"
+}
+
+Mensaje: "${text.replace(/"/g, "'")}"` }],
+    })
+    const c = res.content[0]
+    if (c.type === 'text') intent = JSON.parse(c.text.match(/\{[\s\S]*\}/)?.[0] ?? '{}')
+  } catch (e) {
+    console.error('handleCalendarCommand intent error:', e)
+    return false
+  }
+
+  const accessToken = await getOrgAccessToken()
+  if (!accessToken) {
+    await sendMessage(chatId, '❌ Google Calendar no está conectado. Conectalo desde WOS3 > Calendario.')
+    return true
+  }
+
+  if (intent.accion === 'crear') {
+    if (!intent.titulo || !intent.fecha) {
+      await sendMessage(chatId, '❌ Necesito título y fecha para crear el evento.')
+      return true
+    }
+    const horaInicio = intent.hora_inicio || '10:00'
+    const horaFin    = intent.hora_fin    || addOneHour(horaInicio)
+    const startDT = intent.todo_el_dia ? intent.fecha : `${intent.fecha}T${horaInicio}:00`
+    const endDT   = intent.todo_el_dia ? intent.fecha : `${intent.fecha}T${horaFin}:00`
+    const event = await gcalCreateEvent(accessToken, {
+      title: intent.titulo,
+      description: intent.descripcion || '',
+      startDateTime: startDT,
+      endDateTime: endDT,
+      allDay: intent.todo_el_dia ?? false,
+    })
+    if (event) {
+      const timeStr = intent.todo_el_dia ? 'Todo el día' : `${horaInicio} → ${horaFin}`
+      await sendMessage(chatId, `✅ Evento creado\n\n📅 *${intent.titulo}*\n📆 ${intent.fecha} · ${timeStr}${intent.descripcion ? `\n📝 ${intent.descripcion}` : ''}`)
+    } else {
+      await sendMessage(chatId, '❌ Error al crear el evento. Intenta de nuevo.')
+    }
+    return true
+  }
+
+  if (intent.accion === 'eliminar') {
+    if (!intent.titulo_buscar) {
+      await sendMessage(chatId, '❌ Dime el nombre del evento a eliminar.')
+      return true
+    }
+    const tMin = new Date().toISOString()
+    const tMax = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()
+    const events = await gcalListEvents(accessToken, tMin, tMax)
+    const match = events.find(e => e.summary?.toLowerCase().includes(intent.titulo_buscar!.toLowerCase()))
+    if (!match) {
+      await sendMessage(chatId, `❌ No encontré "${intent.titulo_buscar}" en los próximos 60 días.`)
+      return true
+    }
+    const deleted = await gcalDeleteEvent(accessToken, match.id)
+    await sendMessage(chatId, deleted ? `🗑️ Evento eliminado: "${match.summary}"` : '❌ Error al eliminar el evento.')
+    return true
+  }
+
+  if (intent.accion === 'listar') {
+    const tMin = new Date().toISOString()
+    const tMax = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    const events = await gcalListEvents(accessToken, tMin, tMax)
+    if (events.length === 0) { await sendMessage(chatId, '📅 Sin eventos en los próximos 7 días.'); return true }
+    const lines = events.slice(0, 10).map(e => {
+      const date = (e.start.dateTime || e.start.date || '').slice(0, 10)
+      const time = e.start.dateTime
+        ? new Date(e.start.dateTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' })
+        : 'Todo el día'
+      return `📍 ${date} ${time} — ${e.summary || 'Sin título'}`
+    })
+    await sendMessage(chatId, `📅 Próximos eventos:\n\n${lines.join('\n')}`)
+    return true
+  }
+
+  return false
+}
+
+async function handleTaskCommand(chatId: number, text: string): Promise<boolean> {
+  if (!TASK_KEYWORDS.test(text)) return false
+
+  let intent: { accion: string; titulo?: string; categoria?: string; estado?: string; titulo_buscar?: string } = { accion: 'crear' }
+
+  try {
+    const res = await anthropic.messages.create({
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: `Extrae acción e info de tarea del siguiente mensaje. Responde SOLO JSON válido sin texto extra.
+
+Formato:
+{
+  "accion": "crear" | "actualizar" | "eliminar" | "listar",
+  "titulo": "título de la tarea o null",
+  "categoria": "personal" | "trabajo",
+  "estado": "pendiente" | "en_proceso" | "hecho" (para actualizar),
+  "titulo_buscar": "texto parcial para buscar la tarea (actualizar/eliminar) o null"
+}
+
+Mensaje: "${text.replace(/"/g, "'")}"` }],
+    })
+    const c = res.content[0]
+    if (c.type === 'text') intent = JSON.parse(c.text.match(/\{[\s\S]*\}/)?.[0] ?? '{}')
+  } catch (e) {
+    console.error('handleTaskCommand intent error:', e)
+    return false
+  }
+
+  if (intent.accion === 'crear') {
+    if (!intent.titulo) { await sendMessage(chatId, '❌ Dime el título de la tarea.'); return true }
+    const cat = (intent.categoria === 'trabajo' ? 'trabajo' : 'personal') as 'personal' | 'trabajo'
+    const { error } = await supabase.from('agenda_tasks').insert({ title: intent.titulo, category: cat, status: 'pendiente' })
+    if (error) { await sendMessage(chatId, '❌ Error al crear la tarea.') }
+    else { await sendMessage(chatId, `✅ Tarea creada\n\n○ ${intent.titulo}\n📂 ${cat === 'trabajo' ? 'Trabajo' : 'Personal'} · Pendiente`) }
+    return true
+  }
+
+  if (intent.accion === 'actualizar') {
+    if (!intent.titulo_buscar) { await sendMessage(chatId, '❌ Dime cuál tarea actualizar.'); return true }
+    const { data: found } = await supabase.from('agenda_tasks').select('id, title, status').ilike('title', `%${intent.titulo_buscar}%`).limit(1).single()
+    if (!found) { await sendMessage(chatId, `❌ No encontré tarea con "${intent.titulo_buscar}".`); return true }
+    const currentState = found.status as TaskState
+    const newStatus = (intent.estado as TaskState) || TASK_STATE_NEXT[currentState]
+    const { error } = await supabase.from('agenda_tasks').update({ status: newStatus }).eq('id', found.id)
+    if (error) { await sendMessage(chatId, '❌ Error al actualizar la tarea.') }
+    else { await sendMessage(chatId, `${TASK_STATE_ICON[newStatus]} Tarea actualizada\n\n${found.title} → ${TASK_STATE_LABEL[newStatus]}`) }
+    return true
+  }
+
+  if (intent.accion === 'eliminar') {
+    if (!intent.titulo_buscar) { await sendMessage(chatId, '❌ Dime cuál tarea eliminar.'); return true }
+    const { data: found } = await supabase.from('agenda_tasks').select('id, title').ilike('title', `%${intent.titulo_buscar}%`).limit(1).single()
+    if (!found) { await sendMessage(chatId, `❌ No encontré tarea con "${intent.titulo_buscar}".`); return true }
+    const { error } = await supabase.from('agenda_tasks').delete().eq('id', found.id)
+    if (error) { await sendMessage(chatId, '❌ Error al eliminar la tarea.') }
+    else { await sendMessage(chatId, `🗑️ Tarea eliminada: "${found.title}"`) }
+    return true
+  }
+
+  if (intent.accion === 'listar') {
+    let q = supabase.from('agenda_tasks').select('title, category, status').neq('status', 'hecho').order('created_at')
+    if (intent.categoria) q = q.eq('category', intent.categoria)
+    const { data: tasks } = await q.limit(20)
+    if (!tasks || tasks.length === 0) { await sendMessage(chatId, '📋 No hay tareas pendientes.'); return true }
+    const lines = tasks.map(t => `${TASK_STATE_ICON[t.status as TaskState]} [${t.category}] ${t.title}`)
+    await sendMessage(chatId, `📋 Tareas pendientes:\n\n${lines.join('\n')}`)
+    return true
+  }
+
+  return false
+}
+
 // ── Bitácora handler ─────────────────────────────────────────────────────────
 
 const NOTE_KEYWORDS = /\b(bita[ck]ora|agrega|anota|apunta|actualiza|oferta|avance|seguimiento|nota)\b/i
@@ -630,6 +821,18 @@ export async function POST(req: NextRequest) {
 
   const urlMatch = text.match(/https?:\/\/(?:www\.)?(?:idealista\.com|fotocasa\.es)[^\s]*/i)
   const hasPhotos = !!(message.photo?.length)
+
+  // Calendar events
+  try {
+    const handled = await handleCalendarCommand(chatId, text)
+    if (handled) return NextResponse.json({ ok: true })
+  } catch (e) { console.error('handleCalendarCommand error:', e) }
+
+  // Tasks
+  try {
+    const handled = await handleTaskCommand(chatId, text)
+    if (handled) return NextResponse.json({ ok: true })
+  } catch (e) { console.error('handleTaskCommand error:', e) }
 
   // Bitácora — detect note commands and route before new-entry processing
   try {
