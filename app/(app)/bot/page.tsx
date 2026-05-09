@@ -150,11 +150,13 @@ export default function BotPage() {
       const body: Record<string, unknown> = { messages: newHistorial, context: contextRef.current }
       if (img) { body.imageData = img.base64; body.mediaType = img.mediaType }
 
+      const { data: { session: freshSession } } = await supabase.auth.getSession()
+      const token = freshSession?.access_token || sessionToken
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {}),
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(body),
       })
