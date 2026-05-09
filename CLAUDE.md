@@ -66,9 +66,10 @@ Pendiente / en prueba:
 - Modo D audio Telegram: bloqueado sin créditos OpenAI
 - Verificar briefing en producción mañana a las 8:00 (primera ejecución real del cron)
 
-Próxima tarea acordada:
-- Módulos de resumen HASU no coinciden con tabla real (pendiente resolver)
-- Siguiente feature a definir con Pato
+Próxima tarea acordada (domingo 10/05/2026):
+- Revisar módulo Proyectos en WOS3: los números no coinciden con el área HASU
+- Objetivo: que toda la sección Proyectos esté supeditada a los movimientos de la tabla maestra de HASU
+- La tabla maestra de HASU es la fuente de verdad — WOS3 debe leerla y reflejarla, no calcular por su cuenta
 
 Bloqueos abiertos:
 - OpenAI: sin créditos → Modo D (audio Telegram) bloqueado
