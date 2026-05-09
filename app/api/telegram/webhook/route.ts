@@ -485,7 +485,10 @@ Mensaje: "${text}"`,
     })
     const c = res.content[0]
     if (c.type === 'text') extracted = JSON.parse(c.text.match(/\{[\s\S]*\}/)?.[0] ?? '{}')
-  } catch { return false }
+  } catch (e) {
+    console.error('handleBitacora claude error:', e)
+    return false
+  }
 
   if (!extracted.contenido) return false
 
@@ -531,7 +534,11 @@ Mensaje: "${text}"`,
     const { error } = await supabase.from('bitacora_estudio').insert({
       estudio_id: estudioId, fecha, tipo, contenido, autor,
     })
-    if (error) { await sendMessage(chatId, '❌ Error al guardar en bitácora.'); return true }
+    if (error) {
+      console.error('bitacora_estudio insert error:', JSON.stringify(error))
+      await sendMessage(chatId, `❌ Error al guardar en bitácora: ${error.message}`)
+      return true
+    }
   } else if (radarId) {
     // Radar no tiene tabla bitácora — appenda a notas
     const { data: r } = await supabase.from('inmuebles_radar').select('notas').eq('id', radarId).single()
