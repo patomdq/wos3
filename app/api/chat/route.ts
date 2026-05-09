@@ -810,7 +810,7 @@ async function resolveInmueble(table: 'inmuebles_radar' | 'inmuebles_estudio', b
   // inmuebles_estudio tiene ambas columnas
   let query = supabaseAdmin.from(table).select('*')
   if (table === 'inmuebles_estudio') {
-    query = (query as any).or(`direccion.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%`)
+    query = (query as any).or(`direccion.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%,titulo.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`)
   } else {
     query = (query as any).ilike('direccion', `%${busqueda}%`)
   }
@@ -1244,7 +1244,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'insert_bitacora_estudio') {
       let estudios: any[]
       if (input.todos) {
-        const { data, error } = await supabaseAdmin.from('inmuebles_estudio').select('id, nombre, direccion').or(`direccion.ilike.%${input.busqueda}%,nombre.ilike.%${input.busqueda}%`)
+        const { data, error } = await supabaseAdmin.from('inmuebles_estudio').select('id, nombre, direccion, titulo, ciudad').or(`direccion.ilike.%${input.busqueda}%,nombre.ilike.%${input.busqueda}%,titulo.ilike.%${input.busqueda}%,ciudad.ilike.%${input.busqueda}%`)
         if (error) return { result: `Error al buscar: ${error.message}` }
         if (!data || data.length === 0) return { result: `No encontré inmuebles en estudio que coincidan con "${input.busqueda}".` }
         estudios = data
