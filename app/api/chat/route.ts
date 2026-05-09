@@ -388,6 +388,55 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'insert_agenda_tarea',
+    description: 'Crea una tarea de agenda personal o de trabajo (sección Calendario → Tareas). Usalo cuando el usuario pida agregar una tarea Personal o de Trabajo que NO está ligada a un proyecto. Ejemplos: "nueva tarea personal: llamar gestoría", "agrega tarea de trabajo: revisar contrato".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        titulo:    { type: 'string', description: 'Título de la tarea' },
+        categoria: { type: 'string', enum: ['personal', 'trabajo'], description: '"personal" o "trabajo"' },
+      },
+      required: ['titulo'],
+    },
+  },
+  {
+    name: 'update_agenda_tarea',
+    description: 'Actualiza el estado de una tarea de agenda (Personal/Trabajo). Usalo para marcar como hecho, en proceso o pendiente. Si no tenés el ID, usá listar_agenda_tareas primero.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id:     { type: 'string', description: 'UUID de la tarea en agenda_tasks' },
+        titulo: { type: 'string', description: 'Título actual (para confirmar al usuario)' },
+        estado: { type: 'string', enum: ['pendiente', 'en_proceso', 'hecho'], description: 'Nuevo estado' },
+      },
+      required: ['id', 'estado'],
+    },
+  },
+  {
+    name: 'delete_agenda_tarea',
+    description: 'Elimina una tarea de agenda (Personal/Trabajo). Si no tenés el ID, usá listar_agenda_tareas primero.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id:     { type: 'string', description: 'UUID de la tarea' },
+        titulo: { type: 'string', description: 'Título (para confirmar)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'listar_agenda_tareas',
+    description: 'Lista las tareas de agenda Personal/Trabajo. Usalo cuando el usuario pregunte por sus tareas generales (no de un proyecto). Filtrá por categoría si se especifica.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        categoria:      { type: 'string', enum: ['personal', 'trabajo'], description: 'Filtrar por categoría (opcional)' },
+        incluir_hechas: { type: 'boolean', description: 'true para incluir tareas ya completadas (default false)' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'update_proveedor',
     description: 'Edita un proveedor existente.',
     input_schema: {
@@ -1173,6 +1222,36 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const { error } = await supabaseAdmin.from('tareas').delete().eq('id', input.id)
       if (error) return { result: `Error al eliminar tarea: ${error.message}` }
       return { result: `Tarea eliminada: "${input.titulo || input.id}".` }
+    }
+    if (name === 'insert_agenda_tarea') {
+      const { data, error } = await supabaseAdmin.from('agenda_tasks').insert({
+        title:    input.titulo,
+        category: input.categoria || 'personal',
+        status:   'pendiente',
+      }).select().single()
+      if (error) return { result: `Error al crear tarea de agenda: ${error.message}` }
+      return { result: `Tarea de agenda creada. ID: ${data.id}. Título: "${data.title}", Categoría: ${data.category}.`, table: 'agenda_tasks', recordId: data.id, label: data.title }
+    }
+    if (name === 'update_agenda_tarea') {
+      const { data, error } = await supabaseAdmin.from('agenda_tasks').update({ status: input.estado }).eq('id', input.id).select().single()
+      if (error) return { result: `Error al actualizar tarea de agenda: ${error.message}` }
+      return { result: `Tarea actualizada. "${data.title}" → ${data.status}.`, table: 'agenda_tasks', recordId: data.id, label: data.title }
+    }
+    if (name === 'delete_agenda_tarea') {
+      const { error } = await supabaseAdmin.from('agenda_tasks').delete().eq('id', input.id)
+      if (error) return { result: `Error al eliminar tarea de agenda: ${error.message}` }
+      return { result: `Tarea de agenda eliminada: "${input.titulo || input.id}".` }
+    }
+    if (name === 'listar_agenda_tareas') {
+      let q = supabaseAdmin.from('agenda_tasks').select('id, title, category, status').order('created_at')
+      if (input.categoria) q = q.eq('category', input.categoria)
+      if (!input.incluir_hechas) q = q.neq('status', 'hecho')
+      const { data, error } = await q.limit(50)
+      if (error) return { result: `Error al listar tareas: ${error.message}` }
+      if (!data || data.length === 0) return { result: 'No hay tareas de agenda pendientes.' }
+      const STATE_ICON: Record<string, string> = { pendiente: '○', en_proceso: '◑', hecho: '✓' }
+      const lista = data.map(t => `- ID: ${t.id} | [${t.category}] ${STATE_ICON[t.status] || '○'} ${t.title} (${t.status})`).join('\n')
+      return { result: `Tareas de agenda (${data.length}):\n${lista}` }
     }
     if (name === 'update_proveedor') {
       const fields = ['nombre','rubro','telefono','email','contacto','cif','activo']
@@ -1991,6 +2070,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - proyectos, cuentas bancarias, movimientos, tareas, partidas de reforma, radar, bitácora, proveedores
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días
 - Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
+- TAREAS DE AGENDA (Personal/Trabajo, sin proyecto): insert_agenda_tarea, update_agenda_tarea, delete_agenda_tarea, listar_agenda_tareas. Son las tareas que aparecen en HASU → Calendario. Distintas de las tareas de proyecto. Cuando el usuario pregunte por tareas generales (no de un proyecto), usá listar_agenda_tareas directamente SIN preguntar — ya no hace falta la pregunta de aclaración.
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
 - INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. Para agregar directamente a En Estudio sin pasar por Radar usá insert_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR un inmueble en Radar usá delete_radar; para ELIMINAR uno en En Estudio usá delete_estudio.
@@ -2001,7 +2081,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 REGLAS DE RESPUESTA — MUY IMPORTANTE:
 1. NUNCA muestres IDs, UUIDs ni códigos al usuario. Son internos. Usalos solo para llamar herramientas.
 2. NUNCA uses tablas markdown con columnas de IDs. Listá con bullet points e iconos.
-3. SIEMPRE que el usuario pregunte por tareas (pendientes, en curso, etc.) sin estar en contexto de un proyecto específico, ANTES de listar nada preguntá: "¿Te referís a las tareas de un proyecto en particular o las generales?" — NO listés tareas sin hacer esta pregunta primero.
+3. Cuando el usuario pregunte por tareas sin contexto de proyecto: si dice "mis tareas", "tareas personal", "tareas trabajo" → usá listar_agenda_tareas directamente. Si hay ambigüedad con un proyecto activo, preguntá "¿Querés las tareas de [proyecto] o las tareas generales de agenda?"
 4. Respuestas cortas y limpias. Solo la info que el usuario necesita ver. Sin columnas técnicas.
 5. Para editar o eliminar, buscá el ID en el contexto sin mostrárselo al usuario.
 6. Cuando insert_estudio o mover_radar_a_estudio tienen éxito, respondé ÚNICAMENTE con el texto exacto del resultado de la herramienta — sin resumen de datos, sin preguntas adicionales, sin texto extra.
