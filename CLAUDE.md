@@ -66,6 +66,13 @@ Pendiente / en prueba:
 - Modo D audio Telegram: bloqueado sin créditos OpenAI
 - Verificar briefing en producción mañana a las 8:00 (primera ejecución real del cron)
 
+Pendiente técnico detectado:
+- 📅 Bot Telegram crea eventos en Google Calendar pero NO puede agregar invitados externos automáticamente
+  - Limitación de la Google Calendar API con OAuth del organizador
+  - Solución posible: usar el campo `attendees` en la API de Google Calendar con los emails — verificar si el token org tiene scope suficiente
+  - Silvia: silviainformes@gmail.com / JL: joseluisxp123@gmail.com
+  - Pato quiere poder invitar desde el bot directamente sin ir al calendario
+
 Bugs detectados:
 - ⚠️ Bot tarda mucho en responder a "avance de obra" — verificado que SÍ funciona y graba correctamente
   - El bot se quedó "escribiendo" ~1-2 min antes de responder
