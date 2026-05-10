@@ -829,7 +829,8 @@ export async function POST(req: NextRequest) {
       (from.username ? ` (@${from.username})` : '')
     : 'Desconocido'
 
-  const urlMatch = text.match(/https?:\/\/(?:www\.)?(?:idealista\.com|fotocasa\.es)[^\s]*/i)
+  const urlMatch = text.match(/https?:\/\/[^\s]+(?:idealista\.com|fotocasa\.es|solvia\.es|habitaclia\.com|pisos\.com|inmobiliaria|kyero\.com|thinkspain\.com|yaencontre\.com|hogaria\.net|tecnocasa\.es|century21|remax\.es|engel|savills)[^\s]*/i)
+    ?? text.match(/https?:\/\/[^\s]{20,}/i)
   const hasPhotos = !!(message.photo?.length)
 
   // Calendar events
@@ -859,8 +860,16 @@ export async function POST(req: NextRequest) {
   try {
     if (urlMatch) {
       // Modo B — link de portal
-      origen = 'telegram_link'
-      const scraped = await scrapeIdealista(urlMatch[0])
+      const urlStr = urlMatch[0]
+      const portalMap: Record<string, string> = {
+        'idealista': 'idealista', 'fotocasa': 'fotocasa', 'solvia': 'solvia',
+        'habitaclia': 'habitaclia', 'pisos.com': 'pisos', 'kyero': 'kyero',
+        'yaencontre': 'yaencontre', 'tecnocasa': 'tecnocasa', 'century21': 'century21',
+        'remax': 'remax', 'engel': 'engel', 'savills': 'savills',
+      }
+      const detectedPortal = Object.entries(portalMap).find(([k]) => urlStr.includes(k))?.[1] ?? 'portal'
+      origen = `telegram_${detectedPortal}`
+      const scraped = await scrapeIdealista(urlStr)
       if ('error' in scraped) {
         data = await extractFromText(text)
       } else {
@@ -874,7 +883,7 @@ export async function POST(req: NextRequest) {
           descripcion: scraped.descripcion,
         }
         // Precio venta/reforma pueden venir junto al link en el texto
-        const extra = await extractFromText(text.replace(urlMatch[0], '').trim())
+        const extra = await extractFromText(text.replace(urlStr, '').trim())
         if (extra.precio_venta_est) data.precio_venta_est = extra.precio_venta_est
         if (extra.reforma_estimada != null) data.reforma_estimada = extra.reforma_estimada
       }
