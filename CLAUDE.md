@@ -74,6 +74,11 @@ Pendiente técnico detectado:
   - Pato quiere poder invitar desde el bot directamente sin ir al calendario
 
 Bugs detectados:
+- 🐛 Evento duplicado en calendario — "Pasar oferta a Servihabitat Dúplex Pulpí 100k" aparece dos veces el 11/05
+  - Uno con guion largo (–) creado por el bot, otro con guion normal (-) probablemente creado antes manualmente
+  - Fix: deduplicar al mostrar, o agregar validación al crear evento desde el bot (mismo título + mismo día = no crear)
+- 🐛 Eventos del calendario no son editables desde WOS3 — solo se pueden ver, no modificar título/hora/descripción
+  - Fix: agregar acción de editar evento desde la vista de detalle del calendario
 - 🐛 Bot muestra tareas antiguas junto a las nuevas — la lista de agenda_tasks no filtra por estado ni fecha, acumula todo
   - Fix: mostrar solo tareas pendientes / de hoy en adelante, no el histórico completo
 - ⚠️ Bot tarda mucho en responder a "avance de obra" — verificado que SÍ funciona y graba correctamente
@@ -88,7 +93,14 @@ Próximas tareas acordadas (domingo 10/05/2026):
    - Objetivo: que toda la sección Proyectos esté supeditada a los movimientos de la tabla maestra de HASU
    - La tabla maestra de HASU es la fuente de verdad — WOS3 debe leerla y reflejarla, no calcular por su cuenta
 
-2. Sistema de @menciones en bitácora (como Trello)
+2. Rediseño del Calendario — darle protagonismo real
+   - Problema: el calendario está enterrado dentro de HASU, en una fila perdida sin visibilidad
+   - Objetivo: moverlo a la página principal junto al bot, compartiendo pantalla en desktop
+   - En mobile: pensar layout (tab propio, o sección expandible debajo del bot)
+   - Además: los eventos no se pueden editar manualmente desde WOS3 — necesita edición inline
+   - Eliminar evento duplicado del 11/05 ("Pasar oferta Servihabitat") antes de empezar
+
+3. Sistema de @menciones en bitácora (como Trello)
    - Cada usuario tiene su @handle (ej: @pato, @silvia, @jl)
    - Cuando alguien escribe una nota en la bitácora de cualquier proyecto y menciona un @usuario, ese usuario recibe alerta por Telegram
    - La alerta incluye: proyecto, quién escribió, y el contenido de la nota
