@@ -436,7 +436,12 @@ export default function ProyectoDetalle() {
     if (editingBitacoraId) {
       await supabase.from('bitacora').update(payload).eq('id', editingBitacoraId)
     } else {
-      await supabase.from('bitacora').insert([{ ...payload, proyecto_id: id }])
+      // Usar API route para que las @menciones se procesen server-side
+      await fetch('/api/bitacora', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, proyecto_id: id, proyecto_nombre: proyecto?.nombre }),
+      })
     }
     const { data } = await supabase.from('bitacora').select('*').eq('proyecto_id', id).order('created_at', { ascending: false })
     setBitacora(data || [])
