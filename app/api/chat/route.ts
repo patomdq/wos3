@@ -8,6 +8,7 @@ import { verifyAuth } from '@/lib/api-auth'
 import { scrapeIdealista } from '@/lib/scrape-idealista'
 import { calcEscenarios, calcCostoTotal, calcGastosFijos } from '@/lib/formulas'
 import { buscarComparables } from '@/lib/search-comparables'
+import { checkAndSendMentions } from '@/lib/telegram-mentions'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabaseAdmin = createClient(
@@ -1065,6 +1066,16 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         autor: input.autor || 'Patricio',
       }]).select().single()
       if (error) return { result: `Error al guardar en bitácora: ${error.message}` }
+
+      // @menciones — alerta Telegram al mencionado
+      const { data: proy } = await supabaseAdmin.from('proyectos').select('nombre').eq('id', input.proyecto_id).single()
+      checkAndSendMentions(input.contenido, {
+        autor:    input.autor || 'Patricio',
+        proyecto: proy?.nombre || 'un proyecto',
+        contenido: input.contenido,
+        tipo:     input.tipo || 'nota',
+      })  // fire-and-forget
+
       return {
         result: `Entrada de bitácora guardada. ID: ${data.id}. Tipo: ${data.tipo}. Contenido: "${data.contenido}".`,
         table: 'bitacora',
@@ -1349,6 +1360,16 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         if (!error) insertados.push(estudio.nombre || estudio.direccion)
       }
       if (insertados.length === 0) return { result: 'No se pudo guardar ninguna entrada.' }
+
+      // @menciones — alerta Telegram al mencionado
+      const proyectoNombre = insertados[0] || 'un inmueble en estudio'
+      checkAndSendMentions(input.contenido, {
+        autor:    input.autor || 'Patricio',
+        proyecto: proyectoNombre,
+        contenido: input.contenido,
+        tipo:     input.tipo || 'nota',
+      })  // fire-and-forget
+
       return {
         result: `Entrada de bitácora agregada a ${insertados.map(n => `"${n}"`).join(' y ')}. Tipo: ${input.tipo || 'nota'}. Contenido: "${input.contenido}".`,
         table: 'bitacora_estudio',

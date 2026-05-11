@@ -29,6 +29,23 @@ const ESTADO_COLOR: Record<string,string> = {
 
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
 
+// ── Helpers financieros — misma lógica que HASU/page.tsx ─────────────────────
+// Inversión total de la operación
+const getInv     = (p: Proyecto) => p.valor_total_operacion || p.precio_compra || 0
+// Capital aportado por HASU (tiene en cuenta JV)
+const getInvHasu = (p: Proyecto): number => {
+  if (p.inversion_hasu && p.inversion_hasu > 0) return p.inversion_hasu
+  if ((p.porcentaje_hasu || 100) >= 100) return getInv(p)
+  return getInv(p) * (p.porcentaje_hasu || 100) / 100
+}
+// Precio de venta: primero real, luego proyecciones
+const getVenta     = (p: Proyecto) => p.precio_venta_real || p.precio_venta_realista || p.precio_venta_estimado || 0
+// Beneficio total y parte HASU
+const getBenef     = (p: Proyecto) => getVenta(p) - getInv(p)
+const getBenefHasu = (p: Proyecto) => getBenef(p) * ((p.porcentaje_hasu || 100) / 100)
+// ROI sobre capital HASU
+const getRoi       = (p: Proyecto) => { const i = getInvHasu(p); return i > 0 ? (getBenefHasu(p) / i) * 100 : 0 }
+
 type Proyecto = {
   id: string; nombre: string; direccion?: string; ciudad: string; tipo: string; estado: string
   porcentaje_hasu: number; socio_nombre: string | null; avance_reforma: number
@@ -189,19 +206,12 @@ export default function ProyectosPage() {
 
       {/* Dashboard */}
       {(() => {
-        const capitalTotal = activos.reduce((s, p) => s + (p.inversion_hasu || p.precio_compra || 0), 0)
-        const benefTotal   = activos.reduce((s, p) => {
-          const venta = p.precio_venta_realista || p.precio_venta_estimado || 0
-          const inv   = p.valor_total_operacion || p.precio_compra || 0
-          return s + (venta - inv)
-        }, 0)
-        const roisValidos = activos.filter(p => (p.valor_total_operacion || p.precio_compra || 0) > 0)
-        const roiMedio    = roisValidos.length > 0
-          ? roisValidos.reduce((s, p) => {
-              const venta = p.precio_venta_realista || p.precio_venta_estimado || 0
-              const inv   = p.valor_total_operacion || p.precio_compra || 0
-              return s + ((venta - inv) / inv * 100)
-            }, 0) / roisValidos.length
+        // Misma lógica que HASU page — fuente única de verdad
+        const capitalTotal = activos.reduce((s, p) => s + getInvHasu(p), 0)
+        const roisValidos  = activos.filter(p => getInvHasu(p) > 0 && getVenta(p) > 0)
+        const benefTotal   = roisValidos.reduce((s, p) => s + getBenefHasu(p), 0)
+        const roiMedio     = roisValidos.length > 0
+          ? roisValidos.reduce((s, p) => s + getRoi(p), 0) / roisValidos.length
           : null
         const enReforma   = activos.filter(p => p.estado === 'reforma')
         const avanceMedio = enReforma.length > 0
@@ -285,22 +295,25 @@ export default function ProyectosPage() {
               </div>
 
               {activos.map(p => {
-                const isExp    = expanded.has(p.id)
-                const gastos   = gastosMap[p.id] || 0
-                const inversion = p.valor_total_operacion || p.precio_compra || 0
-                const ventaEst  = p.precio_venta_estimado || 0
+                const isExp     = expanded.has(p.id)
+                const gastos    = gastosMap[p.id] || 0
+                const inversion = getInv(p)
+                const invHasu   = getInvHasu(p)
+                const ventaBase = p.precio_venta_estimado || 0
+                const pctHasu   = (p.porcentaje_hasu || 100) / 100
 
                 const escenarios = [
                   { label: 'Conservador', stored: p.precio_venta_conservador, mult: 0.90, color: '#888', key: 'c' as const },
                   { label: 'Realista',    stored: p.precio_venta_realista,    mult: 1.00, color: '#F26E1F', key: 'r' as const },
                   { label: 'Optimista',   stored: p.precio_venta_optimista,   mult: 1.10, color: '#22C55E', key: 'o' as const },
                 ].map(s => {
-                  const venta = s.stored ?? (ventaEst * s.mult)
-                  const benef = venta - inversion
-                  const roi   = inversion > 0 ? (benef / inversion) * 100 : 0
-                  return { ...s, venta, benef, roi }
+                  const venta     = s.stored ?? (ventaBase * s.mult)
+                  const benefHasu = (venta - inversion) * pctHasu  // parte de HASU
+                  const roi       = invHasu > 0 ? (benefHasu / invHasu) * 100 : 0
+                  return { ...s, venta, benef: benefHasu, roi }
                 })
 
+                // ROI mostrado: realista (escenario central)
                 const roiReal = escenarios[1].roi
                 const hoy = new Date()
                 const fechaCompra = p.fecha_compra ? new Date(p.fecha_compra) : null
@@ -461,9 +474,9 @@ export default function ProyectosPage() {
                         {/* Financiero */}
                         <div className="grid grid-cols-3 gap-1.5 mb-3">
                           {[
-                            { l: 'Inv. total',   v: inversion ? fmt(inversion) : '—', c: '#fff' },
-                            { l: 'Venta obj.',   v: ventaEst  ? fmt(ventaEst)  : '—', c: '#22C55E' },
-                            { l: 'Benef. real.', v: ventaEst  ? (escenarios[1].benef >= 0 ? '+' : '') + fmt(escenarios[1].benef) : '—', c: escenarios[1].benef >= 0 ? '#22C55E' : '#EF4444' },
+                            { l: 'Inv. HASU',    v: invHasu ? fmt(invHasu) : '—', c: '#fff' },
+                            { l: 'Venta obj.',   v: ventaBase ? fmt(ventaBase) : '—', c: '#22C55E' },
+                            { l: 'Benef. HASU',  v: ventaBase ? (escenarios[1].benef >= 0 ? '+' : '') + fmt(escenarios[1].benef) : '—', c: escenarios[1].benef >= 0 ? '#22C55E' : '#EF4444' },
                           ].map(k => (
                             <div key={k.l} className="rounded-xl p-2.5" style={{ background: '#1E1E1E' }}>
                               <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#666' }}>{k.l}</div>
@@ -584,10 +597,10 @@ export default function ProyectosPage() {
             <>
               <div className="font-black text-[15px] text-white mb-3 mt-4" style={{ color: '#555' }}>Vendidos · {finalizados.length}</div>
               {finalizados.map(p => {
-                const inversion = p.valor_total_operacion || p.precio_compra || 0
-                const venta     = p.precio_venta_real || p.precio_venta_realista || p.precio_venta_estimado || 0
-                const benef     = venta - inversion
-                const roi       = inversion > 0 ? (benef / inversion) * 100 : null
+                const inversion = getInv(p)
+                const invH      = getInvHasu(p)
+                const benef     = getBenefHasu(p)   // parte HASU, igual que HASU page
+                const roi       = invH > 0 ? (benef / invH) * 100 : null
                 const isExp     = expanded.has(p.id)
                 const ef        = editFinalizado[p.id]
                 return (
