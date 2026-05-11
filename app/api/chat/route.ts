@@ -1067,14 +1067,14 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }]).select().single()
       if (error) return { result: `Error al guardar en bitácora: ${error.message}` }
 
-      // @menciones — alerta Telegram al mencionado
+      // @menciones — notificación in-app + email
       const { data: proy } = await supabaseAdmin.from('proyectos').select('nombre').eq('id', input.proyecto_id).single()
-      checkAndSendMentions(input.contenido, {
+      await checkAndSendMentions(input.contenido, {
         autor:    input.autor || 'Patricio',
         proyecto: proy?.nombre || 'un proyecto',
         contenido: input.contenido,
         tipo:     input.tipo || 'nota',
-      })  // fire-and-forget
+      })
 
       return {
         result: `Entrada de bitácora guardada. ID: ${data.id}. Tipo: ${data.tipo}. Contenido: "${data.contenido}".`,
@@ -1361,14 +1361,14 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }
       if (insertados.length === 0) return { result: 'No se pudo guardar ninguna entrada.' }
 
-      // @menciones — alerta Telegram al mencionado
+      // @menciones — notificación in-app + email
       const proyectoNombre = insertados[0] || 'un inmueble en estudio'
-      checkAndSendMentions(input.contenido, {
+      await checkAndSendMentions(input.contenido, {
         autor:    input.autor || 'Patricio',
         proyecto: proyectoNombre,
         contenido: input.contenido,
         tipo:     input.tipo || 'nota',
-      })  // fire-and-forget
+      })
 
       return {
         result: `Entrada de bitácora agregada a ${insertados.map(n => `"${n}"`).join(' y ')}. Tipo: ${input.tipo || 'nota'}. Contenido: "${input.contenido}".`,
