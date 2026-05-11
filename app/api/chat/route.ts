@@ -641,7 +641,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'agendar_evento',
-    description: 'Crea un evento en Google Calendar de hola@hasu.in. Usalo cuando el usuario pida agendar, programar, crear una reunión o evento. Interpretá fechas relativas como "mañana", "el lunes", "el 15 de mayo".',
+    description: 'Crea un evento en Google Calendar de hola@hasu.in. Usalo cuando el usuario pida agendar, programar, crear una reunión o evento. Interpretá fechas relativas como "mañana", "el lunes", "el 15 de mayo". Si el usuario menciona invitados (Silvia, JL, o cualquier email), pasalos en el campo invitados.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -651,6 +651,11 @@ const TOOLS: Anthropic.Tool[] = [
         hora_fin:     { type: 'string',  description: 'Hora de fin HH:MM (ej: "10:00"). Omitir si es todo el día.' },
         todo_el_dia:  { type: 'boolean', description: 'true si es evento de todo el día sin hora específica.' },
         descripcion:  { type: 'string',  description: 'Descripción opcional del evento.' },
+        invitados: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Emails o nombres de personas a invitar. Nombres conocidos del equipo: "Silvia" → silviainformes@gmail.com, "JL" o "José Luis" → joseluisxp123@gmail.com. También podés pasar emails directamente.',
+        },
       },
       required: ['titulo', 'fecha'],
     },
@@ -1429,19 +1434,38 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
             return `${input.fecha}T${String(endH).padStart(2,'0')}:${endMin}:00`
           })()
 
+      // Resolve team names to emails
+      const TEAM_EMAILS: Record<string, string> = {
+        'silvia':      'silviainformes@gmail.com',
+        'jl':          'joseluisxp123@gmail.com',
+        'jose luis':   'joseluisxp123@gmail.com',
+        'josé luis':   'joseluisxp123@gmail.com',
+        'pato':        'hola@hasu.in',
+        'patricio':    'hola@hasu.in',
+      }
+      const rawInvitados: string[] = input.invitados || []
+      const attendeeEmails = rawInvitados.map((inv: string) => {
+        const norm = inv.trim().toLowerCase()
+        return TEAM_EMAILS[norm] || inv // fallback: use as-is (assume already an email)
+      })
+
       const created = await gcalCreateEvent(token, {
         title:         input.titulo,
         description:   input.descripcion || '',
         startDateTime: startDT,
         endDateTime:   endDT,
         allDay,
+        attendees:     attendeeEmails.length > 0 ? attendeeEmails : undefined,
       })
 
       if (!created) return { result: 'Error al crear el evento en Google Calendar. Verificá que la conexión esté activa.' }
 
       const horaStr = allDay ? 'todo el día' : `${input.hora_inicio || '09:00'} – ${input.hora_fin || ''}`
+      const invitadosMsg = attendeeEmails.length > 0
+        ? ` Invitados: ${attendeeEmails.join(', ')}.`
+        : ''
       return {
-        result: `Evento creado en Google Calendar. Título: "${created.summary}", Fecha: ${input.fecha}, Hora: ${horaStr}. ID: ${created.id}.`,
+        result: `Evento creado en Google Calendar. Título: "${created.summary}", Fecha: ${input.fecha}, Hora: ${horaStr}.${invitadosMsg} ID: ${created.id}.`,
         table: 'google_calendar',
         label: created.summary,
       }
@@ -2032,29 +2056,50 @@ export async function POST(req: NextRequest) {
     const { messages, context, imageData, mediaType } = await req.json()
     const today = new Date().toISOString().split('T')[0]
 
-    // Detect Idealista URL in last user message and scrape it
+    // Detect real-estate portal URL in last user message and scrape it
+    const PORTAL_NAMES: Record<string, string> = {
+      'idealista.com':   'Idealista',
+      'fotocasa.es':     'Fotocasa',
+      'solvia.es':       'Solvia',
+      'habitaclia.com':  'Habitaclia',
+      'pisos.com':       'Pisos.com',
+      'yaencontre.com':  'Yaencontre',
+      'kyero.com':       'Kyero',
+      'hogaria.net':     'Hogaria',
+      'tecnocasa.es':    'Tecnocasa',
+      'remax.es':        'Remax',
+      'century21':       'Century21',
+      'thinkspain.com':  'ThinkSpain',
+      'engel':           'Engel&Völkers',
+      'savills':         'Savills',
+    }
+
     const allMsgs = (messages as { role: string; content: any }[])
     const lastUserContent = [...allMsgs].reverse().find(m => m.role === 'user')?.content as string || ''
-    const idealistaUrlMatch = lastUserContent.match(/https?:\/\/(?:www\.)?idealista\.com\/\S+/i)
-    let idealistaCtx = ''
-    if (idealistaUrlMatch) {
-      const idealistaUrl = idealistaUrlMatch[0]
-      const scraped = await scrapeIdealista(idealistaUrl)
-      if ('error' in scraped) {
-        // Scraping failed — ask Claude to request details manually, no mention of captcha
-        idealistaCtx = `\n\n[IDEALISTA] El usuario compartió este link de Idealista: ${idealistaUrl}\nNo se pudieron extraer los datos automáticamente. Pedile amablemente que te diga: precio, dirección, ciudad, habitaciones y superficie. Cuando los tenga, usá insert_radar con fuente='Idealista' y url='${idealistaUrl}'.`
-      } else {
-        const campos = [
-          scraped.titulo ? `Título: ${scraped.titulo}` : null,
-          scraped.precio ? `Precio: ${scraped.precio.toLocaleString('es-ES')}€` : null,
-          scraped.direccion ? `Dirección: ${scraped.direccion}` : null,
-          scraped.ciudad ? `Ciudad: ${scraped.ciudad}` : null,
-          scraped.habitaciones ? `Habitaciones: ${scraped.habitaciones}` : null,
-          scraped.superficie ? `Superficie: ${scraped.superficie} m²` : null,
-          scraped.banos ? `Baños: ${scraped.banos}` : null,
-          scraped.descripcion ? `Descripción: ${scraped.descripcion}` : null,
-        ].filter(Boolean).join('\n')
-        idealistaCtx = `\n\n[IDEALISTA DETECTADO] Info extraída del link:\n${campos}\nURL: ${idealistaUrl}\n\nINSTRUCCIÓN: Mostrá este resumen al usuario de forma limpia y preguntá "¿Lo cargo al Radar?". Si confirma, usá insert_radar con estos datos, fuente='Idealista' y url='${idealistaUrl}'. Si falta algún campo, completalo con null.`
+    const anyUrlMatch = lastUserContent.match(/https?:\/\/\S+/i)
+    let portalCtx = ''
+    if (anyUrlMatch) {
+      const rawUrl = anyUrlMatch[0].replace(/[.,;:!?)'"]+$/, '') // trim trailing punctuation
+      const lcUrl = rawUrl.toLowerCase()
+      const portalName = Object.entries(PORTAL_NAMES).find(([d]) => lcUrl.includes(d))?.[1]
+      if (portalName) {
+        const scraped = await scrapeIdealista(rawUrl)
+        if ('error' in scraped) {
+          // Scraping failed — ask Claude to request details manually
+          portalCtx = `\n\n[${portalName}] El usuario compartió este link de ${portalName}: ${rawUrl}\nNo se pudieron extraer los datos automáticamente. Pedile amablemente que te diga: precio, dirección, ciudad, habitaciones y superficie. Cuando los tenga, usá insert_radar con fuente='${portalName}' y url='${rawUrl}'.`
+        } else {
+          const campos = [
+            scraped.titulo       ? `Título: ${scraped.titulo}` : null,
+            scraped.precio       ? `Precio: ${scraped.precio.toLocaleString('es-ES')}€` : null,
+            scraped.direccion    ? `Dirección: ${scraped.direccion}` : null,
+            scraped.ciudad       ? `Ciudad: ${scraped.ciudad}` : null,
+            scraped.habitaciones ? `Habitaciones: ${scraped.habitaciones}` : null,
+            scraped.superficie   ? `Superficie: ${scraped.superficie} m²` : null,
+            scraped.banos        ? `Baños: ${scraped.banos}` : null,
+            scraped.descripcion  ? `Descripción: ${scraped.descripcion}` : null,
+          ].filter(Boolean).join('\n')
+          portalCtx = `\n\n[${portalName.toUpperCase()} DETECTADO] Info extraída del link:\n${campos}\nURL: ${rawUrl}\n\nINSTRUCCIÓN: Mostrá este resumen al usuario de forma limpia y preguntá "¿Lo cargo al Radar?". Si confirma, usá insert_radar con estos datos, fuente='${portalName}' y url='${rawUrl}'. Si falta algún campo, completalo con null.`
+        }
       }
     }
 
@@ -2069,7 +2114,7 @@ ${context || 'Sin datos disponibles.'}
 CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - proyectos, cuentas bancarias, movimientos, tareas, partidas de reforma, radar, bitácora, proveedores
 - timeline de reforma (recalcular_timeline) — desplaza en cascada N días
-- Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc.
+- Google Calendar — crear (agendar_evento), listar (listar_eventos), editar (editar_evento), eliminar (eliminar_evento). Interpretá fechas relativas: "mañana" = ${new Date(Date.now()+86400000).toISOString().split('T')[0]}, "el lunes" = próximo lunes, etc. Para invitar a Silvia o JL, usá el campo invitados: ["Silvia"] o ["JL"] o ambos. Emails del equipo: Silvia = silviainformes@gmail.com, JL = joseluisxp123@gmail.com.
 - TAREAS DE AGENDA (Personal/Trabajo, sin proyecto): insert_agenda_tarea, update_agenda_tarea, delete_agenda_tarea, listar_agenda_tareas. Son las tareas que aparecen en HASU → Calendario. Distintas de las tareas de proyecto. Cuando el usuario pregunte por tareas generales (no de un proyecto), usá listar_agenda_tareas directamente SIN preguntar — ya no hace falta la pregunta de aclaración.
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
@@ -2107,7 +2152,7 @@ ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
 - **Factura o presupuesto** → extraé: proveedor, importe total, fecha, concepto/descripción del trabajo. Luego mostrá el resumen y preguntá "¿A qué operación imputamos este gasto?". Cuando el usuario indique el proyecto, llamá insert_documento (con proyecto_id) y después insert_movimiento con los datos extraídos.
 - **Foto de inmueble** → describí el estado general (instalaciones, materiales, acabados), estimá superficie si es posible, listá observaciones relevantes para la reforma. Llamá insert_documento con tipo='foto_inmueble'.
 - **Documento** (contrato, nota, informe, etc.) → extraé información clave: partes, fechas, importes, condiciones relevantes. Llamá insert_documento con tipo='documento'.
-- Si no hay operación/proyecto en contexto cuando se necesite asociar, preguntá antes de guardar con insert_documento.${idealistaCtx}`
+- Si no hay operación/proyecto en contexto cuando se necesite asociar, preguntá antes de guardar con insert_documento.${portalCtx}`
 
     // Build clean messages — allow content to be string or content array (for vision)
     type CleanMsg = { role: 'user' | 'assistant'; content: string | Anthropic.ContentBlockParam[] }

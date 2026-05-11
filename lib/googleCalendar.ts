@@ -99,37 +99,42 @@ type EventInput = {
   startDateTime: string   // ISO datetime OR YYYY-MM-DD for all-day
   endDateTime:   string
   allDay?:       boolean
+  attendees?:    string[] // email addresses
 }
 
-function buildEventBody(event: EventInput) {
-  if (event.allDay) {
-    return {
-      summary:     event.title,
-      description: event.description || '',
-      start: { date: event.startDateTime.substring(0, 10) },
-      end:   { date: event.endDateTime.substring(0, 10) },
-    }
+function buildEventBody(event: EventInput): Record<string, unknown> {
+  const base: Record<string, unknown> = event.allDay
+    ? {
+        summary:     event.title,
+        description: event.description || '',
+        start: { date: event.startDateTime.substring(0, 10) },
+        end:   { date: event.endDateTime.substring(0, 10) },
+      }
+    : {
+        summary:     event.title,
+        description: event.description || '',
+        start: { dateTime: event.startDateTime, timeZone: TZ },
+        end:   { dateTime: event.endDateTime,   timeZone: TZ },
+      }
+
+  if (event.attendees && event.attendees.length > 0) {
+    base.attendees = event.attendees.map(email => ({ email }))
   }
-  return {
-    summary:     event.title,
-    description: event.description || '',
-    start: { dateTime: event.startDateTime, timeZone: TZ },
-    end:   { dateTime: event.endDateTime,   timeZone: TZ },
-  }
+
+  return base
 }
 
 export async function gcalCreateEvent(
   accessToken: string,
   event: EventInput
 ): Promise<GoogleEvent | null> {
-  const res = await fetch(
-    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-    {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify(buildEventBody(event)),
-    }
-  )
+  const hasAttendees = event.attendees && event.attendees.length > 0
+  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events${hasAttendees ? '?sendUpdates=all' : ''}`
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify(buildEventBody(event)),
+  })
   if (!res.ok) {
     console.error('[GCal] createEvent error:', await res.text().catch(() => ''))
     return null
