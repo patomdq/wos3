@@ -1,8 +1,18 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUser, canAccessPage } from '@/lib/user-context'
+
+type Notification = {
+  id: string
+  de_nombre: string
+  proyecto: string
+  contenido: string
+  tipo: string
+  leida: boolean
+  created_at: string
+}
 
 const ALL_ITEMS = [
   { id: 'bot',       href: '/bot',       icon: '◎',  label: 'Bot' },
@@ -18,12 +28,61 @@ export default function Nav() {
   const router = useRouter()
   const user = useUser()
 
-  const [profileOpen, setProfileOpen] = useState(false)
+  const [profileOpen,  setProfileOpen]  = useState(false)
   const [changePwOpen, setChangePwOpen] = useState(false)
-  const [pw, setPw] = useState('')
-  const [pw2, setPw2] = useState('')
+  const [pw,    setPw]    = useState('')
+  const [pw2,   setPw2]   = useState('')
   const [pwMsg, setPwMsg] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // ── Notificaciones ──────────────────────────────────────────────────────────
+  const [notifOpen,  setNotifOpen]  = useState(false)
+  const [notifs,     setNotifs]     = useState<Notification[]>([])
+  const [unread,     setUnread]     = useState(0)
+
+  const loadNotifs = useCallback(async () => {
+    if (!user?.handle) return
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('para_handle', user.handle)
+      .order('created_at', { ascending: false })
+      .limit(30)
+    const list = (data || []) as Notification[]
+    setNotifs(list)
+    setUnread(list.filter(n => !n.leida).length)
+  }, [user?.handle])
+
+  useEffect(() => { loadNotifs() }, [loadNotifs])
+
+  // Poll cada 60s para nuevas notificaciones
+  useEffect(() => {
+    const t = setInterval(loadNotifs, 60_000)
+    return () => clearInterval(t)
+  }, [loadNotifs])
+
+  const openNotifs = async () => {
+    setNotifOpen(true)
+    // Marcar todas como leídas
+    if (user?.handle && unread > 0) {
+      await supabase
+        .from('notifications')
+        .update({ leida: true })
+        .eq('para_handle', user.handle)
+        .eq('leida', false)
+      setUnread(0)
+      setNotifs(prev => prev.map(n => ({ ...n, leida: true })))
+    }
+  }
+
+  const timeAgo = (iso: string) => {
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+    if (mins < 1)   return 'ahora'
+    if (mins < 60)  return `hace ${mins}m`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24)   return `hace ${hrs}h`
+    return `hace ${Math.floor(hrs / 24)}d`
+  }
 
   const items = ALL_ITEMS.filter(item => canAccessPage(user?.permisos ?? null, item.id))
   const active = items.find(i => pathname.startsWith(i.href))?.id
@@ -65,6 +124,25 @@ export default function Nav() {
               style={{ color: active === item.id ? '#F26E1F' : '#888' }}>{item.label}</span>
           </button>
         ))}
+        {/* Bell button */}
+        {user?.handle && (
+          <button onClick={openNotifs}
+            className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5 relative">
+            <div className="relative">
+              <span className="text-[24px] leading-none">🔔</span>
+              {unread > 0 && (
+                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white"
+                  style={{ background: '#EF4444' }}>
+                  {unread > 9 ? '9+' : unread}
+                </div>
+              )}
+            </div>
+            <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: unread > 0 ? '#EF4444' : '#888' }}>
+              {unread > 0 ? `${unread} nueva${unread > 1 ? 's' : ''}` : 'Alertas'}
+            </span>
+          </button>
+        )}
+
         {/* Profile button */}
         <button onClick={() => setProfileOpen(true)}
           className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5">
@@ -119,6 +197,47 @@ export default function Nav() {
           </button>
         </div>
       </nav>
+
+      {/* ── NOTIFICATIONS SHEET ── */}
+      {notifOpen && (
+        <>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setNotifOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] pb-10"
+            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 600, margin: '0 auto', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="p-5 pb-3 flex-shrink-0">
+              <div className="w-9 h-1 rounded-full mx-auto mb-4" style={{ background: '#333' }} />
+              <div className="font-black text-[17px] text-white">🔔 Notificaciones</div>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-5 pb-4">
+              {notifs.length === 0 ? (
+                <div className="text-center py-10">
+                  <div className="text-4xl mb-3">🔔</div>
+                  <div className="text-sm font-semibold" style={{ color: '#555' }}>Sin notificaciones</div>
+                  <div className="text-xs mt-1" style={{ color: '#444' }}>Cuando alguien te mencione en la bitácora aparecerá acá</div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {notifs.map(n => (
+                    <div key={n.id} className="rounded-2xl p-4"
+                      style={{ background: n.leida ? '#1A1A1A' : '#1E1E1E', border: `1px solid ${n.leida ? 'rgba(255,255,255,0.05)' : 'rgba(242,110,31,0.25)'}` }}>
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-2">
+                          {!n.leida && <div className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5" style={{ background: '#F26E1F' }} />}
+                          <div className="text-[12px] font-black" style={{ color: '#F26E1F' }}>{n.proyecto}</div>
+                        </div>
+                        <div className="text-[11px] flex-shrink-0" style={{ color: '#555' }}>{timeAgo(n.created_at)}</div>
+                      </div>
+                      <div className="text-[12px] font-bold mb-1" style={{ color: '#888' }}>{n.de_nombre}</div>
+                      <div className="text-[13px] text-white leading-relaxed">{n.contenido}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── PROFILE SHEET ── */}
       {profileOpen && (

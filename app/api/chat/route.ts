@@ -8,7 +8,7 @@ import { verifyAuth } from '@/lib/api-auth'
 import { scrapeIdealista } from '@/lib/scrape-idealista'
 import { calcEscenarios, calcCostoTotal, calcGastosFijos } from '@/lib/formulas'
 import { buscarComparables } from '@/lib/search-comparables'
-import { checkAndSendMentions } from '@/lib/telegram-mentions'
+import { checkAndSendMentions } from '@/lib/notifications'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabaseAdmin = createClient(

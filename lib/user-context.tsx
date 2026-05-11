@@ -10,6 +10,7 @@ export type UserInfo = {
   email: string
   role: string
   nombre?: string
+  handle?: string
   permisos: UserPermisos
 }
 

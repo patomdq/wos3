@@ -17,8 +17,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const { data } = await supabase.from('user_roles').select('*').eq('email', email).single()
       setUser({
         email,
-        role: data?.role || 'viewer',
-        nombre: data?.nombre,
+        role:     data?.role    || 'viewer',
+        nombre:   data?.nombre,
+        handle:   data?.handle,
         permisos: data?.permisos ?? null,
       })
       setLoading(false)
