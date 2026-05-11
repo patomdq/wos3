@@ -6,7 +6,6 @@ import { scrapeIdealista } from '@/lib/scrape-idealista'
 import { buscarComparables } from '@/lib/search-comparables'
 import { gcalCreateEvent, gcalDeleteEvent, gcalListEvents } from '@/lib/googleCalendar'
 import { getOrgAccessToken } from '@/lib/gcalToken'
-import { checkAndSendMentions } from '@/lib/telegram-mentions'
 
 export const maxDuration = 60
 
@@ -741,8 +740,6 @@ Mensaje: "${text}"`,
       await sendMessage(chatId, `❌ Error al guardar en bitácora: ${error.message}`)
       return true
     }
-    // @menciones — fire-and-forget, no bloquea respuesta
-    checkAndSendMentions(contenido, { autor, proyecto: nombreInmueble, contenido, tipo })
   } else if (radarId) {
     // Radar no tiene tabla bitácora — appenda a notas
     const { data: r } = await supabase.from('inmuebles_radar').select('notas').eq('id', radarId).single()
