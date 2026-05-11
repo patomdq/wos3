@@ -300,6 +300,7 @@ export default function ProyectosPage() {
                 const inversion = getInv(p)
                 const invHasu   = getInvHasu(p)
                 const ventaBase = p.precio_venta_estimado || 0
+                const ventaEst  = getVenta(p) > 0
                 const pctHasu   = (p.porcentaje_hasu || 100) / 100
 
                 const escenarios = [
