@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUser, canAccessPage } from '@/lib/user-context'
 
-type Notification = {
+type WosNotif = {
   id: string
   de_nombre: string
   proyecto: string
@@ -37,7 +37,7 @@ export default function Nav() {
 
   // ── Notificaciones ──────────────────────────────────────────────────────────
   const [notifOpen,  setNotifOpen]  = useState(false)
-  const [notifs,     setNotifs]     = useState<Notification[]>([])
+  const [notifs,     setNotifs]     = useState<WosNotif[]>([])
   const [unread,     setUnread]     = useState(0)
 
   const loadNotifs = useCallback(async () => {
@@ -48,7 +48,7 @@ export default function Nav() {
       .eq('para_handle', user.handle)
       .order('created_at', { ascending: false })
       .limit(30)
-    const list = (data || []) as Notification[]
+    const list = (data || []) as WosNotif[]
     setNotifs(list)
     setUnread(list.filter(n => !n.leida).length)
   }, [user?.handle])
