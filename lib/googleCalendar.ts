@@ -121,6 +121,15 @@ function buildEventBody(event: EventInput): Record<string, unknown> {
     base.attendees = event.attendees.map(email => ({ email }))
   }
 
+  // Recordatorios: notificación push 30 min antes + email 10 min antes
+  base.reminders = {
+    useDefault: false,
+    overrides: [
+      { method: 'popup', minutes: 30 },
+      { method: 'email', minutes: 10 },
+    ],
+  }
+
   return base
 }
 
