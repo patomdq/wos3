@@ -172,8 +172,27 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'analizar_inmueble',
+    description: 'Analiza un inmueble en profundidad y genera el PDF completo de rentabilidad listo para enviar al socio. Usalo cuando el usuario pida "analiza este piso", "hazme el análisis completo de X", "calcula la rentabilidad de X", o quiera el informe completo con los 3 escenarios. Aplica automáticamente los costes fijos de Wallest (ITP 2%, notaría 1.200€, agencia 4.500€, cert. energético 100€, seguros 250€, suministros 1.000€) más la reforma que indique el usuario.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre:       { type: 'string', description: 'Nombre o dirección del inmueble' },
+        ciudad:       { type: 'string', description: 'Ciudad o municipio' },
+        precio_compra: { type: 'number', description: 'Precio de compra en euros' },
+        reforma:      { type: 'number', description: 'Coste de reforma en euros. Preguntar si no se indica.' },
+        metros:       { type: 'number', description: 'Superficie en m². Opcional pero ayuda a estimar el precio de venta.' },
+        habitaciones: { type: 'number', description: 'Número de habitaciones. Opcional.' },
+        precio_venta_realista: { type: 'number', description: 'Precio de venta objetivo en escenario realista. Si no se indica, se estima por €/m² del municipio.' },
+        duracion_meses: { type: 'number', description: 'Duración estimada de la operación en meses. Opcional.' },
+        url: { type: 'string', description: 'URL del anuncio. Opcional.' },
+      },
+      required: ['nombre', 'precio_compra', 'reforma'],
+    },
+  },
+  {
     name: 'generar_informe_estudio',
-    description: 'Genera el PDF de análisis de rentabilidad completo de un inmueble en estudio. Usalo cuando el usuario pida "informe", "análisis", "informe de rentabilidad", "hazme el análisis de X", "informe para el socio de X", o quiera el documento de análisis para enviar a un socio antes de comprar.',
+    description: 'Genera el PDF de un inmueble que YA está guardado en inmuebles_estudio. Usalo solo cuando el usuario pida el informe de un estudio ya existente por nombre.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -1078,6 +1097,96 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         recordId: data.id,
         label: `${data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''} · ${data.precio}€`,
       }
+    }
+    if (name === 'analizar_inmueble') {
+      const compra  = input.precio_compra
+      const reforma = input.reforma ?? 0
+      const metros  = input.metros ?? null
+      const ciudad  = input.ciudad ?? ''
+
+      // ── Costes fijos Wallest ──────────────────────────────────────────────
+      const itp                    = Math.round(compra * 0.02)
+      const gastos_compraventa     = 1200
+      const certificado_energetico = 100
+      const comisiones_inmobiliarias = 4500
+      const seguros                = 250
+      const suministros_basura     = 1000
+
+      const totalGastosFijos = itp + gastos_compraventa + certificado_energetico + comisiones_inmobiliarias + seguros + suministros_basura
+      const inversionTotal   = compra + reforma + totalGastosFijos
+
+      // ── Precio de venta: usuario o estimación por m² ─────────────────────
+      let ventaRealista = input.precio_venta_realista ?? 0
+      if (!ventaRealista && metros && ciudad) {
+        const { buscarPrecioMunicipio } = await import('@/lib/precios-municipio')
+        const ref = buscarPrecioMunicipio(ciudad)
+        if (ref) ventaRealista = Math.round(ref.precioM2 * metros)
+      }
+
+      const ventaConservador = ventaRealista ? Math.round(ventaRealista * 0.90) : 0
+      const ventaOptimista   = ventaRealista ? Math.round(ventaRealista * 1.10) : 0
+
+      // ── gastos_json para el informe ───────────────────────────────────────
+      const gastos_json = {
+        precio_compra:              { estimado: compra,                   real: 0 },
+        gastos_compraventa:         { estimado: gastos_compraventa,       real: 0 },
+        itp:                        { estimado: itp,                      real: 0 },
+        certificado_energetico:     { estimado: certificado_energetico,   real: 0 },
+        comisiones_inmobiliarias:   { estimado: comisiones_inmobiliarias, real: 0 },
+        reforma:                    { estimado: reforma,                   real: 0 },
+        seguros:                    { estimado: seguros,                  real: 0 },
+        suministros_basura:         { estimado: suministros_basura,       real: 0 },
+        deuda_ibi:                  { estimado: 0, real: 0 },
+        deuda_comunidad:            { estimado: 0, real: 0 },
+        cuotas_comunidad:           { estimado: 0, real: 0 },
+        gastos_cancelacion:         { estimado: 0, real: 0 },
+        honorarios_profesionales:   { estimado: 0, real: 0 },
+        honorarios_complementaria:  { estimado: 0, real: 0 },
+      }
+
+      // ── Guardar en inmuebles_estudio ──────────────────────────────────────
+      const { data: est, error } = await supabaseAdmin
+        .from('inmuebles_estudio')
+        .insert({
+          nombre:                   input.nombre,
+          titulo:                   input.nombre,
+          ciudad:                   ciudad || null,
+          precio_compra:            compra,
+          reforma_estimada:         reforma,
+          inversion_total:          inversionTotal,
+          precio_venta_conservador: ventaConservador || null,
+          precio_venta_realista:    ventaRealista    || null,
+          precio_venta_optimista:   ventaOptimista   || null,
+          duracion_meses:           input.duracion_meses ?? null,
+          habitaciones:             input.habitaciones   ?? null,
+          superficie:               metros,
+          url:                      input.url ?? null,
+          estado:                   'en_estudio',
+          gastos_json,
+        })
+        .select('id')
+        .single()
+
+      if (error || !est) return { result: `Error al guardar el análisis: ${error?.message}` }
+
+      const url = `https://wos3.vercel.app/informe/estudio/${est.id}`
+      const fmtE = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
+      const roiR = ventaRealista > 0 ? (((ventaRealista - inversionTotal) / inversionTotal) * 100).toFixed(1) : null
+
+      let resumen = `✅ Análisis completo — **${input.nombre}**\n\n`
+      resumen += `💰 Inversión total: ${fmtE(inversionTotal)}\n`
+      resumen += `  └ Compra: ${fmtE(compra)}\n`
+      resumen += `  └ Reforma: ${fmtE(reforma)}\n`
+      resumen += `  └ Gastos fijos: ${fmtE(totalGastosFijos)} (ITP + notaría + agencia + otros)\n\n`
+      if (ventaRealista > 0) {
+        resumen += `📊 Escenarios:\n`
+        resumen += `  └ Conservador: ${fmtE(ventaConservador)} → ROI ${(((ventaConservador - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n`
+        resumen += `  └ Realista: ${fmtE(ventaRealista)} → ROI ${roiR}%\n`
+        resumen += `  └ Optimista: ${fmtE(ventaOptimista)} → ROI ${(((ventaOptimista - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n\n`
+      }
+      resumen += `📄 [Abrir PDF completo](${url})\n\nEl PDF tiene todos los costes desglosados y los 3 escenarios. Abrilo, revisá y descargalo para el socio.`
+
+      return { result: resumen, action: 'open_url', url, table: 'inmuebles_estudio', recordId: est.id }
     }
     if (name === 'generar_informe_estudio') {
       const { data: est, error } = await supabaseAdmin
