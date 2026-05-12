@@ -14,7 +14,7 @@ export interface PrecioReferencia {
 const NOTARIADO_MUNICIPIOS: Record<string, number> = {
   'albox': 644,
   'pulpi': 1750,  // promedio nuevo+usado (notariado = 2006 sesgado a nuevo)
-  'cuevas del almanzora': 918,
+  'cuevas del almanzora': 893,  // promedio nuevo+usado
   'vera': 1661,
   'mojacar': 1962,
   'garrucha': 1295,
