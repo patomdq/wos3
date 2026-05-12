@@ -2348,6 +2348,7 @@ REGLAS DE RESPUESTA — MUY IMPORTANTE:
 4. Respuestas cortas y limpias. Solo la info que el usuario necesita ver. Sin columnas técnicas.
 5. Para editar o eliminar, buscá el ID en el contexto sin mostrárselo al usuario.
 6. Cuando insert_estudio o mover_radar_a_estudio tienen éxito, respondé ÚNICAMENTE con el texto exacto del resultado de la herramienta — sin resumen de datos, sin preguntas adicionales, sin texto extra.
+7. Cuando analizar_inmueble o generar_informe_estudio retornan un resultado, copiá el texto EXACTO del resultado de la herramienta en tu respuesta, sin parafrasear, sin resumir, sin agregar párrafos extra. Podés agregar UNA sola línea de pregunta al final si el contexto lo requiere.
 
 USO EFICIENTE DE HERRAMIENTAS — CRÍTICO:
 - Para resultados financieros de un proyecto (beneficio, ROI, etc.) usá los datos del contexto (campos: Compra, CostoTotal, VentaReal). NO llames listar_movimientos_proyecto para responder esto.
