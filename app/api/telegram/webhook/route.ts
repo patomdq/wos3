@@ -772,7 +772,11 @@ async function handleCallbackQuery(cb: TgCallbackQuery) {
       await answerCallbackQuery(cb.id, '❌ Error al confirmar')
     } else {
       await answerCallbackQuery(cb.id, '✅ Subido al Radar')
-      await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n✅ Subido a Radar en WOS3')
+      const informeUrl = `https://wos3.vercel.app/informe/radar/${id}`
+      await editMessage(
+        chatId, messageId,
+        (cb.message?.text || '') + `\n\n✅ Subido a Radar en WOS3\n\n📄 Informe para socio:\n${informeUrl}`
+      )
     }
   } else if (action === 'discard') {
     const { error } = await supabase
