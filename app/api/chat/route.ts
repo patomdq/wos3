@@ -1188,9 +1188,9 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       // Referencia de venta para precios máximos
       const ventaRef = ventaRealista > 0 ? ventaRealista : (ventaConservador > 0 ? Math.round((ventaConservador + ventaOptimista) / 2) : 0)
 
-      const roiEmoji = roiRealN === null ? '' : roiRealN >= 50 ? '🟢' : roiRealN >= 30 ? '🟡' : '🔴'
       // Para la alerta usamos ROI anualizado si hay duración, si no el total
       const roiParaAlerta = roiAnualR !== null ? parseFloat(roiAnualR) : roiRealN
+      const roiEmoji = roiParaAlerta === null ? '' : roiParaAlerta >= 50 ? '🟢' : roiParaAlerta >= 30 ? '🟡' : '🔴'
       const roiAlertaValor = roiAnualR !== null ? `${roiR}% total / ${roiAnualR}% anualizado` : `${roiR}%`
       const roiAlerta = roiRealN === null ? '' :
         (roiParaAlerta ?? 0) >= 50 ? `${roiEmoji} ROI ${roiAlertaValor} — Entra con margen según criterios Wallest` :
