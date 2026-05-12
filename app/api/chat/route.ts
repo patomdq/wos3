@@ -1173,18 +1173,44 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const fmtE = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
       const roiR = ventaRealista > 0 ? (((ventaRealista - inversionTotal) / inversionTotal) * 100).toFixed(1) : null
 
-      let resumen = `✅ Análisis completo — **${input.nombre}**\n\n`
+      // ── Costes fijos sin compra ni ITP (para calcular precio máximo de compra) ─
+      const otrosCostes = reforma + gastos_compraventa + certificado_energetico + comisiones_inmobiliarias + seguros + suministros_basura
+      // compra_max = (venta / (1 + roi_target) - otrosCostes) / 1.02  (ITP escala con compra)
+      const compraMax = (targetRoi: number, venta: number) =>
+        Math.round((venta / (1 + targetRoi) - otrosCostes) / 1.02)
+
+      // Referencia de venta para precios máximos: realista si existe, si no conservador/optimista promedio
+      const ventaRef = ventaRealista > 0 ? ventaRealista : (ventaConservador > 0 ? Math.round((ventaConservador + ventaOptimista) / 2) : 0)
+
+      const roiRealN = ventaRealista > 0 ? ((ventaRealista - inversionTotal) / inversionTotal) * 100 : null
+      const roiEmoji = roiRealN === null ? '' : roiRealN >= 50 ? '🟢' : roiRealN >= 30 ? '🟡' : '🔴'
+      const roiAlerta = roiRealN === null ? '' :
+        roiRealN >= 50 ? `${roiEmoji} ROI ${roiR}% — Entra con margen según criterios Wallest` :
+        roiRealN >= 30 ? `${roiEmoji} ROI ${roiR}% — Entra justo según criterios Wallest` :
+        `${roiEmoji} ROI ${roiR}% — No entra según criterios Wallest (mínimo 30%)`
+
+      let resumen = `✅ **${input.nombre}**\n\n`
       resumen += `💰 Inversión total: ${fmtE(inversionTotal)}\n`
       resumen += `  └ Compra: ${fmtE(compra)}\n`
       resumen += `  └ Reforma: ${fmtE(reforma)}\n`
-      resumen += `  └ Gastos fijos: ${fmtE(totalGastosFijos)} (ITP + notaría + agencia + otros)\n\n`
+      resumen += `  └ ITP (2%): ${fmtE(itp)}\n`
+      resumen += `  └ Notaría + Registro: ${fmtE(gastos_compraventa)}\n`
+      resumen += `  └ Agencia: ${fmtE(comisiones_inmobiliarias)}\n`
+      resumen += `  └ Otros (cert., seguros, sum.): ${fmtE(certificado_energetico + seguros + suministros_basura)}\n\n`
       if (ventaRealista > 0) {
         resumen += `📊 Escenarios:\n`
-        resumen += `  └ Conservador: ${fmtE(ventaConservador)} → ROI ${(((ventaConservador - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n`
-        resumen += `  └ Realista: ${fmtE(ventaRealista)} → ROI ${roiR}%\n`
-        resumen += `  └ Optimista: ${fmtE(ventaOptimista)} → ROI ${(((ventaOptimista - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n\n`
+        resumen += `  └ 🔴 Conservador: ${fmtE(ventaConservador)} → ROI ${(((ventaConservador - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n`
+        resumen += `  └ 🟡 Realista: ${fmtE(ventaRealista)} → ROI ${roiR}%\n`
+        resumen += `  └ 🟢 Optimista: ${fmtE(ventaOptimista)} → ROI ${(((ventaOptimista - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n\n`
+        if (roiAlerta) resumen += `${roiAlerta}\n\n`
       }
-      resumen += `✅ Análisis guardado. Usá el botón de abajo para descargar el PDF.`
+      if (ventaRef > 0) {
+        resumen += `💡 Precio máximo de compra (venta ref. ${fmtE(ventaRef)}):\n`
+        resumen += `  └ Para ROI 30%: ${fmtE(Math.max(0, compraMax(0.30, ventaRef)))}\n`
+        resumen += `  └ Para ROI 50%: ${fmtE(Math.max(0, compraMax(0.50, ventaRef)))}\n`
+        resumen += `  └ Para ROI 70%: ${fmtE(Math.max(0, compraMax(0.70, ventaRef)))}\n\n`
+      }
+      resumen += `PDF guardado ↓`
 
       return { result: resumen, action: 'pdf', url, table: 'inmuebles_estudio', recordId: est.id, label: input.nombre }
     }
