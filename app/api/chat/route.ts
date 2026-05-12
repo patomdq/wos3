@@ -924,7 +924,7 @@ async function resolveInmueble(table: 'inmuebles_radar' | 'inmuebles_estudio', b
   return { resolved: data[0] }
 }
 
-async function executeTool(name: string, input: Record<string, any>): Promise<{ result: string; table?: string; recordId?: string; label?: string }> {
+async function executeTool(name: string, input: Record<string, any>): Promise<{ result: string; table?: string; recordId?: string; label?: string; url?: string; action?: string }> {
   try {
     if (name === 'insert_movimiento') {
       const { data, error } = await supabaseAdmin.from('movimientos').insert([{
@@ -1169,7 +1169,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
       if (error || !est) return { result: `Error al guardar el análisis: ${error?.message}` }
 
-      const url = `https://wos3.vercel.app/mercado?estudio=${est.id}`
+      const url = `https://wos3.vercel.app/informe/estudio/${est.id}?pdf=1`
       const fmtE = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
       const roiR = ventaRealista > 0 ? (((ventaRealista - inversionTotal) / inversionTotal) * 100).toFixed(1) : null
 
@@ -1184,9 +1184,9 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         resumen += `  └ Realista: ${fmtE(ventaRealista)} → ROI ${roiR}%\n`
         resumen += `  └ Optimista: ${fmtE(ventaOptimista)} → ROI ${(((ventaOptimista - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n\n`
       }
-      resumen += `📄 [Abrir calculadora y descargar PDF](${url})\n\nSe abre la calculadora con los números cargados. Arriba a la derecha hay un botón **PDF** para descargar el informe.`
+      resumen += `✅ Análisis guardado. Usá el botón de abajo para descargar el PDF.`
 
-      return { result: resumen, action: 'open_url', url, table: 'inmuebles_estudio', recordId: est.id }
+      return { result: resumen, action: 'pdf', url, table: 'inmuebles_estudio', recordId: est.id, label: input.nombre }
     }
     if (name === 'generar_informe_estudio') {
       const { data: est, error } = await supabaseAdmin
@@ -1195,7 +1195,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         .eq('id', input.estudio_id)
         .single()
       if (error || !est) return { result: 'No encontré ese estudio. ¿Podés confirmar el nombre del inmueble?' }
-      const url = `https://wos3.vercel.app/mercado?estudio=${est.id}`
+      const url = `https://wos3.vercel.app/informe/estudio/${est.id}?pdf=1`
       const fmtK = (n: number) => `${Math.round(n / 1000)}k€`
       const inv  = est.inversion_total || est.precio_compra || 0
       const ventaR = est.precio_venta_realista || 0
@@ -1203,9 +1203,10 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const roiR   = inv > 0 ? ((benefR / inv) * 100).toFixed(1) : '—'
       const titulo = est.titulo || est.nombre || est.ciudad || 'Inmueble'
       return {
-        result: `📄 Análisis de rentabilidad — **${titulo}**.\n\n[Abrir calculadora y descargar PDF](${url})\n\n**Resumen:**\n- Inversión total: ${fmtK(inv)}\n- Venta realista: ${fmtK(ventaR)}\n- Beneficio: ${fmtK(benefR)}\n- ROI realista: ${roiR}%${est.duracion_meses ? ` (${est.duracion_meses} meses)` : ''}\n\nSe abre la calculadora con todos los datos. Arriba a la derecha hay un botón **PDF** para descargar y enviar al socio.`,
-        action: 'open_url',
+        result: `📄 **${titulo}** — Inversión ${fmtK(inv)} · Venta realista ${fmtK(ventaR)} · Beneficio ${fmtK(benefR)} · ROI ${roiR}%${est.duracion_meses ? ` (${est.duracion_meses} meses)` : ''}`,
+        action: 'pdf',
         url,
+        label: titulo,
       }
     }
     if (name === 'generar_liquidacion') {
@@ -2375,13 +2376,13 @@ ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
     })
 
     // Handle tool use loop
-    const toolResults: Array<{ id: string; result: string; table?: string; recordId?: string; label?: string }> = []
+    const toolResults: Array<{ id: string; result: string; table?: string; recordId?: string; label?: string; url?: string; action?: string }> = []
     while (response.stop_reason === 'tool_use') {
       const toolUseBlocks = response.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
       const results = await Promise.all(
         toolUseBlocks.map(async (b) => {
-          const { result, table, recordId, label } = await executeTool(b.name, b.input as Record<string, any>)
-          toolResults.push({ id: b.id, result, table, recordId, label })
+          const { result, table, recordId, label, url, action } = await executeTool(b.name, b.input as Record<string, any>)
+          toolResults.push({ id: b.id, result, table, recordId, label, url, action })
           return { type: 'tool_result' as const, tool_use_id: b.id, content: result }
         })
       )

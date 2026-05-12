@@ -72,6 +72,10 @@ export default function InformeEstudioPage() {
         if (error || !data) { setError('Estudio no encontrado'); setLoading(false); return }
         setE(data)
         setLoading(false)
+        // Auto-print if opened with ?pdf=1
+        if (typeof window !== 'undefined' && window.location.search.includes('pdf=1')) {
+          setTimeout(() => window.print(), 800)
+        }
       })
   }, [id])
 

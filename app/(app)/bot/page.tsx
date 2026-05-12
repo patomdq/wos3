@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-type ToolData = { id: string; result: string; table?: string; recordId?: string; label?: string }
+type ToolData = { id: string; result: string; table?: string; recordId?: string; label?: string; url?: string; action?: string }
 type Msg = { role: 'bot' | 'user'; text: string; time: string; toolData?: ToolData[]; imagePreview?: string }
 
 const QUICK = ['📄 Factura', '💰 Saldo HASU', '🔨 Estado obra', '📋 Liquidación', '📅 ¿Qué tareas hay?']
@@ -163,7 +163,10 @@ export default function BotPage() {
       const { text: resp, toolResults } = await res.json()
       setTyping(false)
 
-      const html = resp.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>')
+      const html = resp
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:#F26E1F;text-decoration:underline;">$1</a>')
+        .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>')
       const botMsg: Msg = { role: 'bot', text: html, time: now(), toolData: toolResults?.length ? toolResults : undefined }
       setMsgs(m => [...m, botMsg])
       setHistorial(h => [...h, { role: 'assistant', content: resp }])
@@ -297,15 +300,15 @@ export default function BotPage() {
 
               {/* Tool results with edit/delete */}
               {m.toolData?.map((td, ti) => (
-                <div key={ti} className="mt-1.5 px-3 py-2 rounded-xl" style={{ background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.22)' }}>
-                  <div className="flex items-center justify-between gap-2">
+                <div key={ti} className="mt-1.5 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(34,197,94,0.22)' }}>
+                  <div className="px-3 py-2 flex items-center justify-between gap-2" style={{ background: 'rgba(34,197,94,0.10)' }}>
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm">{tableIcon(td.table)}</span>
                       <span className="text-xs font-bold truncate" style={{ color: '#22C55E' }}>
                         {td.label || '✓ Guardado'}
                       </span>
                     </div>
-                    {td.table && td.table !== 'tareas' && (
+                    {td.table && td.table !== 'tareas' && td.table !== 'inmuebles_estudio' && (
                       <div className="flex gap-1.5 flex-shrink-0">
                         <button onClick={() => openEdit(td)}
                           className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold"
@@ -318,6 +321,13 @@ export default function BotPage() {
                       </div>
                     )}
                   </div>
+                  {td.url && (
+                    <a href={td.url} target="_blank" rel="noopener"
+                      className="flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold w-full"
+                      style={{ background: '#F26E1F', color: '#fff', textDecoration: 'none' }}>
+                      <span>📄</span> Descargar PDF
+                    </a>
+                  )}
                 </div>
               ))}
 
