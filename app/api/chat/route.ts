@@ -172,6 +172,17 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'generar_liquidacion',
+    description: 'Genera el PDF de liquidación de una operación finalizada. Usalo cuando el usuario pida "liquidación", "generar liquidación", "PDF de liquidación", "hazme la liquidación de X", o quiera el documento de cierre de una operación para enviar al socio.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        proyecto_id: { type: 'string', description: 'UUID del proyecto. Si no lo sabes búscalo primero con buscar_proyecto.' },
+      },
+      required: ['proyecto_id'],
+    },
+  },
+  {
     name: 'insert_bitacora',
     description: 'Agrega una entrada a la bitácora de un proyecto. Usalo cuando el usuario diga "agrega a la bitácora", "anota en la bitácora", "registra en la bitácora", "añade una nota al proyecto", o mencione un hito, alerta o novedad de un proyecto.',
     input_schema: {
@@ -1055,6 +1066,25 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         table: 'inmuebles_radar',
         recordId: data.id,
         label: `${data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''} · ${data.precio}€`,
+      }
+    }
+    if (name === 'generar_liquidacion') {
+      const { data: proy, error } = await supabaseAdmin
+        .from('proyectos')
+        .select('id, nombre, precio_venta_real, valor_total_operacion, precio_compra, porcentaje_hasu, socio_nombre')
+        .eq('id', input.proyecto_id)
+        .single()
+      if (error || !proy) return { result: 'No encontré ese proyecto. ¿Podés confirmar el nombre?' }
+      const url = `https://wos3.vercel.app/liquidacion/${proy.id}`
+      const esJV = (proy.porcentaje_hasu || 100) < 100 && proy.socio_nombre
+      const inv  = proy.valor_total_operacion || proy.precio_compra || 0
+      const venta = proy.precio_venta_real || 0
+      const benef = venta - inv
+      const roi   = inv > 0 ? ((benef / inv) * 100).toFixed(1) : '—'
+      return {
+        result: `✅ Liquidación de **${proy.nombre}** lista.\n\n📄 [Abrir y descargar PDF](${url})\n\n**Resumen:**\n- Venta: ${new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(venta)}\n- Inversión: ${new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(inv)}\n- Beneficio total: ${new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(benef)}\n- ROI: ${roi}%${esJV ? `\n- Neto a ${proy.socio_nombre}: ${new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(benef * (100 - (proy.porcentaje_hasu||100)) / 100 * 0.81)} (tras retención 19%)` : ''}\n\nAbrí el link, revisá los datos y tocá **Descargar PDF** ↓`,
+        action: 'open_url',
+        url,
       }
     }
     if (name === 'insert_bitacora') {
