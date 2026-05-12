@@ -1175,8 +1175,8 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const roiRealN = ventaRealista > 0 ? ((ventaRealista - inversionTotal) / inversionTotal) * 100 : null
       const roiR = roiRealN !== null ? roiRealN.toFixed(1) : null
 
-      // ROI anualizado: ROI_total × (12 / meses)
-      const anualizar = (roiTotal: number) => meses > 0 ? (roiTotal * (12 / meses)).toFixed(1) : null
+      // ROI anualizado compuesto: (1 + ROI)^(12/meses) - 1
+      const anualizar = (roiTotal: number) => meses > 0 ? ((Math.pow(1 + roiTotal / 100, 12 / meses) - 1) * 100).toFixed(1) : null
       const roiAnualR = roiRealN !== null ? anualizar(roiRealN) : null
 
       // ── Costes fijos sin compra ni ITP (para calcular precio máximo de compra) ─
@@ -1199,7 +1199,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
       const fmtRoi = (venta: number) => {
         const roi = ((venta - inversionTotal) / inversionTotal) * 100
-        const anual = meses > 0 ? ` (${(roi * 12 / meses).toFixed(1)}% anual)` : ''
+        const anual = meses > 0 ? ` (${((Math.pow(1 + roi / 100, 12 / meses) - 1) * 100).toFixed(1)}% anual)` : ''
         return `${roi.toFixed(1)}%${anual}`
       }
 

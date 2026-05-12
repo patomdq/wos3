@@ -73,9 +73,9 @@ function calcResultados(gastos: Gastos, pvPes: number, pvReal: number, pvOpt: nu
   const pv = [pvPes, pvReal, pvOpt]
   const ben = pv.map(p => toNum(p) - totalReal)
   const rent = ben.map(b => (b / totalReal) * 100)
-  // ROI anualizado solo si hay duración cargada; fórmula lineal: ROI × (12 / meses)
+  // ROI anualizado compuesto: (1 + ROI)^(12/meses) - 1
   const anual: (number | null)[] = meses > 0
-    ? rent.map(r => r * (12 / meses))
+    ? rent.map(r => (Math.pow(1 + r / 100, 12 / meses) - 1) * 100)
     : [null, null, null]
   return { totalEst, totalReal, ben, rent, anual }
 }
