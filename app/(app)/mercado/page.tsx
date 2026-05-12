@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
 
@@ -85,6 +85,8 @@ const emptyRadarForm = () => ({ titulo: '', direccion: '', ciudad: '', precio: '
 
 export default function MercadoPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const autoOpenDone = useRef(false)
   const [tab, setTab] = useState(0)
   const [radar, setRadar] = useState<Radar[]>([])
   const [estudio, setEstudio] = useState<Estudio[]>([])
@@ -287,6 +289,18 @@ export default function MercadoPage() {
     setCalcOpen(true)
   }
 
+  // Auto-abrir calculadora si viene ?estudio=ID en la URL
+  useEffect(() => {
+    if (loading || autoOpenDone.current) return
+    const estudioId = searchParams.get('estudio')
+    if (!estudioId) return
+    const item = estudio.find(e => e.id === estudioId)
+    if (!item) return
+    autoOpenDone.current = true
+    setTab(1) // cambiar a tab Estudios
+    openCalc(item.precio_compra, item.nombre || item.titulo || item.direccion || '', item.ciudad, item)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, estudio, searchParams])
 
   const updateGasto = (id: string, tipo: 'estimado' | 'real', val: string) => {
     setGastos(prev => ({ ...prev, [id]: { ...prev[id], [tipo]: parseFloat(val) || 0 } }))

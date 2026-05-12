@@ -1169,7 +1169,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
       if (error || !est) return { result: `Error al guardar el análisis: ${error?.message}` }
 
-      const url = `https://wos3.vercel.app/informe/estudio/${est.id}`
+      const url = `https://wos3.vercel.app/mercado?estudio=${est.id}`
       const fmtE = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
       const roiR = ventaRealista > 0 ? (((ventaRealista - inversionTotal) / inversionTotal) * 100).toFixed(1) : null
 
@@ -1184,7 +1184,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         resumen += `  └ Realista: ${fmtE(ventaRealista)} → ROI ${roiR}%\n`
         resumen += `  └ Optimista: ${fmtE(ventaOptimista)} → ROI ${(((ventaOptimista - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n\n`
       }
-      resumen += `📄 [Abrir PDF completo](${url})\n\nEl PDF tiene todos los costes desglosados y los 3 escenarios. Abrilo, revisá y descargalo para el socio.`
+      resumen += `📄 [Abrir calculadora y descargar PDF](${url})\n\nSe abre la calculadora con los números cargados. Arriba a la derecha hay un botón **PDF** para descargar el informe.`
 
       return { result: resumen, action: 'open_url', url, table: 'inmuebles_estudio', recordId: est.id }
     }
@@ -1195,7 +1195,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         .eq('id', input.estudio_id)
         .single()
       if (error || !est) return { result: 'No encontré ese estudio. ¿Podés confirmar el nombre del inmueble?' }
-      const url = `https://wos3.vercel.app/informe/estudio/${est.id}`
+      const url = `https://wos3.vercel.app/mercado?estudio=${est.id}`
       const fmtK = (n: number) => `${Math.round(n / 1000)}k€`
       const inv  = est.inversion_total || est.precio_compra || 0
       const ventaR = est.precio_venta_realista || 0
@@ -1203,7 +1203,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const roiR   = inv > 0 ? ((benefR / inv) * 100).toFixed(1) : '—'
       const titulo = est.titulo || est.nombre || est.ciudad || 'Inmueble'
       return {
-        result: `📄 Informe de rentabilidad — **${titulo}** listo.\n\n[Abrir y descargar PDF](${url})\n\n**Resumen:**\n- Inversión total: ${fmtK(inv)}\n- Venta realista: ${fmtK(ventaR)}\n- Beneficio: ${fmtK(benefR)}\n- ROI realista: ${roiR}%${est.duracion_meses ? ` (${est.duracion_meses} meses)` : ''}\n\nAbrí el link, revisá los números y descargá el PDF para enviarlo al socio.`,
+        result: `📄 Análisis de rentabilidad — **${titulo}**.\n\n[Abrir calculadora y descargar PDF](${url})\n\n**Resumen:**\n- Inversión total: ${fmtK(inv)}\n- Venta realista: ${fmtK(ventaR)}\n- Beneficio: ${fmtK(benefR)}\n- ROI realista: ${roiR}%${est.duracion_meses ? ` (${est.duracion_meses} meses)` : ''}\n\nSe abre la calculadora con todos los datos. Arriba a la derecha hay un botón **PDF** para descargar y enviar al socio.`,
         action: 'open_url',
         url,
       }
