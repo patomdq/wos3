@@ -1171,7 +1171,13 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
       const url = `https://wos3.vercel.app/informe/estudio/${est.id}?pdf=1`
       const fmtE = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
-      const roiR = ventaRealista > 0 ? (((ventaRealista - inversionTotal) / inversionTotal) * 100).toFixed(1) : null
+      const meses = input.duracion_meses ?? 0
+      const roiRealN = ventaRealista > 0 ? ((ventaRealista - inversionTotal) / inversionTotal) * 100 : null
+      const roiR = roiRealN !== null ? roiRealN.toFixed(1) : null
+
+      // ROI anualizado: ROI_total × (12 / meses)
+      const anualizar = (roiTotal: number) => meses > 0 ? (roiTotal * (12 / meses)).toFixed(1) : null
+      const roiAnualR = roiRealN !== null ? anualizar(roiRealN) : null
 
       // ── Costes fijos sin compra ni ITP (para calcular precio máximo de compra) ─
       const otrosCostes = reforma + gastos_compraventa + certificado_energetico + comisiones_inmobiliarias + seguros + suministros_basura
@@ -1179,17 +1185,25 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const compraMax = (targetRoi: number, venta: number) =>
         Math.round((venta / (1 + targetRoi) - otrosCostes) / 1.02)
 
-      // Referencia de venta para precios máximos: realista si existe, si no conservador/optimista promedio
+      // Referencia de venta para precios máximos
       const ventaRef = ventaRealista > 0 ? ventaRealista : (ventaConservador > 0 ? Math.round((ventaConservador + ventaOptimista) / 2) : 0)
 
-      const roiRealN = ventaRealista > 0 ? ((ventaRealista - inversionTotal) / inversionTotal) * 100 : null
       const roiEmoji = roiRealN === null ? '' : roiRealN >= 50 ? '🟢' : roiRealN >= 30 ? '🟡' : '🔴'
+      // Para la alerta usamos ROI anualizado si hay duración, si no el total
+      const roiParaAlerta = roiAnualR !== null ? parseFloat(roiAnualR) : roiRealN
+      const roiAlertaValor = roiAnualR !== null ? `${roiR}% total / ${roiAnualR}% anualizado` : `${roiR}%`
       const roiAlerta = roiRealN === null ? '' :
-        roiRealN >= 50 ? `${roiEmoji} ROI ${roiR}% — Entra con margen según criterios Wallest` :
-        roiRealN >= 30 ? `${roiEmoji} ROI ${roiR}% — Entra justo según criterios Wallest` :
-        `${roiEmoji} ROI ${roiR}% — No entra según criterios Wallest (mínimo 30%)`
+        (roiParaAlerta ?? 0) >= 50 ? `${roiEmoji} ROI ${roiAlertaValor} — Entra con margen según criterios Wallest` :
+        (roiParaAlerta ?? 0) >= 30 ? `${roiEmoji} ROI ${roiAlertaValor} — Entra justo según criterios Wallest` :
+        `${roiEmoji} ROI ${roiAlertaValor} — No entra según criterios Wallest (mínimo 30%)`
 
-      let resumen = `✅ **${input.nombre}**\n\n`
+      const fmtRoi = (venta: number) => {
+        const roi = ((venta - inversionTotal) / inversionTotal) * 100
+        const anual = meses > 0 ? ` (${(roi * 12 / meses).toFixed(1)}% anual)` : ''
+        return `${roi.toFixed(1)}%${anual}`
+      }
+
+      let resumen = `✅ **${input.nombre}**${meses > 0 ? ` · ${meses} meses` : ''}\n\n`
       resumen += `💰 Inversión total: ${fmtE(inversionTotal)}\n`
       resumen += `  └ Compra: ${fmtE(compra)}\n`
       resumen += `  └ Reforma: ${fmtE(reforma)}\n`
@@ -1198,10 +1212,10 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       resumen += `  └ Agencia: ${fmtE(comisiones_inmobiliarias)}\n`
       resumen += `  └ Otros (cert., seguros, sum.): ${fmtE(certificado_energetico + seguros + suministros_basura)}\n\n`
       if (ventaRealista > 0) {
-        resumen += `📊 Escenarios:\n`
-        resumen += `  └ 🔴 Conservador: ${fmtE(ventaConservador)} → ROI ${(((ventaConservador - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n`
-        resumen += `  └ 🟡 Realista: ${fmtE(ventaRealista)} → ROI ${roiR}%\n`
-        resumen += `  └ 🟢 Optimista: ${fmtE(ventaOptimista)} → ROI ${(((ventaOptimista - inversionTotal) / inversionTotal) * 100).toFixed(1)}%\n\n`
+        resumen += `📊 Escenarios${meses > 0 ? ` (ROI total / anualizado a ${meses}m)` : ''}:\n`
+        resumen += `  └ 🔴 Conservador: ${fmtE(ventaConservador)} → ROI ${fmtRoi(ventaConservador)}\n`
+        resumen += `  └ 🟡 Realista:    ${fmtE(ventaRealista)}    → ROI ${fmtRoi(ventaRealista)}\n`
+        resumen += `  └ 🟢 Optimista:   ${fmtE(ventaOptimista)}   → ROI ${fmtRoi(ventaOptimista)}\n\n`
         if (roiAlerta) resumen += `${roiAlerta}\n\n`
       }
       if (ventaRef > 0) {
