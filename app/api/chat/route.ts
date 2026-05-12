@@ -172,6 +172,17 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'generar_informe_estudio',
+    description: 'Genera el PDF de análisis de rentabilidad completo de un inmueble en estudio. Usalo cuando el usuario pida "informe", "análisis", "informe de rentabilidad", "hazme el análisis de X", "informe para el socio de X", o quiera el documento de análisis para enviar a un socio antes de comprar.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        estudio_id: { type: 'string', description: 'UUID del inmueble en inmuebles_estudio. Si no lo sabes búscalo por nombre.' },
+      },
+      required: ['estudio_id'],
+    },
+  },
+  {
     name: 'generar_liquidacion',
     description: 'Genera el PDF de liquidación de una operación finalizada. Usalo cuando el usuario pida "liquidación", "generar liquidación", "PDF de liquidación", "hazme la liquidación de X", o quiera el documento de cierre de una operación para enviar al socio.',
     input_schema: {
@@ -1066,6 +1077,26 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         table: 'inmuebles_radar',
         recordId: data.id,
         label: `${data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''} · ${data.precio}€`,
+      }
+    }
+    if (name === 'generar_informe_estudio') {
+      const { data: est, error } = await supabaseAdmin
+        .from('inmuebles_estudio')
+        .select('id, titulo, nombre, ciudad, precio_compra, inversion_total, precio_venta_realista, precio_venta_conservador, precio_venta_optimista, duracion_meses')
+        .eq('id', input.estudio_id)
+        .single()
+      if (error || !est) return { result: 'No encontré ese estudio. ¿Podés confirmar el nombre del inmueble?' }
+      const url = `https://wos3.vercel.app/informe/estudio/${est.id}`
+      const fmtK = (n: number) => `${Math.round(n / 1000)}k€`
+      const inv  = est.inversion_total || est.precio_compra || 0
+      const ventaR = est.precio_venta_realista || 0
+      const benefR = ventaR - inv
+      const roiR   = inv > 0 ? ((benefR / inv) * 100).toFixed(1) : '—'
+      const titulo = est.titulo || est.nombre || est.ciudad || 'Inmueble'
+      return {
+        result: `📄 Informe de rentabilidad — **${titulo}** listo.\n\n[Abrir y descargar PDF](${url})\n\n**Resumen:**\n- Inversión total: ${fmtK(inv)}\n- Venta realista: ${fmtK(ventaR)}\n- Beneficio: ${fmtK(benefR)}\n- ROI realista: ${roiR}%${est.duracion_meses ? ` (${est.duracion_meses} meses)` : ''}\n\nAbrí el link, revisá los números y descargá el PDF para enviarlo al socio.`,
+        action: 'open_url',
+        url,
       }
     }
     if (name === 'generar_liquidacion') {
