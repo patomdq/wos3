@@ -1188,14 +1188,14 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       // Referencia de venta para precios máximos
       const ventaRef = ventaRealista > 0 ? ventaRealista : (ventaConservador > 0 ? Math.round((ventaConservador + ventaOptimista) / 2) : 0)
 
-      // Para la alerta usamos ROI anualizado si hay duración, si no el total
-      const roiParaAlerta = roiAnualR !== null ? parseFloat(roiAnualR) : roiRealN
-      const roiEmoji = roiParaAlerta === null ? '' : roiParaAlerta >= 50 ? '🟢' : roiParaAlerta >= 30 ? '🟡' : '🔴'
-      const roiAlertaValor = roiAnualR !== null ? `${roiR}% total / ${roiAnualR}% anualizado` : `${roiR}%`
+      // Semáforo basado en ROI total de la operación (criterio Wallest)
+      // 🟢 ≥30% | 🟡 15-30% analizar caso a caso | 🔴 <15% no entra
+      const roiEmoji = roiRealN === null ? '' : roiRealN >= 30 ? '🟢' : roiRealN >= 15 ? '🟡' : '🔴'
+      const roiAlertaValor = roiAnualR !== null ? `${roiR}% (${roiAnualR}% anualizado)` : `${roiR}%`
       const roiAlerta = roiRealN === null ? '' :
-        (roiParaAlerta ?? 0) >= 50 ? `${roiEmoji} ROI ${roiAlertaValor} — Entra con margen según criterios Wallest` :
-        (roiParaAlerta ?? 0) >= 30 ? `${roiEmoji} ROI ${roiAlertaValor} — Entra justo según criterios Wallest` :
-        `${roiEmoji} ROI ${roiAlertaValor} — No entra según criterios Wallest (mínimo 30%)`
+        roiRealN >= 30 ? `${roiEmoji} ROI ${roiAlertaValor} — Entra según criterios Wallest` :
+        roiRealN >= 15 ? `${roiEmoji} ROI ${roiAlertaValor} — Analizar caso por caso` :
+        `${roiEmoji} ROI ${roiAlertaValor} — No entra según criterios Wallest`
 
       const fmtRoi = (venta: number) => {
         const roi = ((venta - inversionTotal) / inversionTotal) * 100
