@@ -2443,6 +2443,13 @@ ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
       })
     }
 
+    // Para tools con output estructurado fijo (analizar_inmueble, generar_informe_estudio),
+    // devolver el resultado del tool directamente — no dejar que Claude lo reformule.
+    const deterministicResult = toolResults.find(tr => tr.action === 'pdf')
+    if (deterministicResult) {
+      return NextResponse.json({ text: deterministicResult.result, toolResults })
+    }
+
     const text = response.content.find(b => b.type === 'text')?.type === 'text'
       ? (response.content.find(b => b.type === 'text') as Anthropic.TextBlock).text
       : ''
