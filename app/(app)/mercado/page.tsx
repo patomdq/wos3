@@ -527,6 +527,9 @@ export default function MercadoPage() {
           roi_estimado: 0, estado: 'en_estudio', analizado_en: today(),
         }]).select().single()
         if (estudioNew) setEstudio(prev => [estudioNew, ...prev])
+        // Marcar radar como convertido → desaparece de la vista
+        await supabase.from('inmuebles_radar').update({ estado: 'convertido' }).eq('id', radarId)
+        setRadar(prev => prev.filter(x => x.id !== radarId))
       }
     }
     setPostVisitaId(null)
