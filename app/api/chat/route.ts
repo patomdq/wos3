@@ -1169,6 +1169,23 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
       if (error || !est) return { result: `Error al guardar el análisis: ${error?.message}` }
 
+      // ── Mover radar a convertido automáticamente ──────────────────────────
+      // Busca por ciudad + nombre/dirección; si hay match único lo marca convertido
+      if (ciudad) {
+        let radarQuery = supabaseAdmin
+          .from('inmuebles_radar')
+          .select('id')
+          .eq('estado', 'activo')
+          .ilike('ciudad', `%${ciudad}%`)
+        const nombreSlug = input.nombre?.split(/[\s,]+/)[0] // primera palabra como señal
+        if (nombreSlug) radarQuery = radarQuery.or(`direccion.ilike.%${nombreSlug}%,titulo.ilike.%${nombreSlug}%`)
+        const { data: radarMatches } = await radarQuery
+        if (radarMatches?.length === 1) {
+          await supabaseAdmin.from('inmuebles_radar').update({ estado: 'convertido' }).eq('id', radarMatches[0].id)
+        }
+      }
+
+
       const url = `https://wos3.vercel.app/informe/estudio/${est.id}?pdf=1`
       const fmtE = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
       const meses = input.duracion_meses ?? 0
