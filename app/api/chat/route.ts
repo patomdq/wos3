@@ -1181,7 +1181,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         if (nombreSlug) radarQuery = radarQuery.or(`direccion.ilike.%${nombreSlug}%,titulo.ilike.%${nombreSlug}%`)
         const { data: radarMatches } = await radarQuery
         if (radarMatches?.length === 1) {
-          await supabaseAdmin.from('inmuebles_radar').update({ estado: 'convertido' }).eq('id', radarMatches[0].id)
+          await supabaseAdmin.from('inmuebles_radar').delete().eq('id', radarMatches[0].id)
         }
       }
 
