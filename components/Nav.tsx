@@ -15,10 +15,11 @@ type WosNotif = {
 }
 
 const ALL_ITEMS = [
-  { id: 'bot',       href: '/bot',       icon: '◎',  label: 'Bot' },
-  { id: 'proyectos', href: '/proyectos', icon: '⊞',  label: 'Proyectos' },
-  { id: 'mercado',   href: '/mercado',   icon: '🔍', label: 'Mercado' },
-  { id: 'hasu',      href: '/hasu',      icon: '🏢', label: 'HASU' },
+  { id: 'bot',        href: '/bot',        icon: '◎',  label: 'Bot' },
+  { id: 'proyectos',  href: '/proyectos',  icon: '⊞',  label: 'Proyectos' },
+  { id: 'mercado',    href: '/mercado',    icon: '🔍', label: 'Mercado' },
+  { id: 'edificios',  href: '/edificios',  icon: '🏗️', label: 'Edificios' },
+  { id: 'hasu',       href: '/hasu',       icon: '🏢', label: 'HASU' },
 ]
 
 const initials = (s: string) => s.split(/[\s@]+/).slice(0,2).map(n => n[0]?.toUpperCase() || '').join('') || '?'
