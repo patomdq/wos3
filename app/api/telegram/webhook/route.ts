@@ -73,6 +73,17 @@ interface ExtractedData {
   duracion_meses?: number | null
 }
 
+interface EdificioData {
+  titulo?: string | null
+  direccion?: string | null
+  ciudad?: string | null
+  precio_compra?: number | null
+  superficie_total?: number | null
+  num_plantas?: number | null
+  tipo_finca?: 'finca_unica' | 'bloque_independiente' | null
+  notas?: string | null
+}
+
 // ── Telegram helpers ─────────────────────────────────────────────────────────
 
 async function sendMessage(chatId: number, text: string, replyMarkup?: object) {
@@ -458,6 +469,221 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
   ].filter((l): l is string => l !== null && l !== undefined).join('\n')
 }
 
+// ── Edificio helpers ──────────────────────────────────────────────────────────
+
+function isEdificioMessage(text: string): boolean {
+  // Explicit creation intent with "edificio"
+  if (/(?:cargar?|subir|añadir|agregar|meter|apuntar|registrar)\s+(?:un?\s+)?edificio\b/i.test(text)) return true
+  // "edificio" as main subject + price/location
+  if (/\bedificio\b.*(?:\d{3,}k|\d{5,}|€|precio\s+compra|comprar?)/i.test(text)) return true
+  if (/(?:\d{3,}k|\d{5,}|€|precio\s+compra).*\bedificio\b/i.test(text)) return true
+  // Bloque de pisos/viviendas
+  if (/\bbloque\s+(?:de\s+)?(?:pisos?|viviendas?)\b/i.test(text)) return true
+  // Edificio en radar/estudio
+  if (/\bedificio\b.*\b(?:radar|estudio)\b/i.test(text)) return true
+  if (/\b(?:radar|estudio)\b.*\bedificio\b/i.test(text)) return true
+  return false
+}
+
+const EDIFICIO_EXTRACT_PROMPT = `Extrae datos del mensaje sobre un EDIFICIO o finca completa para inversión. Responde SOLO con JSON válido, sin texto adicional.
+
+Formato:
+{
+  "titulo": string o null,
+  "direccion": string o null,
+  "ciudad": string o null,
+  "precio_compra": número en euros o null,
+  "superficie_total": número en m² total o null,
+  "num_plantas": número entero o null,
+  "tipo_finca": "finca_unica" o "bloque_independiente" o null,
+  "notas": string o null
+}
+
+Reglas:
+- precio_compra = precio de compra del edificio completo
+- "75k" = 75000, "1.2M" = 1200000
+- tipo_finca: "finca_unica" = una sola escritura con varios pisos, "bloque_independiente" = bloque entero independiente
+- Si no hay info, pon null`
+
+async function extractEdificioData(text: string): Promise<EdificioData> {
+  try {
+    const res = await anthropic.messages.create({
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
+      max_tokens: 400,
+      messages: [{ role: 'user', content: `${EDIFICIO_EXTRACT_PROMPT}\n\nMensaje: "${text}"` }],
+    })
+    const content = res.content[0]
+    return content.type === 'text' ? parseJsonFromClaude(content.text) as EdificioData : {}
+  } catch (e) {
+    console.error('extractEdificioData error:', e)
+    return {}
+  }
+}
+
+function buildEdificioAnalysis(data: EdificioData): string {
+  const lines: string[] = [
+    `🏢 ${data.titulo || data.direccion || data.ciudad || 'Edificio sin título'}`,
+  ]
+  if (data.ciudad && data.ciudad !== data.titulo) lines.push(`📍 ${data.ciudad}`)
+  if (data.direccion && data.direccion !== data.titulo && data.direccion !== data.ciudad) {
+    lines.push(`🏠 ${data.direccion}`)
+  }
+  lines.push(`💰 Precio compra: ${data.precio_compra ? fmt(data.precio_compra) + '€' : 'No informado'}`)
+  if (data.superficie_total) lines.push(`📐 Sup. total: ${data.superficie_total}m²`)
+  if (data.num_plantas) lines.push(`🏗️ Plantas: ${data.num_plantas}`)
+  if (data.tipo_finca) {
+    lines.push(`🔑 Tipo: ${data.tipo_finca === 'finca_unica' ? 'Finca única' : 'Bloque independiente'}`)
+  }
+  if (data.notas) lines.push(`📝 ${data.notas.slice(0, 200)}`)
+  lines.push('\n¿Subir al Radar de Edificios?')
+  return lines.join('\n')
+}
+
+async function handleEdificioFlow(
+  chatId: number,
+  text: string,
+  telegramUser: string,
+  urlMatch: RegExpMatchArray | null,
+): Promise<boolean> {
+  if (!isEdificioMessage(text)) return false
+
+  const data = await extractEdificioData(text)
+
+  const notasBase = data.notas || ''
+  const notasTelegram = notasBase ? `${notasBase}\n[Telegram: ${telegramUser}]` : `[Telegram: ${telegramUser}]`
+
+  const { data: inserted, error } = await supabase
+    .from('edificios_estudio')
+    .insert({
+      titulo: data.titulo || data.direccion || text.slice(0, 80) || 'Telegram — sin título',
+      direccion: data.direccion || 'Sin dirección',
+      ciudad: data.ciudad || null,
+      precio_compra: data.precio_compra || 0,
+      superficie_total: data.superficie_total || null,
+      num_plantas: data.num_plantas || null,
+      tipo_finca: data.tipo_finca || 'finca_unica',
+      notas: notasTelegram,
+      url: urlMatch?.[0] ?? null,
+      fuente: 'telegram',
+      estado: 'pendiente_tg',
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('Edificio insert error:', error)
+    await sendMessage(chatId, buildEdificioAnalysis(data) + '\n\n❌ Error al guardar — intentá de nuevo.')
+    return true
+  }
+
+  const replyMarkup = {
+    inline_keyboard: [[
+      { text: '✅ Subir al Radar', callback_data: `edificio_confirm:${inserted.id}` },
+      { text: '🗑️ Descartar', callback_data: `edificio_discard:${inserted.id}` },
+    ]],
+  }
+  await sendMessage(chatId, buildEdificioAnalysis(data), replyMarkup)
+  return true
+}
+
+async function handleEdificioCRUD(chatId: number, text: string): Promise<boolean> {
+  // List edificios
+  if (/(?:qué|cuáles?|lista|muestra|ver)\s+edificios?\b/i.test(text) || /edificios?\s+(?:en\s+|del?\s+)(?:radar|estudio)/i.test(text)) {
+    const { data } = await supabase
+      .from('edificios_estudio')
+      .select('titulo, direccion, ciudad, precio_compra, estado')
+      .neq('estado', 'pendiente_tg')
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (!data || data.length === 0) {
+      await sendMessage(chatId, '📋 No hay edificios registrados.')
+      return true
+    }
+
+    const radarItems = data.filter(e => e.estado === 'radar')
+    const estudioItems = data.filter(e => e.estado !== 'radar')
+    const lines: string[] = ['🏢 Edificios en WOS3']
+
+    if (radarItems.length > 0) {
+      lines.push('\n📡 Radar:')
+      radarItems.forEach(e => {
+        const precio = e.precio_compra ? ` — ${fmt(e.precio_compra)}€` : ''
+        lines.push(`• ${e.titulo || e.direccion || e.ciudad}${precio}`)
+      })
+    }
+    if (estudioItems.length > 0) {
+      lines.push('\n📂 En Estudio:')
+      estudioItems.forEach(e => {
+        const precio = e.precio_compra ? ` — ${fmt(e.precio_compra)}€` : ''
+        const estadoLabel = e.estado === 'en_estudio' ? 'En estudio' : e.estado
+        lines.push(`• ${e.titulo || e.direccion || e.ciudad} [${estadoLabel}]${precio}`)
+      })
+    }
+
+    await sendMessage(chatId, lines.join('\n'))
+    return true
+  }
+
+  // Delete edificio
+  if (/(?:elimina|borra|descarta|quita)\s+(?:el\s+)?edificio\b/i.test(text)) {
+    const nameMatch = text.match(/edificio\s+(?:en\s+|de\s+|")?([^"\n,]+?)(?:"\s*)?(?:\s+del?\s+(?:radar|estudio)|$)/i)
+    const searchTerm = nameMatch?.[1]?.trim()
+
+    if (!searchTerm) {
+      await sendMessage(chatId, '❓ ¿Qué edificio querés eliminar? Especificá la dirección o nombre.')
+      return true
+    }
+
+    const { data } = await supabase
+      .from('edificios_estudio')
+      .select('id, titulo, direccion, ciudad')
+      .or(`titulo.ilike.%${searchTerm}%,direccion.ilike.%${searchTerm}%,ciudad.ilike.%${searchTerm}%`)
+      .neq('estado', 'pendiente_tg')
+      .limit(1)
+      .single()
+
+    if (!data) {
+      await sendMessage(chatId, `❌ No encontré ningún edificio que coincida con "${searchTerm}".`)
+      return true
+    }
+
+    await supabase.from('edificios_estudio').delete().eq('id', data.id)
+    await sendMessage(chatId, `🗑️ Edificio "${data.titulo || data.direccion || data.ciudad}" eliminado.`)
+    return true
+  }
+
+  // Move edificio from radar to estudio
+  if (/(?:mueve?|pasa?)\s+(?:el\s+)?edificio\b.*\bestudio\b/i.test(text)) {
+    const nameMatch = text.match(/edificio\s+(?:en\s+|de\s+|")?([^"\n,]+?)(?:"\s*)?(?:\s+a\s+estudio|$)/i)
+    const searchTerm = nameMatch?.[1]?.trim()
+
+    if (!searchTerm) {
+      await sendMessage(chatId, '❓ ¿Qué edificio querés mover a Estudio? Especificá la dirección o nombre.')
+      return true
+    }
+
+    const { data } = await supabase
+      .from('edificios_estudio')
+      .select('id, titulo, direccion, ciudad')
+      .or(`titulo.ilike.%${searchTerm}%,direccion.ilike.%${searchTerm}%,ciudad.ilike.%${searchTerm}%`)
+      .eq('estado', 'radar')
+      .limit(1)
+      .single()
+
+    if (!data) {
+      await sendMessage(chatId, `❌ No encontré ningún edificio en Radar que coincida con "${searchTerm}".`)
+      return true
+    }
+
+    await supabase.from('edificios_estudio').update({ estado: 'en_estudio' }).eq('id', data.id)
+    await sendMessage(chatId, `✅ Edificio "${data.titulo || data.direccion || data.ciudad}" movido a En Estudio.`)
+    return true
+  }
+
+  return false
+}
+
 // ── Agenda helpers ────────────────────────────────────────────────────────────
 
 type TaskState = 'pendiente' | 'en_proceso' | 'hecho'
@@ -791,6 +1017,35 @@ async function handleCallbackQuery(cb: TgCallbackQuery) {
       await answerCallbackQuery(cb.id, '🗑️ Descartado')
       await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n🗑️ Descartado — no subido al Radar')
     }
+  } else if (action === 'edificio_confirm') {
+    const { error } = await supabase
+      .from('edificios_estudio')
+      .update({ estado: 'radar' })
+      .eq('id', id)
+      .eq('estado', 'pendiente_tg')
+
+    if (error) {
+      await answerCallbackQuery(cb.id, '❌ Error al confirmar')
+    } else {
+      await answerCallbackQuery(cb.id, '✅ Subido al Radar de Edificios')
+      await editMessage(
+        chatId, messageId,
+        (cb.message?.text || '') + '\n\n✅ Subido al Radar de Edificios en WOS3',
+      )
+    }
+  } else if (action === 'edificio_discard') {
+    const { error } = await supabase
+      .from('edificios_estudio')
+      .delete()
+      .eq('id', id)
+      .eq('estado', 'pendiente_tg')
+
+    if (error) {
+      await answerCallbackQuery(cb.id, '❌ Error al descartar')
+    } else {
+      await answerCallbackQuery(cb.id, '🗑️ Descartado')
+      await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n🗑️ Descartado — no subido al Radar')
+    }
   }
 }
 
@@ -855,6 +1110,22 @@ export async function POST(req: NextRequest) {
     if (handled) return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('handleBitacora error:', e)
+  }
+
+  // Edificio CRUD commands (list, delete, move to estudio)
+  try {
+    const handled = await handleEdificioCRUD(chatId, text)
+    if (handled) return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('handleEdificioCRUD error:', e)
+  }
+
+  // Edificio creation — route to edificios_estudio instead of inmuebles_radar
+  try {
+    const handled = await handleEdificioFlow(chatId, text, telegramUser, urlMatch)
+    if (handled) return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('handleEdificioFlow error:', e)
   }
 
   let data: ExtractedData = {}

@@ -24,6 +24,8 @@ function roiAnualizado(roi: number, meses: number | null): number | null {
   return ((Math.pow(1 + roi / 100, 12 / meses)) - 1) * 100
 }
 
+type CatTab = 'inmuebles_varios' | 'edificios' | 'extranjero'
+
 type TrackRow = {
   id: string; nombre: string; tipo: string; estado: string
   inversor: string | null
@@ -32,6 +34,8 @@ type TrackRow = {
   precio_venta_real: number | null; precio_venta_estimado: number | null
   porcentaje_hasu: number
   inversion_hasu: number | null
+  categoria: string
+  codigo: string | null
   movimientos?: { tipo: string; monto: number }[]
 }
 
@@ -50,13 +54,14 @@ export default function HasuPage() {
   const [loading,    setLoading]    = useState(true)
   const [filter,     setFilter]     = useState<FilterKey>('todos')
   const [sortBy,     setSortBy]     = useState<SortKey>('fecha')
+  const [catTab,     setCatTab]     = useState<CatTab>('inmuebles_varios')
 
   useEffect(() => {
     Promise.all([
       supabase.from('cuentas_bancarias').select('*').eq('activa', true).order('created_at'),
       supabase.from('proyectos').select('id,nombre,estado,precio_compra,precio_venta_estimado'),
       supabase.from('inversores').select('id', { count: 'exact' }),
-      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,inversion_hasu,fecha_compra,fecha_salida_estimada,movimientos(tipo,monto)').order('created_at',{ascending:false}),
+      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,inversion_hasu,fecha_compra,fecha_salida_estimada,categoria,codigo,movimientos(tipo,monto)').order('created_at',{ascending:false}),
       supabase.from('proyecto_inversores').select('proyecto_id,inversores(nombre)'),
     ]).then(([c, p, inv, tr, pi]) => {
       setCuentas(c.data || [])
@@ -100,15 +105,18 @@ export default function HasuPage() {
   const mesesRest      = monthsUntilDec2027()
   const porMes         = Math.max(0, (OBJETIVO - totalBenefReal) / mesesRest)
 
-  // Totales globales — misma fuente que el pie de tabla con filtro "Todos"
-  const trWithVenta  = trackRows.filter(r => getVenta(r) > 0 && getInv(r) > 0)
-  const trCapTotal   = trackRows.reduce((s, r) => s + getInv(r), 0)
-  const trCapHasu    = trackRows.reduce((s, r) => s + (getInvHasu(r) ?? 0), 0)
+  // Por categoría — base para Track Record KPIs y tabla
+  const catFiltered = trackRows.filter(r => r.categoria === catTab)
+
+  // Totales por categoría — misma fuente que el pie de tabla
+  const trWithVenta  = catFiltered.filter(r => getVenta(r) > 0 && getInv(r) > 0)
+  const trCapTotal   = catFiltered.reduce((s, r) => s + getInv(r), 0)
+  const trCapHasu    = catFiltered.reduce((s, r) => s + (getInvHasu(r) ?? 0), 0)
   const trBenefTotal = trWithVenta.reduce((s, r) => s + getBenef(r), 0)
   const trBenefHasu  = trWithVenta.reduce((s, r) => s + getBenefHasu(r), 0)
   const trRoiMedio   = trWithVenta.length > 0 ? trWithVenta.reduce((s, r) => s + getRoi(r), 0) / trWithVenta.length : 0
   const trDurMedia   = (() => {
-    const durs = trackRows.map(getDur).filter(Boolean) as number[]
+    const durs = catFiltered.map(getDur).filter(Boolean) as number[]
     return durs.length > 0 ? Math.round(durs.reduce((a, b) => a + b, 0) / durs.length) : null
   })()
   const trRoiAnual   = (() => {
@@ -117,8 +125,8 @@ export default function HasuPage() {
     return rows.reduce((s, r) => s + (roiAnualizado(getRoi(r), getDur(r)) ?? 0), 0) / rows.length
   })()
 
-  // Filter + sort
-  const filtered = trackRows
+  // Filter + sort (opera dentro de la categoría activa)
+  const filtered = catFiltered
     .filter(r => {
       if (filter === 'en_curso')   return EN_CURSO.includes(r.estado)
       if (filter === 'finalizado') return VENDIDOS.includes(r.estado)
@@ -211,7 +219,22 @@ export default function HasuPage() {
 
       {/* ═══════════ TRACK RECORD ═══════════ */}
       <div className="mt-6 mb-2">
-        <div className="text-[11px] font-bold uppercase tracking-[1px] mb-4" style={{ color: '#888' }}>Track Record</div>
+        <div className="text-[11px] font-bold uppercase tracking-[1px] mb-3" style={{ color: '#888' }}>Track Record</div>
+
+        {/* Solapas de categoría */}
+        <div className="flex rounded-xl overflow-hidden mb-4" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+          {([
+            ['inmuebles_varios', 'Inmuebles'],
+            ['edificios',        'Edificios'],
+            ['extranjero',       'Extranjero'],
+          ] as [CatTab, string][]).map(([k, l]) => (
+            <button key={k} onClick={() => setCatTab(k)}
+              className="flex-1 px-3 py-2 text-xs font-bold"
+              style={{ background: catTab === k ? '#F26E1F' : 'transparent', color: catTab === k ? '#fff' : '#888' }}>
+              {l}
+            </button>
+          ))}
+        </div>
 
         {/* Tarjetas — misma fuente que el pie de tabla */}
         {loading ? (
@@ -222,8 +245,8 @@ export default function HasuPage() {
           <div className="grid grid-cols-2 gap-2.5 mb-5">
             <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Operaciones</div>
-              <div className="font-black text-[28px] text-white leading-none">{trackRows.length}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>{cerradosReal.length} con venta real</div>
+              <div className="font-black text-[28px] text-white leading-none">{catFiltered.length}</div>
+              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>{catFiltered.filter(r => r.precio_venta_real && r.precio_venta_real > 0).length} con venta real</div>
             </div>
             <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Duración media</div>
@@ -294,10 +317,10 @@ export default function HasuPage() {
         ) : (
           <div className="rounded-2xl overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="overflow-x-auto">
-              <table className="w-full" style={{ minWidth: 820 }}>
+              <table className="w-full" style={{ minWidth: 880 }}>
                 <thead>
                   <tr style={{ background: '#1A1A1A', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    {['Proyecto','Tipo','Estructura','P. Compra','P. Venta','Dur.','Inv. Total','Inv. HASU','Benef. Total','Benef. HASU','ROI HASU','ROI Anual.','Estado'].map(h => (
+                    {['#','Proyecto','Tipo','Estructura','P. Compra','P. Venta','Dur.','Inv. Total','Inv. HASU','Benef. Total','Benef. HASU','ROI HASU','ROI Anual.','Estado'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
                         style={{ color: 'rgba(255,255,255,0.4)' }}>{h}</th>
                     ))}
@@ -322,6 +345,9 @@ export default function HasuPage() {
                       : '—'
                     return (
                       <tr key={r.id} style={{ borderBottom: i < filtered.length-1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                        <td className="px-3 py-3 text-[11px] font-bold whitespace-nowrap" style={{ color: '#555', fontVariantNumeric: 'tabular-nums' }}>
+                          {r.codigo || '—'}
+                        </td>
                         <td className="px-4 py-3 text-sm font-bold text-white whitespace-nowrap max-w-[150px]">
                           <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.nombre}</div>
                         </td>
@@ -397,6 +423,7 @@ export default function HasuPage() {
                   return (
                     <tfoot>
                       <tr style={{ borderTop: '2px solid rgba(255,255,255,0.1)', background: '#1A1A1A' }}>
+                        <td className="px-3 py-3" />
                         <td className="px-4 py-3 text-xs font-black uppercase tracking-wide whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.4)' }}>
                           {filtered.length} operaciones
                         </td>
