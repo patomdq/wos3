@@ -24,7 +24,7 @@ function roiAnualizado(roi: number, meses: number | null): number | null {
   return ((Math.pow(1 + roi / 100, 12 / meses)) - 1) * 100
 }
 
-type CatTab = 'inmuebles_varios' | 'edificios' | 'extranjero'
+type CatTab = 'todos' | 'inmuebles_varios' | 'edificios' | 'extranjero'
 
 type TrackRow = {
   id: string; nombre: string; tipo: string; estado: string
@@ -54,7 +54,7 @@ export default function HasuPage() {
   const [loading,    setLoading]    = useState(true)
   const [filter,     setFilter]     = useState<FilterKey>('todos')
   const [sortBy,     setSortBy]     = useState<SortKey>('fecha')
-  const [catTab,     setCatTab]     = useState<CatTab>('inmuebles_varios')
+  const [catTab,     setCatTab]     = useState<CatTab>('todos')
 
   useEffect(() => {
     Promise.all([
@@ -106,7 +106,7 @@ export default function HasuPage() {
   const porMes         = Math.max(0, (OBJETIVO - totalBenefReal) / mesesRest)
 
   // Por categoría — base para Track Record KPIs y tabla
-  const catFiltered = trackRows.filter(r => r.categoria === catTab)
+  const catFiltered = catTab === 'todos' ? trackRows : trackRows.filter(r => r.categoria === catTab)
 
   // Totales por categoría — misma fuente que el pie de tabla
   const trWithVenta  = catFiltered.filter(r => getVenta(r) > 0 && getInv(r) > 0)
@@ -224,6 +224,7 @@ export default function HasuPage() {
         {/* Solapas de categoría */}
         <div className="flex rounded-xl overflow-hidden mb-4" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
           {([
+            ['todos',            'Todos'],
             ['inmuebles_varios', 'Inmuebles'],
             ['edificios',        'Edificios'],
             ['extranjero',       'Extranjero'],
@@ -286,7 +287,23 @@ export default function HasuPage() {
           </div>
         )}
 
-        {/* Filtros y orden */}
+        {/* Solapas de categoría — listado (mismo control que arriba) */}
+        <div className="flex rounded-xl overflow-hidden mb-3" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+          {([
+            ['todos',            'Todos'],
+            ['inmuebles_varios', 'Inmuebles'],
+            ['edificios',        'Edificios'],
+            ['extranjero',       'Extranjero'],
+          ] as [CatTab, string][]).map(([k, l]) => (
+            <button key={k} onClick={() => setCatTab(k)}
+              className="flex-1 px-3 py-2 text-xs font-bold"
+              style={{ background: catTab === k ? '#F26E1F' : 'transparent', color: catTab === k ? '#fff' : '#888' }}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtros de estado y orden */}
         <div className="flex flex-wrap gap-2 mb-3">
           <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
             {([['todos','Todos'],['en_curso','En curso'],['finalizado','Finalizados']] as [FilterKey,string][]).map(([k,l]) => (
