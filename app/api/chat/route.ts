@@ -962,6 +962,36 @@ const TOOLS: Anthropic.Tool[] = [
       required: [],
     },
   },
+  {
+    name: 'insert_edificio_unidades',
+    description: 'Agrega una o varias unidades (pisos, locales, parking) a un edificio en edificio_unidades. Usalo SIEMPRE que el usuario mencione pisos, unidades, inquilinos, alquileres o cualquier detalle por planta. Llamar también justo después de insert_edificio_radar si el usuario ya pasó esa información en el mismo mensaje.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        edificio_id: { type: 'string', description: 'UUID del edificio. Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Nombre o dirección parcial del edificio.' },
+        unidades: {
+          type: 'array',
+          description: 'Lista de unidades a agregar',
+          items: {
+            type: 'object',
+            properties: {
+              tipo: { type: 'string', enum: ['piso', 'local', 'parking', 'trastero', 'oficina'], description: 'Tipo de unidad. Default: piso' },
+              planta: { type: 'string', description: 'Identificador de planta/puerta: "1ª DCHA", "PB IZQ", "3ª IZQ", etc.' },
+              superficie: { type: 'number', description: 'Superficie en m²' },
+              ocupacion: { type: 'string', enum: ['Libre', 'Alquilado', 'Uso propio'], description: 'Estado de ocupación' },
+              renta_mensual: { type: 'number', description: 'Renta mensual si está alquilada (€)' },
+              precio_venta_est: { type: 'number', description: 'Precio de venta estimado (€)' },
+              reforma_estimada: { type: 'number', description: 'Coste de reforma estimado (€)' },
+              notas: { type: 'string', description: 'Inquilino, fechas de contrato, observaciones' },
+            },
+            required: ['tipo', 'planta'],
+          },
+        },
+      },
+      required: ['unidades'],
+    },
+  },
 ]
 
 type ToolResult = { id: string; result: string; table?: string; recordId?: string; label?: string }
@@ -2440,6 +2470,36 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         label: `${nombre} · en_estudio`,
       }
     }
+    if (name === 'insert_edificio_unidades') {
+      let edificioId = input.edificio_id
+      if (!edificioId) {
+        const resolved = await resolveEdificio(input.busqueda)
+        if ('error' in resolved) return { result: resolved.error }
+        edificioId = resolved.resolved.id
+      }
+      const unidades: any[] = input.unidades || []
+      if (unidades.length === 0) return { result: 'No se indicaron unidades a agregar.' }
+      const rows = unidades.map((u: any) => ({
+        edificio_id: edificioId,
+        tipo: u.tipo || 'piso',
+        planta: u.planta,
+        superficie: u.superficie || null,
+        origen: u.origen || 'Existente',
+        ocupacion: u.ocupacion || 'Libre',
+        renta_mensual: u.renta_mensual || null,
+        precio_venta_est: u.precio_venta_est || null,
+        reforma_estimada: u.reforma_estimada || null,
+        referencia_catastral: u.referencia_catastral || null,
+        notas: u.notas || null,
+      }))
+      const { data, error } = await supabaseAdmin.from('edificio_unidades').insert(rows).select()
+      if (error) return { result: `Error al guardar unidades: ${error.message}` }
+      const lista = (data as any[]).map(u => `· ${u.planta} (${u.tipo})${u.ocupacion === 'Alquilado' ? ' — Alquilado ' + (u.renta_mensual ? u.renta_mensual + '€/mes' : '') : ' — Libre'}`).join('\n')
+      return {
+        result: `${data.length} unidad${data.length !== 1 ? 'es' : ''} agregada${data.length !== 1 ? 's' : ''} al edificio:\n${lista}`,
+        table: 'edificio_unidades',
+      }
+    }
     if (name === 'listar_edificios') {
       let q = supabaseAdmin.from('edificios_estudio').select('id, titulo, direccion, ciudad, precio_compra, superficie_total, num_plantas, tipo_finca, estado, notas').order('created_at', { ascending: false })
       const estado = input.estado
@@ -2540,7 +2600,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
 - INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. Para agregar directamente a En Estudio sin pasar por Radar usá insert_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR un inmueble en Radar usá delete_radar; para ELIMINAR uno en En Estudio usá delete_estudio.
-- EDIFICIOS (fincas completas, bloques de pisos): área SEPARADA de los inmuebles individuales. Para agregar un edificio al radar usá insert_edificio_radar (escribe en edificios_estudio con estado=radar). Para editar usá update_edificio. Para eliminar usá delete_edificio. Para mover de radar a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — son tablas distintas.
+- EDIFICIOS (fincas completas, bloques de pisos): área SEPARADA de los inmuebles individuales. Para agregar un edificio al radar usá insert_edificio_radar (escribe en edificios_estudio con estado=radar). Para editar usá update_edificio. Para eliminar usá delete_edificio. Para mover de radar a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — son tablas distintas. UNIDADES: cuando el usuario mencione pisos, unidades, inquilinos o información por planta, llamá insert_edificio_unidades (en la tabla edificio_unidades). Si ya hay info de unidades en el mismo mensaje donde se crea el edificio, llamá insert_edificio_radar e insert_edificio_unidades juntos en el mismo turno. Campos clave: planta (ej: "1ª DCHA"), ocupacion ("Libre" o "Alquilado"), renta_mensual, notas (inquilino + fechas de contrato).
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
