@@ -165,6 +165,7 @@ const TOOLS: Anthropic.Tool[] = [
         habitaciones: { type: 'number', description: 'Número de habitaciones' },
         superficie: { type: 'number', description: 'Superficie en m²' },
         url: { type: 'string', description: 'Link de Idealista u otra fuente (pegar URL completa)' },
+        drive_url: { type: 'string', description: 'Link a la carpeta de Google Drive con fotos y documentos del inmueble' },
         fuente: { type: 'string', enum: ['WhatsApp', 'Idealista', 'API', 'otro'], description: 'Fuente del inmueble. Default: otro' },
         notas: { type: 'string', description: 'Notas u observaciones' },
       },
@@ -295,7 +296,7 @@ const TOOLS: Anthropic.Tool[] = [
         titulo: { type: 'string', description: 'Título o nombre corto del inmueble' },
         direccion: { type: 'string' }, ciudad: { type: 'string' },
         precio: { type: 'number' }, habitaciones: { type: 'number' }, superficie: { type: 'number' },
-        url: { type: 'string' }, fuente: { type: 'string' }, notas: { type: 'string' },
+        url: { type: 'string' }, drive_url: { type: 'string', description: 'Link a carpeta Google Drive' }, fuente: { type: 'string' }, notas: { type: 'string' },
         estado: { type: 'string', enum: ['activo', 'descartado', 'convertido'] },
       },
       required: [],
@@ -905,6 +906,7 @@ const TOOLS: Anthropic.Tool[] = [
         num_plantas: { type: 'number', description: 'Número de plantas' },
         tipo_finca: { type: 'string', enum: ['finca_unica', 'bloque_independiente'], description: 'Tipo de finca. Default: finca_unica' },
         url: { type: 'string', description: 'Link del anuncio o fuente' },
+        drive_url: { type: 'string', description: 'Link a la carpeta de Google Drive con fotos y documentos del edificio' },
         notas: { type: 'string', description: 'Notas u observaciones' },
       },
       required: ['direccion', 'precio_compra'],
@@ -922,7 +924,7 @@ const TOOLS: Anthropic.Tool[] = [
         precio_compra: { type: 'number' }, superficie_total: { type: 'number' }, num_plantas: { type: 'number' },
         tipo_finca: { type: 'string', enum: ['finca_unica', 'bloque_independiente'] },
         estado: { type: 'string', enum: ['radar', 'en_estudio', 'ofertado', 'en_arras', 'comprado', 'descartado'] },
-        notas: { type: 'string' }, url: { type: 'string' },
+        notas: { type: 'string' }, url: { type: 'string' }, drive_url: { type: 'string', description: 'Link a carpeta Google Drive' },
       },
       required: [],
     },
@@ -1210,6 +1212,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         notas: input.notas || null,
       }
       if (input.url) radarRow.url = input.url
+      if (input.drive_url) radarRow.drive_url = input.drive_url
       const { data, error } = await supabaseAdmin.from('inmuebles_radar').insert([radarRow]).select().single()
       if (error) return { result: `Error al guardar en radar: ${error.message}` }
       return {
@@ -1482,7 +1485,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'update_radar') {
       const resolved = await resolveInmueble('inmuebles_radar', input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const fields = ['titulo','direccion','ciudad','precio','habitaciones','superficie','url','fuente','notas','estado']
+      const fields = ['titulo','direccion','ciudad','precio','habitaciones','superficie','url','drive_url','fuente','notas','estado']
       const updates: Record<string,any> = {}
       for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
       const { data, error } = await supabaseAdmin.from('inmuebles_radar').update(updates).eq('id', resolved.resolved.id).select().single()
@@ -2423,6 +2426,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         num_plantas: input.num_plantas || null,
         tipo_finca: input.tipo_finca || 'finca_unica',
         url: input.url || null,
+        drive_url: input.drive_url || null,
         notas: input.notas || null,
         estado: 'radar',
       }]).select().single()
@@ -2438,7 +2442,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'update_edificio') {
       const resolved = await resolveEdificio(input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const fields = ['titulo', 'direccion', 'ciudad', 'precio_compra', 'superficie_total', 'num_plantas', 'tipo_finca', 'estado', 'notas', 'url']
+      const fields = ['titulo', 'direccion', 'ciudad', 'precio_compra', 'superficie_total', 'num_plantas', 'tipo_finca', 'estado', 'notas', 'url', 'drive_url']
       const updates: Record<string, any> = {}
       for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
       if (Object.keys(updates).length === 0) return { result: 'No se indicaron campos a actualizar.' }

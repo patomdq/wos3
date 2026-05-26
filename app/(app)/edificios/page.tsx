@@ -27,6 +27,7 @@ type Edificio = {
   duracion_meses?: number
   fuente?: string
   url?: string
+  drive_url?: string
   notas?: string
   created_at: string
 }
@@ -46,7 +47,7 @@ type Unidad = {
   planta?: string
   superficie?: number
   origen: 'existente' | 'proyectada'
-  ocupacion: 'libre' | 'arrendado'
+  ocupacion: 'libre' | 'alquilado'
   renta_mensual?: number
   precio_venta_est?: number
   reforma_estimada?: number
@@ -72,7 +73,7 @@ const TIPO_UNIDAD_LABEL: Record<string, string> = {
 const emptyEdificioForm = () => ({
   titulo: '', direccion: '', ciudad: '', referencia_catastral: '',
   superficie_total: '', num_plantas: '', tipo_finca: 'finca_unica' as const,
-  precio_compra: '', fuente: 'Contacto directo', url: '', notas: '',
+  precio_compra: '', fuente: 'Contacto directo', url: '', drive_url: '', notas: '',
 })
 
 const emptyUnidadForm = () => ({
@@ -170,7 +171,7 @@ export default function EdificiosPage() {
       num_plantas: String(e.num_plantas || ''),
       tipo_finca: e.tipo_finca,
       precio_compra: String(e.precio_compra || ''),
-      fuente: e.fuente || 'Contacto directo', url: e.url || '', notas: e.notas || '',
+      fuente: e.fuente || 'Contacto directo', url: e.url || '', drive_url: e.drive_url || '', notas: e.notas || '',
     })
     setAltaOpen(true)
   }
@@ -189,6 +190,7 @@ export default function EdificiosPage() {
       precio_compra: parseFloat(form.precio_compra) || 0,
       fuente: form.fuente || null,
       url: form.url || null,
+      drive_url: form.drive_url || null,
       notas: form.notas || null,
     }
     if (editando) {
@@ -608,6 +610,12 @@ export default function EdificiosPage() {
                       placeholder="https://..." className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none" style={INP} />
                   </Field>
                 </div>
+
+                <Field label="Carpeta Drive (opcional)">
+                  <input value={form.drive_url} onChange={e => setForm(p => ({ ...p, drive_url: e.target.value }))}
+                    placeholder="https://drive.google.com/..." className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none"
+                    style={{ ...INP, borderColor: form.drive_url ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.10)' }} />
+                </Field>
 
                 <Field label="Notas">
                   <textarea value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))}
@@ -1140,6 +1148,16 @@ function EdificioCard({
           <div className="text-[12px] mb-3 leading-relaxed" style={{ color: '#666' }}>{e.notas}</div>
         )}
 
+        {e.drive_url && (
+          <div className="mb-3">
+            <a href={e.drive_url} target="_blank" rel="noopener noreferrer"
+              className="text-xs font-black inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+              style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)' }}>
+              📁 Carpeta Drive
+            </a>
+          </div>
+        )}
+
         {/* Acciones radar */}
         <div className="flex gap-2 flex-wrap">
           <button onClick={onPasarEstudio}
@@ -1188,8 +1206,8 @@ function EdificioCard({
                 {u.origen === 'proyectada' && (
                   <span className="text-[10px] font-bold" style={{ color: '#a78bfa' }}>proj.</span>
                 )}
-                {u.ocupacion === 'arrendado' && (
-                  <span className="text-[10px] font-bold" style={{ color: '#F59E0B' }}>arrendado</span>
+                {u.ocupacion === 'alquilado' && (
+                  <span className="text-[10px] font-bold" style={{ color: '#F59E0B' }}>alquilado</span>
                 )}
               </div>
               {u.precio_venta_est ? (

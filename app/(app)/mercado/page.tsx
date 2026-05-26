@@ -27,7 +27,7 @@ const CONCEPTOS_GASTOS = [
 ]
 
 type Gastos = Record<string, { estimado: number; real: number }>
-type Radar = { id: string; titulo?: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string }
+type Radar = { id: string; titulo?: string; precio: number; direccion: string; ciudad: string; habitaciones: number; superficie: number; fuente: string; fecha_recibido: string; estado: string; notas?: string; url?: string; drive_url?: string }
 type Estudio = { id: string; titulo?: string; nombre?: string; precio_compra: number; precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null; roi_estimado: number; direccion: string; ciudad: string; analizado_en: string; estado?: string; notas?: string; url?: string; duracion_meses?: number; gastos_json?: Record<string, {estimado: number; real: number}> }
 type Proveedor = { id: string; nombre: string }
 type Visita = { id: string; radar_id: string; fecha: string; hora: string; responsable: string; notas_previas?: string; estado_post?: string; notas_post?: string; fotos_url?: string; gcal_event_id?: string; created_at: string }
@@ -81,7 +81,7 @@ function calcResultados(gastos: Gastos, pvPes: number, pvReal: number, pvOpt: nu
 }
 
 type ScraperItem = { precio: number; dir: string; ciudad: string; hab: number; m2: number; tag: string; epm: number; fecha: string; url: string }
-const emptyRadarForm = () => ({ titulo: '', direccion: '', ciudad: '', precio: '', habitaciones: '', superficie: '', estado: 'reformar', fuente: 'WhatsApp', notas: '', url: '' })
+const emptyRadarForm = () => ({ titulo: '', direccion: '', ciudad: '', precio: '', habitaciones: '', superficie: '', estado: 'reformar', fuente: 'WhatsApp', notas: '', url: '', drive_url: '' })
 
 export default function MercadoPage() {
   const router = useRouter()
@@ -201,6 +201,7 @@ export default function MercadoPage() {
       notas: radarForm.notas || null,
     }
     if (radarForm.url) radarPayload.url = radarForm.url
+    if (radarForm.drive_url) radarPayload.drive_url = radarForm.drive_url
     const { data, error } = await supabase.from('inmuebles_radar').insert([radarPayload]).select().single()
     setSavingRadar(false)
     if (error) { alert(`Error al guardar: ${error.message}`); return }
@@ -238,7 +239,7 @@ export default function MercadoPage() {
       titulo: r.titulo || '', direccion: r.direccion || '', ciudad: r.ciudad || '',
       precio: String(r.precio || ''), habitaciones: String(r.habitaciones || ''),
       superficie: String(r.superficie || ''), estado: r.estado || 'activo',
-      fuente: r.fuente || 'WhatsApp', notas: r.notas || '', url: r.url || '',
+      fuente: r.fuente || 'WhatsApp', notas: r.notas || '', url: r.url || '', drive_url: r.drive_url || '',
     })
   }
   const saveEditRadar = async () => {
@@ -255,6 +256,7 @@ export default function MercadoPage() {
       notas: editRadarForm.notas || null,
     }
     if (editRadarForm.url) payload.url = editRadarForm.url
+    payload.drive_url = editRadarForm.drive_url || null
     const { data, error } = await supabase.from('inmuebles_radar').update(payload).eq('id', editRadar.id).select().single()
     setSavingEditRadar(false)
     if (error) { alert(`Error: ${error.message}`); return }
@@ -704,13 +706,22 @@ export default function MercadoPage() {
                     </div>
                   </div>
                   {r.notas && <div className="mt-2 text-xs" style={{ color: '#888' }}>{r.notas}</div>}
-                  {r.url && (
-                    <a href={r.url} target="_blank" rel="noopener noreferrer"
-                      className="mt-2 text-xs font-bold inline-flex items-center gap-1"
-                      style={{ color: '#60A5FA' }}>
-                      🔗 Ver en Idealista
-                    </a>
-                  )}
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    {r.url && (
+                      <a href={r.url} target="_blank" rel="noopener noreferrer"
+                        className="text-xs font-bold inline-flex items-center gap-1"
+                        style={{ color: '#60A5FA' }}>
+                        🔗 Ver anuncio
+                      </a>
+                    )}
+                    {r.drive_url && (
+                      <a href={r.drive_url} target="_blank" rel="noopener noreferrer"
+                        className="text-xs font-black inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+                        style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)' }}>
+                        📁 Carpeta Drive
+                      </a>
+                    )}
+                  </div>
                 </div>
 
                 {/* Visitas footer */}
@@ -1211,11 +1222,18 @@ export default function MercadoPage() {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link (Idealista u otra fuente)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link anuncio (Idealista, Fotocasa…)</label>
                   <input type="url" value={radarForm.url} onChange={e => setRadarForm(f => ({ ...f, url: e.target.value }))}
                     placeholder="https://www.idealista.com/inmueble/..."
                     className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]"
                     style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>📁 Carpeta Drive (fotos, docs, nota simple…)</label>
+                  <input type="url" value={radarForm.drive_url} onChange={e => setRadarForm(f => ({ ...f, drive_url: e.target.value }))}
+                    placeholder="https://drive.google.com/drive/folders/..."
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]"
+                    style={INP} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Notas</label>
@@ -1290,11 +1308,18 @@ export default function MercadoPage() {
                     onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link anuncio</label>
                   <input type="url" value={editRadarForm.url} onChange={e => setEditRadarForm(f => ({ ...f, url: e.target.value }))}
                     placeholder="https://www.idealista.com/inmueble/..."
                     className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP}
                     onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>📁 Carpeta Drive</label>
+                  <input type="url" value={editRadarForm.drive_url} onChange={e => setEditRadarForm(f => ({ ...f, drive_url: e.target.value }))}
+                    placeholder="https://drive.google.com/drive/folders/..."
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP}
+                    onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Notas</label>
