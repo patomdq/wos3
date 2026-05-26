@@ -890,6 +890,78 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['id'],
     },
   },
+  // ── Edificios ────────────────────────────────────────────────────────────────
+  {
+    name: 'insert_edificio_radar',
+    description: 'Agrega un edificio o finca completa al radar de edificios. Usalo cuando el usuario pida agregar/guardar/meter un edificio, bloque de pisos, o finca completa al radar de edificios. NO usar para pisos o inmuebles individuales.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        titulo: { type: 'string', description: 'Título o nombre del edificio (ej: "Edificio Paseo Alameda Huércal-Overa")' },
+        direccion: { type: 'string', description: 'Dirección del edificio' },
+        ciudad: { type: 'string', description: 'Ciudad o municipio' },
+        precio_compra: { type: 'number', description: 'Precio de compra del edificio completo en euros' },
+        superficie_total: { type: 'number', description: 'Superficie total del edificio en m²' },
+        num_plantas: { type: 'number', description: 'Número de plantas' },
+        tipo_finca: { type: 'string', enum: ['finca_unica', 'bloque_independiente'], description: 'Tipo de finca. Default: finca_unica' },
+        url: { type: 'string', description: 'Link del anuncio o fuente' },
+        notas: { type: 'string', description: 'Notas u observaciones' },
+      },
+      required: ['direccion', 'precio_compra'],
+    },
+  },
+  {
+    name: 'update_edificio',
+    description: 'Edita un edificio del radar o estudio de edificios. Usalo para actualizar precio, estado, notas, o cualquier campo.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del edificio (del contexto). Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Nombre, dirección o ciudad parcial para encontrar el edificio.' },
+        titulo: { type: 'string' }, direccion: { type: 'string' }, ciudad: { type: 'string' },
+        precio_compra: { type: 'number' }, superficie_total: { type: 'number' }, num_plantas: { type: 'number' },
+        tipo_finca: { type: 'string', enum: ['finca_unica', 'bloque_independiente'] },
+        estado: { type: 'string', enum: ['radar', 'en_estudio', 'ofertado', 'en_arras', 'comprado', 'descartado'] },
+        notas: { type: 'string' }, url: { type: 'string' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'delete_edificio',
+    description: 'Elimina un edificio del radar o estudio de edificios.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del edificio. Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Nombre o dirección parcial del edificio.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'mover_edificio_a_estudio',
+    description: 'Mueve un edificio del Radar de Edificios a En Estudio. Usalo cuando el usuario diga "pasá el edificio X a estudio" o "mover edificio a en estudio".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del edificio. Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Nombre o dirección parcial del edificio en radar.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'listar_edificios',
+    description: 'Lista los edificios registrados. Usalo cuando el usuario pregunte "qué edificios hay", "mostrar edificios en radar/estudio", etc.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        estado: { type: 'string', enum: ['radar', 'en_estudio', 'ofertado', 'en_arras', 'comprado', 'descartado', 'todos'], description: 'Filtrar por estado. Default: todos (excepto descartados y pendiente_tg).' },
+      },
+      required: [],
+    },
+  },
 ]
 
 type ToolResult = { id: string; result: string; table?: string; recordId?: string; label?: string }
@@ -920,6 +992,25 @@ async function resolveInmueble(table: 'inmuebles_radar' | 'inmuebles_estudio', b
       return `· ${r.nombre || r.direccion}${r.ciudad ? ', ' + r.ciudad : ''}${precio ? ' — ' + precio + '€' : ''}`
     }).join('\n')
     return { error: `Encontré ${data.length} inmuebles que coinciden con "${busqueda}":\n${lista}\n\n¿Cuál querés? Indicá ciudad o precio para ser más específico.` }
+  }
+  return { resolved: data[0] }
+}
+
+async function resolveEdificio(busqueda?: string, id?: string): Promise<{ resolved: { id: string; titulo?: string; direccion: string; [k: string]: any } } | { error: string }> {
+  if (id) {
+    const { data, error } = await supabaseAdmin.from('edificios_estudio').select('*').eq('id', id).single()
+    if (error || !data) return { error: `No encontré el edificio con ID ${id}.` }
+    return { resolved: data }
+  }
+  if (!busqueda) return { error: 'Necesitás indicar el edificio por ID o nombre/dirección.' }
+  const { data, error } = await supabaseAdmin.from('edificios_estudio').select('*')
+    .or(`titulo.ilike.%${busqueda}%,direccion.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`)
+    .neq('estado', 'pendiente_tg')
+  if (error) return { error: `Error al buscar edificio: ${error.message}` }
+  if (!data || data.length === 0) return { error: `No encontré ningún edificio que coincida con "${busqueda}".` }
+  if (data.length > 1) {
+    const lista = data.map((r: any) => `· ${r.titulo || r.direccion}${r.ciudad ? ', ' + r.ciudad : ''} — ${r.precio_compra}€ [${r.estado}]`).join('\n')
+    return { error: `Encontré ${data.length} edificios:\n${lista}\n\n¿Cuál querés?` }
   }
   return { resolved: data[0] }
 }
@@ -2291,6 +2382,87 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }
     }
 
+    // ── Edificios ────────────────────────────────────────────────────────────
+    if (name === 'insert_edificio_radar') {
+      const { data, error } = await supabaseAdmin.from('edificios_estudio').insert([{
+        titulo: input.titulo || null,
+        direccion: input.direccion,
+        ciudad: input.ciudad || null,
+        precio_compra: input.precio_compra,
+        superficie_total: input.superficie_total || null,
+        num_plantas: input.num_plantas || null,
+        tipo_finca: input.tipo_finca || 'finca_unica',
+        url: input.url || null,
+        notas: input.notas || null,
+        estado: 'radar',
+      }]).select().single()
+      if (error) return { result: `Error al guardar edificio: ${error.message}` }
+      const nombre = data.titulo || data.direccion
+      return {
+        result: `✅ Edificio agregado al radar — ${nombre}${data.ciudad ? ', ' + data.ciudad : ''} (${data.precio_compra?.toLocaleString('es-ES')}€)`,
+        table: 'edificios_estudio',
+        recordId: data.id,
+        label: `${nombre}${data.ciudad ? ' · ' + data.ciudad : ''}`,
+      }
+    }
+    if (name === 'update_edificio') {
+      const resolved = await resolveEdificio(input.busqueda, input.id)
+      if ('error' in resolved) return { result: resolved.error }
+      const fields = ['titulo', 'direccion', 'ciudad', 'precio_compra', 'superficie_total', 'num_plantas', 'tipo_finca', 'estado', 'notas', 'url']
+      const updates: Record<string, any> = {}
+      for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
+      if (Object.keys(updates).length === 0) return { result: 'No se indicaron campos a actualizar.' }
+      const { data, error } = await supabaseAdmin.from('edificios_estudio').update(updates).eq('id', resolved.resolved.id).select().single()
+      if (error) return { result: `Error al actualizar edificio: ${error.message}` }
+      const nombre = data.titulo || data.direccion
+      const cambios = Object.keys(updates).join(', ')
+      return { result: `Edificio "${nombre}" actualizado. Campos: ${cambios}.`, table: 'edificios_estudio', recordId: data.id, label: `${nombre} · ${data.estado}` }
+    }
+    if (name === 'delete_edificio') {
+      const resolved = await resolveEdificio(input.busqueda, input.id)
+      if ('error' in resolved) return { result: resolved.error }
+      const nombre = resolved.resolved.titulo || resolved.resolved.direccion
+      const { error } = await supabaseAdmin.from('edificios_estudio').delete().eq('id', resolved.resolved.id)
+      if (error) return { result: `Error al eliminar edificio: ${error.message}` }
+      return { result: `Edificio eliminado: "${nombre}".` }
+    }
+    if (name === 'mover_edificio_a_estudio') {
+      const resolved = await resolveEdificio(input.busqueda, input.id)
+      if ('error' in resolved) return { result: resolved.error }
+      if (resolved.resolved.estado !== 'radar') return { result: `El edificio "${resolved.resolved.titulo || resolved.resolved.direccion}" ya está en estado "${resolved.resolved.estado}", no está en radar.` }
+      const { data, error } = await supabaseAdmin.from('edificios_estudio').update({ estado: 'en_estudio' }).eq('id', resolved.resolved.id).select().single()
+      if (error) return { result: `Error al mover edificio: ${error.message}` }
+      const nombre = data.titulo || data.direccion
+      return {
+        result: `✅ Edificio movido a En Estudio — ${nombre}${data.ciudad ? ', ' + data.ciudad : ''}`,
+        table: 'edificios_estudio',
+        recordId: data.id,
+        label: `${nombre} · en_estudio`,
+      }
+    }
+    if (name === 'listar_edificios') {
+      let q = supabaseAdmin.from('edificios_estudio').select('id, titulo, direccion, ciudad, precio_compra, superficie_total, num_plantas, tipo_finca, estado, notas').order('created_at', { ascending: false })
+      const estado = input.estado
+      if (!estado || estado === 'todos') {
+        q = q.not('estado', 'in', '(descartado,pendiente_tg)')
+      } else {
+        q = q.eq('estado', estado)
+      }
+      const { data, error } = await q.limit(30)
+      if (error) return { result: `Error al listar edificios: ${error.message}` }
+      if (!data || data.length === 0) return { result: 'No hay edificios registrados.' }
+      const ESTADO_ICON: Record<string, string> = { radar: '📡', en_estudio: '🔍', ofertado: '📝', en_arras: '🤝', comprado: '🏢', descartado: '❌' }
+      const lista = data.map((e: any) => {
+        const icon = ESTADO_ICON[e.estado] || '🏢'
+        const nombre = e.titulo || e.direccion
+        const precio = e.precio_compra ? ` — ${e.precio_compra.toLocaleString('es-ES')}€` : ''
+        const sup = e.superficie_total ? ` · ${e.superficie_total}m²` : ''
+        const plantas = e.num_plantas ? ` · ${e.num_plantas} plantas` : ''
+        return `${icon} ${nombre}${e.ciudad ? ', ' + e.ciudad : ''}${precio}${sup}${plantas} [${e.estado}]`
+      }).join('\n')
+      return { result: `Edificios (${data.length}):\n${lista}` }
+    }
+
     return { result: 'Herramienta no reconocida.' }
   } catch (e: any) {
     return { result: `Error interno: ${e.message}` }
@@ -2368,6 +2540,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
 - INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. Para agregar directamente a En Estudio sin pasar por Radar usá insert_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR un inmueble en Radar usá delete_radar; para ELIMINAR uno en En Estudio usá delete_estudio.
+- EDIFICIOS (fincas completas, bloques de pisos): área SEPARADA de los inmuebles individuales. Para agregar un edificio al radar usá insert_edificio_radar (escribe en edificios_estudio con estado=radar). Para editar usá update_edificio. Para eliminar usá delete_edificio. Para mover de radar a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — son tablas distintas.
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
