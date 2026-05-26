@@ -2534,7 +2534,11 @@ export async function POST(req: NextRequest) {
   if (!auth) return NextResponse.json({ text: 'No autorizado.' }, { status: 401 })
 
   try {
-    const { messages, context, imageData, mediaType } = await req.json()
+    const { messages, context, imageData, mediaType, images } = await req.json()
+    // Normalize: support both single imageData/mediaType and new images[] array
+    const imageList: { base64: string; mediaType: string }[] = images?.length
+      ? images
+      : imageData && mediaType ? [{ base64: imageData, mediaType }] : []
     const today = new Date().toISOString().split('T')[0]
 
     // Detect real-estate portal URL in last user message and scrape it
@@ -2643,16 +2647,20 @@ ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
       .filter(m => typeof m.content === 'string' && m.content.trim() !== '')
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content as string }))
 
-    // If image attached, inject into last user message as vision content block
-    if (imageData && mediaType) {
+    // If images attached, inject into last user message as vision content blocks
+    if (imageList.length > 0) {
       const lastUserIdx = cleanMessages.reduce((found, m, i) => m.role === 'user' ? i : found, -1)
       if (lastUserIdx >= 0) {
         const text = cleanMessages[lastUserIdx].content as string
+        const imageBlocks: Anthropic.ContentBlockParam[] = imageList.map(img => ({
+          type: 'image' as const,
+          source: { type: 'base64' as const, media_type: img.mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: img.base64 },
+        }))
         cleanMessages[lastUserIdx] = {
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: imageData } },
-            { type: 'text', text: text || 'Analiza esta imagen.' },
+            ...imageBlocks,
+            { type: 'text', text: text || `Analizá ${imageList.length > 1 ? 'estas ' + imageList.length + ' imágenes' : 'esta imagen'}.` },
           ],
         }
       }
