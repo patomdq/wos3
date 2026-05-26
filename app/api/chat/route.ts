@@ -976,10 +976,10 @@ const TOOLS: Anthropic.Tool[] = [
           items: {
             type: 'object',
             properties: {
-              tipo: { type: 'string', enum: ['piso', 'local', 'parking', 'trastero', 'oficina'], description: 'Tipo de unidad. Default: piso' },
+              tipo: { type: 'string', enum: ['piso', 'local', 'parking', 'trastero', 'otro'], description: 'Tipo de unidad. Default: piso' },
               planta: { type: 'string', description: 'Identificador de planta/puerta: "1ª DCHA", "PB IZQ", "3ª IZQ", etc.' },
               superficie: { type: 'number', description: 'Superficie en m²' },
-              ocupacion: { type: 'string', enum: ['Libre', 'Alquilado', 'Uso propio'], description: 'Estado de ocupación' },
+              ocupacion: { type: 'string', enum: ['libre', 'arrendado'], description: 'Estado de ocupación' },
               renta_mensual: { type: 'number', description: 'Renta mensual si está alquilada (€)' },
               precio_venta_est: { type: 'number', description: 'Precio de venta estimado (€)' },
               reforma_estimada: { type: 'number', description: 'Coste de reforma estimado (€)' },
@@ -2484,8 +2484,8 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         tipo: u.tipo || 'piso',
         planta: u.planta,
         superficie: u.superficie || null,
-        origen: u.origen || 'Existente',
-        ocupacion: u.ocupacion || 'Libre',
+        origen: u.origen || 'existente',
+        ocupacion: u.ocupacion || 'libre',
         renta_mensual: u.renta_mensual || null,
         precio_venta_est: u.precio_venta_est || null,
         reforma_estimada: u.reforma_estimada || null,
