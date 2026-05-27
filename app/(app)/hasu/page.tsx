@@ -365,7 +365,7 @@ export default function HasuPage() {
                         <td className="px-3 py-3 text-[11px] font-bold whitespace-nowrap" style={{ color: '#555', fontVariantNumeric: 'tabular-nums' }}>
                           {r.codigo || '—'}
                         </td>
-                        <td className="px-4 py-3 text-sm font-bold text-white whitespace-nowrap min-w-[200px]">
+                        <td className="px-4 py-3 text-sm font-bold text-white whitespace-nowrap">
                           {r.nombre}
                         </td>
                         <td className="px-4 py-3 text-sm whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.45)' }}>
