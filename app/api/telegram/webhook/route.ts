@@ -549,6 +549,19 @@ async function handleEdificioFlow(
 
   const data = await extractEdificioData(text)
 
+  // Deduplicar: si ya hay un pendiente_tg del mismo texto en los últimos 2 min, no insertar de nuevo
+  const since = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+  const titulo = data.titulo || data.direccion || text.slice(0, 80) || 'Telegram — sin título'
+  const { data: existing } = await supabase
+    .from('edificios_estudio')
+    .select('id')
+    .eq('estado', 'pendiente_tg')
+    .eq('titulo', titulo)
+    .gte('created_at', since)
+    .limit(1)
+    .maybeSingle()
+  if (existing) return true  // ya procesado, ignorar retry de Telegram
+
   const notasBase = data.notas || ''
   const notasTelegram = notasBase ? `${notasBase}\n[Telegram: ${telegramUser}]` : `[Telegram: ${telegramUser}]`
 
