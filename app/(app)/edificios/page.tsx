@@ -29,6 +29,7 @@ type Edificio = {
   url?: string
   drive_url?: string
   notas?: string
+  imagen_portada?: string
   created_at: string
 }
 
@@ -73,7 +74,7 @@ const TIPO_UNIDAD_LABEL: Record<string, string> = {
 const emptyEdificioForm = () => ({
   titulo: '', direccion: '', ciudad: '', referencia_catastral: '',
   superficie_total: '', num_plantas: '', tipo_finca: 'finca_unica' as const,
-  precio_compra: '', fuente: 'Contacto directo', url: '', drive_url: '', notas: '',
+  precio_compra: '', fuente: 'Contacto directo', url: '', drive_url: '', notas: '', imagen_portada: '',
 })
 
 const emptyUnidadForm = () => ({
@@ -116,6 +117,8 @@ export default function EdificiosPage() {
   const [edificios, setEdificios] = useState<Edificio[]>([])
   const [unidades, setUnidades] = useState<Record<string, Unidad[]>>({})
   const [loading, setLoading] = useState(true)
+  const [detalleId, setDetalleId] = useState<string | null>(null)
+  const [filtroCiudad, setFiltroCiudad] = useState('')
 
   // Alta / editar edificio
   const [altaOpen, setAltaOpen] = useState(false)
@@ -156,8 +159,9 @@ export default function EdificiosPage() {
     setUnidades(prev => ({ ...prev, [edificioId]: data || [] }))
   }
 
-  const radar   = edificios.filter(e => e.estado === 'radar')
-  const estudio = edificios.filter(e => ESTADOS_ESTUDIO.includes(e.estado))
+  const ciudades = [...new Set(edificios.map(e => e.ciudad).filter(Boolean))] as string[]
+  const radar   = edificios.filter(e => e.estado === 'radar' && (!filtroCiudad || e.ciudad === filtroCiudad))
+  const estudio = edificios.filter(e => ESTADOS_ESTUDIO.includes(e.estado) && (!filtroCiudad || e.ciudad === filtroCiudad))
 
   // ── CRUD Edificio ──────────────────────────────────────────────────────────
   const openAlta = () => { setEditando(null); setForm(emptyEdificioForm()); setAltaOpen(true) }
@@ -172,6 +176,7 @@ export default function EdificiosPage() {
       tipo_finca: e.tipo_finca,
       precio_compra: String(e.precio_compra || ''),
       fuente: e.fuente || 'Contacto directo', url: e.url || '', drive_url: e.drive_url || '', notas: e.notas || '',
+      imagen_portada: e.imagen_portada || '',
     })
     setAltaOpen(true)
   }
@@ -192,6 +197,7 @@ export default function EdificiosPage() {
       url: form.url || null,
       drive_url: form.drive_url || null,
       notas: form.notas || null,
+      imagen_portada: form.imagen_portada || null,
     }
     if (editando) {
       const { data, error } = await supabase.from('edificios_estudio')
@@ -353,46 +359,205 @@ export default function EdificiosPage() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
+  // RENDER — DETALLE
+  // ─────────────────────────────────────────────────────────────────────────
+  const detalleEdificio = detalleId ? edificios.find(e => e.id === detalleId) : null
+  if (detalleEdificio) {
+    const ed = detalleEdificio
+    const uns = unidades[ed.id] || []
+    const sumVenta = uns.reduce((a, u) => a + (u.precio_venta_est || 0), 0)
+    return (
+      <div className="min-h-screen pb-24" style={{ background: '#0A0A0A' }}>
+        {ed.imagen_portada
+          ? <img src={ed.imagen_portada} alt={ed.titulo || ed.direccion}
+              className="w-full object-cover" style={{ height: 220 }} />
+          : <div className="w-full flex items-center justify-center"
+              style={{ height: 220, background: 'linear-gradient(135deg,#0d1f35,#1a2a3a)' }}>
+              <span style={{ fontSize: 56 }}>🏢</span>
+            </div>
+        }
+        <button onClick={() => { setDetalleId(null); loadUnidades(ed.id) }}
+          className="flex items-center gap-1.5 mx-4 mt-4 px-3 py-2 rounded-xl text-[13px] font-bold"
+          style={{ background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.08)', color: '#aaa' }}>
+          ← Radar
+        </button>
+        <div className="px-4 pt-4 pb-24">
+          <div className="font-black text-[22px] text-white mb-1">{ed.titulo || ed.direccion}</div>
+          <div className="text-[13px] mb-3" style={{ color: '#666' }}>
+            {ed.titulo ? ed.direccion : ''}{ed.ciudad ? ` · ${ed.ciudad}` : ''}
+          </div>
+          <div className="flex gap-2 flex-wrap mb-4">
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
+              style={{ background: ed.tipo_finca === 'bloque_independiente' ? 'rgba(96,165,250,0.15)' : 'rgba(34,197,94,0.12)', color: ed.tipo_finca === 'bloque_independiente' ? '#60A5FA' : '#22C55E' }}>
+              {ed.tipo_finca === 'bloque_independiente' ? 'Bloque indep.' : 'Finca única'}
+            </span>
+            {ed.fuente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.1)', color: '#60A5FA' }}>{ed.fuente}</span>}
+          </div>
+
+          {/* Métricas */}
+          <div className="grid grid-cols-4 gap-2 mb-5">
+            {[
+              { label: 'Precio', val: fmt(ed.precio_compra), orange: true },
+              { label: 'm²', val: ed.superficie_total ? `${ed.superficie_total}` : '—' },
+              { label: 'Plantas', val: ed.num_plantas ? `${ed.num_plantas}` : '—' },
+              { label: 'Unidades', val: `${uns.length}` },
+            ].map(({ label, val, orange }) => (
+              <div key={label} className="rounded-xl p-2.5 text-center" style={{ background: '#141414' }}>
+                <div className="text-[9px] font-bold uppercase" style={{ color: '#555' }}>{label}</div>
+                <div className="text-[12px] font-black mt-0.5" style={{ color: orange ? '#F26E1F' : '#fff' }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Descripción */}
+          {ed.notas && (
+            <>
+              <div className="text-[10px] font-black uppercase mb-2" style={{ color: '#444' }}>Descripción</div>
+              <div className="rounded-xl p-4 mb-5 text-[13px] leading-relaxed" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', color: '#888' }}>
+                {ed.notas}
+              </div>
+            </>
+          )}
+
+          {/* Unidades */}
+          {uns.length > 0 && (
+            <>
+              <div className="text-[10px] font-black uppercase mb-2" style={{ color: '#444' }}>Unidades ({uns.length})</div>
+              <div className="flex flex-col gap-2 mb-5">
+                {uns.map(u => (
+                  <div key={u.id} className="flex items-center justify-between rounded-xl px-4 py-3"
+                    style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
+                        style={{ background: u.origen === 'proyectada' ? 'rgba(167,139,250,0.15)' : 'rgba(96,165,250,0.15)', color: u.origen === 'proyectada' ? '#a78bfa' : '#60A5FA' }}>
+                        {TIPO_UNIDAD_LABEL[u.tipo]}
+                      </span>
+                      <span className="text-[12px] font-bold text-white">{u.planta ? `P${u.planta}` : ''}</span>
+                      {u.superficie && <span className="text-[12px]" style={{ color: '#666' }}>{u.superficie}m²</span>}
+                      {u.ocupacion === 'alquilado' && u.renta_mensual
+                        ? <span className="text-[11px] font-bold" style={{ color: '#F59E0B' }}>{fmt(u.renta_mensual)}/mes</span>
+                        : null}
+                    </div>
+                    <span className="text-[13px] font-black" style={{ color: u.precio_venta_est ? '#F26E1F' : '#444' }}>
+                      {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
+                    </span>
+                  </div>
+                ))}
+                {sumVenta > 0 && (
+                  <div className="flex justify-between px-4 py-2 text-[12px] font-black rounded-xl"
+                    style={{ background: 'rgba(242,110,31,0.08)', color: '#F26E1F' }}>
+                    <span>Total venta estimada</span><span>{fmt(sumVenta)}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Links */}
+          <div className="text-[10px] font-black uppercase mb-2" style={{ color: '#444' }}>Documentación</div>
+          <div className="rounded-xl overflow-hidden mb-5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <a href={ed.url || '#'} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-between px-4 py-3.5"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: ed.url ? 1 : 0.4 }}>
+              <div className="flex items-center gap-3">
+                <span style={{ fontSize: 18 }}>🔗</span>
+                <div>
+                  <div className="text-[13px] font-bold" style={{ color: ed.url ? '#F26E1F' : '#888' }}>
+                    {ed.url ? 'Ver anuncio original' : 'Sin enlace de portal'}
+                  </div>
+                  <div className="text-[11px]" style={{ color: '#555' }}>{ed.fuente || 'Portal'}</div>
+                </div>
+              </div>
+              <span style={{ color: ed.url ? '#F26E1F' : '#333' }}>›</span>
+            </a>
+            <a href={ed.drive_url || '#'} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-between px-4 py-3.5"
+              style={{ opacity: ed.drive_url ? 1 : 0.4 }}>
+              <div className="flex items-center gap-3">
+                <span style={{ fontSize: 18 }}>📁</span>
+                <div>
+                  <div className="text-[13px] font-bold" style={{ color: ed.drive_url ? '#22C55E' : '#888' }}>
+                    {ed.drive_url ? 'Carpeta Drive' : 'Sin carpeta Drive'}
+                  </div>
+                  <div className="text-[11px]" style={{ color: '#555' }}>Fotos, planos y documentos</div>
+                </div>
+              </div>
+              <span style={{ color: ed.drive_url ? '#22C55E' : '#333' }}>›</span>
+            </a>
+          </div>
+
+          {/* Acciones */}
+          <div className="flex gap-2">
+            <button onClick={() => { openCalculadora(ed.id); setDetalleId(null) }}
+              className="flex-1 py-3.5 rounded-xl text-sm font-black text-white"
+              style={{ background: '#F26E1F' }}>
+              Calculadora ROI
+            </button>
+            <button onClick={() => { pasarAEstudio(ed) }}
+              className="flex-1 py-3.5 rounded-xl text-sm font-black"
+              style={{ background: '#1A1A1A', color: '#aaa' }}>
+              Pasar a Estudio
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER — LISTA
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen pb-24" style={{ background: '#0A0A0A' }}>
 
-      {/* Header */}
-      <div className="px-4 pt-6 pb-2">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="font-black text-[22px] text-white">Edificios</h1>
-          <button onClick={openAlta}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
-            style={{ background: '#F26E1F' }}>
-            <span className="text-base">+</span> Nuevo
-          </button>
-        </div>
-        <p className="text-[12px] font-medium" style={{ color: '#555' }}>
-          Pipeline de edificios y bloques de pisos
-        </p>
+      {/* Cabecera de página */}
+      <div className="w-full flex items-center justify-center"
+        style={{ height: 160, background: 'linear-gradient(135deg,#0d1f35 0%,#1a2a3a 60%,#0a0a0a 100%)' }}>
+        <span style={{ fontSize: 52, letterSpacing: 8 }}>🏢🏗️🏛️</span>
       </div>
 
-      {/* Tabs */}
-      <div className="px-4 mt-4 mb-4 flex gap-2">
-        {['Radar', 'En Estudio'].map((label, i) => (
-          <button key={i} onClick={() => setTab(i)}
-            className="px-4 py-2 rounded-xl text-sm font-black transition-colors"
-            style={{
-              background: tab === i ? '#F26E1F' : '#1A1A1A',
-              color: tab === i ? '#fff' : '#666',
-            }}>
-            {label}
-            <span className="ml-2 text-[11px] font-bold opacity-70">
-              {i === 0 ? radar.length : estudio.length}
-            </span>
-          </button>
-        ))}
+      {/* Header */}
+      <div className="px-4 pt-5 pb-1 flex items-center justify-between">
+        <div>
+          <h1 className="font-black text-[22px] text-white">Edificios</h1>
+          <p className="text-[12px] font-medium mt-0.5" style={{ color: '#555' }}>Pipeline de edificios y bloques de pisos</p>
+        </div>
+        <button onClick={openAlta}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
+          style={{ background: '#F26E1F' }}>
+          <span className="text-base">+</span> Nuevo
+        </button>
+      </div>
+
+      {/* Tabs + Filtro en la misma fila */}
+      <div className="px-4 mt-4 mb-4 flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          {['Radar', 'En Estudio'].map((label, i) => (
+            <button key={i} onClick={() => setTab(i)}
+              className="px-4 py-2 rounded-xl text-sm font-black transition-colors"
+              style={{ background: tab === i ? '#F26E1F' : '#1A1A1A', color: tab === i ? '#fff' : '#666' }}>
+              {label}
+              <span className="ml-2 text-[11px] font-bold opacity-70">
+                {i === 0 ? radar.length : estudio.length}
+              </span>
+            </button>
+          ))}
+        </div>
+        {ciudades.length > 0 && (
+          <select
+            value={filtroCiudad}
+            onChange={e => setFiltroCiudad(e.target.value)}
+            className="rounded-xl px-3 py-2 text-[12px] font-bold outline-none"
+            style={{ background: '#1A1A1A', border: filtroCiudad ? '1px solid rgba(242,110,31,0.5)' : '1px solid rgba(255,255,255,0.08)', color: filtroCiudad ? '#F26E1F' : '#666' }}>
+            <option value="">📍 Ciudad</option>
+            {ciudades.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
       </div>
 
       {/* ── TAB RADAR ── */}
       {tab === 0 && (
-        <div className="px-4 space-y-3">
+        <div className="px-4">
           {loading && <div className="text-center py-12 text-sm font-medium" style={{ color: '#555' }}>Cargando...</div>}
           {!loading && radar.length === 0 && (
             <div className="text-center py-16">
@@ -401,19 +566,22 @@ export default function EdificiosPage() {
               <div className="text-xs mt-1" style={{ color: '#444' }}>Pulsa "+ Nuevo" para añadir el primero</div>
             </div>
           )}
-          {radar.map(e => (
-            <EdificioCard
-              key={e.id}
-              edificio={e}
-              unidades={unidades[e.id]}
-              onLoadUnidades={() => loadUnidades(e.id)}
-              onEditar={() => openEditar(e)}
-              onEliminar={() => deleteEdificio(e)}
-              onUnidades={() => openUnidades(e.id)}
-              onPasarEstudio={() => pasarAEstudio(e)}
-              isRadar
-            />
-          ))}
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))' }}>
+            {radar.map(e => (
+              <EdificioCard
+                key={e.id}
+                edificio={e}
+                unidades={unidades[e.id]}
+                onLoadUnidades={() => loadUnidades(e.id)}
+                onEditar={() => openEditar(e)}
+                onEliminar={() => deleteEdificio(e)}
+                onUnidades={() => openUnidades(e.id)}
+                onPasarEstudio={() => pasarAEstudio(e)}
+                onVerDetalle={() => { loadUnidades(e.id); setDetalleId(e.id) }}
+                isRadar
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -615,6 +783,15 @@ export default function EdificiosPage() {
                   <input value={form.drive_url} onChange={e => setForm(p => ({ ...p, drive_url: e.target.value }))}
                     placeholder="https://drive.google.com/..." className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none"
                     style={{ ...INP, borderColor: form.drive_url ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.10)' }} />
+                </Field>
+
+                <Field label="Imagen de portada (URL)">
+                  <input value={form.imagen_portada} onChange={e => setForm(p => ({ ...p, imagen_portada: e.target.value }))}
+                    placeholder="https://..." className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none"
+                    style={{ ...INP, borderColor: form.imagen_portada ? 'rgba(242,110,31,0.4)' : 'rgba(255,255,255,0.10)' }} />
+                  {form.imagen_portada && (
+                    <img src={form.imagen_portada} alt="preview" className="mt-2 w-full rounded-xl object-cover" style={{ height: 100 }} />
+                  )}
                 </Field>
 
                 <Field label="Notas">
@@ -1090,7 +1267,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function EdificioCard({
-  edificio: e, unidades, onLoadUnidades, onEditar, onEliminar, onUnidades, onPasarEstudio, isRadar,
+  edificio: e, unidades, onLoadUnidades, onEditar, onEliminar, onUnidades, onPasarEstudio, onVerDetalle, isRadar,
 }: {
   edificio: Edificio
   unidades?: Unidad[]
@@ -1099,6 +1276,7 @@ function EdificioCard({
   onEliminar: () => void
   onUnidades: () => void
   onPasarEstudio: () => void
+  onVerDetalle?: () => void
   isRadar?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -1111,6 +1289,20 @@ function EdificioCard({
   return (
     <div className="rounded-2xl overflow-hidden"
       style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
+
+      {/* Imagen de portada */}
+      {e.imagen_portada
+        ? <img src={e.imagen_portada} alt={e.titulo || e.direccion}
+            className="w-full object-cover cursor-pointer" style={{ height: 140 }}
+            onClick={onVerDetalle} />
+        : <div className="w-full flex flex-col items-center justify-center cursor-pointer"
+            style={{ height: 140, background: 'linear-gradient(135deg,#0d1f35,#1a1a1a)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+            onClick={onVerDetalle}>
+            <span style={{ fontSize: 28, color: '#333' }}>📷</span>
+            <span className="text-[10px] font-semibold mt-1" style={{ color: '#333' }}>Sin foto</span>
+          </div>
+      }
+
       <div className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
@@ -1160,10 +1352,10 @@ function EdificioCard({
 
         {/* Acciones radar */}
         <div className="flex gap-2 flex-wrap">
-          <button onClick={onPasarEstudio}
+          <button onClick={onVerDetalle}
             className="flex-1 py-2.5 rounded-xl text-[12px] font-black text-white"
             style={{ background: '#F26E1F', minWidth: 100 }}>
-            Pasar a Estudio
+            Ver detalle →
           </button>
           <button onClick={onUnidades}
             className="flex-1 py-2.5 rounded-xl text-[12px] font-black"
