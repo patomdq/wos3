@@ -511,9 +511,14 @@ export default function EdificiosPage() {
     <div className="min-h-screen pb-24" style={{ background: '#0A0A0A' }}>
 
       {/* Cabecera de página */}
-      <div className="w-full flex items-center justify-center"
-        style={{ height: 160, background: 'linear-gradient(135deg,#0d1f35 0%,#1a2a3a 60%,#0a0a0a 100%)' }}>
-        <span style={{ fontSize: 52, letterSpacing: 8 }}>🏢🏗️🏛️</span>
+      <div className="relative w-full" style={{ height: 160 }}>
+        <img
+          src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200&h=320&fit=crop&q=80"
+          alt="Edificios"
+          className="w-full h-full object-cover"
+          style={{ display: 'block' }}
+        />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(10,10,10,0.7))' }} />
       </div>
 
       {/* Header */}
@@ -1304,63 +1309,62 @@ function EdificioCard({
       }
 
       <div className="p-4">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex-1 min-w-0">
-            <div className="font-black text-[15px] text-white truncate">
-              {e.titulo || e.direccion}
-            </div>
-            {e.titulo && (
-              <div className="text-[12px] mt-0.5 truncate" style={{ color: '#666' }}>{e.direccion}</div>
-            )}
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {e.ciudad && <span className="text-[11px]" style={{ color: '#555' }}>{e.ciudad}</span>}
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
-                style={{
-                  background: e.tipo_finca === 'bloque_independiente' ? 'rgba(96,165,250,0.15)' : 'rgba(34,197,94,0.12)',
-                  color: e.tipo_finca === 'bloque_independiente' ? '#60A5FA' : '#22C55E',
-                }}>
-                {e.tipo_finca === 'bloque_independiente' ? 'Bloque indep.' : 'Finca única'}
-              </span>
-              {e.fuente && <span className="text-[10px]" style={{ color: '#444' }}>{e.fuente}</span>}
-            </div>
+        {/* Título + precio */}
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="font-black text-[15px] text-white leading-tight">
+            {e.titulo || e.direccion}
           </div>
-          <div className="text-right flex-shrink-0">
-            <div className="font-black text-[16px] text-white">{fmt(e.precio_compra)}</div>
-            {e.superficie_total && (
-              <div className="text-[11px] mt-0.5" style={{ color: '#666' }}>{e.superficie_total} m²</div>
-            )}
-            {e.num_plantas && (
-              <div className="text-[11px]" style={{ color: '#555' }}>{e.num_plantas} plantas</div>
-            )}
-          </div>
+          <div className="font-black text-[15px] text-white flex-shrink-0">{fmt(e.precio_compra)}</div>
         </div>
 
-        {e.notas && (
-          <div className="text-[12px] mb-3 leading-relaxed" style={{ color: '#666' }}>{e.notas}</div>
-        )}
+        {/* Dirección */}
+        <div className="text-[12px] mb-2 truncate" style={{ color: '#666' }}>
+          {e.titulo ? e.direccion : ''}{e.ciudad ? (e.titulo ? ` · ${e.ciudad}` : e.ciudad) : ''}
+        </div>
 
-        {e.drive_url && (
-          <div className="mb-3">
-            <a href={e.drive_url} target="_blank" rel="noopener noreferrer"
-              className="text-xs font-black inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-              style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)' }}>
-              📁 Carpeta Drive
-            </a>
-          </div>
-        )}
+        {/* Tags */}
+        <div className="flex gap-1.5 flex-wrap mb-3">
+          <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
+            style={{ background: e.tipo_finca === 'bloque_independiente' ? 'rgba(96,165,250,0.15)' : 'rgba(34,197,94,0.12)', color: e.tipo_finca === 'bloque_independiente' ? '#60A5FA' : '#22C55E' }}>
+            {e.tipo_finca === 'bloque_independiente' ? 'Bloque indep.' : 'Finca única'}
+          </span>
+          {e.superficie_total && (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.12)', color: '#60A5FA' }}>
+              {e.superficie_total} m²
+            </span>
+          )}
+          {e.num_plantas && (
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.12)', color: '#60A5FA' }}>
+              {e.num_plantas} plantas
+            </span>
+          )}
+        </div>
 
-        {/* Acciones radar */}
-        <div className="flex gap-2 flex-wrap">
+        {/* Métricas */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {[
+            { label: 'Precio', val: fmt(e.precio_compra) },
+            { label: 'Unidades', val: unidades ? String(unidades.length) : '—' },
+            { label: 'm²', val: e.superficie_total ? String(e.superficie_total) : '—' },
+          ].map(({ label, val }) => (
+            <div key={label} className="rounded-xl p-2 text-center" style={{ background: '#1E1E1E' }}>
+              <div className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#555' }}>{label}</div>
+              <div className="text-[13px] font-black text-white mt-0.5">{val}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Acciones */}
+        <div className="flex gap-2">
           <button onClick={onVerDetalle}
             className="flex-1 py-2.5 rounded-xl text-[12px] font-black text-white"
-            style={{ background: '#F26E1F', minWidth: 100 }}>
+            style={{ background: '#F26E1F' }}>
             Ver detalle →
           </button>
-          <button onClick={onUnidades}
+          <button onClick={onPasarEstudio}
             className="flex-1 py-2.5 rounded-xl text-[12px] font-black"
-            style={{ background: '#1E1E1E', color: '#aaa', minWidth: 80 }}>
-            Unidades {unidades ? `(${unidades.length})` : ''}
+            style={{ background: '#1E1E1E', color: '#aaa' }}>
+            A Estudio
           </button>
           <button onClick={onEditar}
             className="px-3 py-2.5 rounded-xl text-[12px] font-black"
