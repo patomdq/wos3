@@ -126,6 +126,11 @@ export default function EdificiosPage() {
   const [form, setForm] = useState(emptyEdificioForm())
   const [saving, setSaving] = useState(false)
 
+  // Mini-sheet cambiar solo imagen de portada
+  const [coverEditId, setCoverEditId] = useState<string | null>(null)
+  const [coverEditUrl, setCoverEditUrl] = useState('')
+  const [savingCover, setSavingCover] = useState(false)
+
   // Gestión de unidades
   const [unidadesEdificioId, setUnidadesEdificioId] = useState<string | null>(null)
   const [unidadForm, setUnidadForm] = useState(emptyUnidadForm())
@@ -335,6 +340,21 @@ export default function EdificiosPage() {
     setCalcEdificioId(null)
   }
 
+  const openCoverEdit = (e: Edificio) => {
+    setCoverEditUrl(e.imagen_portada || '')
+    setCoverEditId(e.id)
+  }
+
+  const saveCover = async () => {
+    if (!coverEditId) return
+    setSavingCover(true)
+    const { data } = await supabase.from('edificios_estudio')
+      .update({ imagen_portada: coverEditUrl || null }).eq('id', coverEditId).select().single()
+    if (data) setEdificios(prev => prev.map(x => x.id === coverEditId ? data : x))
+    setSavingCover(false)
+    setCoverEditId(null)
+  }
+
   // ── Datos para calculadora activa ─────────────────────────────────────────
   const calcEd = calcEdificioId ? edificios.find(e => e.id === calcEdificioId) : null
   const calcUns = calcEdificioId ? (unidades[calcEdificioId] || []) : []
@@ -380,10 +400,10 @@ export default function EdificiosPage() {
               </div>
           }
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(10,10,10,0.88) 100%)' }} />
-          <button onClick={() => openEditar(detEd!)}
+          <button onClick={() => openCoverEdit(detEd!)}
             className="absolute top-3.5 right-3.5 flex items-center justify-center rounded-full"
             style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}>
-            ✎
+            📷
           </button>
           <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
             <div className="font-black text-[20px] text-white leading-tight">{detEd!.titulo || detEd!.direccion}</div>
@@ -744,6 +764,56 @@ export default function EdificiosPage() {
     </>
     )}
 
+      {/* ═══ MINI-SHEET CAMBIAR IMAGEN DE PORTADA ═══ */}
+      {coverEditId && (
+        <>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.75)' }}
+            onClick={() => setCoverEditId(null)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px]"
+            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 600, margin: '0 auto' }}>
+            <div className="p-5 pb-8">
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
+              <div className="font-black text-[16px] text-white mb-1">Imagen de portada</div>
+              <div className="text-[12px] mb-4" style={{ color: '#555' }}>Pega la URL directa de la imagen (no la página del anuncio)</div>
+
+              {/* Preview */}
+              {coverEditUrl && (
+                <div className="mb-4 rounded-xl overflow-hidden" style={{ height: 140 }}>
+                  <img src={coverEditUrl} alt="preview" className="w-full h-full object-cover"
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                </div>
+              )}
+
+              <input
+                value={coverEditUrl}
+                onChange={e => setCoverEditUrl(e.target.value)}
+                placeholder="https://img4.idealista.com/blur/...jpg"
+                autoFocus
+                className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none mb-4"
+                style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.15)' }}
+              />
+
+              {coverEditUrl && !/\.(jpg|jpeg|png|webp|gif|avif)(\?.*)?$/i.test(coverEditUrl) && !coverEditUrl.includes('photos') && !coverEditUrl.includes('images') && (
+                <div className="mb-3 px-3 py-2 rounded-xl text-[12px]" style={{ background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}>
+                  ⚠️ Parece que no es una URL de imagen directa — asegúrate de que termine en .jpg o similar
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button onClick={() => setCoverEditId(null)}
+                  className="flex-1 py-3.5 rounded-xl text-sm font-black"
+                  style={{ background: '#222', color: '#888' }}>Cancelar</button>
+                <button onClick={saveCover} disabled={savingCover}
+                  className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
+                  style={{ background: '#F26E1F' }}>
+                  {savingCover ? 'Guardando...' : 'Guardar imagen'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ═══ MODAL ALTA / EDITAR EDIFICIO ═══ */}
       {altaOpen && (
         <>
@@ -834,12 +904,19 @@ export default function EdificiosPage() {
                     style={{ ...INP, borderColor: form.drive_url ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.10)' }} />
                 </Field>
 
-                <Field label="Imagen de portada (URL)">
+                <Field label="Imagen de portada (URL directa)">
                   <input value={form.imagen_portada} onChange={e => setForm(p => ({ ...p, imagen_portada: e.target.value }))}
-                    placeholder="https://..." className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none"
+                    placeholder="https://img4.idealista.com/...jpg"
+                    className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none"
                     style={{ ...INP, borderColor: form.imagen_portada ? 'rgba(242,110,31,0.4)' : 'rgba(255,255,255,0.10)' }} />
-                  {form.imagen_portada && (
-                    <img src={form.imagen_portada} alt="preview" className="mt-2 w-full rounded-xl object-cover" style={{ height: 100 }} />
+                  {form.imagen_portada && /idealista\.com\/inmueble|fotocasa\.es\/es\//i.test(form.imagen_portada) && (
+                    <div className="mt-1.5 text-[11px] px-2 py-1 rounded-lg" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+                      ⚠️ Esa es la URL del anuncio, no de la imagen. Abre el anuncio, click derecho en una foto → "Copiar dirección de imagen"
+                    </div>
+                  )}
+                  {form.imagen_portada && !/idealista\.com\/inmueble|fotocasa\.es\/es\//i.test(form.imagen_portada) && (
+                    <img src={form.imagen_portada} alt="preview" className="mt-2 w-full rounded-xl object-cover" style={{ height: 100 }}
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
                   )}
                 </Field>
 
