@@ -394,20 +394,20 @@ export default function EdificiosPage() {
         </div>
 
         {/* Barra de nav */}
-        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <button onClick={() => { setDetalleId(null); loadUnidades(ed.id) }}
-            className="text-[12px] font-bold" style={{ color: '#666' }}>
+            className="text-[12px] font-bold text-white">
             ← Radar
           </button>
           <div className="flex gap-1.5">
             <button onClick={() => openEditar(ed)}
-              className="flex items-center justify-center rounded-[9px]"
-              style={{ width: 32, height: 32, background: '#161616', border: '1px solid rgba(255,255,255,0.07)', color: '#888', fontSize: 13 }}>
+              className="flex items-center justify-center rounded-[9px] text-white"
+              style={{ width: 32, height: 32, background: '#222', border: '1px solid rgba(255,255,255,0.12)', fontSize: 13 }}>
               ✎
             </button>
             <button onClick={() => deleteEdificio(ed)}
               className="flex items-center justify-center rounded-[9px]"
-              style={{ width: 32, height: 32, background: '#161616', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+              style={{ width: 32, height: 32, background: '#222', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13 }}>
               🗑
             </button>
           </div>
@@ -432,8 +432,8 @@ export default function EdificiosPage() {
               { label: 'Plantas', val: ed.num_plantas ? `${ed.num_plantas}` : '—' },
               { label: 'Unidades', val: `${uns.length}` },
             ].map(({ label, val }) => (
-              <div key={label} className="rounded-xl p-2.5 text-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div className="text-[9px] font-bold uppercase" style={{ color: '#3a3a3a' }}>{label}</div>
+              <div key={label} className="rounded-xl p-2.5 text-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="text-[9px] font-bold uppercase text-white opacity-40">{label}</div>
                 <div className="text-[13px] font-black mt-0.5 text-white">{val}</div>
               </div>
             ))}
@@ -442,27 +442,28 @@ export default function EdificiosPage() {
           {/* Descripción */}
           {ed.notas && (
             <>
-              <div className="text-[10px] font-black uppercase mb-2" style={{ color: '#333', letterSpacing: '0.07em' }}>Descripción</div>
-              <div className="rounded-xl p-4 mb-5 text-[13px] leading-relaxed" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.05)', color: '#666' }}>
+              <div className="text-[10px] font-black uppercase mb-2 text-white opacity-40">Descripción</div>
+              <div className="rounded-xl p-4 mb-5 text-[13px] leading-relaxed text-white"
+                style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
                 {ed.notas}
               </div>
             </>
           )}
 
           {/* Unidades */}
-          <div className="text-[10px] font-black uppercase mb-2.5" style={{ color: '#333', letterSpacing: '0.07em' }}>
+          <div className="text-[10px] font-black uppercase mb-2.5 text-white opacity-40">
             Unidades{uns.length > 0 ? ` (${uns.length})` : ''}
           </div>
           <div className="flex flex-col gap-1.5 mb-1.5">
             {uns.map(u => (
               <div key={u.id} className="flex items-center justify-between rounded-xl px-3 py-2.5"
-                style={{ background: '#111', border: '1px solid rgba(255,255,255,0.04)' }}>
+                style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className="text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
                     style={{ background: u.origen === 'proyectada' ? 'rgba(167,139,250,0.15)' : 'rgba(96,165,250,0.15)', color: u.origen === 'proyectada' ? '#a78bfa' : '#60A5FA' }}>
                     {TIPO_UNIDAD_LABEL[u.tipo]}
                   </span>
-                  <span className="text-[12px]" style={{ color: '#555' }}>
+                  <span className="text-[12px] text-white">
                     {u.planta ? `P${u.planta}` : ''}{u.superficie ? ` · ${u.superficie}m²` : ''}
                     {u.origen === 'proyectada' && <span className="text-[10px] font-black ml-1" style={{ color: '#a78bfa' }}>proj.</span>}
                     {u.ocupacion === 'alquilado' && u.renta_mensual && <span className="text-[10px] font-black ml-1" style={{ color: '#F59E0B' }}>{fmt(u.renta_mensual)}/mes</span>}
@@ -471,13 +472,13 @@ export default function EdificiosPage() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {u.precio_venta_est && <span className="text-[13px] font-black text-white">{fmt(u.precio_venta_est)}</span>}
                   <button onClick={() => { editarUnidad(u); setUnidadesEdificioId(ed.id) }}
-                    className="flex items-center justify-center rounded-[7px]"
-                    style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.05)', color: '#666', fontSize: 12, border: 'none' }}>
+                    className="flex items-center justify-center rounded-[7px] text-white"
+                    style={{ width: 28, height: 28, background: '#222', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12 }}>
                     ✎
                   </button>
                   <button onClick={() => deleteUnidad(u)}
                     className="flex items-center justify-center rounded-[7px]"
-                    style={{ width: 26, height: 26, background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 11, border: 'none' }}>
+                    style={{ width: 28, height: 28, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 11 }}>
                     ✕
                   </button>
                 </div>
@@ -485,32 +486,32 @@ export default function EdificiosPage() {
             ))}
           </div>
           {sumVenta > 0 && (
-            <div className="flex justify-between px-3 py-2 text-[12px] font-black rounded-xl mb-1.5"
-              style={{ background: 'rgba(255,255,255,0.04)', color: '#fff' }}>
+            <div className="flex justify-between px-3 py-2 text-[12px] font-black rounded-xl mb-1.5 text-white"
+              style={{ background: 'rgba(255,255,255,0.06)' }}>
               <span>Total venta estimada</span><span>{fmt(sumVenta)}</span>
             </div>
           )}
           <button onClick={() => openUnidades(ed.id)}
-            className="w-full py-2.5 rounded-xl text-[12px] font-bold mb-5"
-            style={{ background: '#111', border: '1px dashed rgba(255,255,255,0.08)', color: '#444' }}>
+            className="w-full py-2.5 rounded-xl text-[12px] font-bold mb-5 text-white"
+            style={{ background: '#141414', border: '1px dashed rgba(255,255,255,0.15)' }}>
             + Añadir unidad
           </button>
 
           {/* Documentación */}
-          <div className="text-[10px] font-black uppercase mb-2.5" style={{ color: '#333', letterSpacing: '0.07em' }}>Documentación</div>
-          <div className="rounded-xl overflow-hidden mb-5" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: ed.url ? 1 : 0.35 }}>
+          <div className="text-[10px] font-black uppercase mb-2.5 text-white opacity-40">Documentación</div>
+          <div className="rounded-xl overflow-hidden mb-5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', opacity: ed.url ? 1 : 0.35 }}>
               <a href={ed.url || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
                 <span style={{ fontSize: 16, flexShrink: 0 }}>🔗</span>
                 <div className="min-w-0">
                   <div className="text-[13px] font-bold text-white">{ed.url ? 'Ver anuncio original' : 'Sin enlace de portal'}</div>
-                  <div className="text-[11px]" style={{ color: '#3a3a3a' }}>{ed.fuente || 'Portal'}</div>
+                  <div className="text-[11px] text-white opacity-40">{ed.fuente || 'Portal'}</div>
                 </div>
               </a>
               <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                <button onClick={() => openEditar(ed)} className="flex items-center justify-center rounded-[7px]"
-                  style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.04)', color: '#555', fontSize: 11, border: 'none' }}>✎</button>
-                {ed.url && <span style={{ fontSize: 16, color: '#aaa' }}>›</span>}
+                <button onClick={() => openEditar(ed)} className="flex items-center justify-center rounded-[7px] text-white"
+                  style={{ width: 28, height: 28, background: '#222', border: '1px solid rgba(255,255,255,0.12)', fontSize: 11 }}>✎</button>
+                {ed.url && <span className="text-white opacity-50" style={{ fontSize: 18 }}>›</span>}
               </div>
             </div>
             <div className="flex items-center justify-between px-4 py-3.5" style={{ opacity: ed.drive_url ? 1 : 0.35 }}>
@@ -518,13 +519,13 @@ export default function EdificiosPage() {
                 <span style={{ fontSize: 16, flexShrink: 0 }}>📁</span>
                 <div className="min-w-0">
                   <div className="text-[13px] font-bold text-white">{ed.drive_url ? 'Carpeta Drive' : 'Sin carpeta Drive'}</div>
-                  <div className="text-[11px]" style={{ color: '#3a3a3a' }}>Fotos, planos y documentos</div>
+                  <div className="text-[11px] text-white opacity-40">Fotos, planos y documentos</div>
                 </div>
               </a>
               <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                <button onClick={() => openEditar(ed)} className="flex items-center justify-center rounded-[7px]"
-                  style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.04)', color: '#555', fontSize: 11, border: 'none' }}>✎</button>
-                {ed.drive_url && <span style={{ fontSize: 16, color: '#aaa' }}>›</span>}
+                <button onClick={() => openEditar(ed)} className="flex items-center justify-center rounded-[7px] text-white"
+                  style={{ width: 28, height: 28, background: '#222', border: '1px solid rgba(255,255,255,0.12)', fontSize: 11 }}>✎</button>
+                {ed.drive_url && <span className="text-white opacity-50" style={{ fontSize: 18 }}>›</span>}
               </div>
             </div>
           </div>
@@ -537,8 +538,8 @@ export default function EdificiosPage() {
               Calculadora ROI
             </button>
             <button onClick={() => pasarAEstudio(ed)}
-              className="px-5 py-3 rounded-xl text-sm font-black"
-              style={{ background: '#141414', color: '#777', border: '1px solid rgba(255,255,255,0.07)' }}>
+              className="px-5 py-3 rounded-xl text-sm font-black text-white"
+              style={{ background: '#222', border: '1px solid rgba(255,255,255,0.12)' }}>
               Pasar a Estudio
             </button>
           </div>
