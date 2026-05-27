@@ -359,35 +359,37 @@ export default function EdificiosPage() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // RENDER — DETALLE
+  // RENDER
   // ─────────────────────────────────────────────────────────────────────────
   const detalleEdificio = detalleId ? edificios.find(e => e.id === detalleId) : null
-  if (detalleEdificio) {
-    const ed = detalleEdificio
-    const uns = unidades[ed.id] || []
-    const sumVenta = uns.reduce((a, u) => a + (u.precio_venta_est || 0), 0)
-    return (
-      <div className="min-h-screen pb-24" style={{ background: '#0A0A0A' }}>
+  const detEd = detalleEdificio ?? null
+  const detUns = detEd ? (unidades[detEd.id] || []) : []
+  const detSumVenta = detUns.reduce((a, u) => a + (u.precio_venta_est || 0), 0)
+
+  return (
+    <div className="min-h-screen pb-24" style={{ background: '#0A0A0A' }}>
+    {detEd ? (<>
+      {/* ── DETALLE ── */}
 
         {/* Cover con título superpuesto */}
         <div className="relative w-full" style={{ height: 260 }}>
-          {ed.imagen_portada
-            ? <img src={ed.imagen_portada} alt={ed.titulo || ed.direccion} className="w-full h-full object-cover" />
+          {detEd!.imagen_portada
+            ? <img src={detEd!.imagen_portada} alt={detEd!.titulo || detEd!.direccion} className="w-full h-full object-cover" />
             : <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#0d1f35,#1a2a3a)' }}>
                 <span style={{ fontSize: 56 }}>🏢</span>
               </div>
           }
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(10,10,10,0.88) 100%)' }} />
-          <button onClick={() => openEditar(ed)}
+          <button onClick={() => openEditar(detEd!)}
             className="absolute top-3.5 right-3.5 flex items-center justify-center rounded-full"
-            style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', color: '#aaa', fontSize: 12 }}>
+            style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}>
             ✎
           </button>
           <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
-            <div className="font-black text-[20px] text-white leading-tight">{ed.titulo || ed.direccion}</div>
-            {(ed.titulo || ed.ciudad) && (
-              <div className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                {ed.titulo ? ed.direccion : ''}{ed.ciudad ? (ed.titulo ? ` · ${ed.ciudad}` : ed.ciudad) : ''}
+            <div className="font-black text-[20px] text-white leading-tight">{detEd!.titulo || detEd!.direccion}</div>
+            {(detEd!.titulo || detEd!.ciudad) && (
+              <div className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                {detEd!.titulo ? detEd!.direccion : ''}{detEd!.ciudad ? (detEd!.titulo ? ` · ${detEd!.ciudad}` : detEd!.ciudad) : ''}
               </div>
             )}
           </div>
@@ -395,19 +397,19 @@ export default function EdificiosPage() {
 
         {/* Barra de nav */}
         <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <button onClick={() => { setDetalleId(null); loadUnidades(ed.id) }}
-            className="text-[12px] font-bold text-white">
+          <button onClick={() => { setDetalleId(null); loadUnidades(detEd!.id) }}
+            className="text-[13px] font-bold text-white">
             ← Radar
           </button>
           <div className="flex gap-1.5">
-            <button onClick={() => openEditar(ed)}
-              className="flex items-center justify-center rounded-[9px] text-white"
-              style={{ width: 32, height: 32, background: '#222', border: '1px solid rgba(255,255,255,0.12)', fontSize: 13 }}>
+            <button onClick={() => openEditar(detEd!)}
+              className="flex items-center justify-center rounded-[9px] text-white font-bold"
+              style={{ width: 32, height: 32, background: '#222', border: '1px solid rgba(255,255,255,0.15)', fontSize: 14 }}>
               ✎
             </button>
-            <button onClick={() => deleteEdificio(ed)}
+            <button onClick={() => deleteEdificio(detEd!)}
               className="flex items-center justify-center rounded-[9px]"
-              style={{ width: 32, height: 32, background: '#222', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13 }}>
+              style={{ width: 32, height: 32, background: '#222', border: '1px solid rgba(239,68,68,0.4)', color: '#EF4444', fontSize: 13 }}>
               🗑
             </button>
           </div>
@@ -418,19 +420,19 @@ export default function EdificiosPage() {
           {/* Tags */}
           <div className="flex gap-1.5 flex-wrap mb-5">
             <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
-              style={{ background: ed.tipo_finca === 'bloque_independiente' ? 'rgba(96,165,250,0.15)' : 'rgba(34,197,94,0.12)', color: ed.tipo_finca === 'bloque_independiente' ? '#60A5FA' : '#22C55E' }}>
-              {ed.tipo_finca === 'bloque_independiente' ? 'Bloque indep.' : 'Finca única'}
+              style={{ background: detEd!.tipo_finca === 'bloque_independiente' ? 'rgba(96,165,250,0.15)' : 'rgba(34,197,94,0.12)', color: detEd!.tipo_finca === 'bloque_independiente' ? '#60A5FA' : '#22C55E' }}>
+              {detEd!.tipo_finca === 'bloque_independiente' ? 'Bloque indep.' : 'Finca única'}
             </span>
-            {ed.fuente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.1)', color: '#60A5FA' }}>{ed.fuente}</span>}
+            {detEd!.fuente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.1)', color: '#60A5FA' }}>{detEd!.fuente}</span>}
           </div>
 
           {/* Métricas */}
           <div className="grid grid-cols-4 gap-2 mb-5">
             {[
-              { label: 'Precio', val: fmt(ed.precio_compra) },
-              { label: 'm²', val: ed.superficie_total ? `${ed.superficie_total}` : '—' },
-              { label: 'Plantas', val: ed.num_plantas ? `${ed.num_plantas}` : '—' },
-              { label: 'Unidades', val: `${uns.length}` },
+              { label: 'Precio', val: fmt(detEd!.precio_compra) },
+              { label: 'm²', val: detEd!.superficie_total ? `${detEd!.superficie_total}` : '—' },
+              { label: 'Plantas', val: detEd!.num_plantas ? `${detEd!.num_plantas}` : '—' },
+              { label: 'Unidades', val: `${detUns.length}` },
             ].map(({ label, val }) => (
               <div key={label} className="rounded-xl p-2.5 text-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <div className="text-[9px] font-bold uppercase text-white opacity-40">{label}</div>
@@ -440,22 +442,22 @@ export default function EdificiosPage() {
           </div>
 
           {/* Descripción */}
-          {ed.notas && (
+          {detEd!.notas && (
             <>
               <div className="text-[10px] font-black uppercase mb-2 text-white opacity-40">Descripción</div>
               <div className="rounded-xl p-4 mb-5 text-[13px] leading-relaxed text-white"
                 style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
-                {ed.notas}
+                {detEd!.notas}
               </div>
             </>
           )}
 
           {/* Unidades */}
           <div className="text-[10px] font-black uppercase mb-2.5 text-white opacity-40">
-            Unidades{uns.length > 0 ? ` (${uns.length})` : ''}
+            Unidades{detUns.length > 0 ? ` (${detUns.length})` : ''}
           </div>
           <div className="flex flex-col gap-1.5 mb-1.5">
-            {uns.map(u => (
+            {detUns.map(u => (
               <div key={u.id} className="flex items-center justify-between rounded-xl px-3 py-2.5"
                 style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -471,89 +473,84 @@ export default function EdificiosPage() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {u.precio_venta_est && <span className="text-[13px] font-black text-white">{fmt(u.precio_venta_est)}</span>}
-                  <button onClick={() => { editarUnidad(u); setUnidadesEdificioId(ed.id) }}
-                    className="flex items-center justify-center rounded-[7px] text-white"
-                    style={{ width: 28, height: 28, background: '#222', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12 }}>
+                  <button onClick={() => { editarUnidad(u); setUnidadesEdificioId(detEd!.id) }}
+                    className="flex items-center justify-center rounded-[7px] text-white font-bold"
+                    style={{ width: 28, height: 28, background: '#222', border: '1px solid rgba(255,255,255,0.15)', fontSize: 13 }}>
                     ✎
                   </button>
                   <button onClick={() => deleteUnidad(u)}
-                    className="flex items-center justify-center rounded-[7px]"
-                    style={{ width: 28, height: 28, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 11 }}>
+                    className="flex items-center justify-center rounded-[7px] font-bold"
+                    style={{ width: 28, height: 28, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12 }}>
                     ✕
                   </button>
                 </div>
               </div>
             ))}
           </div>
-          {sumVenta > 0 && (
+          {detSumVenta > 0 && (
             <div className="flex justify-between px-3 py-2 text-[12px] font-black rounded-xl mb-1.5 text-white"
               style={{ background: 'rgba(255,255,255,0.06)' }}>
-              <span>Total venta estimada</span><span>{fmt(sumVenta)}</span>
+              <span>Total venta estimada</span><span>{fmt(detSumVenta)}</span>
             </div>
           )}
-          <button onClick={() => openUnidades(ed.id)}
+          <button onClick={() => openUnidades(detEd!.id)}
             className="w-full py-2.5 rounded-xl text-[12px] font-bold mb-5 text-white"
-            style={{ background: '#141414', border: '1px dashed rgba(255,255,255,0.15)' }}>
+            style={{ background: '#141414', border: '1px dashed rgba(255,255,255,0.2)' }}>
             + Añadir unidad
           </button>
 
           {/* Documentación */}
           <div className="text-[10px] font-black uppercase mb-2.5 text-white opacity-40">Documentación</div>
           <div className="rounded-xl overflow-hidden mb-5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', opacity: ed.url ? 1 : 0.35 }}>
-              <a href={ed.url || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', opacity: detEd!.url ? 1 : 0.35 }}>
+              <a href={detEd!.url || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
                 <span style={{ fontSize: 16, flexShrink: 0 }}>🔗</span>
                 <div className="min-w-0">
-                  <div className="text-[13px] font-bold text-white">{ed.url ? 'Ver anuncio original' : 'Sin enlace de portal'}</div>
-                  <div className="text-[11px] text-white opacity-40">{ed.fuente || 'Portal'}</div>
+                  <div className="text-[13px] font-bold text-white">{detEd!.url ? 'Ver anuncio original' : 'Sin enlace de portal'}</div>
+                  <div className="text-[11px] text-white opacity-50">{detEd!.fuente || 'Portal'}</div>
                 </div>
               </a>
               <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                <button onClick={() => openEditar(ed)} className="flex items-center justify-center rounded-[7px] text-white"
-                  style={{ width: 28, height: 28, background: '#222', border: '1px solid rgba(255,255,255,0.12)', fontSize: 11 }}>✎</button>
-                {ed.url && <span className="text-white opacity-50" style={{ fontSize: 18 }}>›</span>}
+                <button onClick={() => openEditar(detEd!)} className="flex items-center justify-center rounded-[7px] text-white font-bold"
+                  style={{ width: 28, height: 28, background: '#222', border: '1px solid rgba(255,255,255,0.15)', fontSize: 12 }}>✎</button>
+                {detEd!.url && <span className="text-white opacity-50" style={{ fontSize: 18 }}>›</span>}
               </div>
             </div>
-            <div className="flex items-center justify-between px-4 py-3.5" style={{ opacity: ed.drive_url ? 1 : 0.35 }}>
-              <a href={ed.drive_url || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="flex items-center justify-between px-4 py-3.5" style={{ opacity: detEd!.drive_url ? 1 : 0.35 }}>
+              <a href={detEd!.drive_url || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
                 <span style={{ fontSize: 16, flexShrink: 0 }}>📁</span>
                 <div className="min-w-0">
-                  <div className="text-[13px] font-bold text-white">{ed.drive_url ? 'Carpeta Drive' : 'Sin carpeta Drive'}</div>
-                  <div className="text-[11px] text-white opacity-40">Fotos, planos y documentos</div>
+                  <div className="text-[13px] font-bold text-white">{detEd!.drive_url ? 'Carpeta Drive' : 'Sin carpeta Drive'}</div>
+                  <div className="text-[11px] text-white opacity-50">Fotos, planos y documentos</div>
                 </div>
               </a>
               <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                <button onClick={() => openEditar(ed)} className="flex items-center justify-center rounded-[7px] text-white"
-                  style={{ width: 28, height: 28, background: '#222', border: '1px solid rgba(255,255,255,0.12)', fontSize: 11 }}>✎</button>
-                {ed.drive_url && <span className="text-white opacity-50" style={{ fontSize: 18 }}>›</span>}
+                <button onClick={() => openEditar(detEd!)} className="flex items-center justify-center rounded-[7px] text-white font-bold"
+                  style={{ width: 28, height: 28, background: '#222', border: '1px solid rgba(255,255,255,0.15)', fontSize: 12 }}>✎</button>
+                {detEd!.drive_url && <span className="text-white opacity-50" style={{ fontSize: 18 }}>›</span>}
               </div>
             </div>
           </div>
 
           {/* Acciones */}
           <div className="flex gap-2 flex-wrap">
-            <button onClick={() => { openCalculadora(ed.id); setDetalleId(null) }}
+            <button onClick={() => { openCalculadora(detEd!.id); setDetalleId(null) }}
               className="px-5 py-3 rounded-xl text-sm font-black text-white"
               style={{ background: '#F26E1F' }}>
               Calculadora ROI
             </button>
-            <button onClick={() => pasarAEstudio(ed)}
+            <button onClick={() => pasarAEstudio(detEd!)}
               className="px-5 py-3 rounded-xl text-sm font-black text-white"
-              style={{ background: '#222', border: '1px solid rgba(255,255,255,0.12)' }}>
+              style={{ background: '#222', border: '1px solid rgba(255,255,255,0.15)' }}>
               Pasar a Estudio
             </button>
           </div>
 
         </div>
-      </div>
-    )
-  }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER — LISTA
-  // ─────────────────────────────────────────────────────────────────────────
-  return (
-    <div className="min-h-screen pb-24" style={{ background: '#0A0A0A' }}>
+    </>) : (
+    <>
+      {/* ── LISTA ── */}
 
       {/* Cabecera de página */}
       <div className="relative w-full" style={{ height: 160 }}>
@@ -744,6 +741,8 @@ export default function EdificiosPage() {
           })}
         </div>
       )}
+    </>
+    )}
 
       {/* ═══ MODAL ALTA / EDITAR EDIFICIO ═══ */}
       {altaOpen && (
