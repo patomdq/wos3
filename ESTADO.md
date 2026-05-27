@@ -3,18 +3,27 @@
 
 ---
 
-## Última sesión — 04/05/2026 (noche)
+## Última sesión — 07/05/2026
 
 ### Hecho hoy
-- En Estudio: tres escenarios de precio de venta como campos independientes (eliminado cálculo ±15%):
-  - Migración BD: `precio_venta_conservador`, `precio_venta_realista`, `precio_venta_optimista` en `inmuebles_estudio`
-  - `mercado/page.tsx`: UI cambiada de "Realista (base) + auto-calc" a 3 inputs en grid cols-3, mismo peso visual
-  - `route.ts`: tools `insert_estudio`, `update_estudio`, `convertir_estudio_a_proyecto` y `mover_radar_a_estudio` actualizados
 
-- Módulo Análisis de Inversión — búsqueda de comparables refactorizada:
-  - `lib/search-comparables.ts` reescrito: fetch directo a Fotocasa (múltiples URLs por barrio × hab) + Firecrawl como fallback si hay < 3 resultados
-  - Output del handler `analizar_inversion` en `route.ts` actualizado: comparables en tabla markdown + escenarios ROI en tabla con precio/m² como base explícita
-  - Build Next.js limpio, sin errores en archivos modificados
+**Datos pipeline corregidos (BD directa):**
+- Olula del Rio 1: `valor_total_operacion` → 45k, `fecha_salida_estimada` → 2026-06-21 (6m), estado → `reservado`
+- Cuevas 1: `fecha_salida_estimada` → 2025-04-21 (3m)
+- Cuevas 2: `fecha_salida_estimada` → 2025-11-01 (4m)
+- Albox 1: `fecha_salida_estimada` → 2025-02-01 (4m), `inversion_hasu` → 13k
+- Zurgena 1: `inversion_hasu` → 35k
+- Edificio Cuevas del Almanzora: `valor_total_operacion` → 450k, `precio_venta_estimado` → 656k (82k × 8 pisos), estado → `en_arras`
+
+**Track record (`hasu/page.tsx`) — mejoras:**
+- `getInv` simplificado: usa siempre `valor_total_operacion || precio_compra` (eliminada lógica de movimientos que pisaba el valor real)
+- Nueva columna **Inv. HASU** — muestra la inversión real de HASU separada del total de la operación
+- `getInvHasu`: usa `inversion_hasu` si existe y > 0; para proyectos 100% HASU usa el total
+- ROI renombrado a **ROI HASU** y recalculado sobre `inversion_hasu` real (no el total de operación)
+- Colores simplificados: solo ROI en verde/rojo, resto en blanco
+- Texto más grande (`text-sm`)
+- Fila de totales al pie: suma inv. total, inv. HASU, benef. total, benef. HASU, ROI medio, ROI anual medio, duración media
+- Fix: Edificio Cuevas del Almanzora ya no muestra -100% cuando no hay precio de venta
 
 ### Pendiente / En prueba
 - Análisis de Inversión con comparables Fotocasa: Pato probando

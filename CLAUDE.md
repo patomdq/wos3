@@ -39,7 +39,7 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
-**Última sesión — 09/05/2026**
+**Última sesión — 11/05/2026**
 
 Hecho hoy:
 - Bot Telegram: precio dual Fotocasa + Notariado lado a lado
@@ -61,10 +61,15 @@ Hecho hoy:
   - Foco del día generado por Claude API en imperativo ≤15 palabras
   - Solo llega a Pato (TELEGRAM_CHAT_ID_PATO = 5816771550)
   - Si Supabase falla → envía igual con aviso de error
+- **Chat WOS3: scraping multi-portal** — detecta y scrapea URLs de Idealista, Fotocasa, Solvia, Habitaclia, Pisos.com, Yaencontre, Kyero, ThinkSpain, Engel, Savills + cualquier portal con dominio reconocido
+- **Chat WOS3: invitados en calendario** — `agendar_evento` acepta `invitados: ["Silvia", "JL"]`, resuelve a emails y envía invitación automática vía Google Calendar API (sendUpdates=all)
+  - Silvia: silviainformes@gmail.com / JL: joseluisxp123@gmail.com
+- Fix bot Telegram: TELEGRAM_WEBHOOK_SECRET placeholder eliminado — bot respondía 401 a todo
+- Fix bot Telegram: regex de URL expandido a todos los portales (Solvia, Habitaclia, etc.)
 
 Pendiente / en prueba:
 - Modo D audio Telegram: bloqueado sin créditos OpenAI
-- Verificar briefing en producción mañana a las 8:00 (primera ejecución real del cron)
+- Morning briefing cron: no llegó lunes 11/05 — investigar si hay problema con el cron o las vars de entorno
 
 Pendiente técnico detectado:
 - 📅 Bot Telegram crea eventos en Google Calendar pero NO puede agregar invitados externos automáticamente
@@ -111,10 +116,27 @@ Bloqueos abiertos:
 - OpenAI: sin créditos → Modo D (audio Telegram) bloqueado
 - Idealista API: sin respuesta, usando web search como fallback
 
+Pendiente técnico — @menciones:
+- @silvia y @jl tienen chat_id = null en lib/telegram-mentions.ts
+- Para activarlos: pedirles que escriban cualquier mensaje al bot de Telegram (ej: "hola")
+- Luego buscar su chat_id en los logs de Vercel (campo `message.chat.id`) y actualizar TEAM_HANDLES en lib/telegram-mentions.ts
+- Con eso queda el sistema completo de @menciones operativo
+
 **Variables de entorno críticas (producción Vercel)**
 - `TELEGRAM_BOT_TOKEN` — bot activo
 - `TELEGRAM_CHAT_ID_PATO` — 5816771550 (añadida 09/05/2026)
 - `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_KEY`, `NEXT_PUBLIC_SUPABASE_URL/ANON_KEY` — ya existían
+
+---
+
+## DIVISIÓN DE INTERFACES — regla fija
+
+| Interfaz | Uso |
+|----------|-----|
+| **Bot Telegram** | SOLO escáner de oportunidades: pegar URL o describir inmueble → recibir números (precio máximo, ROI, comparables). Nada más. |
+| **Chat WOS3** | TODO lo operativo: proyectos, bitácora, calendario, tareas, movimientos, radar, análisis, proveedores, inversores, etc. |
+
+El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operativo de la empresa.
 
 ---
 
@@ -123,13 +145,15 @@ Bloqueos abiertos:
 | Feature | Estado |
 |---------|--------|
 | Pipeline de operaciones | ✅ producción |
-| Bot entrada de datos | ✅ producción |
-| Bot Telegram → Radar | ✅ producción |
-| Análisis de inversión | ✅ producción |
+| Chat WOS3 — hub operativo completo | ✅ producción |
+| Bot Telegram — escáner de oportunidades (URL → números) | ✅ producción |
+| Análisis de inversión (ROI, comparables, escenarios) | ✅ producción |
 | Imágenes en chat | ✅ producción |
-| Bitácora via bot (Telegram + chat WOS3) | ✅ producción |
-| ROI anualizado en bot | ✅ producción |
+| Bitácora via chat WOS3 | ✅ producción |
+| ROI anualizado | ✅ producción |
 | Morning Briefing automático (Telegram 8:00 AM) | ✅ producción |
+| Chat WOS3: scraping multi-portal (Fotocasa, Solvia, Habitaclia…) | ✅ producción |
+| Chat WOS3: calendario con invitados (Silvia, JL) | ✅ producción |
 | Audio bot Telegram (Whisper) | ⏳ bloqueado — sin créditos OpenAI |
 | Proyectos WOS3 alineado con tabla maestra HASU | ⏳ pendiente |
 | @menciones en bitácora con alerta Telegram | ⏳ pendiente |
