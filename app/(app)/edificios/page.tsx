@@ -74,7 +74,7 @@ const TIPO_UNIDAD_LABEL: Record<string, string> = {
 const emptyEdificioForm = () => ({
   titulo: '', direccion: '', ciudad: '', referencia_catastral: '',
   superficie_total: '', num_plantas: '', tipo_finca: 'finca_unica' as const,
-  precio_compra: '', fuente: 'Contacto directo', url: '', drive_url: '', notas: '', imagen_portada: '',
+  precio_compra: '', fuente: 'Contacto directo', url: '', drive_url: '', notas: '',
 })
 
 const emptyUnidadForm = () => ({
@@ -181,7 +181,6 @@ export default function EdificiosPage() {
       tipo_finca: e.tipo_finca,
       precio_compra: String(e.precio_compra || ''),
       fuente: e.fuente || 'Contacto directo', url: e.url || '', drive_url: e.drive_url || '', notas: e.notas || '',
-      imagen_portada: e.imagen_portada || '',
     })
     setAltaOpen(true)
   }
@@ -202,7 +201,7 @@ export default function EdificiosPage() {
       url: form.url || null,
       drive_url: form.drive_url || null,
       notas: form.notas || null,
-      imagen_portada: form.imagen_portada || null,
+      // imagen_portada: solo se modifica desde el botón 📷 (openCoverEdit/saveCover)
     }
     if (editando) {
       const { data, error } = await supabase.from('edificios_estudio')
@@ -904,21 +903,7 @@ export default function EdificiosPage() {
                     style={{ ...INP, borderColor: form.drive_url ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.10)' }} />
                 </Field>
 
-                <Field label="Imagen de portada (URL directa)">
-                  <input value={form.imagen_portada} onChange={e => setForm(p => ({ ...p, imagen_portada: e.target.value }))}
-                    placeholder="https://img4.idealista.com/...jpg"
-                    className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none"
-                    style={{ ...INP, borderColor: form.imagen_portada ? 'rgba(242,110,31,0.4)' : 'rgba(255,255,255,0.10)' }} />
-                  {form.imagen_portada && /idealista\.com\/inmueble|fotocasa\.es\/es\//i.test(form.imagen_portada) && (
-                    <div className="mt-1.5 text-[11px] px-2 py-1 rounded-lg" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
-                      ⚠️ Esa es la URL del anuncio, no de la imagen. Abre el anuncio, click derecho en una foto → "Copiar dirección de imagen"
-                    </div>
-                  )}
-                  {form.imagen_portada && !/idealista\.com\/inmueble|fotocasa\.es\/es\//i.test(form.imagen_portada) && (
-                    <img src={form.imagen_portada} alt="preview" className="mt-2 w-full rounded-xl object-cover" style={{ height: 100 }}
-                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  )}
-                </Field>
+                {/* imagen_portada: se cambia solo desde el botón 📷 en el detalle */}
 
                 <Field label="Notas">
                   <textarea value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))}
