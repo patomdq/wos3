@@ -534,7 +534,7 @@ export default function EdificiosPage() {
 
           {/* Acciones */}
           <div className="flex gap-2 flex-wrap">
-            <button onClick={() => { openCalculadora(detEd!.id); setDetalleId(null) }}
+            <button onClick={() => openCalculadora(detEd!.id)}
               className="px-5 py-3 rounded-xl text-sm font-black text-white"
               style={{ background: '#F26E1F' }}>
               Calculadora ROI
