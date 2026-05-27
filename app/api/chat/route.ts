@@ -2417,6 +2417,26 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
     // ── Edificios ────────────────────────────────────────────────────────────
     if (name === 'insert_edificio_radar') {
+      // Dedup: evita dobles inserts si Claude llama la herramienta más de una vez
+      const tituloDedup = input.titulo || input.direccion || ''
+      const since5m = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+      const { data: existing } = await supabaseAdmin
+        .from('edificios_estudio')
+        .select('id, titulo, direccion, ciudad, precio_compra')
+        .or(`titulo.eq.${tituloDedup},direccion.eq.${input.direccion || tituloDedup}`)
+        .gte('created_at', since5m)
+        .limit(1)
+        .maybeSingle()
+      if (existing) {
+        const nombre = existing.titulo || existing.direccion
+        return {
+          result: `✅ Edificio ya en radar — ${nombre}${existing.ciudad ? ', ' + existing.ciudad : ''} (${existing.precio_compra?.toLocaleString('es-ES')}€). No se creó duplicado.`,
+          table: 'edificios_estudio',
+          recordId: existing.id,
+          label: `${nombre}${existing.ciudad ? ' · ' + existing.ciudad : ''}`,
+        }
+      }
+
       const { data, error } = await supabaseAdmin.from('edificios_estudio').insert([{
         titulo: input.titulo || null,
         direccion: input.direccion,
