@@ -368,173 +368,181 @@ export default function EdificiosPage() {
     const sumVenta = uns.reduce((a, u) => a + (u.precio_venta_est || 0), 0)
     return (
       <div className="min-h-screen pb-24" style={{ background: '#0A0A0A' }}>
-        {/* Cover image */}
-        <div className="relative w-full" style={{ height: 220 }}>
+
+        {/* Cover con título superpuesto */}
+        <div className="relative w-full" style={{ height: 260 }}>
           {ed.imagen_portada
             ? <img src={ed.imagen_portada} alt={ed.titulo || ed.direccion} className="w-full h-full object-cover" />
-            : <div className="w-full h-full flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg,#0d1f35,#1a2a3a)' }}>
+            : <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#0d1f35,#1a2a3a)' }}>
                 <span style={{ fontSize: 56 }}>🏢</span>
               </div>
           }
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(10,10,10,0.88) 100%)' }} />
           <button onClick={() => openEditar(ed)}
-            className="absolute top-3 right-3 flex items-center justify-center rounded-full text-[15px]"
-            style={{ width: 36, height: 36, background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)' }}
-            title="Cambiar foto de portada">
-            ✏️
+            className="absolute top-3.5 right-3.5 flex items-center justify-center rounded-full"
+            style={{ width: 30, height: 30, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', color: '#aaa', fontSize: 12 }}>
+            ✎
           </button>
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+            <div className="font-black text-[20px] text-white leading-tight">{ed.titulo || ed.direccion}</div>
+            {(ed.titulo || ed.ciudad) && (
+              <div className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {ed.titulo ? ed.direccion : ''}{ed.ciudad ? (ed.titulo ? ` · ${ed.ciudad}` : ed.ciudad) : ''}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        {/* Barra de nav */}
+        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <button onClick={() => { setDetalleId(null); loadUnidades(ed.id) }}
-            className="flex items-center gap-1.5 mx-4 mt-4 px-3 py-2 rounded-xl text-[13px] font-bold"
-            style={{ background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.08)', color: '#aaa' }}>
+            className="text-[12px] font-bold" style={{ color: '#666' }}>
             ← Radar
           </button>
+          <div className="flex gap-1.5">
+            <button onClick={() => openEditar(ed)}
+              className="flex items-center justify-center rounded-[9px]"
+              style={{ width: 32, height: 32, background: '#161616', border: '1px solid rgba(255,255,255,0.07)', color: '#888', fontSize: 13 }}>
+              ✎
+            </button>
+            <button onClick={() => deleteEdificio(ed)}
+              className="flex items-center justify-center rounded-[9px]"
+              style={{ width: 32, height: 32, background: '#161616', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+              🗑
+            </button>
+          </div>
+        </div>
 
-          <div className="px-4 pt-4 pb-24">
-            <div className="font-black text-[22px] text-white mb-1">{ed.titulo || ed.direccion}</div>
-            <div className="text-[13px] mb-3" style={{ color: '#666' }}>
-              {ed.titulo ? ed.direccion : ''}{ed.ciudad ? ` · ${ed.ciudad}` : ''}
-            </div>
-            <div className="flex gap-2 flex-wrap mb-4">
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
-                style={{ background: ed.tipo_finca === 'bloque_independiente' ? 'rgba(96,165,250,0.15)' : 'rgba(34,197,94,0.12)', color: ed.tipo_finca === 'bloque_independiente' ? '#60A5FA' : '#22C55E' }}>
-                {ed.tipo_finca === 'bloque_independiente' ? 'Bloque indep.' : 'Finca única'}
-              </span>
-              {ed.fuente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.1)', color: '#60A5FA' }}>{ed.fuente}</span>}
-            </div>
+        <div className="px-5 pt-5 pb-24">
 
-            {/* Métricas */}
-            <div className="grid grid-cols-4 gap-2 mb-5">
-              {[
-                { label: 'Precio', val: fmt(ed.precio_compra), orange: true },
-                { label: 'm²', val: ed.superficie_total ? `${ed.superficie_total}` : '—' },
-                { label: 'Plantas', val: ed.num_plantas ? `${ed.num_plantas}` : '—' },
-                { label: 'Unidades', val: `${uns.length}` },
-              ].map(({ label, val, orange }) => (
-                <div key={label} className="rounded-xl p-2.5 text-center" style={{ background: '#141414' }}>
-                  <div className="text-[9px] font-bold uppercase" style={{ color: '#555' }}>{label}</div>
-                  <div className="text-[12px] font-black mt-0.5" style={{ color: orange ? '#F26E1F' : '#fff' }}>{val}</div>
-                </div>
-              ))}
-            </div>
+          {/* Tags */}
+          <div className="flex gap-1.5 flex-wrap mb-5">
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
+              style={{ background: ed.tipo_finca === 'bloque_independiente' ? 'rgba(96,165,250,0.15)' : 'rgba(34,197,94,0.12)', color: ed.tipo_finca === 'bloque_independiente' ? '#60A5FA' : '#22C55E' }}>
+              {ed.tipo_finca === 'bloque_independiente' ? 'Bloque indep.' : 'Finca única'}
+            </span>
+            {ed.fuente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.1)', color: '#60A5FA' }}>{ed.fuente}</span>}
+          </div>
 
-            {/* Descripción */}
-            {ed.notas && (
-              <>
-                <div className="text-[10px] font-black uppercase mb-2" style={{ color: '#444' }}>Descripción</div>
-                <div className="rounded-xl p-4 mb-5 text-[13px] leading-relaxed" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', color: '#888' }}>
-                  {ed.notas}
-                </div>
-              </>
-            )}
-
-            {/* Unidades */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[10px] font-black uppercase" style={{ color: '#444' }}>
-                Unidades {uns.length > 0 ? `(${uns.length})` : ''}
+          {/* Métricas */}
+          <div className="grid grid-cols-4 gap-2 mb-5">
+            {[
+              { label: 'Precio', val: fmt(ed.precio_compra) },
+              { label: 'm²', val: ed.superficie_total ? `${ed.superficie_total}` : '—' },
+              { label: 'Plantas', val: ed.num_plantas ? `${ed.num_plantas}` : '—' },
+              { label: 'Unidades', val: `${uns.length}` },
+            ].map(({ label, val }) => (
+              <div key={label} className="rounded-xl p-2.5 text-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="text-[9px] font-bold uppercase" style={{ color: '#3a3a3a' }}>{label}</div>
+                <div className="text-[13px] font-black mt-0.5 text-white">{val}</div>
               </div>
-              <button onClick={() => openUnidades(ed.id)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black"
-                style={{ background: '#1A1A1A', color: '#888', border: '1px solid rgba(255,255,255,0.07)' }}>
-                ✏️ Gestionar
-              </button>
-            </div>
-            {uns.length > 0 ? (
-              <div className="flex flex-col gap-2 mb-5">
-                {uns.map(u => (
-                  <div key={u.id} className="flex items-center justify-between rounded-xl px-4 py-3"
-                    style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
-                        style={{ background: u.origen === 'proyectada' ? 'rgba(167,139,250,0.15)' : 'rgba(96,165,250,0.15)', color: u.origen === 'proyectada' ? '#a78bfa' : '#60A5FA' }}>
-                        {TIPO_UNIDAD_LABEL[u.tipo]}
-                      </span>
-                      <span className="text-[12px] font-bold text-white">{u.planta ? `P${u.planta}` : ''}</span>
-                      {u.superficie && <span className="text-[12px]" style={{ color: '#666' }}>{u.superficie}m²</span>}
-                      {u.ocupacion === 'alquilado' && u.renta_mensual
-                        ? <span className="text-[11px] font-bold" style={{ color: '#F59E0B' }}>{fmt(u.renta_mensual)}/mes</span>
-                        : null}
-                    </div>
-                    <span className="text-[13px] font-black" style={{ color: u.precio_venta_est ? '#F26E1F' : '#444' }}>
-                      {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
-                    </span>
-                  </div>
-                ))}
-                {sumVenta > 0 && (
-                  <div className="flex justify-between px-4 py-2 text-[12px] font-black rounded-xl"
-                    style={{ background: 'rgba(242,110,31,0.08)', color: '#F26E1F' }}>
-                    <span>Total venta estimada</span><span>{fmt(sumVenta)}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="mb-5 rounded-xl px-4 py-3 text-[12px]"
-                style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)', color: '#555' }}>
-                Sin unidades — pulsa Gestionar para añadir
-              </div>
-            )}
+            ))}
+          </div>
 
-            {/* Links */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[10px] font-black uppercase" style={{ color: '#444' }}>Documentación</div>
-              <button onClick={() => openEditar(ed)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black"
-                style={{ background: '#1A1A1A', color: '#888', border: '1px solid rgba(255,255,255,0.07)' }}>
-                ✏️ Editar
-              </button>
-            </div>
-            <div className="rounded-xl overflow-hidden mb-5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <a href={ed.url || '#'} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-between px-4 py-3.5"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: ed.url ? 1 : 0.4 }}>
-                <div className="flex items-center gap-3">
-                  <span style={{ fontSize: 18 }}>🔗</span>
-                  <div>
-                    <div className="text-[13px] font-bold" style={{ color: ed.url ? '#F26E1F' : '#888' }}>
-                      {ed.url ? 'Ver anuncio original' : 'Sin enlace de portal'}
-                    </div>
-                    <div className="text-[11px]" style={{ color: '#555' }}>{ed.fuente || 'Portal'}</div>
-                  </div>
+          {/* Descripción */}
+          {ed.notas && (
+            <>
+              <div className="text-[10px] font-black uppercase mb-2" style={{ color: '#333', letterSpacing: '0.07em' }}>Descripción</div>
+              <div className="rounded-xl p-4 mb-5 text-[13px] leading-relaxed" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.05)', color: '#666' }}>
+                {ed.notas}
+              </div>
+            </>
+          )}
+
+          {/* Unidades */}
+          <div className="text-[10px] font-black uppercase mb-2.5" style={{ color: '#333', letterSpacing: '0.07em' }}>
+            Unidades{uns.length > 0 ? ` (${uns.length})` : ''}
+          </div>
+          <div className="flex flex-col gap-1.5 mb-1.5">
+            {uns.map(u => (
+              <div key={u.id} className="flex items-center justify-between rounded-xl px-3 py-2.5"
+                style={{ background: '#111', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ background: u.origen === 'proyectada' ? 'rgba(167,139,250,0.15)' : 'rgba(96,165,250,0.15)', color: u.origen === 'proyectada' ? '#a78bfa' : '#60A5FA' }}>
+                    {TIPO_UNIDAD_LABEL[u.tipo]}
+                  </span>
+                  <span className="text-[12px]" style={{ color: '#555' }}>
+                    {u.planta ? `P${u.planta}` : ''}{u.superficie ? ` · ${u.superficie}m²` : ''}
+                    {u.origen === 'proyectada' && <span className="text-[10px] font-black ml-1" style={{ color: '#a78bfa' }}>proj.</span>}
+                    {u.ocupacion === 'alquilado' && u.renta_mensual && <span className="text-[10px] font-black ml-1" style={{ color: '#F59E0B' }}>{fmt(u.renta_mensual)}/mes</span>}
+                  </span>
                 </div>
-                <span style={{ color: ed.url ? '#F26E1F' : '#333' }}>›</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {u.precio_venta_est && <span className="text-[13px] font-black text-white">{fmt(u.precio_venta_est)}</span>}
+                  <button onClick={() => { editarUnidad(u); setUnidadesEdificioId(ed.id) }}
+                    className="flex items-center justify-center rounded-[7px]"
+                    style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.05)', color: '#666', fontSize: 12, border: 'none' }}>
+                    ✎
+                  </button>
+                  <button onClick={() => deleteUnidad(u)}
+                    className="flex items-center justify-center rounded-[7px]"
+                    style={{ width: 26, height: 26, background: 'rgba(239,68,68,0.08)', color: '#EF4444', fontSize: 11, border: 'none' }}>
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {sumVenta > 0 && (
+            <div className="flex justify-between px-3 py-2 text-[12px] font-black rounded-xl mb-1.5"
+              style={{ background: 'rgba(255,255,255,0.04)', color: '#fff' }}>
+              <span>Total venta estimada</span><span>{fmt(sumVenta)}</span>
+            </div>
+          )}
+          <button onClick={() => openUnidades(ed.id)}
+            className="w-full py-2.5 rounded-xl text-[12px] font-bold mb-5"
+            style={{ background: '#111', border: '1px dashed rgba(255,255,255,0.08)', color: '#444' }}>
+            + Añadir unidad
+          </button>
+
+          {/* Documentación */}
+          <div className="text-[10px] font-black uppercase mb-2.5" style={{ color: '#333', letterSpacing: '0.07em' }}>Documentación</div>
+          <div className="rounded-xl overflow-hidden mb-5" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: ed.url ? 1 : 0.35 }}>
+              <a href={ed.url || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
+                <span style={{ fontSize: 16, flexShrink: 0 }}>🔗</span>
+                <div className="min-w-0">
+                  <div className="text-[13px] font-bold text-white">{ed.url ? 'Ver anuncio original' : 'Sin enlace de portal'}</div>
+                  <div className="text-[11px]" style={{ color: '#3a3a3a' }}>{ed.fuente || 'Portal'}</div>
+                </div>
               </a>
-              <a href={ed.drive_url || '#'} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-between px-4 py-3.5"
-                style={{ opacity: ed.drive_url ? 1 : 0.4 }}>
-                <div className="flex items-center gap-3">
-                  <span style={{ fontSize: 18 }}>📁</span>
-                  <div>
-                    <div className="text-[13px] font-bold" style={{ color: ed.drive_url ? '#22C55E' : '#888' }}>
-                      {ed.drive_url ? 'Carpeta Drive' : 'Sin carpeta Drive'}
-                    </div>
-                    <div className="text-[11px]" style={{ color: '#555' }}>Fotos, planos y documentos</div>
-                  </div>
-                </div>
-                <span style={{ color: ed.drive_url ? '#22C55E' : '#333' }}>›</span>
-              </a>
+              <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                <button onClick={() => openEditar(ed)} className="flex items-center justify-center rounded-[7px]"
+                  style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.04)', color: '#555', fontSize: 11, border: 'none' }}>✎</button>
+                {ed.url && <span style={{ fontSize: 16, color: '#aaa' }}>›</span>}
+              </div>
             </div>
-
-            {/* Acciones */}
-            <div className="flex gap-2 flex-wrap">
-              <button onClick={() => { openCalculadora(ed.id); setDetalleId(null) }}
-                className="px-5 py-3 rounded-xl text-sm font-black text-white"
-                style={{ background: '#F26E1F' }}>
-                Calculadora ROI
-              </button>
-              <button onClick={() => { pasarAEstudio(ed) }}
-                className="px-5 py-3 rounded-xl text-sm font-black"
-                style={{ background: '#1A1A1A', color: '#aaa', border: '1px solid rgba(255,255,255,0.08)' }}>
-                Pasar a Estudio
-              </button>
-              <button onClick={() => openEditar(ed)}
-                className="px-4 py-3 rounded-xl text-sm font-black"
-                style={{ background: '#1A1A1A', color: '#888', border: '1px solid rgba(255,255,255,0.08)' }}>
-                ✏️ Editar
-              </button>
+            <div className="flex items-center justify-between px-4 py-3.5" style={{ opacity: ed.drive_url ? 1 : 0.35 }}>
+              <a href={ed.drive_url || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
+                <span style={{ fontSize: 16, flexShrink: 0 }}>📁</span>
+                <div className="min-w-0">
+                  <div className="text-[13px] font-bold text-white">{ed.drive_url ? 'Carpeta Drive' : 'Sin carpeta Drive'}</div>
+                  <div className="text-[11px]" style={{ color: '#3a3a3a' }}>Fotos, planos y documentos</div>
+                </div>
+              </a>
+              <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                <button onClick={() => openEditar(ed)} className="flex items-center justify-center rounded-[7px]"
+                  style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.04)', color: '#555', fontSize: 11, border: 'none' }}>✎</button>
+                {ed.drive_url && <span style={{ fontSize: 16, color: '#aaa' }}>›</span>}
+              </div>
             </div>
           </div>
+
+          {/* Acciones */}
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => { openCalculadora(ed.id); setDetalleId(null) }}
+              className="px-5 py-3 rounded-xl text-sm font-black text-white"
+              style={{ background: '#F26E1F' }}>
+              Calculadora ROI
+            </button>
+            <button onClick={() => pasarAEstudio(ed)}
+              className="px-5 py-3 rounded-xl text-sm font-black"
+              style={{ background: '#141414', color: '#777', border: '1px solid rgba(255,255,255,0.07)' }}>
+              Pasar a Estudio
+            </button>
+          </div>
+
         </div>
       </div>
     )
