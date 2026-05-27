@@ -130,6 +130,7 @@ export default function EdificiosPage() {
   const [coverEditId, setCoverEditId] = useState<string | null>(null)
   const [coverEditUrl, setCoverEditUrl] = useState('')
   const [savingCover, setSavingCover] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
 
   // Gestión de unidades
   const [unidadesEdificioId, setUnidadesEdificioId] = useState<string | null>(null)
@@ -340,8 +341,20 @@ export default function EdificiosPage() {
   }
 
   const openCoverEdit = (e: Edificio) => {
-    setCoverEditUrl(e.imagen_portada || '')
+    setCoverEditUrl('')   // siempre empieza vacío — no pre-cargar URL vieja
     setCoverEditId(e.id)
+  }
+
+  const uploadCoverFile = async (file: File) => {
+    if (!coverEditId) return
+    setUploadingCover(true)
+    const ext = file.name.split('.').pop() || 'jpg'
+    const path = `edificios/${coverEditId}-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('portadas').upload(path, file, { upsert: true })
+    if (error) { alert('Error subiendo imagen: ' + error.message); setUploadingCover(false); return }
+    const { data: urlData } = supabase.storage.from('portadas').getPublicUrl(path)
+    setCoverEditUrl(urlData.publicUrl)
+    setUploadingCover(false)
   }
 
   const saveCover = async () => {
@@ -767,42 +780,49 @@ export default function EdificiosPage() {
       {coverEditId && (
         <>
           <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.75)' }}
-            onClick={() => setCoverEditId(null)} />
+            onClick={() => { if (!uploadingCover && !savingCover) setCoverEditId(null) }} />
           <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px]"
             style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 600, margin: '0 auto' }}>
             <div className="p-5 pb-8">
               <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
               <div className="font-black text-[16px] text-white mb-1">Imagen de portada</div>
-              <div className="text-[12px] mb-4" style={{ color: '#555' }}>Pega la URL directa de la imagen (no la página del anuncio)</div>
+              <div className="text-[12px] mb-5" style={{ color: '#555' }}>Sube una foto desde tu dispositivo</div>
 
-              {/* Preview */}
-              {coverEditUrl && (
-                <div className="mb-4 rounded-xl overflow-hidden" style={{ height: 140 }}>
-                  <img src={coverEditUrl} alt="preview" className="w-full h-full object-cover"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+              {/* Preview o zona de upload */}
+              {coverEditUrl ? (
+                <div className="relative mb-4 rounded-xl overflow-hidden" style={{ height: 160 }}>
+                  <img src={coverEditUrl} alt="preview" className="w-full h-full object-cover" />
+                  <button onClick={() => setCoverEditUrl('')}
+                    className="absolute top-2 right-2 flex items-center justify-center rounded-full text-white"
+                    style={{ width: 28, height: 28, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)', fontSize: 12 }}>
+                    ✕
+                  </button>
                 </div>
-              )}
-
-              <input
-                value={coverEditUrl}
-                onChange={e => setCoverEditUrl(e.target.value)}
-                placeholder="https://img4.idealista.com/blur/...jpg"
-                autoFocus
-                className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none mb-4"
-                style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.15)' }}
-              />
-
-              {coverEditUrl && !/\.(jpg|jpeg|png|webp|gif|avif)(\?.*)?$/i.test(coverEditUrl) && !coverEditUrl.includes('photos') && !coverEditUrl.includes('images') && (
-                <div className="mb-3 px-3 py-2 rounded-xl text-[12px]" style={{ background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}>
-                  ⚠️ Parece que no es una URL de imagen directa — asegúrate de que termine en .jpg o similar
-                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full mb-4 rounded-xl cursor-pointer"
+                  style={{ height: 160, background: '#1A1A1A', border: '2px dashed rgba(255,255,255,0.12)' }}>
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadCoverFile(f) }} />
+                  {uploadingCover ? (
+                    <>
+                      <div className="text-2xl mb-2">⏳</div>
+                      <div className="text-[13px] font-bold text-white">Subiendo...</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-3xl mb-2">📷</div>
+                      <div className="text-[13px] font-bold text-white">Toca para subir una foto</div>
+                      <div className="text-[11px] mt-1" style={{ color: '#555' }}>JPG, PNG, WEBP — máx. 5 MB</div>
+                    </>
+                  )}
+                </label>
               )}
 
               <div className="flex gap-2">
-                <button onClick={() => setCoverEditId(null)}
-                  className="flex-1 py-3.5 rounded-xl text-sm font-black"
+                <button onClick={() => setCoverEditId(null)} disabled={uploadingCover || savingCover}
+                  className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-40"
                   style={{ background: '#222', color: '#888' }}>Cancelar</button>
-                <button onClick={saveCover} disabled={savingCover}
+                <button onClick={saveCover} disabled={savingCover || uploadingCover || !coverEditUrl}
                   className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
                   style={{ background: '#F26E1F' }}>
                   {savingCover ? 'Guardando...' : 'Guardar imagen'}
