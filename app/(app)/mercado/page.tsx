@@ -153,6 +153,8 @@ export default function MercadoPage() {
   const [savingNuevo, setSavingNuevo] = useState(false)
   const [nuevoUnidades, setNuevoUnidades] = useState<any[]>([])
   const [addingNuevoUnidad, setAddingNuevoUnidad] = useState(false)
+  const [importandoNuevoUrl, setImportandoNuevoUrl] = useState(false)
+  const [nuevoImportUrl, setNuevoImportUrl] = useState('')
 
   // Editar inmueble
   const [editInmueble, setEditInmueble] = useState<Inmueble | null>(null)
@@ -268,6 +270,55 @@ export default function MercadoPage() {
       setNuevoForm(emptyNuevoForm())
       setNuevoUnidades([])
       setAddingNuevoUnidad(false)
+    }
+  }
+
+  // ── Importar URL en modal Agregar (guarda edificio primero, luego importa) ──
+  const importarYGuardar = async () => {
+    if (!nuevoImportUrl.trim() || !nuevoForm.direccion || !nuevoForm.precio) return
+    setImportLoading(true)
+    try {
+      const payload: Record<string, unknown> = {
+        titulo: nuevoForm.titulo || null,
+        tipologia: 'edificio',
+        direccion: nuevoForm.direccion,
+        ciudad: nuevoForm.ciudad || null,
+        precio_compra: parseFloat(nuevoForm.precio) || 0,
+        habitaciones: parseInt(nuevoForm.habitaciones) || null,
+        superficie: parseInt(nuevoForm.superficie) || null,
+        estado: 'sin_analizar',
+        fuente: nuevoForm.fuente,
+        fecha_recibido: today(),
+        notas: nuevoForm.notas || null,
+        url: nuevoForm.url || null,
+        drive_url: nuevoForm.drive_url || null,
+      }
+      const { data: edificio, error: errEdificio } = await supabase.from('inmuebles').insert([payload]).select().single()
+      if (errEdificio || !edificio) { alert(`Error al guardar: ${errEdificio?.message}`); return }
+
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/unidades/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ inmueble_id: edificio.id, url: nuevoImportUrl.trim() }),
+      })
+      const json = await res.json()
+      if (res.ok) {
+        setUnidades(prev => ({ ...prev, [edificio.id]: json.unidades || [] }))
+      } else {
+        alert(`Edificio guardado, pero error al importar: ${json.error}`)
+      }
+      setInmuebles(prev => [edificio, ...prev])
+      setNuevoOpen(false)
+      setNuevoForm(emptyNuevoForm())
+      setNuevoUnidades([])
+      setAddingNuevoUnidad(false)
+      setImportandoNuevoUrl(false)
+      setNuevoImportUrl('')
+    } catch (err: any) {
+      alert(`Error: ${err.message}`)
+    } finally {
+      setImportLoading(false)
     }
   }
 
@@ -1107,14 +1158,14 @@ export default function MercadoPage() {
       {/* ═══ MODAL NUEVO ═══ */}
       {nuevoOpen && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false) }} />
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl('') }} />
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
           <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '92vh', maxWidth: 900 }}>
             <div className="p-5 pb-8">
               <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#DCDAD4' }} />
               <div className="flex items-center justify-between mb-5">
                 <div className="font-black text-[17px]" style={{ color: '#111' }}>Agregar inmueble</div>
-                <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false) }} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
+                <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl('') }} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
 
               <div className="sm:grid sm:grid-cols-2 sm:gap-6">
@@ -1170,27 +1221,61 @@ export default function MercadoPage() {
                   </div>
                   {/* Botones mobile */}
                   <div className="col-span-2 flex gap-2 mt-2 sm:hidden">
-                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false) }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
+                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl('') }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
                     <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
                   </div>
                 </div>
 
                 {/* Columna derecha */}
-                <div className="mt-6 sm:mt-0">
+                <div className="mt-6 sm:mt-0 sm:flex sm:flex-col">
                   {nuevoForm.tipologia === 'edificio' && (
-                    <div className="rounded-2xl overflow-hidden mb-5" style={{ border: '1.5px solid #ECEAE4' }}>
+                    <div className="rounded-2xl overflow-hidden mb-3" style={{ border: '1.5px solid #ECEAE4' }}>
                       {/* Header */}
                       <div className="flex items-center justify-between px-4 py-3" style={{ background: '#F9F8F5', borderBottom: '1px solid #ECEAE4' }}>
                         <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#777' }}>
                           Unidades{nuevoUnidades.length > 0 ? ` (${nuevoUnidades.length})` : ''}
                         </div>
-                        <button
-                          onClick={() => { setAddingNuevoUnidad(v => !v); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }) }}
-                          className="text-[11px] font-black px-2.5 py-1 rounded-lg"
-                          style={{ background: addingNuevoUnidad ? 'rgba(242,110,31,0.09)' : '#ECEAE4', color: addingNuevoUnidad ? '#F26E1F' : '#888', border: `1.5px solid ${addingNuevoUnidad ? 'rgba(242,110,31,0.3)' : '#DDDBD5'}` }}>
-                          {addingNuevoUnidad ? '✕' : '+ Manual'}
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => { setImportandoNuevoUrl(v => !v); setAddingNuevoUnidad(false) }}
+                            className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                            style={{ background: importandoNuevoUrl ? 'rgba(59,130,246,0.09)' : '#ECEAE4', color: importandoNuevoUrl ? '#3B82F6' : '#888', border: `1.5px solid ${importandoNuevoUrl ? 'rgba(59,130,246,0.3)' : '#DDDBD5'}` }}>
+                            {importandoNuevoUrl ? '✕' : '🔗 Importar URL'}
+                          </button>
+                          <button
+                            onClick={() => { setAddingNuevoUnidad(v => !v); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }); setImportandoNuevoUrl(false) }}
+                            className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                            style={{ background: addingNuevoUnidad ? 'rgba(242,110,31,0.09)' : '#ECEAE4', color: addingNuevoUnidad ? '#F26E1F' : '#888', border: `1.5px solid ${addingNuevoUnidad ? 'rgba(242,110,31,0.3)' : '#DDDBD5'}` }}>
+                            {addingNuevoUnidad ? '✕' : '+ Manual'}
+                          </button>
+                        </div>
                       </div>
+                      {/* Panel importar URL */}
+                      {importandoNuevoUrl && (
+                        <div className="p-4" style={{ borderBottom: '1px solid #ECEAE4', background: '#F0F4FF' }}>
+                          <div className="text-[10px] font-black uppercase tracking-wide mb-2" style={{ color: '#3B82F6' }}>Importar unidades desde URL</div>
+                          <div className="text-[11px] mb-3" style={{ color: '#666' }}>Pega un link de Idealista, Fotocasa u otro portal. Se guardará el edificio y se importarán todas las unidades automáticamente.</div>
+                          <input
+                            type="url"
+                            value={nuevoImportUrl}
+                            onChange={e => setNuevoImportUrl(e.target.value)}
+                            placeholder="https://www.idealista.com/inmueble/..."
+                            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium mb-2"
+                            style={{ background: '#fff', border: '1.5px solid #BFDBFE', color: '#333' }}
+                            onFocus={e => e.target.style.borderColor='#3B82F6'} onBlur={e => e.target.style.borderColor='#BFDBFE'}
+                          />
+                          {(!nuevoForm.direccion || !nuevoForm.precio) && (
+                            <div className="text-[10px] mb-2" style={{ color: '#F26E1F' }}>⚠ Completa Dirección y Precio antes de importar</div>
+                          )}
+                          <button
+                            onClick={importarYGuardar}
+                            disabled={importLoading || !nuevoImportUrl.trim() || !nuevoForm.direccion || !nuevoForm.precio}
+                            className="w-full py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                            style={{ background: '#3B82F6' }}>
+                            {importLoading ? <><span className="animate-spin">⟳</span> Guardando y cargando...</> : '🔗 Guardar edificio e importar unidades'}
+                          </button>
+                        </div>
+                      )}
                       {/* Formulario nueva unidad */}
                       {addingNuevoUnidad && (
                         <div className="p-4" style={{ borderBottom: '1px solid #ECEAE4', background: '#FAFAF8' }}>
@@ -1309,8 +1394,8 @@ export default function MercadoPage() {
                     </div>
                   )}
                   {/* Botones desktop */}
-                  <div className="hidden sm:flex gap-2 mt-5">
-                    <button onClick={() => setNuevoOpen(false)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
+                  <div className="hidden sm:flex gap-2 mt-auto pt-3">
+                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl('') }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
                     <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
                   </div>
                 </div>
