@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — Agregar inmueble</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  body { background: #1a1a1a; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+
+  .modal {
+    background: #fff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 960px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.35);
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #F0EEE8;
+  }
+  .modal-title { font-size: 17px; font-weight: 900; color: #111; }
+  .close-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: 1px solid #ECEAE4;
+    background: #F5F4F0; color: #666; cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Tipo row */
+  .tipo-row {
+    padding: 16px 24px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tipo-label {
+    font-size: 10px; font-weight: 900; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #666; margin-right: 4px; white-space: nowrap;
+  }
+  .tipo-btn {
+    padding: 6px 14px; border-radius: 12px; font-size: 12px; font-weight: 800;
+    border: 1.5px solid #ECEAE4; background: #F5F4F0; color: #666; cursor: pointer;
+    white-space: nowrap;
+  }
+  .tipo-btn.active {
+    background: #F26E1F; color: #fff; border-color: #F26E1F;
+  }
+
+  /* 2-col body */
+  .modal-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 16px 24px 20px;
+    gap: 20px;
+  }
+
+  .col { display: flex; flex-direction: column; gap: 12px; }
+
+  .field label {
+    display: block; font-size: 10px; font-weight: 900; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #666; margin-bottom: 5px;
+  }
+  .field input, .field textarea, .field select {
+    width: 100%; border-radius: 12px; padding: 10px 12px; font-size: 13px;
+    font-weight: 500; border: 1.5px solid #ECEAE4; background: #F9F8F5;
+    color: #333; outline: none;
+  }
+  .field textarea { resize: none; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* Right col */
+  .right-col { display: flex; flex-direction: column; }
+
+  /* Unidades panel */
+  .unidades-panel {
+    border: 1.5px solid #ECEAE4; border-radius: 16px; overflow: hidden;
+    flex: 1; display: flex; flex-direction: column;
+  }
+  .unidades-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: #F9F8F5; border-bottom: 1px solid #ECEAE4;
+  }
+  .unidades-title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; color: #777; }
+  .btn-group { display: flex; gap: 6px; }
+  .btn-sm {
+    font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 8px;
+    border: 1.5px solid #DDDBD5; background: #ECEAE4; color: #888; cursor: pointer;
+  }
+  .btn-sm.blue { background: rgba(59,130,246,0.09); color: #3B82F6; border-color: rgba(59,130,246,0.3); }
+  .btn-sm.orange { background: rgba(242,110,31,0.09); color: #F26E1F; border-color: rgba(242,110,31,0.3); }
+
+  .unidades-empty {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 6px; padding: 32px 16px;
+    color: #BBB; font-size: 12px; font-weight: 600;
+  }
+
+  /* Piso placeholder */
+  .piso-placeholder {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 8px; padding: 24px;
+    border: 1.5px dashed #ECEAE4; border-radius: 16px;
+    color: #CCC; font-size: 12px;
+  }
+
+  /* Footer buttons */
+  .modal-footer {
+    display: flex; gap: 10px; margin-top: 14px;
+  }
+  .btn-cancel {
+    flex: 1; padding: 13px; border-radius: 12px; font-size: 13px; font-weight: 900;
+    border: 1.5px solid #ECEAE4; background: #F5F4F0; color: #666; cursor: pointer;
+  }
+  .btn-save {
+    flex: 1; padding: 13px; border-radius: 12px; font-size: 13px; font-weight: 900;
+    border: none; background: #F26E1F; color: #fff; cursor: pointer;
+  }
+
+  /* Toggle switch between Piso and Edificio */
+  .tab-link { color: #3B82F6; font-size: 11px; cursor: pointer; margin-left: 12px; text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- PISO version -->
+<div class="modal" id="modal-piso">
+  <div class="modal-header">
+    <div class="modal-title">Agregar inmueble</div>
+    <button class="close-btn">✕</button>
+  </div>
+
+  <!-- Tipo — una sola línea -->
+  <div class="tipo-row">
+    <span class="tipo-label">Tipo *</span>
+    <button class="tipo-btn active" onclick="setTipo('piso')">Piso</button>
+    <button class="tipo-btn" onclick="setTipo('casa')">Casa</button>
+    <button class="tipo-btn" onclick="setTipo('duplex')">Dúplex</button>
+    <button class="tipo-btn" onclick="setTipo('edificio')">Edificio</button>
+    <button class="tipo-btn" onclick="setTipo('suelo')">Suelo</button>
+    <button class="tipo-btn" onclick="setTipo('nave')">Nave</button>
+    <span class="tab-link" onclick="setTipo('edificio')">(ver como Edificio →)</span>
+  </div>
+
+  <div class="modal-body">
+    <!-- Columna izquierda -->
+    <div class="col">
+      <div class="field">
+        <label>Título</label>
+        <input type="text" placeholder="Ej: Piso Vera centro...">
+      </div>
+      <div class="field">
+        <label>Dirección *</label>
+        <input type="text" placeholder="C/ Mayor 4">
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label>Municipio</label>
+          <input type="text" placeholder="Zurgena">
+        </div>
+        <div class="field">
+          <label>Precio (€) *</label>
+          <input type="number" placeholder="65000">
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label>Habitaciones</label>
+          <input type="number" placeholder="3">
+        </div>
+        <div class="field">
+          <label>m²</label>
+          <input type="number" placeholder="85">
+        </div>
+      </div>
+      <div class="field">
+        <label>Link anuncio</label>
+        <input type="url" placeholder="https://...">
+      </div>
+      <div class="field">
+        <label>📁 Drive</label>
+        <input type="url" placeholder="https://drive.google.com/...">
+      </div>
+      <div class="field">
+        <label>Notas</label>
+        <textarea rows="3" placeholder="Observaciones..."></textarea>
+      </div>
+    </div>
+
+    <!-- Columna derecha — Piso: vacío + botones al fondo -->
+    <div class="right-col" id="right-col-content">
+      <div class="piso-placeholder">
+        <div style="font-size:28px">🏠</div>
+        <div>Sin unidades para este tipo</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel">Cancelar</button>
+        <button class="btn-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const tipos = ['piso','casa','duplex','edificio','suelo','nave'];
+let currentTipo = 'piso';
+
+function setTipo(tipo) {
+  currentTipo = tipo;
+  document.querySelectorAll('.tipo-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', tipos[i] === tipo);
+  });
+
+  const rightCol = document.getElementById('right-col-content');
+  if (tipo === 'edificio') {
+    rightCol.innerHTML = `
+      <div class="unidades-panel">
+        <div class="unidades-header">
+          <div class="unidades-title">Unidades</div>
+          <div class="btn-group">
+            <button class="btn-sm blue">🔗 Importar URL</button>
+            <button class="btn-sm orange">+ Manual</button>
+          </div>
+        </div>
+        <div class="unidades-empty">
+          <div style="font-size:26px">🏢</div>
+          <div>Sin unidades todavía</div>
+          <div style="font-size:11px;color:#CCC">Importá desde Idealista o agregá manualmente</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel">Cancelar</button>
+        <button class="btn-save">Guardar</button>
+      </div>
+    `;
+  } else {
+    rightCol.innerHTML = `
+      <div class="piso-placeholder">
+        <div style="font-size:28px">🏠</div>
+        <div>Sin unidades para este tipo</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel">Cancelar</button>
+        <button class="btn-save">Guardar</button>
+      </div>
+    `;
+  }
+}
+</script>
+</body>
+</html>
