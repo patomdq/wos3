@@ -1093,8 +1093,9 @@ export default function MercadoPage() {
                 <button onClick={() => setNuevoOpen(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
 
+              {/* Layout: 2 columnas en desktop — copia fiel de Editar */}
               <div className="sm:grid sm:grid-cols-2 sm:gap-6">
-                {/* Columna izquierda */}
+                {/* Columna izquierda: datos básicos */}
                 <div className="grid grid-cols-2 gap-3 content-start">
                   <div className="col-span-2">
                     <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Tipo *</label>
@@ -1132,13 +1133,19 @@ export default function MercadoPage() {
                     <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>m²</label>
                     <input type="number" value={nuevoForm.superficie} onChange={e => setNuevoForm(f => ({ ...f, superficie: e.target.value }))} placeholder="85" className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Fuente</label>
-                    <select value={nuevoForm.fuente} onChange={e => setNuevoForm(f => ({ ...f, fuente: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={{ ...INP_L, appearance: 'none' as const }}>
-                      <option value="WhatsApp">WhatsApp</option><option value="Idealista">Idealista</option><option value="Fotocasa">Fotocasa</option><option value="API">API</option><option value="otro">Otro</option>
-                    </select>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Link anuncio</label>
+                    <input type="url" value={nuevoForm.url} onChange={e => setNuevoForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
                   </div>
-                  {/* Botones en mobile */}
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>📁 Drive</label>
+                    <input type="url" value={nuevoForm.drive_url} onChange={e => setNuevoForm(f => ({ ...f, drive_url: e.target.value }))} placeholder="https://drive.google.com/..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Notas</label>
+                    <textarea value={nuevoForm.notas} onChange={e => setNuevoForm(f => ({ ...f, notas: e.target.value }))} placeholder="Observaciones..." rows={3} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  {/* Botones mobile */}
                   <div className="col-span-2 flex gap-2 mt-2 sm:hidden">
                     <button onClick={() => setNuevoOpen(false)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
                     <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
@@ -1146,21 +1153,23 @@ export default function MercadoPage() {
                 </div>
 
                 {/* Columna derecha */}
-                <div className="mt-6 sm:mt-0 grid grid-cols-1 gap-3 content-start">
-                  <div className="col-span-1">
-                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Link anuncio</label>
-                    <input type="url" value={nuevoForm.url} onChange={e => setNuevoForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>📁 Carpeta Drive</label>
-                    <input type="url" value={nuevoForm.drive_url} onChange={e => setNuevoForm(f => ({ ...f, drive_url: e.target.value }))} placeholder="https://drive.google.com/..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Notas</label>
-                    <textarea value={nuevoForm.notas} onChange={e => setNuevoForm(f => ({ ...f, notas: e.target.value }))} placeholder="Observaciones..." rows={5} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
-                  </div>
-                  {/* Botones en desktop */}
-                  <div className="hidden sm:flex gap-2 mt-2">
+                <div className="mt-6 sm:mt-0">
+                  {nuevoForm.tipologia === 'edificio' ? (
+                    /* Panel unidades — deshabilitado hasta guardar */
+                    <div className="rounded-2xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
+                      <div className="flex items-center justify-between px-4 py-3" style={{ background: '#F9F8F5', borderBottom: '1px solid #ECEAE4' }}>
+                        <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#BBB' }}>Unidades</div>
+                        <div className="text-[10px] font-bold px-2.5 py-1 rounded-lg" style={{ background: '#F0EEE8', color: '#CCC', border: '1.5px solid #ECEAE4' }}>+ Agregar unidad</div>
+                      </div>
+                      <div className="px-4 py-8 text-center">
+                        <div className="text-2xl mb-2">🏢</div>
+                        <div className="text-[12px] font-bold mb-1" style={{ color: '#AAA' }}>Guarda primero el edificio</div>
+                        <div className="text-[11px]" style={{ color: '#CCC' }}>Después podrás importar o agregar las unidades desde la ventana de edición</div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {/* Botones desktop */}
+                  <div className="hidden sm:flex gap-2 mt-5">
                     <button onClick={() => setNuevoOpen(false)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
                     <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
                   </div>
