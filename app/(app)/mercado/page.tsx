@@ -260,6 +260,9 @@ export default function MercadoPage() {
       url: item.url || '',
       drive_url: item.drive_url || '',
     })
+    setAddingUnidadId(null)
+    setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
+    if (item.tipologia === 'edificio' && !unidades[item.id]) fetchUnidades(item.id)
   }
   const saveEdit = async () => {
     if (!editInmueble) return
@@ -614,8 +617,9 @@ export default function MercadoPage() {
 
   const res = calcResultados(gastos, pvPes, pvReal, pvOpt, duracionMeses)
 
-  const CARD = { background: '#ffffff', border: '1px solid #EAEAE8', boxShadow: '0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.03)' }
-  const INP  = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', color: '#fff' }
+  const CARD  = { background: '#ffffff', border: '1px solid #EAEAE8', boxShadow: '0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.03)' }
+  const INP   = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', color: '#fff' }
+  const INP_L = { background: '#F9F8F5', border: '1.5px solid #ECEAE4', color: '#333' }
   const ESC_UI = [
     { label: 'Conservador', pv: pvPes,  idx: 0, color: '#EF4444' },
     { label: 'Realista',    pv: pvReal, idx: 1, color: '#F59E0B' },
@@ -938,111 +942,41 @@ export default function MercadoPage() {
                     </button>
                   )}
 
-                  {/* Panel detalle expandido (edificios) */}
+                  {/* Panel detalle expandido (edificios) — solo lectura */}
                   {item.tipologia === 'edificio' && expandedDetalle === item.id && (
                     <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
-                      {/* Descripción */}
                       {item.notas && (
                         <div className="px-3 pt-3 pb-2.5" style={{ borderBottom: '1px solid #F0EEE8' }}>
                           <div className="text-[9px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#BBB' }}>Descripción</div>
                           <div className="text-[12px] leading-relaxed" style={{ color: '#555' }}>{item.notas}</div>
                         </div>
                       )}
-
-                      {/* Sección unidades */}
                       <div>
-                        <div className="flex items-center justify-between px-3 py-2.5">
+                        <div className="px-3 py-2.5">
                           <div className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#BBB' }}>
                             Unidades{unidades[item.id] ? ` (${unidades[item.id].length})` : ''}
                           </div>
-                          <button onClick={() => { setAddingUnidadId(addingUnidadId === item.id ? null : item.id); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }) }}
-                            className="text-[10px] font-black px-2.5 py-1 rounded-lg"
-                            style={{ background: addingUnidadId === item.id ? 'rgba(242,110,31,0.08)' : '#F5F4F0', color: addingUnidadId === item.id ? '#F26E1F' : '#888', border: `1.5px solid ${addingUnidadId === item.id ? 'rgba(242,110,31,0.3)' : '#ECEAE4'}` }}>
-                            {addingUnidadId === item.id ? '✕ Cancelar' : '+ Agregar unidad'}
-                          </button>
                         </div>
-
-                        {/* Formulario nueva unidad */}
-                        {addingUnidadId === item.id && (
-                          <div className="mx-3 mb-3 rounded-xl p-3" style={{ background: '#FAFAF8', border: '1.5px solid #ECEAE4' }}>
-                            <div className="grid grid-cols-2 gap-2 mb-2">
-                              <div>
-                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Tipo</label>
-                                <select value={nuevaUnidad.tipo} onChange={e => setNuevaUnidad(f => ({ ...f, tipo: e.target.value }))}
-                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
-                                  {['Piso','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Planta</label>
-                                <input type="text" value={nuevaUnidad.planta} onChange={e => setNuevaUnidad(f => ({ ...f, planta: e.target.value }))} placeholder="1ª, PB, Ático..."
-                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>m²</label>
-                                <input type="number" value={nuevaUnidad.superficie} onChange={e => setNuevaUnidad(f => ({ ...f, superficie: e.target.value }))} placeholder="60"
-                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Ocupación</label>
-                                <select value={nuevaUnidad.ocupacion} onChange={e => setNuevaUnidad(f => ({ ...f, ocupacion: e.target.value }))}
-                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
-                                  <option value="libre">Libre</option>
-                                  <option value="ocupado">Ocupado</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Renta/mes (€)</label>
-                                <input type="number" value={nuevaUnidad.renta_mensual} onChange={e => setNuevaUnidad(f => ({ ...f, renta_mensual: e.target.value }))} placeholder="450"
-                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>P. Venta est. (€)</label>
-                                <input type="number" value={nuevaUnidad.precio_venta_est} onChange={e => setNuevaUnidad(f => ({ ...f, precio_venta_est: e.target.value }))} placeholder="55000"
-                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Reforma est. (€)</label>
-                                <input type="number" value={nuevaUnidad.reforma_estimada} onChange={e => setNuevaUnidad(f => ({ ...f, reforma_estimada: e.target.value }))} placeholder="8000"
-                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Notas</label>
-                                <input type="text" value={nuevaUnidad.notas} onChange={e => setNuevaUnidad(f => ({ ...f, notas: e.target.value }))} placeholder="Opcional..."
-                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
-                              </div>
-                            </div>
-                            <button onClick={() => saveUnidad(item.id)} disabled={savingUnidad}
-                              className="w-full py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50"
-                              style={{ background: '#F26E1F' }}>
-                              {savingUnidad ? 'Guardando...' : '+ Guardar unidad'}
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Lista de unidades */}
                         {loadingUnidades[item.id] && (
                           <div className="px-3 py-3 text-xs" style={{ color: '#AAA' }}>Cargando unidades...</div>
                         )}
                         {!loadingUnidades[item.id] && unidades[item.id] && unidades[item.id].length === 0 && (
-                          <div className="px-3 pb-3 text-xs" style={{ color: '#CCC' }}>Sin unidades todavía. Agrega la primera.</div>
+                          <div className="px-3 pb-3 text-xs" style={{ color: '#CCC' }}>Sin unidades. Ábrelo para agregar.</div>
                         )}
                         {!loadingUnidades[item.id] && unidades[item.id] && unidades[item.id].length > 0 && (
                           <>
-                            <div className="grid px-3 py-1.5" style={{ gridTemplateColumns: '1fr 44px 68px 76px 28px', background: '#FAFAF8', borderTop: '1px solid #F0EEE8' }}>
-                              {['Unidad','m²','Estado','Venta est.',''].map((h,i) => (
+                            <div className="grid px-3 py-1.5" style={{ gridTemplateColumns: '1fr 44px 68px 80px', background: '#FAFAF8', borderTop: '1px solid #F0EEE8' }}>
+                              {['Unidad','m²','Estado','Venta est.'].map((h,i) => (
                                 <div key={i} className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</div>
                               ))}
                             </div>
                             {unidades[item.id].map((u, ui) => {
                               const isLibre = !u.ocupacion || u.ocupacion === 'libre' || u.ocupacion === 'Libre'
                               return (
-                                <div key={u.id} className="grid px-3 py-2 items-center" style={{ gridTemplateColumns: '1fr 44px 68px 76px 28px', borderTop: ui > 0 ? '1px solid #F0EEE8' : '1px solid #F0EEE8' }}>
+                                <div key={u.id} className="grid px-3 py-2 items-center" style={{ gridTemplateColumns: '1fr 44px 68px 80px', borderTop: '1px solid #F0EEE8' }}>
                                   <div>
                                     <div className="text-[12px] font-bold" style={{ color: '#222' }}>{u.tipo}{u.planta ? ` · ${u.planta}` : ''}</div>
                                     {u.renta_mensual ? <div className="text-[10px]" style={{ color: '#AAA' }}>{fmt(u.renta_mensual)}/mes</div> : null}
-                                    {u.reforma_estimada ? <div className="text-[10px]" style={{ color: '#CCC' }}>Reforma {fmt(u.reforma_estimada)}</div> : null}
-                                    {u.notas ? <div className="text-[10px]" style={{ color: '#BBB' }}>{u.notas}</div> : null}
                                   </div>
                                   <div className="text-[11px]" style={{ color: '#AAA' }}>{u.superficie ?? '—'}</div>
                                   <div>
@@ -1053,13 +987,9 @@ export default function MercadoPage() {
                                   <div className="text-[11px] font-bold text-right" style={{ color: u.precio_venta_est ? '#22C55E' : '#CCC' }}>
                                     {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
                                   </div>
-                                  <button onClick={() => deleteUnidad(u.id, item.id)}
-                                    className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] ml-auto"
-                                    style={{ background: 'rgba(239,68,68,0.07)', color: '#EF4444' }}>✕</button>
                                 </div>
                               )
                             })}
-                            {/* Totales */}
                             <div className="flex justify-between items-center px-3 py-2.5" style={{ borderTop: '1.5px solid #ECEAE4', background: '#F9F8F5' }}>
                               <span className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#AAA' }}>Total venta estimado</span>
                               <span className="text-[13px] font-black" style={{ color: '#22C55E' }}>
@@ -1203,68 +1133,219 @@ export default function MercadoPage() {
       {/* ═══ MODAL EDITAR ═══ */}
       {editInmueble && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.55)' }} onClick={() => setEditInmueble(null)} />
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setEditInmueble(null)} />
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
-          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '92vh', maxWidth: 900 }}>
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '92vh', maxWidth: 900 }}>
             <div className="p-5 pb-8">
-              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
+              {/* Handle */}
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#DCDAD4' }} />
+              {/* Header */}
               <div className="flex items-center justify-between mb-5">
-                <div className="font-black text-[17px] text-white">Editar inmueble</div>
-                <button onClick={() => setEditInmueble(null)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#282828', color: '#888' }}>✕</button>
+                <div>
+                  <div className="font-black text-[17px]" style={{ color: '#111' }}>Editar inmueble</div>
+                  <div className="text-xs mt-0.5" style={{ color: '#999' }}>{editInmueble.titulo || editInmueble.direccion}</div>
+                </div>
+                <button onClick={() => setEditInmueble(null)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Tipo</label>
-                  <div className="flex gap-2 flex-wrap">
-                    {['piso','casa','duplex','edificio','suelo','nave'].map(t => (
-                      <button key={t} onClick={() => setEditForm(f => ({ ...f, tipologia: t }))}
-                        className="px-3 py-1.5 rounded-xl text-xs font-black"
-                        style={{ background: editForm.tipologia === t ? '#F26E1F' : '#282828', color: editForm.tipologia === t ? '#fff' : '#888', border: editForm.tipologia === t ? '1px solid #F26E1F' : '1px solid rgba(255,255,255,0.08)' }}>
-                        {TIPOLOGIA_LABELS[t]}
-                      </button>
-                    ))}
+
+              {/* Layout: 2 columnas en desktop */}
+              <div className="sm:grid sm:grid-cols-2 sm:gap-6">
+                {/* Columna izquierda: datos básicos */}
+                <div className="grid grid-cols-2 gap-3 content-start">
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Tipo</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['piso','casa','duplex','edificio','suelo','nave'].map(t => (
+                        <button key={t} onClick={() => setEditForm(f => ({ ...f, tipologia: t }))}
+                          className="px-3 py-1.5 rounded-xl text-xs font-black"
+                          style={{ background: editForm.tipologia === t ? '#F26E1F' : '#F5F4F0', color: editForm.tipologia === t ? '#fff' : '#666', border: editForm.tipologia === t ? '1.5px solid #F26E1F' : '1.5px solid #ECEAE4' }}>
+                          {TIPOLOGIA_LABELS[t]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Título</label>
+                    <input type="text" value={editForm.titulo} onChange={e => setEditForm(f => ({ ...f, titulo: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Dirección</label>
+                    <input type="text" value={editForm.direccion} onChange={e => setEditForm(f => ({ ...f, direccion: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Municipio</label>
+                    <input type="text" value={editForm.ciudad} onChange={e => setEditForm(f => ({ ...f, ciudad: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Precio (€)</label>
+                    <input type="number" value={editForm.precio} onChange={e => setEditForm(f => ({ ...f, precio: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Habitaciones</label>
+                    <input type="number" value={editForm.habitaciones} onChange={e => setEditForm(f => ({ ...f, habitaciones: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>m²</label>
+                    <input type="number" value={editForm.superficie} onChange={e => setEditForm(f => ({ ...f, superficie: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Link anuncio</label>
+                    <input type="url" value={editForm.url} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>📁 Drive</label>
+                    <input type="url" value={editForm.drive_url} onChange={e => setEditForm(f => ({ ...f, drive_url: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Notas</label>
+                    <textarea value={editForm.notas} onChange={e => setEditForm(f => ({ ...f, notas: e.target.value }))} rows={3} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+
+                  {/* Botones guardar/cancelar — en mobile van aquí, en desktop al final de col derecha */}
+                  <div className="col-span-2 flex gap-2 mt-2 sm:hidden">
+                    <button onClick={() => setEditInmueble(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
+                    <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingEdit ? 'Guardando...' : 'Guardar cambios'}</button>
                   </div>
                 </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Título</label>
-                  <input type="text" value={editForm.titulo} onChange={e => setEditForm(f => ({ ...f, titulo: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+
+                {/* Columna derecha: unidades (edificios) o espacio vacío */}
+                <div className="mt-6 sm:mt-0">
+                  {editForm.tipologia === 'edificio' ? (
+                    <div className="rounded-2xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
+                      {/* Header unidades */}
+                      <div className="flex items-center justify-between px-4 py-3" style={{ background: '#F9F8F5', borderBottom: '1px solid #ECEAE4' }}>
+                        <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#777' }}>
+                          Unidades{unidades[editInmueble.id] ? ` (${unidades[editInmueble.id].length})` : ''}
+                        </div>
+                        <button
+                          onClick={() => { setAddingUnidadId(addingUnidadId === editInmueble.id ? null : editInmueble.id); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }) }}
+                          className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                          style={{ background: addingUnidadId === editInmueble.id ? 'rgba(242,110,31,0.09)' : '#ECEAE4', color: addingUnidadId === editInmueble.id ? '#F26E1F' : '#888', border: `1.5px solid ${addingUnidadId === editInmueble.id ? 'rgba(242,110,31,0.3)' : '#DDDBD5'}` }}>
+                          {addingUnidadId === editInmueble.id ? '✕ Cancelar' : '+ Agregar unidad'}
+                        </button>
+                      </div>
+
+                      {/* Formulario nueva unidad */}
+                      {addingUnidadId === editInmueble.id && (
+                        <div className="p-4" style={{ borderBottom: '1px solid #ECEAE4', background: '#FAFAF8' }}>
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Tipo</label>
+                              <select value={nuevaUnidad.tipo} onChange={e => setNuevaUnidad(f => ({ ...f, tipo: e.target.value }))}
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
+                                {['Piso','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Planta</label>
+                              <input type="text" value={nuevaUnidad.planta} onChange={e => setNuevaUnidad(f => ({ ...f, planta: e.target.value }))} placeholder="1ª, PB, Ático..."
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>m²</label>
+                              <input type="number" value={nuevaUnidad.superficie} onChange={e => setNuevaUnidad(f => ({ ...f, superficie: e.target.value }))} placeholder="60"
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Ocupación</label>
+                              <select value={nuevaUnidad.ocupacion} onChange={e => setNuevaUnidad(f => ({ ...f, ocupacion: e.target.value }))}
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
+                                <option value="libre">Libre</option>
+                                <option value="ocupado">Ocupado</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Renta/mes (€)</label>
+                              <input type="number" value={nuevaUnidad.renta_mensual} onChange={e => setNuevaUnidad(f => ({ ...f, renta_mensual: e.target.value }))} placeholder="450"
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>P. Venta est. (€)</label>
+                              <input type="number" value={nuevaUnidad.precio_venta_est} onChange={e => setNuevaUnidad(f => ({ ...f, precio_venta_est: e.target.value }))} placeholder="55000"
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Reforma est. (€)</label>
+                              <input type="number" value={nuevaUnidad.reforma_estimada} onChange={e => setNuevaUnidad(f => ({ ...f, reforma_estimada: e.target.value }))} placeholder="8000"
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Notas</label>
+                              <input type="text" value={nuevaUnidad.notas} onChange={e => setNuevaUnidad(f => ({ ...f, notas: e.target.value }))} placeholder="Opcional..."
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                          </div>
+                          <button onClick={() => saveUnidad(editInmueble.id)} disabled={savingUnidad}
+                            className="w-full py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50"
+                            style={{ background: '#F26E1F' }}>
+                            {savingUnidad ? 'Guardando...' : '+ Guardar unidad'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Lista unidades */}
+                      {loadingUnidades[editInmueble.id] && (
+                        <div className="px-4 py-4 text-xs" style={{ color: '#AAA' }}>Cargando unidades...</div>
+                      )}
+                      {!loadingUnidades[editInmueble.id] && (!unidades[editInmueble.id] || unidades[editInmueble.id].length === 0) && (
+                        <div className="px-4 py-5 text-center text-xs" style={{ color: '#BBB' }}>Sin unidades todavía. Agrega la primera.</div>
+                      )}
+                      {!loadingUnidades[editInmueble.id] && unidades[editInmueble.id] && unidades[editInmueble.id].length > 0 && (
+                        <>
+                          <div className="grid px-4 py-2" style={{ gridTemplateColumns: '1fr 40px 62px 72px 28px', background: '#F9F8F5', borderBottom: '1px solid #F0EEE8' }}>
+                            {['Unidad','m²','Estado','Venta est.',''].map((h,i) => (
+                              <div key={i} className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</div>
+                            ))}
+                          </div>
+                          {unidades[editInmueble.id].map((u, ui) => {
+                            const isLibre = !u.ocupacion || u.ocupacion === 'libre' || u.ocupacion === 'Libre'
+                            return (
+                              <div key={u.id} className="grid px-4 py-2.5 items-center" style={{ gridTemplateColumns: '1fr 40px 62px 72px 28px', borderTop: ui > 0 ? '1px solid #F0EEE8' : 'none' }}>
+                                <div>
+                                  <div className="text-[12px] font-bold" style={{ color: '#222' }}>{u.tipo}{u.planta ? ` · ${u.planta}` : ''}</div>
+                                  {u.renta_mensual ? <div className="text-[10px]" style={{ color: '#AAA' }}>{fmt(u.renta_mensual)}/mes</div> : null}
+                                  {u.reforma_estimada ? <div className="text-[10px]" style={{ color: '#BBB' }}>Reforma {fmt(u.reforma_estimada)}</div> : null}
+                                  {u.notas ? <div className="text-[10px]" style={{ color: '#BBB' }}>{u.notas}</div> : null}
+                                </div>
+                                <div className="text-[11px]" style={{ color: '#AAA' }}>{u.superficie ?? '—'}</div>
+                                <div>
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full" style={{ background: isLibre ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)', color: isLibre ? '#16A34A' : '#D97706' }}>
+                                    {isLibre ? 'Libre' : 'Ocupado'}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] font-bold text-right" style={{ color: u.precio_venta_est ? '#22C55E' : '#CCC' }}>
+                                  {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
+                                </div>
+                                <button onClick={() => deleteUnidad(u.id, editInmueble.id)}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] ml-auto"
+                                  style={{ background: 'rgba(239,68,68,0.07)', color: '#EF4444' }}>✕</button>
+                              </div>
+                            )
+                          })}
+                          <div className="flex justify-between items-center px-4 py-3" style={{ borderTop: '1.5px solid #ECEAE4', background: '#F9F8F5' }}>
+                            <span className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#AAA' }}>Total venta estimado</span>
+                            <span className="text-[14px] font-black" style={{ color: '#22C55E' }}>
+                              {fmt(unidades[editInmueble.id].reduce((acc, u) => acc + (u.precio_venta_est || 0), 0))}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    /* Para no-edificios: imagen portada si la tiene */
+                    editInmueble.imagen_portada ? (
+                      <div className="rounded-2xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
+                        <img src={editInmueble.imagen_portada} alt="" className="w-full object-cover" style={{ maxHeight: 260 }} />
+                      </div>
+                    ) : null
+                  )}
+
+                  {/* Botones guardar/cancelar — solo en desktop */}
+                  <div className="hidden sm:flex gap-2 mt-5">
+                    <button onClick={() => setEditInmueble(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
+                    <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingEdit ? 'Guardando...' : 'Guardar cambios'}</button>
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Dirección</label>
-                  <input type="text" value={editForm.direccion} onChange={e => setEditForm(f => ({ ...f, direccion: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Municipio</label>
-                  <input type="text" value={editForm.ciudad} onChange={e => setEditForm(f => ({ ...f, ciudad: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Precio (€)</label>
-                  <input type="number" value={editForm.precio} onChange={e => setEditForm(f => ({ ...f, precio: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium font-mono" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Habitaciones</label>
-                  <input type="number" value={editForm.habitaciones} onChange={e => setEditForm(f => ({ ...f, habitaciones: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>m²</label>
-                  <input type="number" value={editForm.superficie} onChange={e => setEditForm(f => ({ ...f, superficie: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link anuncio</label>
-                  <input type="url" value={editForm.url} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>📁 Drive</label>
-                  <input type="url" value={editForm.drive_url} onChange={e => setEditForm(f => ({ ...f, drive_url: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Notas</label>
-                  <textarea value={editForm.notas} onChange={e => setEditForm(f => ({ ...f, notas: e.target.value }))} rows={2} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium resize-none" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
-                </div>
-              </div>
-              <div className="flex gap-2 mt-5">
-                <button onClick={() => setEditInmueble(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#282828', color: '#888' }}>Cancelar</button>
-                <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingEdit ? 'Guardando...' : 'Guardar cambios'}</button>
               </div>
             </div>
           </div>
