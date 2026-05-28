@@ -194,7 +194,7 @@ export default function MercadoPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('inmuebles').select('*').not('fuente', 'ilike', 'telegram%').order('created_at', { ascending: false }),
+      supabase.from('inmuebles').select('*').or('fuente.is.null,fuente.not.ilike.telegram%').order('created_at', { ascending: false }),
       supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre'),
     ]).then(([i, p]) => {
       setInmuebles(i.data || [])
