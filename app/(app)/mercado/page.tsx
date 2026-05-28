@@ -151,6 +151,8 @@ export default function MercadoPage() {
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [nuevoForm, setNuevoForm] = useState(emptyNuevoForm())
   const [savingNuevo, setSavingNuevo] = useState(false)
+  const [nuevoUnidades, setNuevoUnidades] = useState<any[]>([])
+  const [addingNuevoUnidad, setAddingNuevoUnidad] = useState(false)
 
   // Editar inmueble
   const [editInmueble, setEditInmueble] = useState<Inmueble | null>(null)
@@ -244,7 +246,29 @@ export default function MercadoPage() {
     const { data, error } = await supabase.from('inmuebles').insert([payload]).select().single()
     setSavingNuevo(false)
     if (error) { alert(`Error al guardar: ${error.message}`); return }
-    if (data) { setInmuebles(prev => [data, ...prev]); setNuevoOpen(false); setNuevoForm(emptyNuevoForm()) }
+    if (data) {
+      if (nuevoForm.tipologia === 'edificio' && nuevoUnidades.length > 0) {
+        const rows = nuevoUnidades.map((u: any) => ({
+          inmueble_id: data.id,
+          tipo: u.tipo || 'Piso',
+          planta: u.planta || null,
+          superficie: typeof u.superficie === 'number' ? u.superficie : null,
+          ocupacion: u.ocupacion === 'ocupado' ? 'ocupado' : 'libre',
+          origen: 'manual',
+          renta_mensual: typeof u.renta_mensual === 'number' ? u.renta_mensual : null,
+          precio_venta_est: typeof u.precio_venta_est === 'number' ? u.precio_venta_est : null,
+          reforma_estimada: typeof u.reforma_estimada === 'number' ? u.reforma_estimada : null,
+          notas: u.notas || null,
+        }))
+        await supabase.from('inmueble_unidades').insert(rows)
+        setUnidades(prev => ({ ...prev, [data.id]: rows.map((r: any, i: number) => ({ ...r, id: `temp-${i}` })) }))
+      }
+      setInmuebles(prev => [data, ...prev])
+      setNuevoOpen(false)
+      setNuevoForm(emptyNuevoForm())
+      setNuevoUnidades([])
+      setAddingNuevoUnidad(false)
+    }
   }
 
   // ── Editar inmueble ─────────────────────────────────────
@@ -1083,14 +1107,14 @@ export default function MercadoPage() {
       {/* ═══ MODAL NUEVO ═══ */}
       {nuevoOpen && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setNuevoOpen(false)} />
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false) }} />
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
           <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '92vh', maxWidth: 900 }}>
             <div className="p-5 pb-8">
               <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#DCDAD4' }} />
               <div className="flex items-center justify-between mb-5">
                 <div className="font-black text-[17px]" style={{ color: '#111' }}>Agregar inmueble</div>
-                <button onClick={() => setNuevoOpen(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
+                <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false) }} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
 
               <div className="sm:grid sm:grid-cols-2 sm:gap-6">
@@ -1146,7 +1170,7 @@ export default function MercadoPage() {
                   </div>
                   {/* Botones mobile */}
                   <div className="col-span-2 flex gap-2 mt-2 sm:hidden">
-                    <button onClick={() => setNuevoOpen(false)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
+                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false) }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
                     <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
                   </div>
                 </div>
@@ -1155,19 +1179,137 @@ export default function MercadoPage() {
                 <div className="mt-6 sm:mt-0">
                   {nuevoForm.tipologia === 'edificio' && (
                     <div className="rounded-2xl overflow-hidden mb-5" style={{ border: '1.5px solid #ECEAE4' }}>
+                      {/* Header */}
                       <div className="flex items-center justify-between px-4 py-3" style={{ background: '#F9F8F5', borderBottom: '1px solid #ECEAE4' }}>
-                        <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#BBB' }}>Unidades</div>
-                        <div className="text-[10px] font-bold px-2.5 py-1 rounded-lg" style={{ background: '#F0EEE8', color: '#CCC', border: '1.5px solid #ECEAE4' }}>+ Agregar unidad</div>
+                        <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#777' }}>
+                          Unidades{nuevoUnidades.length > 0 ? ` (${nuevoUnidades.length})` : ''}
+                        </div>
+                        <button
+                          onClick={() => { setAddingNuevoUnidad(v => !v); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }) }}
+                          className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                          style={{ background: addingNuevoUnidad ? 'rgba(242,110,31,0.09)' : '#ECEAE4', color: addingNuevoUnidad ? '#F26E1F' : '#888', border: `1.5px solid ${addingNuevoUnidad ? 'rgba(242,110,31,0.3)' : '#DDDBD5'}` }}>
+                          {addingNuevoUnidad ? '✕' : '+ Manual'}
+                        </button>
                       </div>
-                      <div className="px-4 py-8 text-center">
-                        <div className="text-2xl mb-2">🏢</div>
-                        <div className="text-[12px] font-bold mb-1" style={{ color: '#AAA' }}>Guarda primero el edificio</div>
-                        <div className="text-[11px]" style={{ color: '#CCC' }}>Luego importa las unidades desde la ventana de edición</div>
-                      </div>
+                      {/* Formulario nueva unidad */}
+                      {addingNuevoUnidad && (
+                        <div className="p-4" style={{ borderBottom: '1px solid #ECEAE4', background: '#FAFAF8' }}>
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Tipo</label>
+                              <select value={nuevaUnidad.tipo} onChange={e => setNuevaUnidad(f => ({ ...f, tipo: e.target.value }))}
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
+                                {['Piso','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Planta</label>
+                              <input type="text" value={nuevaUnidad.planta} onChange={e => setNuevaUnidad(f => ({ ...f, planta: e.target.value }))} placeholder="1ª, PB, Ático..."
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>m²</label>
+                              <input type="number" value={nuevaUnidad.superficie} onChange={e => setNuevaUnidad(f => ({ ...f, superficie: e.target.value }))} placeholder="60"
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Ocupación</label>
+                              <select value={nuevaUnidad.ocupacion} onChange={e => setNuevaUnidad(f => ({ ...f, ocupacion: e.target.value }))}
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
+                                <option value="libre">Libre</option>
+                                <option value="ocupado">Ocupado</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Renta/mes (€)</label>
+                              <input type="number" value={nuevaUnidad.renta_mensual} onChange={e => setNuevaUnidad(f => ({ ...f, renta_mensual: e.target.value }))} placeholder="450"
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>P. Venta est. (€)</label>
+                              <input type="number" value={nuevaUnidad.precio_venta_est} onChange={e => setNuevaUnidad(f => ({ ...f, precio_venta_est: e.target.value }))} placeholder="55000"
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Reforma est. (€)</label>
+                              <input type="number" value={nuevaUnidad.reforma_estimada} onChange={e => setNuevaUnidad(f => ({ ...f, reforma_estimada: e.target.value }))} placeholder="8000"
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Notas</label>
+                              <input type="text" value={nuevaUnidad.notas} onChange={e => setNuevaUnidad(f => ({ ...f, notas: e.target.value }))} placeholder="Opcional..."
+                                className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setNuevoUnidades(prev => [...prev, {
+                                tipo: nuevaUnidad.tipo,
+                                planta: nuevaUnidad.planta || null,
+                                superficie: nuevaUnidad.superficie ? parseInt(nuevaUnidad.superficie) : null,
+                                ocupacion: nuevaUnidad.ocupacion,
+                                renta_mensual: nuevaUnidad.renta_mensual ? parseFloat(nuevaUnidad.renta_mensual) : null,
+                                precio_venta_est: nuevaUnidad.precio_venta_est ? parseFloat(nuevaUnidad.precio_venta_est) : null,
+                                reforma_estimada: nuevaUnidad.reforma_estimada ? parseFloat(nuevaUnidad.reforma_estimada) : null,
+                                notas: nuevaUnidad.notas || null,
+                              }])
+                              setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
+                              setAddingNuevoUnidad(false)
+                            }}
+                            className="w-full py-2.5 rounded-xl text-xs font-black text-white"
+                            style={{ background: '#F26E1F' }}>
+                            + Agregar unidad
+                          </button>
+                        </div>
+                      )}
+                      {/* Lista unidades temporales */}
+                      {nuevoUnidades.length === 0 && !addingNuevoUnidad && (
+                        <div className="px-4 py-5 text-center text-xs" style={{ color: '#BBB' }}>Sin unidades todavía. Agrega la primera.</div>
+                      )}
+                      {nuevoUnidades.length > 0 && (
+                        <>
+                          <div className="grid px-4 py-2" style={{ gridTemplateColumns: '1fr 40px 62px 72px 28px', background: '#F9F8F5', borderBottom: '1px solid #F0EEE8' }}>
+                            {['Unidad','m²','Estado','Venta est.',''].map((h,i) => (
+                              <div key={i} className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</div>
+                            ))}
+                          </div>
+                          {nuevoUnidades.map((u, ui) => {
+                            const isLibre = !u.ocupacion || u.ocupacion === 'libre'
+                            return (
+                              <div key={ui} className="grid px-4 py-2.5 items-center" style={{ gridTemplateColumns: '1fr 40px 62px 72px 28px', borderTop: ui > 0 ? '1px solid #F0EEE8' : 'none' }}>
+                                <div>
+                                  <div className="text-[12px] font-bold" style={{ color: '#222' }}>{u.tipo}{u.planta ? ` · ${u.planta}` : ''}</div>
+                                  {u.renta_mensual ? <div className="text-[10px]" style={{ color: '#AAA' }}>{fmt(u.renta_mensual)}/mes</div> : null}
+                                  {u.reforma_estimada ? <div className="text-[10px]" style={{ color: '#BBB' }}>Reforma {fmt(u.reforma_estimada)}</div> : null}
+                                  {u.notas ? <div className="text-[10px]" style={{ color: '#BBB' }}>{u.notas}</div> : null}
+                                </div>
+                                <div className="text-[11px]" style={{ color: '#AAA' }}>{u.superficie ?? '—'}</div>
+                                <div>
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full" style={{ background: isLibre ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)', color: isLibre ? '#16A34A' : '#D97706' }}>
+                                    {isLibre ? 'Libre' : 'Ocupado'}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] font-bold text-right" style={{ color: u.precio_venta_est ? '#22C55E' : '#CCC' }}>
+                                  {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
+                                </div>
+                                <button onClick={() => setNuevoUnidades(prev => prev.filter((_, i) => i !== ui))}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] ml-auto"
+                                  style={{ background: 'rgba(239,68,68,0.07)', color: '#EF4444' }}>✕</button>
+                              </div>
+                            )
+                          })}
+                          <div className="flex justify-between items-center px-4 py-3" style={{ borderTop: '1.5px solid #ECEAE4', background: '#F9F8F5' }}>
+                            <span className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#AAA' }}>Total venta estimado</span>
+                            <span className="text-[14px] font-black" style={{ color: '#22C55E' }}>
+                              {fmt(nuevoUnidades.reduce((acc, u) => acc + (u.precio_venta_est || 0), 0))}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                   {/* Botones desktop */}
-                  <div className="hidden sm:flex gap-2">
+                  <div className="hidden sm:flex gap-2 mt-5">
                     <button onClick={() => setNuevoOpen(false)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
                     <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
                   </div>
