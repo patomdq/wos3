@@ -138,6 +138,9 @@ export default function MercadoPage() {
   const [addingUnidadId, setAddingUnidadId] = useState<string | null>(null)
   const [nuevaUnidad, setNuevaUnidad] = useState({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
   const [savingUnidad, setSavingUnidad] = useState(false)
+  const [importandoUrl, setImportandoUrl] = useState<string | null>(null)
+  const [importUrl, setImportUrl] = useState('')
+  const [importLoading, setImportLoading] = useState(false)
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [expandedDetalle, setExpandedDetalle] = useState<string | null>(null)
   const [creando, setCreando] = useState<string | null>(null)
@@ -445,6 +448,29 @@ export default function MercadoPage() {
     if (!confirm('¿Eliminar esta unidad?')) return
     await supabase.from('inmueble_unidades').delete().eq('id', unidadId)
     setUnidades(prev => ({ ...prev, [inmuebleId]: (prev[inmuebleId] || []).filter(u => u.id !== unidadId) }))
+  }
+
+  const importarUnidades = async (inmuebleId: string) => {
+    if (!importUrl.trim()) return
+    setImportLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/unidades/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ inmueble_id: inmuebleId, url: importUrl.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) { alert(`Error: ${json.error}`); return }
+      setUnidades(prev => ({ ...prev, [inmuebleId]: [...(prev[inmuebleId] || []), ...(json.unidades || [])] }))
+      setImportandoUrl(null)
+      setImportUrl('')
+      alert(`✓ ${json.total} unidades importadas correctamente`)
+    } catch (err: any) {
+      alert(`Error de red: ${err.message}`)
+    } finally {
+      setImportLoading(false)
+    }
   }
 
   // ── Bitácora ─────────────────────────────────────────────
@@ -1233,13 +1259,47 @@ export default function MercadoPage() {
                         <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#777' }}>
                           Unidades{unidades[editInmueble.id] ? ` (${unidades[editInmueble.id].length})` : ''}
                         </div>
-                        <button
-                          onClick={() => { setAddingUnidadId(addingUnidadId === editInmueble.id ? null : editInmueble.id); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }) }}
-                          className="text-[11px] font-black px-2.5 py-1 rounded-lg"
-                          style={{ background: addingUnidadId === editInmueble.id ? 'rgba(242,110,31,0.09)' : '#ECEAE4', color: addingUnidadId === editInmueble.id ? '#F26E1F' : '#888', border: `1.5px solid ${addingUnidadId === editInmueble.id ? 'rgba(242,110,31,0.3)' : '#DDDBD5'}` }}>
-                          {addingUnidadId === editInmueble.id ? '✕ Cancelar' : '+ Agregar unidad'}
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => { setImportandoUrl(importandoUrl === editInmueble.id ? null : editInmueble.id); setImportUrl(''); setAddingUnidadId(null) }}
+                            className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                            style={{ background: importandoUrl === editInmueble.id ? 'rgba(59,130,246,0.09)' : '#ECEAE4', color: importandoUrl === editInmueble.id ? '#3B82F6' : '#888', border: `1.5px solid ${importandoUrl === editInmueble.id ? 'rgba(59,130,246,0.3)' : '#DDDBD5'}` }}>
+                            {importandoUrl === editInmueble.id ? '✕' : '🔗 Importar URL'}
+                          </button>
+                          <button
+                            onClick={() => { setAddingUnidadId(addingUnidadId === editInmueble.id ? null : editInmueble.id); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }); setImportandoUrl(null) }}
+                            className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                            style={{ background: addingUnidadId === editInmueble.id ? 'rgba(242,110,31,0.09)' : '#ECEAE4', color: addingUnidadId === editInmueble.id ? '#F26E1F' : '#888', border: `1.5px solid ${addingUnidadId === editInmueble.id ? 'rgba(242,110,31,0.3)' : '#DDDBD5'}` }}>
+                            {addingUnidadId === editInmueble.id ? '✕' : '+ Manual'}
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Panel importar URL */}
+                      {importandoUrl === editInmueble.id && (
+                        <div className="p-4" style={{ borderBottom: '1px solid #ECEAE4', background: '#F0F4FF' }}>
+                          <div className="text-[10px] font-black uppercase tracking-wide mb-2" style={{ color: '#3B82F6' }}>Importar unidades desde URL</div>
+                          <div className="text-[11px] mb-3" style={{ color: '#666' }}>Pega un link de Idealista, Fotocasa u otro portal con el listado del edificio. Claude extrae todas las unidades automáticamente.</div>
+                          <input
+                            type="url"
+                            value={importUrl}
+                            onChange={e => setImportUrl(e.target.value)}
+                            placeholder="https://www.idealista.com/inmueble/..."
+                            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium mb-2"
+                            style={{ background: '#fff', border: '1.5px solid #BFDBFE', color: '#333' }}
+                            onFocus={e => e.target.style.borderColor='#3B82F6'} onBlur={e => e.target.style.borderColor='#BFDBFE'}
+                          />
+                          <button
+                            onClick={() => importarUnidades(editInmueble.id)}
+                            disabled={importLoading || !importUrl.trim()}
+                            className="w-full py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                            style={{ background: '#3B82F6' }}>
+                            {importLoading ? (
+                              <><span className="animate-spin">⟳</span> Cargando unidades...</>
+                            ) : '🔗 Importar todas las unidades'}
+                          </button>
+                        </div>
+                      )}
 
                       {/* Formulario nueva unidad */}
                       {addingUnidadId === editInmueble.id && (
