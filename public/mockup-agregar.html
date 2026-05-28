@@ -102,13 +102,24 @@
     color: #BBB; font-size: 12px; font-weight: 600;
   }
 
-  /* Piso placeholder */
-  .piso-placeholder {
+  /* Image upload area */
+  .img-upload {
     flex: 1; display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 8px; padding: 24px;
-    border: 1.5px dashed #ECEAE4; border-radius: 16px;
-    color: #CCC; font-size: 12px;
+    flex-direction: column; gap: 10px; padding: 24px;
+    border: 2px dashed #DDDBD5; border-radius: 16px;
+    color: #AAA; font-size: 12px; cursor: pointer;
+    background: #FAFAF8; transition: all 0.15s;
+    min-height: 220px; position: relative; overflow: hidden;
   }
+  .img-upload:hover { border-color: #F26E1F; background: #FFF8F4; }
+  .img-upload img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
+  .img-upload-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.4); border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: 0.15s;
+  }
+  .img-upload:hover .img-upload-overlay { opacity: 1; }
+  .img-upload input[type=file] { display: none; }
 
   /* Footer buttons */
   .modal-footer {
@@ -193,12 +204,16 @@
       </div>
     </div>
 
-    <!-- Columna derecha — Piso: vacío + botones al fondo -->
+    <!-- Columna derecha — Piso: imagen portada + botones al fondo -->
     <div class="right-col" id="right-col-content">
-      <div class="piso-placeholder">
-        <div style="font-size:28px">🏠</div>
-        <div>Sin unidades para este tipo</div>
-      </div>
+      <label class="img-upload" id="img-upload-label">
+        <input type="file" accept="image/*" onchange="previewImg(event)">
+        <div id="img-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:10px">
+          <div style="width:48px;height:48px;border-radius:12px;background:#ECEAE4;display:flex;align-items:center;justify-content:center;font-size:22px">📷</div>
+          <div style="font-weight:700;color:#888;font-size:13px">Foto de portada</div>
+          <div style="font-size:11px;color:#BBB;text-align:center">Hacé click o arrastrá una imagen<br>Se usará como portada de la card</div>
+        </div>
+      </label>
       <div class="modal-footer">
         <button class="btn-cancel">Cancelar</button>
         <button class="btn-save">Guardar</button>
@@ -241,16 +256,37 @@ function setTipo(tipo) {
     `;
   } else {
     rightCol.innerHTML = `
-      <div class="piso-placeholder">
-        <div style="font-size:28px">🏠</div>
-        <div>Sin unidades para este tipo</div>
-      </div>
+      <label class="img-upload" id="img-upload-label">
+        <input type="file" accept="image/*" onchange="previewImg(event)">
+        <div id="img-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:10px">
+          <div style="width:48px;height:48px;border-radius:12px;background:#ECEAE4;display:flex;align-items:center;justify-content:center;font-size:22px">📷</div>
+          <div style="font-weight:700;color:#888;font-size:13px">Foto de portada</div>
+          <div style="font-size:11px;color:#BBB;text-align:center">Hacé click o arrastrá una imagen<br>Se usará como portada de la card</div>
+        </div>
+      </label>
       <div class="modal-footer">
         <button class="btn-cancel">Cancelar</button>
         <button class="btn-save">Guardar</button>
       </div>
     `;
   }
+}
+
+function previewImg(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const label = document.getElementById('img-upload-label');
+    label.innerHTML = `
+      <img src="${e.target.result}" alt="portada">
+      <div class="img-upload-overlay">
+        <div style="color:#fff;font-size:12px;font-weight:700">Cambiar foto</div>
+      </div>
+      <input type="file" accept="image/*" onchange="previewImg(event)">
+    `;
+  };
+  reader.readAsDataURL(file);
 }
 </script>
 </body>
