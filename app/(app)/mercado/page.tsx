@@ -569,7 +569,7 @@ export default function MercadoPage() {
 
   const res = calcResultados(gastos, pvPes, pvReal, pvOpt, duracionMeses)
 
-  const CARD = { background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 4px 24px rgba(0,0,0,0.18)' }
+  const CARD = { background: '#ffffff', border: '1px solid #EAEAE8', boxShadow: '0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.03)' }
   const INP  = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', color: '#fff' }
   const ESC_UI = [
     { label: 'Conservador', pv: pvPes,  idx: 0, color: '#EF4444' },
@@ -583,19 +583,19 @@ export default function MercadoPage() {
   // JSX helpers
   const renderBitacora = (item: Inmueble) => (
     <>
-      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#111' }}>
-        <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#555' }}>
+      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid #F0EEE8', background: '#FAFAF8' }}>
+        <span className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8' }}>
           Bitácora{bitacora[item.id] ? ` (${(bitacora[item.id] || []).length})` : ''}
         </span>
         <button onClick={() => toggleBitacora(item.id)}
           className="text-[11px] font-black px-2.5 py-1 rounded-lg"
-          style={{ background: openBitacoraId === item.id ? 'rgba(242,110,31,0.18)' : 'rgba(255,255,255,0.06)', color: openBitacoraId === item.id ? '#F26E1F' : '#888', border: `1px solid ${openBitacoraId === item.id ? 'rgba(242,110,31,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
+          style={{ background: openBitacoraId === item.id ? 'rgba(242,110,31,0.09)' : '#ECEAE4', color: openBitacoraId === item.id ? '#F26E1F' : '#888', border: `1.5px solid ${openBitacoraId === item.id ? 'rgba(242,110,31,0.25)' : '#E2E0D8'}` }}>
           {openBitacoraId === item.id ? '▲ Cerrar' : '▼ Bitácora'}
         </button>
       </div>
       {openBitacoraId === item.id && (
-        <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0D0D0D' }}>
-          <div className="mb-4 rounded-xl p-3" style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="px-4 py-3" style={{ borderTop: '1px solid #F0EEE8', background: '#F9F8F5' }}>
+          <div className="mb-4 rounded-xl p-3" style={{ background: '#fff', border: '1.5px solid #ECEAE4' }}>
             <div className="text-[10px] font-black uppercase tracking-wide mb-2" style={{ color: '#555' }}>
               {editingBitacoraId ? 'Editar entrada' : 'Nueva entrada'}
             </div>
@@ -662,14 +662,14 @@ export default function MercadoPage() {
             <div className="py-3 text-center text-xs" style={{ color: '#555' }}>Sin entradas todavía.</div>
           ) : (
             <div className="pl-5 relative">
-              <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#282828' }} />
+              <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#E5E3DE' }} />
               {(bitacora[item.id] || []).map((b: unknown) => {
                 const entry = b as Record<string, unknown>
                 return (
                   <div key={entry.id as string} className="relative mb-4">
-                    <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background: '#F26E1F', border: '2px solid #0A0A0A' }} />
+                    <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background: '#F26E1F', border: '2px solid #F9F8F5' }} />
                     <div className="flex items-center justify-between mb-0.5">
-                      <div className="text-[10px] font-bold font-mono tracking-wide" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      <div className="text-[10px] font-bold font-mono tracking-wide" style={{ color: '#BBB' }}>
                         {new Date(entry.created_at as string).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
                         {' · '}{TIPO_ICON[entry.tipo as string] || '📝'} {((entry.tipo as string) || 'nota').toUpperCase()}
                       </div>
@@ -698,48 +698,48 @@ export default function MercadoPage() {
 
   const renderVisitas = (item: Inmueble) => (
     <>
-      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#111' }}>
-        <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#555' }}>
+      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid #F0EEE8', background: '#FAFAF8' }}>
+        <span className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8' }}>
           Visitas{visitas[item.id] ? ` (${visitas[item.id].length})` : ''}
         </span>
         <div className="flex gap-1.5">
           <button onClick={() => { setAgendandoVisitaId(item.id); setVisitaForm(emptyVisitaForm()) }}
             className="text-[11px] font-black px-2.5 py-1 rounded-lg"
-            style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>+ Agendar</button>
+            style={{ background: 'rgba(242,110,31,0.09)', color: '#F26E1F', border: '1.5px solid rgba(242,110,31,0.25)' }}>+ Agendar</button>
           <button onClick={() => toggleVisitas(item.id)}
             className="text-[11px] font-black px-2.5 py-1 rounded-lg"
-            style={{ background: openVisitasId === item.id ? 'rgba(242,110,31,0.18)' : 'rgba(255,255,255,0.06)', color: openVisitasId === item.id ? '#F26E1F' : '#888', border: `1px solid ${openVisitasId === item.id ? 'rgba(242,110,31,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
+            style={{ background: openVisitasId === item.id ? 'rgba(242,110,31,0.09)' : '#ECEAE4', color: openVisitasId === item.id ? '#F26E1F' : '#888', border: `1.5px solid ${openVisitasId === item.id ? 'rgba(242,110,31,0.25)' : '#E2E0D8'}` }}>
             {openVisitasId === item.id ? '▲' : '▼ Ver'}
           </button>
         </div>
       </div>
       {openVisitasId === item.id && (
-        <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0D0D0D' }}>
+        <div className="px-4 py-3" style={{ borderTop: '1px solid #F0EEE8', background: '#F9F8F5' }}>
           {loadingVisitas === item.id
-            ? <div className="text-xs py-2" style={{ color: '#555' }}>Cargando...</div>
+            ? <div className="text-xs py-2" style={{ color: '#AAA' }}>Cargando...</div>
             : (visitas[item.id] || []).length === 0
-              ? <div className="text-xs py-2" style={{ color: '#555' }}>Sin visitas agendadas todavía.</div>
+              ? <div className="text-xs py-2" style={{ color: '#AAA' }}>Sin visitas agendadas todavía.</div>
               : (visitas[item.id] || []).map(v => (
-                <div key={v.id} className="rounded-xl p-3 mb-2" style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div key={v.id} className="rounded-xl p-3 mb-2" style={{ background: '#fff', border: '1.5px solid #ECEAE4' }}>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="text-sm font-black text-white">{v.fecha} · {v.hora}</div>
-                      <div className="text-xs mt-0.5" style={{ color: '#ccc' }}>Resp: {v.responsable}</div>
-                      {v.notas_previas && <div className="text-xs mt-0.5" style={{ color: '#888' }}>{v.notas_previas}</div>}
+                      <div className="text-sm font-black" style={{ color: '#111' }}>{v.fecha} · {v.hora}</div>
+                      <div className="text-xs mt-0.5" style={{ color: '#888' }}>Resp: {v.responsable}</div>
+                      {v.notas_previas && <div className="text-xs mt-0.5" style={{ color: '#AAA' }}>{v.notas_previas}</div>}
                     </div>
                     <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-                      {v.gcal_event_id && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.15)', color: '#60A5FA' }}>📅</span>}
+                      {v.gcal_event_id && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.10)', color: '#3B82F6' }}>📅</span>}
                       {!v.estado_post && (
                         <button onClick={() => { setPostVisitaId(v.id); setPostVisitaInmuebleId(item.id); setPostVisitaForm({ estado_post: 'sigue_activo', notas_post: '', fotos_url: '' }) }}
                           className="text-[11px] font-black px-2.5 py-1 rounded-lg"
-                          style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>Post-visita</button>
+                          style={{ background: 'rgba(242,110,31,0.09)', color: '#F26E1F', border: '1.5px solid rgba(242,110,31,0.25)' }}>Post-visita</button>
                       )}
                     </div>
                   </div>
                   {v.estado_post && (
-                    <div className="mt-2 pt-2 flex gap-2 items-start" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="mt-2 pt-2 flex gap-2 items-start" style={{ borderTop: '1px solid #F0EEE8' }}>
                       <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex-shrink-0"
-                        style={{ background: v.estado_post === 'descartado' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: v.estado_post === 'descartado' ? '#EF4444' : '#F59E0B' }}>
+                        style={{ background: v.estado_post === 'descartado' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.10)', color: v.estado_post === 'descartado' ? '#EF4444' : '#D97706' }}>
                         {v.estado_post === 'descartado' ? 'Descartado' : 'Sigue activo'}
                       </span>
                       {v.notas_post && <span className="text-xs flex-1" style={{ color: '#888' }}>{v.notas_post}</span>}
@@ -804,14 +804,15 @@ export default function MercadoPage() {
             return (
               <div key={item.id} className="rounded-2xl overflow-hidden flex flex-col" style={CARD}>
                 {/* Imagen / placeholder */}
-                <div className="relative" style={{ height: 140, background: item.imagen_portada ? 'transparent' : '#1A1A1A', overflow: 'hidden' }}>
+                <div className="relative cursor-pointer" style={{ height: 160, background: item.imagen_portada ? 'transparent' : 'linear-gradient(135deg,#F5F4F0,#ECEAE4)', overflow: 'hidden' }}
+                  onClick={() => openEdit(item)}>
                   {item.imagen_portada
-                    ? <img src={item.imagen_portada} alt="" className="w-full h-full object-cover" />
-                    : <div className="flex items-center justify-center h-full text-4xl" style={{ color: '#2A2A2A' }}>{item.tipologia === 'edificio' ? '🏢' : item.tipologia === 'suelo' ? '🏗' : item.tipologia === 'nave' ? '🏭' : '🏠'}</div>
+                    ? <img src={item.imagen_portada} alt="" className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.03]" />
+                    : <div className="flex items-center justify-center h-full text-5xl" style={{ color: '#D0CFC8' }}>{item.tipologia === 'edificio' ? '🏢' : item.tipologia === 'suelo' ? '🏗' : item.tipologia === 'nave' ? '🏭' : '🏠'}</div>
                   }
                   <div className="absolute top-2.5 left-2.5 flex gap-1.5">
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.7)', color: '#fff' }}>{tipLabel}</span>
-                    {item.fuente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.7)', color: '#aaa' }}>{item.fuente}</span>}
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(4px)' }}>{tipLabel}</span>
+                    {item.fuente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.55)', color: '#ddd', backdropFilter: 'blur(4px)' }}>{item.fuente}</span>}
                   </div>
                   <div className="absolute top-2.5 right-2.5">
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
@@ -821,31 +822,31 @@ export default function MercadoPage() {
                 {/* Contenido */}
                 <div className="p-3 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-black text-[16px] text-white leading-tight truncate">{item.titulo || item.direccion}</div>
-                      {item.titulo && <div className="text-xs mt-0.5 truncate" style={{ color: '#888' }}>{item.direccion}{item.ciudad ? ` · ${item.ciudad}` : ''}</div>}
-                      {!item.titulo && item.ciudad && <div className="text-xs mt-0.5" style={{ color: '#888' }}>{item.ciudad}</div>}
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openEdit(item)}>
+                      <div className="font-black text-[15px] leading-tight truncate hover:text-[#F26E1F] transition-colors" style={{ color: '#111' }}>{item.titulo || item.direccion}</div>
+                      {item.titulo && <div className="text-xs mt-0.5 truncate" style={{ color: '#999' }}>{item.direccion}{item.ciudad ? ` · ${item.ciudad}` : ''}</div>}
+                      {!item.titulo && item.ciudad && <div className="text-xs mt-0.5" style={{ color: '#999' }}>{item.ciudad}</div>}
                     </div>
                     <div className="text-sm font-black font-mono flex-shrink-0" style={{ color: '#F26E1F' }}>{fmt(item.precio_compra || 0)}</div>
                   </div>
 
-                  <div className="flex gap-2 mt-2 flex-wrap">
-                    {item.superficie && <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc' }}>{item.superficie} m²</span>}
-                    {item.habitaciones && <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc' }}>{item.habitaciones} hab</span>}
-                    {item.num_plantas && <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc' }}>{item.num_plantas} plantas</span>}
+                  <div className="flex gap-1.5 mt-2 flex-wrap">
+                    {item.superficie && <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: '#666' }}>{item.superficie} m²</span>}
+                    {item.habitaciones && <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: '#666' }}>{item.habitaciones} hab</span>}
+                    {item.num_plantas && <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: '#666' }}>{item.num_plantas} plantas</span>}
                   </div>
 
                   {/* Para edificios: grid métricas compacto */}
                   {item.tipologia === 'edificio' && (
-                    <div className="grid grid-cols-3 gap-1.5 mt-3 rounded-xl" style={{ background: '#1A1A1A', padding: '10px 8px' }}>
+                    <div className="grid grid-cols-3 mt-3 rounded-xl overflow-hidden" style={{ background: '#ECEAE4' }}>
                       {[
                         { label: 'Precio', val: fmt(item.precio_compra || 0) },
                         { label: 'Unidades', val: unidades[item.id] ? String(unidades[item.id].length) : '—' },
                         { label: 'm²', val: item.superficie ? String(item.superficie) : '—' },
-                      ].map(m => (
-                        <div key={m.label} className="text-center">
-                          <div className="text-[9px] font-bold uppercase tracking-wide mb-0.5 opacity-40 text-white">{m.label}</div>
-                          <div className="text-[12px] font-black text-white">{m.val}</div>
+                      ].map((m, i) => (
+                        <div key={m.label} className="text-center py-2.5" style={{ background: '#F9F8F5', borderLeft: i > 0 ? '1px solid #ECEAE4' : 'none' }}>
+                          <div className="text-[9px] font-bold uppercase tracking-wide mb-0.5" style={{ color: '#AAA' }}>{m.label}</div>
+                          <div className="text-[12px] font-black" style={{ color: '#222' }}>{m.val}</div>
                         </div>
                       ))}
                     </div>
@@ -853,13 +854,13 @@ export default function MercadoPage() {
 
                   {/* Para no-edificios: ROI y precios si analizado */}
                   {item.tipologia !== 'edificio' && isAnalizado && (
-                    <div className="grid grid-cols-3 gap-1.5 mt-3 rounded-xl p-2" style={{ background: '#1A1A1A' }}>
+                    <div className="grid grid-cols-3 mt-3 rounded-xl overflow-hidden" style={{ background: '#ECEAE4' }}>
                       {[
                         { label: 'Pesimista', val: item.precio_venta_conservador, color: '#EF4444' },
                         { label: 'Realista',  val: item.precio_venta_realista,    color: '#F59E0B' },
                         { label: 'Optimista', val: item.precio_venta_optimista,   color: '#22C55E' },
-                      ].map(s => (
-                        <div key={s.label} className="text-center">
+                      ].map((s, i) => (
+                        <div key={s.label} className="text-center py-2.5" style={{ background: '#F9F8F5', borderLeft: i > 0 ? '1px solid #ECEAE4' : 'none' }}>
                           <div className="text-[9px] font-bold uppercase tracking-wide mb-0.5" style={{ color: s.color }}>{s.label}</div>
                           <div className="text-[11px] font-black font-mono" style={{ color: s.color }}>{s.val ? fmt(s.val) : '—'}</div>
                         </div>
@@ -869,95 +870,95 @@ export default function MercadoPage() {
                   {item.tipologia !== 'edificio' && isAnalizado && item.roi_estimado !== undefined && (
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs font-black" style={{ color: '#22C55E' }}>↗ ROI {item.roi_estimado?.toFixed(1)}%</span>
-                      {item.analizado_en && <span className="text-[10px]" style={{ color: '#555' }}>· {item.analizado_en}</span>}
+                      {item.analizado_en && <span className="text-[10px]" style={{ color: '#BBB' }}>· {item.analizado_en}</span>}
                     </div>
                   )}
 
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold" style={{ color: '#60A5FA' }}>🔗 Ver anuncio</a>}
-                    {item.drive_url && <a href={item.drive_url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-black px-2 py-0.5 rounded-lg" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)' }}>📁 Drive</a>}
+                    {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold" style={{ color: '#3B82F6' }}>🔗 Ver anuncio</a>}
+                    {item.drive_url && <a href={item.drive_url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-black px-2 py-0.5 rounded-lg" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.2)' }}>📁 Drive</a>}
                   </div>
-                  {/* Notas: solo en pisos/casas (no edificios inline) */}
-                  {item.tipologia !== 'edificio' && item.notas && <div className="mt-2 text-xs" style={{ color: '#888' }}>{item.notas}</div>}
+                  {item.tipologia !== 'edificio' && item.notas && <div className="mt-2 text-xs leading-relaxed" style={{ color: '#888' }}>{item.notas}</div>}
 
-                  {/* Ver detalle (edificios): expande notas + info adicional */}
+                  {/* Ver detalle (edificios) */}
                   {item.tipologia === 'edificio' && (
                     <button onClick={() => setExpandedDetalle(expandedDetalle === item.id ? null : item.id)}
-                      className="mt-3 w-full py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5"
-                      style={{ background: expandedDetalle === item.id ? 'rgba(242,110,31,0.18)' : 'rgba(255,255,255,0.05)', color: expandedDetalle === item.id ? '#F26E1F' : '#888', border: `1px solid ${expandedDetalle === item.id ? 'rgba(242,110,31,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
+                      className="mt-3 w-full py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-colors"
+                      style={{ background: expandedDetalle === item.id ? 'rgba(242,110,31,0.08)' : '#F5F4F0', color: expandedDetalle === item.id ? '#F26E1F' : '#888', border: `1.5px solid ${expandedDetalle === item.id ? 'rgba(242,110,31,0.3)' : '#ECEAE4'}` }}>
                       {expandedDetalle === item.id ? '▲ Cerrar detalle' : '▼ Ver detalle'}
                     </button>
                   )}
 
                   {/* Panel detalle expandido (edificios) */}
                   {item.tipologia === 'edificio' && expandedDetalle === item.id && (
-                    <div className="mt-3 rounded-xl p-3" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
                       {item.notas && (
-                        <>
-                          <div className="text-[9px] font-black uppercase tracking-wide mb-1.5 opacity-40 text-white">Descripción</div>
-                          <div className="text-[12px] leading-relaxed mb-3" style={{ color: '#ccc' }}>{item.notas}</div>
-                        </>
+                        <div className="px-3 pt-3 pb-2">
+                          <div className="text-[9px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#BBB' }}>Descripción</div>
+                          <div className="text-[12px] leading-relaxed" style={{ color: '#555' }}>{item.notas}</div>
+                        </div>
                       )}
-                      {/* Unidades del edificio */}
                       {unidades[item.id] && unidades[item.id].length > 0 && (
-                        <>
-                          <div className="text-[9px] font-black uppercase tracking-wide mb-1.5 opacity-40 text-white">Unidades ({unidades[item.id].length})</div>
-                          <div className="flex flex-col gap-1">
-                            {unidades[item.id].map(u => (
-                              <div key={u.id} className="flex items-center justify-between rounded-lg px-2.5 py-1.5" style={{ background: '#1A1A1A' }}>
-                                <span className="text-[11px] font-bold text-white">{u.tipo}{u.planta ? ` · P${u.planta}` : ''}</span>
-                                <div className="flex gap-2">
-                                  {u.superficie && <span className="text-[10px]" style={{ color: '#888' }}>{u.superficie}m²</span>}
-                                  {u.precio_venta_est && <span className="text-[10px] font-bold" style={{ color: '#22C55E' }}>{fmt(u.precio_venta_est)}</span>}
+                        <div className={item.notas ? 'border-t' : ''} style={{ borderColor: '#ECEAE4' }}>
+                          <div className="px-3 pt-3 pb-1">
+                            <div className="text-[9px] font-black uppercase tracking-wide mb-2" style={{ color: '#BBB' }}>Unidades ({unidades[item.id].length})</div>
+                          </div>
+                          <div className="flex flex-col">
+                            {unidades[item.id].map((u, ui) => (
+                              <div key={u.id} className="flex items-center justify-between px-3 py-2" style={{ borderTop: ui > 0 ? '1px solid #F0EEE8' : 'none' }}>
+                                <span className="text-[12px] font-bold" style={{ color: '#333' }}>{u.tipo}{u.planta ? ` · P${u.planta}` : ''}</span>
+                                <div className="flex items-center gap-2.5">
+                                  {u.superficie && <span className="text-[11px]" style={{ color: '#AAA' }}>{u.superficie}m²</span>}
+                                  {u.precio_venta_est && <span className="text-[11px] font-bold" style={{ color: '#22C55E' }}>{fmt(u.precio_venta_est)}</span>}
                                 </div>
                               </div>
                             ))}
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
                   )}
                 </div>
 
                 {/* Botones principales */}
-                <div className="flex gap-1.5 px-3 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="flex gap-1.5 px-3 py-2.5" style={{ borderTop: '1px solid #F0EEE8' }}>
                   <button onClick={() => openCalc(item.precio_compra || 0, item.titulo || item.direccion, item.ciudad || '', item)}
                     className="flex-1 text-xs font-black px-2 py-2 rounded-xl"
-                    style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}>
+                    style={{ background: 'rgba(242,110,31,0.09)', color: '#F26E1F', border: '1.5px solid rgba(242,110,31,0.25)' }}>
                     {isAnalizado ? '✎ Análisis' : '⊕ Calcular'}
                   </button>
-                  <button onClick={() => openEdit(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc', border: '1px solid rgba(255,255,255,0.10)' }}>✎</button>
-                  <button onClick={() => deleteInmueble(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.22)' }}>🗑</button>
+                  <button onClick={() => openEdit(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>✎</button>
+                  <button onClick={() => deleteInmueble(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: 'rgba(239,68,68,0.07)', color: '#EF4444', border: '1.5px solid rgba(239,68,68,0.18)' }}>🗑</button>
                 </div>
 
                 {/* Estado */}
                 {item.estado !== 'sin_analizar' && item.estado !== 'comprado' && (
-                  <div className="flex gap-2 px-3 py-2 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                    <span className="text-[10px] font-bold self-center flex-shrink-0 uppercase tracking-wide" style={{ color: '#555' }}>Estado:</span>
+                  <div className="flex gap-2 px-3 py-2 flex-wrap" style={{ borderTop: '1px solid #F0EEE8' }}>
+                    <span className="text-[10px] font-bold self-center flex-shrink-0 uppercase tracking-wide" style={{ color: '#BBB' }}>Estado:</span>
                     {(['ofertado', 'en_arras'] as const).map(s => {
                       const c = SUBESTADO_CFG[s]; const activo = item.estado === s
                       return (
                         <button key={s} onClick={() => updateEstado(item.id, activo ? 'en_estudio' : s)} disabled={!!updatingEstado}
                           className="text-[11px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50"
-                          style={{ background: activo ? c.bg : 'rgba(255,255,255,0.05)', color: activo ? c.color : '#666', border: `1px solid ${activo ? c.color+'60' : 'rgba(255,255,255,0.08)'}` }}>
+                          style={{ background: activo ? c.bg : '#F3F2EE', color: activo ? c.color : '#888', border: `1.5px solid ${activo ? c.color+'50' : '#ECEAE4'}` }}>
                           {updatingEstado === item.id+'_'+(activo?'en_estudio':s) ? '...' : c.label}
                         </button>
                       )
                     })}
                     {confirmandoCompra === item.id ? (
                       <div className="flex gap-1.5 ml-auto">
-                        <button onClick={() => crearProyecto(item)} disabled={creando === item.id} className="text-[11px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.3)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.6)' }}>{creando === item.id ? '...' : '✓ Confirmar'}</button>
-                        <button onClick={() => setConfirmandoCompra(null)} className="text-[11px] font-black px-2 py-1 rounded-lg" style={{ background: '#282828', color: '#888' }}>✕</button>
+                        <button onClick={() => crearProyecto(item)} disabled={creando === item.id} className="text-[11px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.15)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.4)' }}>{creando === item.id ? '...' : '✓ Confirmar'}</button>
+                        <button onClick={() => setConfirmandoCompra(null)} className="text-[11px] font-black px-2 py-1 rounded-lg" style={{ background: '#F3F2EE', color: '#888' }}>✕</button>
                       </div>
                     ) : (
-                      <button onClick={() => crearProyecto(item)} disabled={creando === item.id} className="text-[11px] font-black px-2.5 py-1 rounded-lg ml-auto disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.35)' }}>{creando === item.id ? '...' : 'Comprado →'}</button>
+                      <button onClick={() => crearProyecto(item)} disabled={creando === item.id} className="text-[11px] font-black px-2.5 py-1 rounded-lg ml-auto disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.3)' }}>{creando === item.id ? '...' : 'Comprado →'}</button>
                     )}
                   </div>
                 )}
                 {item.estado === 'comprado' && (
-                  <div className="flex items-center gap-2 px-3 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(34,197,94,0.06)' }}>
-                    <span className="text-[11px] font-bold" style={{ color: '#22C55E' }}>✓ Proyecto creado</span>
-                    <button onClick={() => router.push('/proyectos')} className="text-[11px] font-black px-2.5 py-1 rounded-lg ml-auto" style={{ background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.35)' }}>Ver →</button>
+                  <div className="flex items-center gap-2 px-3 py-2" style={{ borderTop: '1px solid #F0EEE8', background: 'rgba(34,197,94,0.05)' }}>
+                    <span className="text-[11px] font-bold" style={{ color: '#16A34A' }}>✓ Proyecto creado</span>
+                    <button onClick={() => router.push('/proyectos')} className="text-[11px] font-black px-2.5 py-1 rounded-lg ml-auto" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.3)' }}>Ver →</button>
                   </div>
                 )}
 
@@ -1049,8 +1050,9 @@ export default function MercadoPage() {
       {/* ═══ MODAL EDITAR ═══ */}
       {editInmueble && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setEditInmueble(null)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] overflow-y-auto" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '92vh', maxWidth: 480, margin: '0 auto' }}>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.55)' }} onClick={() => setEditInmueble(null)} />
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '92vh', maxWidth: 700 }}>
             <div className="p-5 pb-8">
               <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
               <div className="flex items-center justify-between mb-5">
@@ -1112,6 +1114,7 @@ export default function MercadoPage() {
                 <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingEdit ? 'Guardando...' : 'Guardar cambios'}</button>
               </div>
             </div>
+          </div>
           </div>
         </>
       )}
