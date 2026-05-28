@@ -18,14 +18,22 @@ export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req)
   if (!auth) return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
 
-  const { radar_id, direccion, fecha, hora, responsable, notas_previas } = await req.json()
-  if (!radar_id || !fecha || !hora || !responsable) {
+  const { radar_id, inmueble_id, direccion, fecha, hora, responsable, notas_previas } = await req.json()
+  // Acepta inmueble_id (nuevo) o radar_id (legado)
+  const refId = inmueble_id || radar_id
+  if (!refId || !fecha || !hora || !responsable) {
     return NextResponse.json({ error: 'Faltan campos requeridos.' }, { status: 400 })
   }
 
+  const insertPayload: Record<string, unknown> = {
+    fecha, hora, responsable, notas_previas: notas_previas || null,
+  }
+  if (inmueble_id) { insertPayload.inmueble_id = inmueble_id; insertPayload.radar_id = inmueble_id }
+  else { insertPayload.radar_id = radar_id }
+
   const { data: visita, error: dbError } = await supabaseAdmin
     .from('visitas_radar')
-    .insert([{ radar_id, fecha, hora, responsable, notas_previas: notas_previas || null }])
+    .insert([insertPayload])
     .select()
     .single()
   if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 })
@@ -51,14 +59,14 @@ export async function POST(req: NextRequest) {
       // Obtenemos todas las direcciones
       const { data: todasVisitas } = await supabaseAdmin
         .from('visitas_radar')
-        .select('radar_id')
+        .select('inmueble_id, radar_id')
         .eq('fecha', fecha)
         .eq('hora', hora)
-      const radarIds = (todasVisitas || []).map((v: any) => v.radar_id)
+      const ids = (todasVisitas || []).map((v: any) => v.inmueble_id || v.radar_id).filter(Boolean)
       const { data: inmuebles } = await supabaseAdmin
-        .from('inmuebles_radar')
+        .from('inmuebles')
         .select('id, direccion, ciudad')
-        .in('id', radarIds)
+        .in('id', ids)
       const titulos = (inmuebles || []).map((r: any) => `${r.direccion}${r.ciudad ? ', '+r.ciudad : ''}`).join(' · ')
       const title = `🏠 Visitas — ${titulos}`
       const description = `Responsable: ${responsable}${notas_previas ? '\n' + notas_previas : ''}`
