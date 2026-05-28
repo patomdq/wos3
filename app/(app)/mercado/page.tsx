@@ -1181,21 +1181,21 @@ export default function MercadoPage() {
                 <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
 
+              {/* Tipo — fila completa antes del grid */}
+              <div className="flex items-center gap-1.5 flex-nowrap mb-5">
+                <span className="text-[10px] font-black uppercase tracking-wide shrink-0 mr-1" style={{ color: '#666' }}>Tipo *</span>
+                {['piso','casa','duplex','edificio','suelo','nave'].map(t => (
+                  <button key={t} onClick={() => setNuevoForm(f => ({ ...f, tipologia: t }))}
+                    className="px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap"
+                    style={{ background: nuevoForm.tipologia === t ? '#F26E1F' : '#F5F4F0', color: nuevoForm.tipologia === t ? '#fff' : '#666', border: nuevoForm.tipologia === t ? '1.5px solid #F26E1F' : '1.5px solid #ECEAE4' }}>
+                    {TIPOLOGIA_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+
               <div className="sm:grid sm:grid-cols-2 sm:gap-6">
                 {/* Columna izquierda */}
                 <div className="grid grid-cols-2 gap-3 content-start">
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Tipo *</label>
-                    <div className="flex gap-2 flex-wrap">
-                      {['piso','casa','duplex','edificio','suelo','nave'].map(t => (
-                        <button key={t} onClick={() => setNuevoForm(f => ({ ...f, tipologia: t }))}
-                          className="px-3 py-1.5 rounded-xl text-xs font-black"
-                          style={{ background: nuevoForm.tipologia === t ? '#F26E1F' : '#F5F4F0', color: nuevoForm.tipologia === t ? '#fff' : '#666', border: nuevoForm.tipologia === t ? '1.5px solid #F26E1F' : '1.5px solid #ECEAE4' }}>
-                          {TIPOLOGIA_LABELS[t]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                   <div className="col-span-2">
                     <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Título</label>
                     <input type="text" value={nuevoForm.titulo} onChange={e => setNuevoForm(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Piso Vera centro..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
