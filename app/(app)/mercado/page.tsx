@@ -135,6 +135,7 @@ export default function MercadoPage() {
   const [loading, setLoading] = useState(true)
   const [unidades, setUnidades] = useState<Record<string, Unidad[]>>({})
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
+  const [expandedDetalle, setExpandedDetalle] = useState<string | null>(null)
   const [creando, setCreando] = useState<string | null>(null)
   const [updatingEstado, setUpdatingEstado] = useState<string | null>(null)
   const [confirmandoCompra, setConfirmandoCompra] = useState<string | null>(null)
@@ -193,7 +194,7 @@ export default function MercadoPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('inmuebles').select('*').order('created_at', { ascending: false }),
+      supabase.from('inmuebles').select('*').not('fuente', 'ilike', 'telegram%').order('created_at', { ascending: false }),
       supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre'),
     ]).then(([i, p]) => {
       setInmuebles(i.data || [])
@@ -753,14 +754,29 @@ export default function MercadoPage() {
   )
 
   return (
-    <div className="p-4">
-      {/* Topbar */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
-        <div className="flex-1 font-bold text-[17px] text-white">Mercado</div>
-        <button onClick={() => setNuevoOpen(true)} className="text-sm font-black px-3 py-2 rounded-xl text-white" style={{ background: '#F26E1F' }}>+ Agregar</button>
+    <div>
+      {/* ── Banner cabecera ── */}
+      <div className="relative w-full" style={{ height: 160, overflow: 'hidden' }}>
+        <img
+          src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200&h=320&fit=crop&q=80"
+          alt="Mercado"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(10,10,10,0.75))' }} />
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 flex items-end justify-between">
+          <div>
+            <h1 className="font-black text-[22px] text-white leading-tight">Mercado</h1>
+            <p className="text-[12px] font-medium mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>Inmuebles en estudio</p>
+          </div>
+          <button onClick={() => setNuevoOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
+            style={{ background: '#F26E1F' }}>
+            + Agregar
+          </button>
+        </div>
       </div>
 
+      <div className="p-4">
       {/* Filtros */}
       <div className="flex gap-2 mb-4 overflow-x-auto -mx-4 px-4">
         {FILTROS.map(f => (
@@ -774,13 +790,13 @@ export default function MercadoPage() {
 
       {/* Grid */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
-          {[1,2,3,4].map(i => <div key={i} className="h-52 rounded-2xl animate-pulse" style={{ background: '#141414' }} />)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '12px' }}>
+          {[1,2,3].map(i => <div key={i} className="h-52 rounded-2xl animate-pulse" style={{ background: '#141414' }} />)}
         </div>
       ) : inmueblesFiltrados.length === 0 ? (
         <div className="text-center py-16 text-sm" style={{ color: '#555' }}>Sin inmuebles todavía</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '12px' }}>
           {inmueblesFiltrados.map(item => {
             const isAnalizado = !!item.analizado_en
             const cfg = SUBESTADO_CFG[item.estado] || SUBESTADO_CFG.sin_analizar
@@ -804,10 +820,14 @@ export default function MercadoPage() {
 
                 {/* Contenido */}
                 <div className="p-3 flex-1">
-                  <div className="font-black text-[16px] text-white leading-tight truncate">{item.titulo || item.direccion}</div>
-                  {item.titulo && <div className="text-xs mt-0.5 truncate" style={{ color: '#888' }}>{item.direccion}{item.ciudad ? ` · ${item.ciudad}` : ''}</div>}
-                  {!item.titulo && item.ciudad && <div className="text-xs mt-0.5" style={{ color: '#888' }}>{item.ciudad}</div>}
-                  <div className="text-sm font-black font-mono mt-1" style={{ color: '#F26E1F' }}>{fmt(item.precio_compra || 0)}</div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-[16px] text-white leading-tight truncate">{item.titulo || item.direccion}</div>
+                      {item.titulo && <div className="text-xs mt-0.5 truncate" style={{ color: '#888' }}>{item.direccion}{item.ciudad ? ` · ${item.ciudad}` : ''}</div>}
+                      {!item.titulo && item.ciudad && <div className="text-xs mt-0.5" style={{ color: '#888' }}>{item.ciudad}</div>}
+                    </div>
+                    <div className="text-sm font-black font-mono flex-shrink-0" style={{ color: '#F26E1F' }}>{fmt(item.precio_compra || 0)}</div>
+                  </div>
 
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {item.superficie && <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc' }}>{item.superficie} m²</span>}
@@ -815,7 +835,24 @@ export default function MercadoPage() {
                     {item.num_plantas && <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)', color: '#ccc' }}>{item.num_plantas} plantas</span>}
                   </div>
 
-                  {isAnalizado && (
+                  {/* Para edificios: grid métricas compacto */}
+                  {item.tipologia === 'edificio' && (
+                    <div className="grid grid-cols-3 gap-1.5 mt-3 rounded-xl" style={{ background: '#1A1A1A', padding: '10px 8px' }}>
+                      {[
+                        { label: 'Precio', val: fmt(item.precio_compra || 0) },
+                        { label: 'Unidades', val: unidades[item.id] ? String(unidades[item.id].length) : '—' },
+                        { label: 'm²', val: item.superficie ? String(item.superficie) : '—' },
+                      ].map(m => (
+                        <div key={m.label} className="text-center">
+                          <div className="text-[9px] font-bold uppercase tracking-wide mb-0.5 opacity-40 text-white">{m.label}</div>
+                          <div className="text-[12px] font-black text-white">{m.val}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Para no-edificios: ROI y precios si analizado */}
+                  {item.tipologia !== 'edificio' && isAnalizado && (
                     <div className="grid grid-cols-3 gap-1.5 mt-3 rounded-xl p-2" style={{ background: '#1A1A1A' }}>
                       {[
                         { label: 'Pesimista', val: item.precio_venta_conservador, color: '#EF4444' },
@@ -829,7 +866,7 @@ export default function MercadoPage() {
                       ))}
                     </div>
                   )}
-                  {isAnalizado && item.roi_estimado !== undefined && (
+                  {item.tipologia !== 'edificio' && isAnalizado && item.roi_estimado !== undefined && (
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs font-black" style={{ color: '#22C55E' }}>↗ ROI {item.roi_estimado?.toFixed(1)}%</span>
                       {item.analizado_en && <span className="text-[10px]" style={{ color: '#555' }}>· {item.analizado_en}</span>}
@@ -840,7 +877,46 @@ export default function MercadoPage() {
                     {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold" style={{ color: '#60A5FA' }}>🔗 Ver anuncio</a>}
                     {item.drive_url && <a href={item.drive_url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-black px-2 py-0.5 rounded-lg" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)' }}>📁 Drive</a>}
                   </div>
-                  {item.notas && <div className="mt-2 text-xs" style={{ color: '#888' }}>{item.notas}</div>}
+                  {/* Notas: solo en pisos/casas (no edificios inline) */}
+                  {item.tipologia !== 'edificio' && item.notas && <div className="mt-2 text-xs" style={{ color: '#888' }}>{item.notas}</div>}
+
+                  {/* Ver detalle (edificios): expande notas + info adicional */}
+                  {item.tipologia === 'edificio' && (
+                    <button onClick={() => setExpandedDetalle(expandedDetalle === item.id ? null : item.id)}
+                      className="mt-3 w-full py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5"
+                      style={{ background: expandedDetalle === item.id ? 'rgba(242,110,31,0.18)' : 'rgba(255,255,255,0.05)', color: expandedDetalle === item.id ? '#F26E1F' : '#888', border: `1px solid ${expandedDetalle === item.id ? 'rgba(242,110,31,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
+                      {expandedDetalle === item.id ? '▲ Cerrar detalle' : '▼ Ver detalle'}
+                    </button>
+                  )}
+
+                  {/* Panel detalle expandido (edificios) */}
+                  {item.tipologia === 'edificio' && expandedDetalle === item.id && (
+                    <div className="mt-3 rounded-xl p-3" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.07)' }}>
+                      {item.notas && (
+                        <>
+                          <div className="text-[9px] font-black uppercase tracking-wide mb-1.5 opacity-40 text-white">Descripción</div>
+                          <div className="text-[12px] leading-relaxed mb-3" style={{ color: '#ccc' }}>{item.notas}</div>
+                        </>
+                      )}
+                      {/* Unidades del edificio */}
+                      {unidades[item.id] && unidades[item.id].length > 0 && (
+                        <>
+                          <div className="text-[9px] font-black uppercase tracking-wide mb-1.5 opacity-40 text-white">Unidades ({unidades[item.id].length})</div>
+                          <div className="flex flex-col gap-1">
+                            {unidades[item.id].map(u => (
+                              <div key={u.id} className="flex items-center justify-between rounded-lg px-2.5 py-1.5" style={{ background: '#1A1A1A' }}>
+                                <span className="text-[11px] font-bold text-white">{u.tipo}{u.planta ? ` · P${u.planta}` : ''}</span>
+                                <div className="flex gap-2">
+                                  {u.superficie && <span className="text-[10px]" style={{ color: '#888' }}>{u.superficie}m²</span>}
+                                  {u.precio_venta_est && <span className="text-[10px] font-bold" style={{ color: '#22C55E' }}>{fmt(u.precio_venta_est)}</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Botones principales */}
@@ -892,6 +968,7 @@ export default function MercadoPage() {
           })}
         </div>
       )}
+      </div>{/* /p-4 content wrapper */}
 
       {/* ═══ MODAL NUEVO ═══ */}
       {nuevoOpen && (
