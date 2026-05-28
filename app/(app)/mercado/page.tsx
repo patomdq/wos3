@@ -155,6 +155,8 @@ export default function MercadoPage() {
   const [addingNuevoUnidad, setAddingNuevoUnidad] = useState(false)
   const [importandoNuevoUrl, setImportandoNuevoUrl] = useState(false)
   const [nuevoImportUrl, setNuevoImportUrl] = useState('')
+  const [nuevoPortada, setNuevoPortada] = useState<File | null>(null)
+  const [nuevoPortadaPreview, setNuevoPortadaPreview] = useState<string | null>(null)
 
   // Editar inmueble
   const [editInmueble, setEditInmueble] = useState<Inmueble | null>(null)
@@ -245,6 +247,15 @@ export default function MercadoPage() {
       url: nuevoForm.url || null,
       drive_url: nuevoForm.drive_url || null,
     }
+    if (nuevoPortada) {
+      const ext = nuevoPortada.name.split('.').pop() || 'jpg'
+      const fileName = `portada_${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('portadas').upload(fileName, nuevoPortada, { cacheControl: '3600', upsert: false })
+      if (!upErr) {
+        const { data: { publicUrl } } = supabase.storage.from('portadas').getPublicUrl(fileName)
+        payload.imagen_portada = publicUrl
+      }
+    }
     const { data, error } = await supabase.from('inmuebles').insert([payload]).select().single()
     setSavingNuevo(false)
     if (error) { alert(`Error al guardar: ${error.message}`); return }
@@ -270,6 +281,8 @@ export default function MercadoPage() {
       setNuevoForm(emptyNuevoForm())
       setNuevoUnidades([])
       setAddingNuevoUnidad(false)
+      setNuevoPortada(null)
+      setNuevoPortadaPreview(null)
     }
   }
 
@@ -1158,14 +1171,14 @@ export default function MercadoPage() {
       {/* ═══ MODAL NUEVO ═══ */}
       {nuevoOpen && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl('') }} />
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} />
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
           <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '92vh', maxWidth: 900 }}>
             <div className="p-5 pb-8">
               <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#DCDAD4' }} />
               <div className="flex items-center justify-between mb-5">
                 <div className="font-black text-[17px]" style={{ color: '#111' }}>Agregar inmueble</div>
-                <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl('') }} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
+                <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
 
               <div className="sm:grid sm:grid-cols-2 sm:gap-6">
@@ -1221,7 +1234,7 @@ export default function MercadoPage() {
                   </div>
                   {/* Botones mobile */}
                   <div className="col-span-2 flex gap-2 mt-2 sm:hidden">
-                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl('') }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
+                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
                     <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
                   </div>
                 </div>
@@ -1393,9 +1406,33 @@ export default function MercadoPage() {
                       )}
                     </div>
                   )}
+                  {/* Foto portada para tipos no-edificio */}
+                  {nuevoForm.tipologia !== 'edificio' && (
+                    <label
+                      className="flex-1 flex flex-col items-center justify-center rounded-2xl cursor-pointer transition-colors mb-3"
+                      style={{ border: nuevoPortadaPreview ? 'none' : '2px dashed #DDDBD5', background: nuevoPortadaPreview ? 'transparent' : '#FAFAF8', minHeight: 200, overflow: 'hidden', position: 'relative' }}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) { setNuevoPortada(f); setNuevoPortadaPreview(URL.createObjectURL(f)) } }}>
+                      <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { setNuevoPortada(f); setNuevoPortadaPreview(URL.createObjectURL(f)) } }} />
+                      {nuevoPortadaPreview ? (
+                        <>
+                          <img src={nuevoPortadaPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.4)' }}>
+                            <span className="text-white text-xs font-bold">Cambiar foto</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2.5 pointer-events-none">
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: '#ECEAE4' }}>📷</div>
+                          <div className="text-[13px] font-bold" style={{ color: '#888' }}>Foto de portada</div>
+                          <div className="text-[11px] text-center" style={{ color: '#BBB' }}>Click o arrastrá una imagen<br/>Se usará como portada de la card</div>
+                        </div>
+                      )}
+                    </label>
+                  )}
                   {/* Botones desktop */}
                   <div className="hidden sm:flex gap-2 mt-auto pt-3">
-                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl('') }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
+                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
                     <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
                   </div>
                 </div>
