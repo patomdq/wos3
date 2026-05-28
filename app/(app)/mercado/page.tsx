@@ -756,24 +756,28 @@ export default function MercadoPage() {
   return (
     <div style={{ background: '#F4F4F4', minHeight: '100vh' }}>
       {/* ── Banner cabecera ── */}
-      <div className="relative w-full" style={{ height: 220, overflow: 'hidden' }}>
-        <img
-          src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200&h=320&fit=crop&q=80"
-          alt="Mercado"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(10,10,10,0.75))' }} />
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 flex items-end justify-between">
-          <div>
-            <h1 className="font-black text-[22px] text-white leading-tight">Mercado</h1>
-            <p className="text-[12px] font-medium mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>Inmuebles en estudio</p>
+      <div className="relative w-full" style={{ height: 250, overflow: 'visible' }}>
+        <div style={{ height: 250, overflow: 'hidden', position: 'relative' }}>
+          <img
+            src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1400&h=500&fit=crop&q=80"
+            alt="Mercado"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 70%, rgba(244,244,244,0) 100%)' }} />
+          <div className="absolute bottom-0 left-0 right-0 px-6 pb-6 flex items-end justify-between">
+            <div>
+              <h1 className="font-black text-[26px] text-white leading-tight" style={{ letterSpacing: '-0.5px' }}>Mercado</h1>
+              <p className="text-[13px] font-medium mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>Inmuebles en estudio</p>
+            </div>
+            <button onClick={() => setNuevoOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
+              style={{ background: '#F26E1F' }}>
+              + Agregar
+            </button>
           </div>
-          <button onClick={() => setNuevoOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
-            style={{ background: '#F26E1F' }}>
-            + Agregar
-          </button>
         </div>
+        {/* Difuminado de integración con la página */}
+        <div className="absolute left-0 right-0" style={{ bottom: -1, height: 60, background: 'linear-gradient(to bottom, transparent, #F4F4F4)', pointerEvents: 'none' }} />
       </div>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 40px' }}>
@@ -802,12 +806,12 @@ export default function MercadoPage() {
             const cfg = SUBESTADO_CFG[item.estado] || SUBESTADO_CFG.sin_analizar
             const tipLabel = TIPOLOGIA_LABELS[item.tipologia] || item.tipologia
             return (
-              <div key={item.id} className="rounded-2xl overflow-hidden flex flex-col" style={CARD}>
+              <div key={item.id} className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1 hover:shadow-lg" style={CARD}>
                 {/* Imagen / placeholder */}
                 <div className="relative cursor-pointer" style={{ height: 160, background: item.imagen_portada ? 'transparent' : 'linear-gradient(135deg,#F5F4F0,#ECEAE4)', overflow: 'hidden' }}
                   onClick={() => openEdit(item)}>
                   {item.imagen_portada
-                    ? <img src={item.imagen_portada} alt="" className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.03]" />
+                    ? <img src={item.imagen_portada} alt="" className="w-full h-full object-cover" />
                     : <div className="flex items-center justify-center h-full text-5xl" style={{ color: '#D0CFC8' }}>{item.tipologia === 'edificio' ? '🏢' : item.tipologia === 'suelo' ? '🏗' : item.tipologia === 'nave' ? '🏭' : '🏠'}</div>
                   }
                   <div className="absolute top-2.5 left-2.5 flex gap-1.5">
@@ -903,16 +907,35 @@ export default function MercadoPage() {
                           <div className="px-3 pt-3 pb-1">
                             <div className="text-[9px] font-black uppercase tracking-wide mb-2" style={{ color: '#BBB' }}>Unidades ({unidades[item.id].length})</div>
                           </div>
-                          <div className="flex flex-col">
-                            {unidades[item.id].map((u, ui) => (
-                              <div key={u.id} className="flex items-center justify-between px-3 py-2" style={{ borderTop: ui > 0 ? '1px solid #F0EEE8' : 'none' }}>
-                                <span className="text-[12px] font-bold" style={{ color: '#333' }}>{u.tipo}{u.planta ? ` · P${u.planta}` : ''}</span>
-                                <div className="flex items-center gap-2.5">
-                                  {u.superficie && <span className="text-[11px]" style={{ color: '#AAA' }}>{u.superficie}m²</span>}
-                                  {u.precio_venta_est && <span className="text-[11px] font-bold" style={{ color: '#22C55E' }}>{fmt(u.precio_venta_est)}</span>}
-                                </div>
-                              </div>
+                          {/* Cabecera tabla */}
+                          <div className="grid px-3 py-1.5" style={{ gridTemplateColumns: '1fr 48px 72px 80px', borderTop: '1px solid #F0EEE8', background: '#FAFAF8' }}>
+                            {['Unidad','m²','Estado','Venta est.'].map(h => (
+                              <div key={h} className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8', textAlign: h === 'Venta est.' ? 'right' : 'left' }}>{h}</div>
                             ))}
+                          </div>
+                          <div className="flex flex-col">
+                            {unidades[item.id].map((u, ui) => {
+                              const isLibre = !u.ocupacion || u.ocupacion === 'libre' || u.ocupacion === 'Libre'
+                              return (
+                                <div key={u.id} className="grid px-3 py-2 items-center" style={{ gridTemplateColumns: '1fr 48px 72px 80px', borderTop: ui > 0 ? '1px solid #F0EEE8' : 'none' }}>
+                                  <div>
+                                    <div className="text-[12px] font-bold" style={{ color: '#222' }}>{u.tipo}{u.planta ? ` · P${u.planta}` : ''}</div>
+                                    {u.renta_mensual && <div className="text-[10px]" style={{ color: '#AAA' }}>{fmt(u.renta_mensual)}/mes</div>}
+                                  </div>
+                                  <div className="text-[11px]" style={{ color: '#AAA' }}>{u.superficie ?? '—'}</div>
+                                  <div>
+                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full" style={{
+                                      background: isLibre ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)',
+                                      color: isLibre ? '#16A34A' : '#D97706'
+                                    }}>{isLibre ? 'Libre' : 'Ocupado'}</span>
+                                    {u.reforma_estimada ? <div className="text-[9px] mt-0.5" style={{ color: '#CCC' }}>Reforma {fmt(u.reforma_estimada)}</div> : null}
+                                  </div>
+                                  <div className="text-[11px] font-bold text-right" style={{ color: u.precio_venta_est ? '#22C55E' : '#CCC' }}>
+                                    {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
                       )}
@@ -1052,7 +1075,7 @@ export default function MercadoPage() {
         <>
           <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.55)' }} onClick={() => setEditInmueble(null)} />
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
-          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '92vh', maxWidth: 700 }}>
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '92vh', maxWidth: 900 }}>
             <div className="p-5 pb-8">
               <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
               <div className="flex items-center justify-between mb-5">
