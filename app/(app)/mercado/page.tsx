@@ -134,6 +134,10 @@ export default function MercadoPage() {
   const [filtroTipologia, setFiltroTipologia] = useState('todos')
   const [loading, setLoading] = useState(true)
   const [unidades, setUnidades] = useState<Record<string, Unidad[]>>({})
+  const [loadingUnidades, setLoadingUnidades] = useState<Record<string, boolean>>({})
+  const [addingUnidadId, setAddingUnidadId] = useState<string | null>(null)
+  const [nuevaUnidad, setNuevaUnidad] = useState({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
+  const [savingUnidad, setSavingUnidad] = useState(false)
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [expandedDetalle, setExpandedDetalle] = useState<string | null>(null)
   const [creando, setCreando] = useState<string | null>(null)
@@ -397,6 +401,47 @@ export default function MercadoPage() {
     setInmuebles(prev => prev.map(x => x.id === item.id ? { ...x, estado: 'comprado' } : x))
     setCreando(null)
     router.push('/proyectos')
+  }
+
+  // ── Unidades de edificio ──────────────────────────────────
+  const fetchUnidades = async (inmuebleId: string) => {
+    if (loadingUnidades[inmuebleId]) return
+    setLoadingUnidades(prev => ({ ...prev, [inmuebleId]: true }))
+    const { data } = await supabase.from('inmueble_unidades').select('*').eq('inmueble_id', inmuebleId).order('planta').order('tipo')
+    setUnidades(prev => ({ ...prev, [inmuebleId]: data || [] }))
+    setLoadingUnidades(prev => ({ ...prev, [inmuebleId]: false }))
+  }
+  const toggleDetalle = (id: string) => {
+    const closing = expandedDetalle === id
+    setExpandedDetalle(closing ? null : id)
+    if (!closing && !unidades[id]) fetchUnidades(id)
+  }
+  const saveUnidad = async (inmuebleId: string) => {
+    if (!nuevaUnidad.tipo) return
+    setSavingUnidad(true)
+    const payload: Record<string, unknown> = {
+      inmueble_id: inmuebleId,
+      tipo: nuevaUnidad.tipo,
+      planta: nuevaUnidad.planta || null,
+      superficie: nuevaUnidad.superficie ? parseFloat(nuevaUnidad.superficie) : null,
+      ocupacion: nuevaUnidad.ocupacion,
+      origen: 'manual',
+      renta_mensual: nuevaUnidad.renta_mensual ? parseFloat(nuevaUnidad.renta_mensual) : null,
+      precio_venta_est: nuevaUnidad.precio_venta_est ? parseFloat(nuevaUnidad.precio_venta_est) : null,
+      reforma_estimada: nuevaUnidad.reforma_estimada ? parseFloat(nuevaUnidad.reforma_estimada) : null,
+      notas: nuevaUnidad.notas || null,
+    }
+    const { data, error } = await supabase.from('inmueble_unidades').insert([payload]).select().single()
+    setSavingUnidad(false)
+    if (error) { alert(error.message); return }
+    setUnidades(prev => ({ ...prev, [inmuebleId]: [...(prev[inmuebleId] || []), data] }))
+    setAddingUnidadId(null)
+    setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
+  }
+  const deleteUnidad = async (unidadId: string, inmuebleId: string) => {
+    if (!confirm('¿Eliminar esta unidad?')) return
+    await supabase.from('inmueble_unidades').delete().eq('id', unidadId)
+    setUnidades(prev => ({ ...prev, [inmuebleId]: (prev[inmuebleId] || []).filter(u => u.id !== unidadId) }))
   }
 
   // ── Bitácora ─────────────────────────────────────────────
@@ -886,59 +931,144 @@ export default function MercadoPage() {
 
                   {/* Ver detalle (edificios) */}
                   {item.tipologia === 'edificio' && (
-                    <button onClick={() => setExpandedDetalle(expandedDetalle === item.id ? null : item.id)}
+                    <button onClick={() => toggleDetalle(item.id)}
                       className="mt-3 w-full py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-colors"
                       style={{ background: expandedDetalle === item.id ? 'rgba(242,110,31,0.08)' : '#F5F4F0', color: expandedDetalle === item.id ? '#F26E1F' : '#888', border: `1.5px solid ${expandedDetalle === item.id ? 'rgba(242,110,31,0.3)' : '#ECEAE4'}` }}>
-                      {expandedDetalle === item.id ? '▲ Cerrar detalle' : '▼ Ver detalle'}
+                      {expandedDetalle === item.id ? '▲ Cerrar detalle' : `▼ Ver detalle${unidades[item.id] ? ` · ${unidades[item.id].length} unidades` : ''}`}
                     </button>
                   )}
 
                   {/* Panel detalle expandido (edificios) */}
                   {item.tipologia === 'edificio' && expandedDetalle === item.id && (
                     <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
+                      {/* Descripción */}
                       {item.notas && (
-                        <div className="px-3 pt-3 pb-2">
+                        <div className="px-3 pt-3 pb-2.5" style={{ borderBottom: '1px solid #F0EEE8' }}>
                           <div className="text-[9px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#BBB' }}>Descripción</div>
                           <div className="text-[12px] leading-relaxed" style={{ color: '#555' }}>{item.notas}</div>
                         </div>
                       )}
-                      {unidades[item.id] && unidades[item.id].length > 0 && (
-                        <div className={item.notas ? 'border-t' : ''} style={{ borderColor: '#ECEAE4' }}>
-                          <div className="px-3 pt-3 pb-1">
-                            <div className="text-[9px] font-black uppercase tracking-wide mb-2" style={{ color: '#BBB' }}>Unidades ({unidades[item.id].length})</div>
+
+                      {/* Sección unidades */}
+                      <div>
+                        <div className="flex items-center justify-between px-3 py-2.5">
+                          <div className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#BBB' }}>
+                            Unidades{unidades[item.id] ? ` (${unidades[item.id].length})` : ''}
                           </div>
-                          {/* Cabecera tabla */}
-                          <div className="grid px-3 py-1.5" style={{ gridTemplateColumns: '1fr 48px 72px 80px', borderTop: '1px solid #F0EEE8', background: '#FAFAF8' }}>
-                            {['Unidad','m²','Estado','Venta est.'].map(h => (
-                              <div key={h} className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8', textAlign: h === 'Venta est.' ? 'right' : 'left' }}>{h}</div>
-                            ))}
+                          <button onClick={() => { setAddingUnidadId(addingUnidadId === item.id ? null : item.id); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }) }}
+                            className="text-[10px] font-black px-2.5 py-1 rounded-lg"
+                            style={{ background: addingUnidadId === item.id ? 'rgba(242,110,31,0.08)' : '#F5F4F0', color: addingUnidadId === item.id ? '#F26E1F' : '#888', border: `1.5px solid ${addingUnidadId === item.id ? 'rgba(242,110,31,0.3)' : '#ECEAE4'}` }}>
+                            {addingUnidadId === item.id ? '✕ Cancelar' : '+ Agregar unidad'}
+                          </button>
+                        </div>
+
+                        {/* Formulario nueva unidad */}
+                        {addingUnidadId === item.id && (
+                          <div className="mx-3 mb-3 rounded-xl p-3" style={{ background: '#FAFAF8', border: '1.5px solid #ECEAE4' }}>
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              <div>
+                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Tipo</label>
+                                <select value={nuevaUnidad.tipo} onChange={e => setNuevaUnidad(f => ({ ...f, tipo: e.target.value }))}
+                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
+                                  {['Piso','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Planta</label>
+                                <input type="text" value={nuevaUnidad.planta} onChange={e => setNuevaUnidad(f => ({ ...f, planta: e.target.value }))} placeholder="1ª, PB, Ático..."
+                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>m²</label>
+                                <input type="number" value={nuevaUnidad.superficie} onChange={e => setNuevaUnidad(f => ({ ...f, superficie: e.target.value }))} placeholder="60"
+                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Ocupación</label>
+                                <select value={nuevaUnidad.ocupacion} onChange={e => setNuevaUnidad(f => ({ ...f, ocupacion: e.target.value }))}
+                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
+                                  <option value="libre">Libre</option>
+                                  <option value="ocupado">Ocupado</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Renta/mes (€)</label>
+                                <input type="number" value={nuevaUnidad.renta_mensual} onChange={e => setNuevaUnidad(f => ({ ...f, renta_mensual: e.target.value }))} placeholder="450"
+                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>P. Venta est. (€)</label>
+                                <input type="number" value={nuevaUnidad.precio_venta_est} onChange={e => setNuevaUnidad(f => ({ ...f, precio_venta_est: e.target.value }))} placeholder="55000"
+                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Reforma est. (€)</label>
+                                <input type="number" value={nuevaUnidad.reforma_estimada} onChange={e => setNuevaUnidad(f => ({ ...f, reforma_estimada: e.target.value }))} placeholder="8000"
+                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Notas</label>
+                                <input type="text" value={nuevaUnidad.notas} onChange={e => setNuevaUnidad(f => ({ ...f, notas: e.target.value }))} placeholder="Opcional..."
+                                  className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                              </div>
+                            </div>
+                            <button onClick={() => saveUnidad(item.id)} disabled={savingUnidad}
+                              className="w-full py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50"
+                              style={{ background: '#F26E1F' }}>
+                              {savingUnidad ? 'Guardando...' : '+ Guardar unidad'}
+                            </button>
                           </div>
-                          <div className="flex flex-col">
+                        )}
+
+                        {/* Lista de unidades */}
+                        {loadingUnidades[item.id] && (
+                          <div className="px-3 py-3 text-xs" style={{ color: '#AAA' }}>Cargando unidades...</div>
+                        )}
+                        {!loadingUnidades[item.id] && unidades[item.id] && unidades[item.id].length === 0 && (
+                          <div className="px-3 pb-3 text-xs" style={{ color: '#CCC' }}>Sin unidades todavía. Agrega la primera.</div>
+                        )}
+                        {!loadingUnidades[item.id] && unidades[item.id] && unidades[item.id].length > 0 && (
+                          <>
+                            <div className="grid px-3 py-1.5" style={{ gridTemplateColumns: '1fr 44px 68px 76px 28px', background: '#FAFAF8', borderTop: '1px solid #F0EEE8' }}>
+                              {['Unidad','m²','Estado','Venta est.',''].map((h,i) => (
+                                <div key={i} className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</div>
+                              ))}
+                            </div>
                             {unidades[item.id].map((u, ui) => {
                               const isLibre = !u.ocupacion || u.ocupacion === 'libre' || u.ocupacion === 'Libre'
                               return (
-                                <div key={u.id} className="grid px-3 py-2 items-center" style={{ gridTemplateColumns: '1fr 48px 72px 80px', borderTop: ui > 0 ? '1px solid #F0EEE8' : 'none' }}>
+                                <div key={u.id} className="grid px-3 py-2 items-center" style={{ gridTemplateColumns: '1fr 44px 68px 76px 28px', borderTop: ui > 0 ? '1px solid #F0EEE8' : '1px solid #F0EEE8' }}>
                                   <div>
-                                    <div className="text-[12px] font-bold" style={{ color: '#222' }}>{u.tipo}{u.planta ? ` · P${u.planta}` : ''}</div>
-                                    {u.renta_mensual && <div className="text-[10px]" style={{ color: '#AAA' }}>{fmt(u.renta_mensual)}/mes</div>}
+                                    <div className="text-[12px] font-bold" style={{ color: '#222' }}>{u.tipo}{u.planta ? ` · ${u.planta}` : ''}</div>
+                                    {u.renta_mensual ? <div className="text-[10px]" style={{ color: '#AAA' }}>{fmt(u.renta_mensual)}/mes</div> : null}
+                                    {u.reforma_estimada ? <div className="text-[10px]" style={{ color: '#CCC' }}>Reforma {fmt(u.reforma_estimada)}</div> : null}
+                                    {u.notas ? <div className="text-[10px]" style={{ color: '#BBB' }}>{u.notas}</div> : null}
                                   </div>
                                   <div className="text-[11px]" style={{ color: '#AAA' }}>{u.superficie ?? '—'}</div>
                                   <div>
-                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full" style={{
-                                      background: isLibre ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)',
-                                      color: isLibre ? '#16A34A' : '#D97706'
-                                    }}>{isLibre ? 'Libre' : 'Ocupado'}</span>
-                                    {u.reforma_estimada ? <div className="text-[9px] mt-0.5" style={{ color: '#CCC' }}>Reforma {fmt(u.reforma_estimada)}</div> : null}
+                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full" style={{ background: isLibre ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)', color: isLibre ? '#16A34A' : '#D97706' }}>
+                                      {isLibre ? 'Libre' : 'Ocupado'}
+                                    </span>
                                   </div>
                                   <div className="text-[11px] font-bold text-right" style={{ color: u.precio_venta_est ? '#22C55E' : '#CCC' }}>
                                     {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
                                   </div>
+                                  <button onClick={() => deleteUnidad(u.id, item.id)}
+                                    className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] ml-auto"
+                                    style={{ background: 'rgba(239,68,68,0.07)', color: '#EF4444' }}>✕</button>
                                 </div>
                               )
                             })}
-                          </div>
-                        </div>
-                      )}
+                            {/* Totales */}
+                            <div className="flex justify-between items-center px-3 py-2.5" style={{ borderTop: '1.5px solid #ECEAE4', background: '#F9F8F5' }}>
+                              <span className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#AAA' }}>Total venta estimado</span>
+                              <span className="text-[13px] font-black" style={{ color: '#22C55E' }}>
+                                {fmt(unidades[item.id].reduce((acc, u) => acc + (u.precio_venta_est || 0), 0))}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
