@@ -569,7 +569,7 @@ export default function MercadoPage() {
 
   const res = calcResultados(gastos, pvPes, pvReal, pvOpt, duracionMeses)
 
-  const CARD = { background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }
+  const CARD = { background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 4px 24px rgba(0,0,0,0.18)' }
   const INP  = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', color: '#fff' }
   const ESC_UI = [
     { label: 'Conservador', pv: pvPes,  idx: 0, color: '#EF4444' },
@@ -754,9 +754,9 @@ export default function MercadoPage() {
   )
 
   return (
-    <div>
+    <div style={{ background: '#F4F4F4', minHeight: '100vh' }}>
       {/* ── Banner cabecera ── */}
-      <div className="relative w-full" style={{ height: 160, overflow: 'hidden' }}>
+      <div className="relative w-full" style={{ height: 220, overflow: 'hidden' }}>
         <img
           src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200&h=320&fit=crop&q=80"
           alt="Mercado"
@@ -776,13 +776,13 @@ export default function MercadoPage() {
         </div>
       </div>
 
-      <div className="p-4">
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 40px' }}>
       {/* Filtros */}
-      <div className="flex gap-2 mb-4 overflow-x-auto -mx-4 px-4">
+      <div className="flex gap-2 mb-8 overflow-x-auto -mx-5 px-5">
         {FILTROS.map(f => (
           <button key={f} onClick={() => setFiltroTipologia(f)}
             className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap"
-            style={{ background: filtroTipologia === f ? '#F26E1F' : '#1E1E1E', color: filtroTipologia === f ? '#fff' : '#888', border: filtroTipologia === f ? '1px solid #F26E1F' : '1px solid rgba(255,255,255,0.08)' }}>
+            style={{ background: filtroTipologia === f ? '#F26E1F' : '#E8E8E8', color: filtroTipologia === f ? '#fff' : '#555', border: filtroTipologia === f ? '1px solid #F26E1F' : '1px solid #DCDCDC' }}>
             {FILTRO_LABELS[f]}{f !== 'todos' ? ` (${inmuebles.filter(x => x.tipologia === f).length})` : ` (${inmuebles.length})`}
           </button>
         ))}
@@ -790,13 +790,13 @@ export default function MercadoPage() {
 
       {/* Grid */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '12px' }}>
-          {[1,2,3].map(i => <div key={i} className="h-52 rounded-2xl animate-pulse" style={{ background: '#141414' }} />)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+          {[1,2,3].map(i => <div key={i} className="h-52 rounded-2xl animate-pulse" style={{ background: '#D8D8D8' }} />)}
         </div>
       ) : inmueblesFiltrados.length === 0 ? (
-        <div className="text-center py-16 text-sm" style={{ color: '#555' }}>Sin inmuebles todavía</div>
+        <div className="text-center py-16 text-sm" style={{ color: '#999' }}>Sin inmuebles todavía</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
           {inmueblesFiltrados.map(item => {
             const isAnalizado = !!item.analizado_en
             const cfg = SUBESTADO_CFG[item.estado] || SUBESTADO_CFG.sin_analizar
@@ -968,7 +968,7 @@ export default function MercadoPage() {
           })}
         </div>
       )}
-      </div>{/* /p-4 content wrapper */}
+      </div>{/* /content wrapper */}
 
       {/* ═══ MODAL NUEVO ═══ */}
       {nuevoOpen && (
