@@ -1534,7 +1534,54 @@ export default function MercadoPage() {
                 </div>
 
                 {/* Columna derecha: unidades (edificios) o espacio vacío */}
-                <div className="mt-6 sm:mt-0">
+                <div className="mt-6 sm:mt-0 flex flex-col gap-3">
+                  {/* Imagen de portada — siempre visible para todos los tipos */}
+                  <div>
+                    <input type="file" accept="image/*" id="editPortadaInput" className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (!f) return
+                        setEditPortada(f)
+                        const reader = new FileReader()
+                        reader.onload = ev => setEditPortadaPreview(ev.target?.result as string)
+                        reader.readAsDataURL(f)
+                      }} />
+                    <div
+                      className="rounded-2xl overflow-hidden cursor-pointer relative flex flex-col items-center justify-center"
+                      style={{
+                        height: 110,
+                        border: (editPortadaPreview || editInmueble.imagen_portada) ? '1.5px solid #ECEAE4' : '2px dashed #DDDBD5',
+                        background: (editPortadaPreview || editInmueble.imagen_portada) ? 'transparent' : '#FAFAF8',
+                      }}
+                      onClick={() => document.getElementById('editPortadaInput')?.click()}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => {
+                        e.preventDefault()
+                        const f = e.dataTransfer.files?.[0]
+                        if (!f || !f.type.startsWith('image/')) return
+                        setEditPortada(f)
+                        const reader = new FileReader()
+                        reader.onload = ev => setEditPortadaPreview(ev.target?.result as string)
+                        reader.readAsDataURL(f)
+                      }}
+                    >
+                      {(editPortadaPreview || editInmueble.imagen_portada) ? (
+                        <>
+                          <img src={editPortadaPreview || editInmueble.imagen_portada!} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.4)' }}>
+                            <span className="text-white text-xs font-black">📷 Cambiar foto</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-2xl mb-1 opacity-30">📷</div>
+                          <div className="text-[12px] font-bold" style={{ color: '#888' }}>Foto de portada</div>
+                          <div className="text-[10px] mt-0.5" style={{ color: '#BBB' }}>Click o arrastrá una imagen</div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
                   {editForm.tipologia === 'edificio' ? (
                     <div className="rounded-2xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
                       {/* Header unidades */}
@@ -1690,54 +1737,7 @@ export default function MercadoPage() {
                         </>
                       )}
                     </div>
-                  ) : (
-                    /* Para no-edificios: área de imagen (drag & drop o preview existente) */
-                    <div className="flex flex-col h-full gap-3">
-                      <input type="file" accept="image/*" id="editPortadaInput" className="hidden"
-                        onChange={e => {
-                          const f = e.target.files?.[0]
-                          if (!f) return
-                          setEditPortada(f)
-                          const reader = new FileReader()
-                          reader.onload = ev => setEditPortadaPreview(ev.target?.result as string)
-                          reader.readAsDataURL(f)
-                        }} />
-                      <div
-                        className="flex-1 rounded-2xl overflow-hidden cursor-pointer relative flex flex-col items-center justify-center"
-                        style={{
-                          border: (editPortadaPreview || editInmueble.imagen_portada) ? '1.5px solid #ECEAE4' : '2px dashed #DDDBD5',
-                          background: (editPortadaPreview || editInmueble.imagen_portada) ? 'transparent' : '#FAFAF8',
-                          minHeight: 200
-                        }}
-                        onClick={() => document.getElementById('editPortadaInput')?.click()}
-                        onDragOver={e => e.preventDefault()}
-                        onDrop={e => {
-                          e.preventDefault()
-                          const f = e.dataTransfer.files?.[0]
-                          if (!f || !f.type.startsWith('image/')) return
-                          setEditPortada(f)
-                          const reader = new FileReader()
-                          reader.onload = ev => setEditPortadaPreview(ev.target?.result as string)
-                          reader.readAsDataURL(f)
-                        }}
-                      >
-                        {(editPortadaPreview || editInmueble.imagen_portada) ? (
-                          <>
-                            <img src={editPortadaPreview || editInmueble.imagen_portada!} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.4)' }}>
-                              <span className="text-white text-xs font-black">📷 Cambiar foto</span>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="text-3xl mb-2 opacity-30">📷</div>
-                            <div className="text-[13px] font-bold" style={{ color: '#888' }}>Foto de portada</div>
-                            <div className="text-[11px] text-center mt-1" style={{ color: '#BBB' }}>Click o arrastrá una imagen<br/>Se usará como portada de la card</div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  ) : null}
 
                 </div>
               </div>
