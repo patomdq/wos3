@@ -1189,9 +1189,9 @@ export default function MercadoPage() {
       {/* ═══ MODAL NUEVO ═══ */}
       {nuevoOpen && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} />
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
-          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '92vh', maxWidth: 900 }}>
+          <div className="fixed inset-x-0 top-0 z-40" style={{ bottom: 70, background: 'rgba(0,0,0,0.45)' }} onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} />
+          <div className="fixed inset-x-0 top-0 z-50 flex items-end sm:items-center justify-center pointer-events-none" style={{ bottom: 70 }}>
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 16px)', maxWidth: 900 }}>
             <div className="p-5 pb-8">
               <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#DCDAD4' }} />
               <div className="flex items-center justify-between mb-5">
@@ -1464,9 +1464,9 @@ export default function MercadoPage() {
       {/* ═══ MODAL EDITAR ═══ */}
       {editInmueble && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setEditInmueble(null)} />
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none" style={{ paddingBottom: 64 }}>
-          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(92vh - 64px)', maxWidth: 900 }}>
+          <div className="fixed inset-x-0 top-0 z-40" style={{ bottom: 70, background: 'rgba(0,0,0,0.45)' }} onClick={() => setEditInmueble(null)} />
+          <div className="fixed inset-x-0 top-0 z-50 flex items-end sm:items-center justify-center pointer-events-none" style={{ bottom: 70 }}>
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 16px)', maxWidth: 900 }}>
             <div className="p-5 pb-8">
               {/* Handle */}
               <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#DCDAD4' }} />
