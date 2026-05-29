@@ -5,10 +5,6 @@ import { supabase } from '@/lib/supabase'
 import { useUser, canAccessProject } from '@/lib/user-context'
 import { authFetch } from '@/lib/auth-fetch'
 
-// ── Pipeline completo ────────────────────────────────────────────────────────
-// Acquisición: captado → analisis → ofertado → comprado → reforma
-// Venta:       venta → reservado → con_oferta → en_arras → vendido
-// Legacy:      cerrado (mostrado como Vendido)
 const ESTADOS_PIPELINE  = ['captado','analisis','ofertado']
 const ESTADOS_ACTIVOS   = ['comprado','reforma','venta','reservado','con_oferta','en_arras']
 const ESTADOS_VENDIDOS  = ['vendido','cerrado']
@@ -29,23 +25,6 @@ const ESTADO_COLOR: Record<string,string> = {
 
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
 
-// ── Helpers financieros — misma lógica que HASU/page.tsx ─────────────────────
-// Inversión total de la operación
-const getInv     = (p: Proyecto) => p.valor_total_operacion || p.precio_compra || 0
-// Capital aportado por HASU (tiene en cuenta JV)
-const getInvHasu = (p: Proyecto): number => {
-  if (p.inversion_hasu && p.inversion_hasu > 0) return p.inversion_hasu
-  if ((p.porcentaje_hasu || 100) >= 100) return getInv(p)
-  return getInv(p) * (p.porcentaje_hasu || 100) / 100
-}
-// Precio de venta: primero real, luego proyecciones
-const getVenta     = (p: Proyecto) => p.precio_venta_real || p.precio_venta_realista || p.precio_venta_estimado || 0
-// Beneficio total y parte HASU
-const getBenef     = (p: Proyecto) => getVenta(p) - getInv(p)
-const getBenefHasu = (p: Proyecto) => getBenef(p) * ((p.porcentaje_hasu || 100) / 100)
-// ROI sobre capital HASU
-const getRoi       = (p: Proyecto) => { const i = getInvHasu(p); return i > 0 ? (getBenefHasu(p) / i) * 100 : 0 }
-
 type Proyecto = {
   id: string; nombre: string; direccion?: string; ciudad: string; tipo: string; estado: string
   porcentaje_hasu: number; socio_nombre: string | null; avance_reforma: number
@@ -54,6 +33,17 @@ type Proyecto = {
   valor_total_operacion: number | null; inversion_hasu: number | null
   fecha_compra: string | null; fecha_salida_estimada: string | null
 }
+
+const getInv     = (p: Proyecto) => p.valor_total_operacion || p.precio_compra || 0
+const getInvHasu = (p: Proyecto): number => {
+  if (p.inversion_hasu && p.inversion_hasu > 0) return p.inversion_hasu
+  if ((p.porcentaje_hasu || 100) >= 100) return getInv(p)
+  return getInv(p) * (p.porcentaje_hasu || 100) / 100
+}
+const getVenta     = (p: Proyecto) => p.precio_venta_real || p.precio_venta_realista || p.precio_venta_estimado || 0
+const getBenef     = (p: Proyecto) => getVenta(p) - getInv(p)
+const getBenefHasu = (p: Proyecto) => getBenef(p) * ((p.porcentaje_hasu || 100) / 100)
+const getRoi       = (p: Proyecto) => { const i = getInvHasu(p); return i > 0 ? (getBenefHasu(p) / i) * 100 : 0 }
 
 function calcSemaforo(p: Proyecto, gastos: number): 'verde' | 'naranja' | 'rojo' {
   const presupuesto = p.valor_total_operacion || 0
@@ -67,9 +57,9 @@ function calcSemaforo(p: Proyecto, gastos: number): 'verde' | 'naranja' | 'rojo'
 }
 
 const SEM_CFG = {
-  verde:   { color: '#22C55E', bg: 'rgba(34,197,94,0.12)',   label: 'Dentro de presupuesto y plazo' },
-  naranja: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  label: 'Desviación de presupuesto >10%' },
-  rojo:    { color: '#EF4444', bg: 'rgba(239,68,68,0.12)',   label: 'Retraso >30 días o desviación >20%' },
+  verde:   { color: '#22C55E', bg: 'rgba(34,197,94,0.10)',   label: 'Dentro de presupuesto y plazo' },
+  naranja: { color: '#F59E0B', bg: 'rgba(245,158,11,0.10)',  label: 'Desviación de presupuesto >10%' },
+  rojo:    { color: '#EF4444', bg: 'rgba(239,68,68,0.10)',   label: 'Retraso >30 días o desviación >20%' },
 }
 
 export default function ProyectosPage() {
@@ -80,7 +70,6 @@ export default function ProyectosPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
 
-  // Inline editing state
   const [editAvance, setEditAvance]       = useState<Record<string, string>>({})
   const [editPrecios, setEditPrecios]     = useState<Record<string, { c: string; r: string; o: string }>>({})
   const [editFinalizado, setEditFinalizado] = useState<Record<string, { venta: string; inv: string }>>({})
@@ -113,7 +102,6 @@ export default function ProyectosPage() {
     })
   }
 
-  // ── Inline edit helpers ──────────────────────────────────────────────────
   const cambiarEstado = async (pid: string, nuevoEstado: string) => {
     setSaving(s => ({ ...s, [pid]: true }))
     const { error } = await supabase.from('proyectos').update({ estado: nuevoEstado }).eq('id', pid)
@@ -189,111 +177,128 @@ export default function ProyectosPage() {
     await cambiarEstado(p.id, 'vendido')
   }
 
-  const visibles   = proyectos.filter(p => canAccessProject(user?.permisos ?? null, p.id))
-  const activos    = visibles.filter(p => ESTADOS_ACTIVOS.includes(p.estado))
-  const pipeline   = visibles.filter(p => ESTADOS_PIPELINE.includes(p.estado))
+  const visibles    = proyectos.filter(p => canAccessProject(user?.permisos ?? null, p.id))
+  const activos     = visibles.filter(p => ESTADOS_ACTIVOS.includes(p.estado))
+  const pipeline    = visibles.filter(p => ESTADOS_PIPELINE.includes(p.estado))
   const finalizados = visibles.filter(p => ESTADOS_VENDIDOS.includes(p.estado))
 
+  // KPI calculations
+  const capitalTotal = activos.reduce((s, p) => s + getInvHasu(p), 0)
+  const roisValidos  = activos.filter(p => getInvHasu(p) > 0 && getVenta(p) > 0)
+  const benefTotal   = roisValidos.reduce((s, p) => s + getBenefHasu(p), 0)
+  const roiMedio     = roisValidos.length > 0
+    ? roisValidos.reduce((s, p) => s + getRoi(p), 0) / roisValidos.length
+    : null
+
+  // Objetivo 1M — beneficio vendidos
+  const benefVendidos = finalizados.reduce((s, p) => s + getBenefHasu(p), 0)
+  const pctObjetivo   = Math.min(100, (benefVendidos / 1_000_000) * 100)
+
   return (
-    <div className="p-4" style={{ background: '#0A0A0A', minHeight: '100vh' }}>
-      {/* Topbar */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
-        <div className="flex-1 font-bold text-[17px] text-white">Proyectos</div>
-        <button onClick={() => router.push('/bot')}
-          className="text-sm font-bold px-3 py-1.5 rounded-xl" style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F' }}>+ Nuevo</button>
+    <div style={{ background: '#F2F1ED', minHeight: '100vh', paddingBottom: 90 }}>
+
+      {/* ── HERO ── */}
+      <div style={{ position: 'relative', height: 200, overflow: 'hidden' }}>
+        <img
+          src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1400&q=80"
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 35%' }}
+        />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.55) 60%, rgba(242,241,237,1) 100%)' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 20px 14px' }}>
+          <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', textShadow: '0 1px 8px rgba(0,0,0,0.3)' }}>
+            Proyectos
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 3, fontWeight: 600 }}>
+            {activos.length} activos · {finalizados.length} vendidos · Capital {capitalTotal > 0 ? fmt(capitalTotal) : '—'}
+          </div>
+        </div>
+        <button
+          onClick={() => router.push('/bot')}
+          style={{ position: 'absolute', top: 16, right: 16, background: '#F26E1F', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.02em' }}>
+          + Nuevo
+        </button>
       </div>
 
-      {/* Dashboard */}
-      {(() => {
-        // Misma lógica que HASU page — fuente única de verdad
-        const capitalTotal = activos.reduce((s, p) => s + getInvHasu(p), 0)
-        const roisValidos  = activos.filter(p => getInvHasu(p) > 0 && getVenta(p) > 0)
-        const benefTotal   = roisValidos.reduce((s, p) => s + getBenefHasu(p), 0)
-        const roiMedio     = roisValidos.length > 0
-          ? roisValidos.reduce((s, p) => s + getRoi(p), 0) / roisValidos.length
-          : null
-        const enReforma   = activos.filter(p => p.estado === 'reforma')
-        const avanceMedio = enReforma.length > 0
-          ? enReforma.reduce((s, p) => s + (p.avance_reforma || 0), 0) / enReforma.length
-          : null
+      {/* ── CONTENIDO ── */}
+      <div style={{ padding: '30px 30px 0' }}>
 
-        const cards = [
-          { icon: '🏠', label: 'Proyectos activos', value: activos.length.toString(), sub: pipeline.length > 0 ? `+ ${pipeline.length} en pipeline` : 'En cartera', color: '#F26E1F', bg: 'rgba(242,110,31,0.12)' },
-          { icon: '💰', label: 'Capital HASU', value: capitalTotal > 0 ? fmt(capitalTotal) : '—', sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`, color: '#60A5FA', bg: 'rgba(96,165,250,0.10)' },
-          { icon: '📈', label: 'Beneficio est.', value: benefTotal !== 0 ? fmt(benefTotal) : '—', sub: 'Escenario realista', color: benefTotal >= 0 ? '#22C55E' : '#EF4444', bg: benefTotal >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)' },
-          { icon: '⚡', label: roiMedio !== null ? 'ROI medio' : enReforma.length > 0 ? 'Avance medio' : 'ROI medio',
-            value: roiMedio !== null ? `${roiMedio >= 0 ? '+' : ''}${roiMedio.toFixed(1)}%` : avanceMedio !== null ? `${Math.round(avanceMedio)}%` : '—',
-            sub: roiMedio !== null ? 'Sobre inversión total' : enReforma.length > 0 ? 'Obras en curso' : 'Sin datos aún',
-            color: roiMedio !== null ? (roiMedio >= 0 ? '#22C55E' : '#EF4444') : '#a78bfa',
-            bg: roiMedio !== null ? (roiMedio >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)') : 'rgba(167,139,250,0.10)' },
-        ]
-        return (
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            {cards.map(c => (
-              <div key={c.label} className="rounded-2xl p-4 flex flex-col gap-2" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="flex items-center justify-between">
-                  <div className="text-xl">{c.icon}</div>
-                  <div className="w-2 h-2 rounded-full" style={{ background: c.color }} />
-                </div>
-                <div className="font-black text-[22px] leading-none" style={{ color: c.color }}>{c.value}</div>
-                <div>
-                  <div className="text-[12px] font-black text-white">{c.label}</div>
-                  <div className="text-[10px] font-medium mt-0.5" style={{ color: '#666' }}>{c.sub}</div>
-                </div>
+        {/* ── KPI ROW ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
+          {[
+            { icon: '🏠', val: String(activos.length), label: 'ACTIVOS', sub: pipeline.length > 0 ? `+ ${pipeline.length} en pipeline` : 'En cartera', color: '#F26E1F' },
+            { icon: '💰', val: capitalTotal > 0 ? fmt(capitalTotal) : '—', label: 'CAPITAL HASU', sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`, color: '#60A5FA' },
+            { icon: '📈', val: benefTotal !== 0 ? fmt(benefTotal) : '—', label: 'BENEFICIO EST.', sub: 'Escenario realista', color: benefTotal >= 0 ? '#22C55E' : '#EF4444' },
+            { icon: '⚡', val: roiMedio !== null ? `${roiMedio >= 0 ? '+' : ''}${roiMedio.toFixed(1)}%` : '—', label: 'ROI MEDIO', sub: 'Sobre inversión', color: '#a78bfa' },
+          ].map(k => (
+            <div key={k.label} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: '28px 24px' }}>
+              <div style={{ fontSize: 24, marginBottom: 12 }}>{k.icon}</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: k.color, letterSpacing: '-0.02em', lineHeight: 1 }}>{k.val}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#999', marginTop: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{k.label}</div>
+              <div style={{ fontSize: 11, color: '#BBB', marginTop: 4 }}>{k.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── CHARTS ROW ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, marginBottom: 48 }}>
+
+          {/* Objetivo 1M€ */}
+          <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: 24 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>Objetivo 1.000.000 €</div>
+            <div style={{ fontSize: 11, color: '#BBB', marginBottom: 16 }}>Beneficio acumulado de operaciones vendidas</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#F26E1F', letterSpacing: '-0.03em' }}>{fmt(benefVendidos)}</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#F26E1F' }}>{pctObjetivo.toFixed(1)}%</div>
+            </div>
+            <div style={{ height: 8, background: '#F2F1ED', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
+              <div style={{ height: '100%', width: `${pctObjetivo}%`, background: 'linear-gradient(90deg, #F26E1F, #FBBF24)', borderRadius: 99, transition: 'width 0.8s ease' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#CCC', fontWeight: 700 }}>
+              <span>0€</span>
+              <span>{finalizados.length} vendidas</span>
+              <span>1M€</span>
+            </div>
+          </div>
+
+          {/* ROI por operación */}
+          <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: 24 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>ROI por operación</div>
+            <div style={{ fontSize: 11, color: '#BBB', marginBottom: 16 }}>Naranja = activo · Verde = vendido</div>
+            {[...activos, ...finalizados].filter(p => getRoi(p) !== 0).length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#CCC', fontSize: 12, padding: '20px 0' }}>Sin datos de ROI todavía</div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 80 }}>
+                {[...activos, ...finalizados].filter(p => getRoi(p) !== 0).slice(0, 7).map(p => {
+                  const roi = getRoi(p)
+                  const maxH = 80
+                  const h = Math.max(12, Math.min(maxH, Math.abs(roi) * 1.2))
+                  const isVendido = ESTADOS_VENDIDOS.includes(p.estado)
+                  return (
+                    <div key={p.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <div style={{ fontSize: 9, fontWeight: 800, color: isVendido ? '#22C55E' : '#F26E1F' }}>{roi.toFixed(0)}%</div>
+                      <div style={{ width: '100%', height: h, borderRadius: '6px 6px 0 0', background: isVendido ? 'linear-gradient(180deg,#22C55E,#16A34A)' : 'linear-gradient(180deg,#F26E1F,#F59E0B)' }} />
+                      <div style={{ fontSize: 8, color: '#BBB', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, maxWidth: 40, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre.split(' ')[0]}</div>
+                    </div>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-        )
-      })()}
-
-      {/* Avance obra */}
-      {activos.filter(p => ['comprado','reforma'].includes(p.estado)).length > 0 && (
-        <div className="rounded-2xl p-4 mb-5" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg">🔨</span>
-            <div className="font-black text-[14px] text-white">Avance de obra</div>
-          </div>
-          <div className="flex flex-col gap-3">
-            {activos.filter(p => ['comprado','reforma'].includes(p.estado)).map(p => {
-              const pct = p.avance_reforma || 0
-              const color = pct >= 75 ? '#22C55E' : pct >= 40 ? '#F26E1F' : '#60A5FA'
-              return (
-                <div key={p.id} onClick={() => router.push(`/proyectos/${p.id}`)} className="cursor-pointer">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="text-[13px] font-black text-white truncate flex-1 mr-2">{p.nombre}</div>
-                    <div className="text-[13px] font-black flex-shrink-0" style={{ color }}>{pct}%</div>
-                  </div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
-                  </div>
-                </div>
-              )
-            })}
+            )}
           </div>
         </div>
-      )}
 
-      {/* Cards */}
-      {loading ? (
-        <div className="space-y-2">
-          {[1,2].map(i => <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: '#141414' }} />)}
-        </div>
-      ) : activos.length === 0 && pipeline.length === 0 ? (
-        <div className="text-center py-12" style={{ color: '#555' }}>
-          <div className="text-4xl mb-3">🏠</div>
-          <div className="text-sm font-semibold">No hay proyectos todavía</div>
-          <div className="text-xs mt-1">Usá el bot para crear el primero</div>
-        </div>
-      ) : (
-        <>
-          {activos.length > 0 && (
-            <>
-              <div className="flex items-center justify-between mb-3">
-                <div className="font-black text-[15px] text-white">Proyectos activos</div>
-                <button onClick={() => router.push('/bot')} className="text-sm font-bold" style={{ color: '#F26E1F' }}>+ Nuevo vía bot</button>
-              </div>
-
+        {/* ── PROYECTOS ACTIVOS ── */}
+        {loading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
+            {[1,2,3].map(i => <div key={i} style={{ height: 180, borderRadius: 18, background: '#E8E6E0', animation: 'pulse 2s infinite' }} />)}
+          </div>
+        ) : activos.length > 0 && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>PROYECTOS ACTIVOS</div>
+              <button onClick={() => router.push('/bot')} style={{ fontSize: 12, fontWeight: 800, color: '#F26E1F', background: 'none', border: 'none', cursor: 'pointer' }}>+ Nuevo vía bot</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
               {activos.map(p => {
                 const isExp     = expanded.has(p.id)
                 const gastos    = gastosMap[p.id] || 0
@@ -302,170 +307,123 @@ export default function ProyectosPage() {
                 const ventaBase = p.precio_venta_estimado || 0
                 const ventaEst  = getVenta(p) > 0
                 const pctHasu   = (p.porcentaje_hasu || 100) / 100
-
                 const escenarios = [
                   { label: 'Conservador', stored: p.precio_venta_conservador, mult: 0.90, color: '#888', key: 'c' as const },
                   { label: 'Realista',    stored: p.precio_venta_realista,    mult: 1.00, color: '#F26E1F', key: 'r' as const },
                   { label: 'Optimista',   stored: p.precio_venta_optimista,   mult: 1.10, color: '#22C55E', key: 'o' as const },
                 ].map(s => {
                   const venta     = s.stored ?? (ventaBase * s.mult)
-                  const benefHasu = (venta - inversion) * pctHasu  // parte de HASU
+                  const benefHasu = (venta - inversion) * pctHasu
                   const roi       = invHasu > 0 ? (benefHasu / invHasu) * 100 : 0
                   return { ...s, venta, benef: benefHasu, roi }
                 })
-
-                // ROI mostrado: realista (escenario central)
-                const roiReal = escenarios[1].roi
-                const hoy = new Date()
+                const roiReal   = escenarios[1].roi
                 const fechaCompra = p.fecha_compra ? new Date(p.fecha_compra) : null
                 const fechaFin    = p.fecha_salida_estimada ? new Date(p.fecha_salida_estimada) : null
-                const diasDesde   = fechaCompra ? Math.floor((hoy.getTime() - fechaCompra.getTime()) / 86400000) : null
+                const diasDesde   = fechaCompra ? Math.floor((new Date().getTime() - fechaCompra.getTime()) / 86400000) : null
                 const durMeses    = fechaCompra && fechaFin ? Math.round((fechaFin.getTime() - fechaCompra.getTime()) / (30.44 * 86400000)) : null
                 const sem     = calcSemaforo(p, gastos)
                 const semCfg  = SEM_CFG[sem]
                 const ep      = editPrecios[p.id]
+                const pct     = editAvance[p.id] !== undefined ? parseInt(editAvance[p.id]||'0') : p.avance_reforma || 0
+                const pctColor = pct >= 75 ? '#22C55E' : pct >= 40 ? '#F26E1F' : '#60A5FA'
 
                 return (
-                  <div key={p.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-
-                    {/* ── COMPACT ── */}
-                    <div className="p-4">
-                      <div className="flex gap-3">
-                        <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: 'rgba(242,110,31,0.18)' }}>🏠</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-black text-base text-white leading-tight">{p.nombre}</div>
-                          <div className="text-xs font-medium mt-0.5" style={{ color: '#888' }}>
-                            📍 {p.direccion || p.ciudad || '—'}
-                          </div>
-                          {/* Badges row */}
-                          <div className="flex gap-1.5 flex-wrap mt-1.5 items-center">
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F' }}>
-                              {p.porcentaje_hasu < 100 ? `JV ${p.porcentaje_hasu}%` : '100% HASU'}
-                            </span>
-                            {/* ── Estado dropdown (inline edit) ── */}
-                            <select
-                              value={p.estado}
-                              disabled={saving[p.id]}
-                              onClick={e => e.stopPropagation()}
-                              onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
-                              className="text-[11px] font-bold px-2 py-0.5 rounded-full border-0 outline-none cursor-pointer appearance-none"
-                              style={{
-                                background: `${ESTADO_COLOR[p.estado] || '#888'}22`,
-                                color: ESTADO_COLOR[p.estado] || '#888',
-                                WebkitAppearance: 'none',
-                                MozAppearance: 'none',
-                              }}
-                            >
-                              {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
-                                <option key={e} value={e} style={{ background: '#1E1E1E', color: '#fff' }}>
-                                  {ESTADO_LABEL[e]}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                  <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    {/* Card header */}
+                    <div style={{ padding: '20px 20px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                        <div style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: '#111', lineHeight: 1.3 }}>{p.nombre}</div>
+                          <div style={{ fontSize: 11, color: '#999', marginTop: 3 }}>📍 {p.direccion || p.ciudad || '—'}</div>
                         </div>
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          <div className="font-black text-[18px]" style={{ color: roiReal >= 0 ? '#22C55E' : '#EF4444' }}>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: ventaEst ? (roiReal >= 0 ? '#22C55E' : '#EF4444') : '#CCC' }}>
                             {ventaEst ? `${roiReal >= 0 ? '+' : ''}${roiReal.toFixed(1)}%` : '—'}
                           </div>
-                          <div className="text-[11px] font-medium" style={{ color: '#888' }}>ROI est.</div>
-                          <button onClick={e => deleteProyecto(p, e)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm mt-1"
-                            style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
+                          <div style={{ fontSize: 10, color: '#BBB', fontWeight: 700 }}>ROI est.</div>
                         </div>
                       </div>
 
-                      {/* Avance reforma con edición inline */}
-                      <div className="mt-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-xs font-bold" style={{ color: '#888' }}>Avance reforma</span>
-                          <div className="flex items-center gap-1.5">
-                            {/* – button */}
-                            <button
-                              onClick={() => {
-                                const cur = editAvance[p.id] !== undefined ? editAvance[p.id] : String(p.avance_reforma || 0)
-                                const val = String(Math.max(0, parseInt(cur||'0') - 5))
-                                setEditAvance(e => ({ ...e, [p.id]: val }))
-                              }}
-                              className="w-5 h-5 rounded text-xs font-black flex items-center justify-center"
-                              style={{ background: '#282828', color: '#888' }}>−</button>
+                      {/* Badges */}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 14, alignItems: 'center' }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, background: 'rgba(242,110,31,0.12)', color: '#F26E1F' }}>
+                          {p.porcentaje_hasu < 100 ? `JV ${p.porcentaje_hasu}%` : '100% HASU'}
+                        </span>
+                        <select
+                          value={p.estado}
+                          disabled={saving[p.id]}
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
+                          style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, border: 'none', outline: 'none', cursor: 'pointer', background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888', WebkitAppearance: 'none', MozAppearance: 'none' } as React.CSSProperties}
+                        >
+                          {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
+                            <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
+                          ))}
+                        </select>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: semCfg.color, boxShadow: `0 0 6px ${semCfg.color}` }} />
+                      </div>
+
+                      {/* Avance */}
+                      <div style={{ marginBottom: 16 }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#999', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Avance reforma</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <button onClick={() => setEditAvance(e => ({ ...e, [p.id]: String(Math.max(0, pct - 5)) }))}
+                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #E8E6E0', background: '#FAFAF8', color: '#888', fontSize: 11, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
                             <input
                               type="number" min="0" max="100"
-                              value={editAvance[p.id] !== undefined ? editAvance[p.id] : p.avance_reforma || 0}
+                              value={pct}
                               onChange={e => setEditAvance(prev => ({ ...prev, [p.id]: e.target.value }))}
                               onBlur={e => { if (editAvance[p.id] !== undefined) guardarAvance(p.id, e.target.value) }}
                               onKeyDown={e => { if (e.key === 'Enter') guardarAvance(p.id, editAvance[p.id] ?? String(p.avance_reforma||0)) }}
-                              className="w-10 text-center text-xs font-black text-white rounded outline-none"
-                              style={{ background: '#282828', border: '1px solid rgba(255,255,255,0.12)', MozAppearance:'textfield' }}
+                              style={{ width: 36, textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#111', border: '1px solid #E8E6E0', borderRadius: 6, outline: 'none', background: '#FAFAF8' }}
                             />
-                            {/* + button */}
-                            <button
-                              onClick={() => {
-                                const cur = editAvance[p.id] !== undefined ? editAvance[p.id] : String(p.avance_reforma || 0)
-                                const val = String(Math.min(100, parseInt(cur||'0') + 5))
-                                setEditAvance(e => ({ ...e, [p.id]: val }))
-                              }}
-                              className="w-5 h-5 rounded text-xs font-black flex items-center justify-center"
-                              style={{ background: '#282828', color: '#F26E1F' }}>+</button>
-                            <span className="text-[11px] font-black" style={{ color: '#F26E1F' }}>%</span>
+                            <button onClick={() => setEditAvance(e => ({ ...e, [p.id]: String(Math.min(100, pct + 5)) }))}
+                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #E8E6E0', background: '#FAFAF8', color: '#F26E1F', fontSize: 11, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                            <span style={{ fontSize: 10, fontWeight: 900, color: pctColor }}>%</span>
                           </div>
                         </div>
-                        <div className="h-1.5 rounded-full overflow-hidden cursor-pointer" style={{ background: '#282828' }}
-                          onClick={() => {
-                            const pct = editAvance[p.id] !== undefined ? parseInt(editAvance[p.id]||'0') : p.avance_reforma || 0
-                            if (pct > 0) guardarAvance(p.id, String(pct))
-                          }}>
-                          <div className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${editAvance[p.id] !== undefined ? parseInt(editAvance[p.id]||'0') : p.avance_reforma || 0}%`, background: '#F26E1F' }} />
+                        <div style={{ height: 6, background: '#F2F1ED', borderRadius: 99, overflow: 'hidden', cursor: 'pointer' }}
+                          onClick={() => { if (editAvance[p.id] !== undefined) guardarAvance(p.id, editAvance[p.id]) }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 99, transition: 'width 0.4s ease' }} />
                         </div>
-                        {saving[p.id + '_av'] && <div className="text-[10px] mt-1" style={{ color: '#888' }}>Guardando…</div>}
                       </div>
                     </div>
 
-                    {/* ── EXPANDED ── */}
-                    <div style={{ maxHeight: isExp ? '1100px' : '0', overflow: 'hidden', transition: 'max-height 0.38s cubic-bezier(0.4,0,0.2,1)' }}>
-                      <div className="px-4 pb-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-
-                        {/* ── Escenarios editables ── */}
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#888' }}>Escenarios de venta</div>
+                    {/* Expanded */}
+                    <div style={{ maxHeight: isExp ? 900 : 0, overflow: 'hidden', transition: 'max-height 0.38s cubic-bezier(0.4,0,0.2,1)' }}>
+                      <div style={{ padding: '16px 20px 20px', borderTop: '1px solid #F2F1ED' }}>
+                        {/* Escenarios */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#999' }}>Escenarios de venta</div>
                           {!ep ? (
                             <button onClick={() => initEditPrecios(p)}
-                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
-                              style={{ background: 'rgba(242,110,31,0.15)', color: '#F26E1F' }}>Editar ✎</button>
+                              style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: 'rgba(242,110,31,0.1)', color: '#F26E1F', border: 'none', cursor: 'pointer' }}>Editar ✎</button>
                           ) : (
-                            <div className="flex gap-1.5">
+                            <div style={{ display: 'flex', gap: 6 }}>
                               <button onClick={() => setEditPrecios(e => { const n2 = { ...e }; delete n2[p.id]; return n2 })}
-                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
-                                style={{ background: '#282828', color: '#888' }}>Cancelar</button>
-                              <button onClick={() => guardarPrecios(p.id)}
-                                disabled={saving[p.id + '_pr']}
-                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50"
-                                style={{ background: '#F26E1F', color: '#fff' }}>
-                                {saving[p.id + '_pr'] ? 'Guardando…' : 'Guardar'}
-                              </button>
+                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F2F1ED', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
+                              <button onClick={() => guardarPrecios(p.id)} disabled={saving[p.id + '_pr']}
+                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F26E1F', color: '#fff', border: 'none', cursor: 'pointer', opacity: saving[p.id + '_pr'] ? 0.5 : 1 }}>Guardar</button>
                             </div>
                           )}
                         </div>
-
-                        <div className="grid grid-cols-3 gap-1.5 mb-3">
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
                           {escenarios.map(s => (
-                            <div key={s.label} className="rounded-xl p-2.5 text-center" style={{ background: '#1E1E1E', border: `1px solid ${s.color}30` }}>
-                              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: s.color }}>{s.label}</div>
+                            <div key={s.label} style={{ borderRadius: 12, padding: '10px', textAlign: 'center', background: '#FAFAF8', border: `1px solid ${s.color}25` }}>
+                              <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase' as const, color: s.color, marginBottom: 4 }}>{s.label}</div>
                               {ep ? (
-                                <input
-                                  type="number"
-                                  value={ep[s.key]}
+                                <input type="number" value={ep[s.key]}
                                   onChange={e => setEditPrecios(prev => ({ ...prev, [p.id]: { ...prev[p.id], [s.key]: e.target.value } }))}
                                   placeholder="€"
-                                  className="w-full text-center text-xs font-black text-white rounded outline-none py-0.5"
-                                  style={{ background: '#282828', border: `1px solid ${s.color}50`, MozAppearance: 'textfield' }}
+                                  style={{ width: '100%', textAlign: 'center', fontSize: 11, fontWeight: 900, border: `1px solid ${s.color}50`, borderRadius: 6, outline: 'none', background: '#fff', padding: '2px 0' }}
                                 />
                               ) : (
                                 <>
-                                  <div className="font-black text-[13px] text-white leading-tight">{fmt(s.venta)}</div>
-                                  <div className="text-[11px] font-semibold mt-0.5" style={{ color: '#aaa' }}>{s.benef >= 0 ? '+' : ''}{fmt(s.benef)}</div>
-                                  <div className="text-[11px] font-bold" style={{ color: s.color }}>{s.roi >= 0 ? '+' : ''}{s.roi.toFixed(1)}% ROI</div>
+                                  <div style={{ fontSize: 12, fontWeight: 900, color: '#111' }}>{fmt(s.venta)}</div>
+                                  <div style={{ fontSize: 10, fontWeight: 700, color: s.benef >= 0 ? '#22C55E' : '#EF4444' }}>{s.benef >= 0 ? '+' : ''}{fmt(s.benef)}</div>
+                                  <div style={{ fontSize: 10, fontWeight: 800, color: s.color }}>{s.roi >= 0 ? '+' : ''}{s.roi.toFixed(1)}%</div>
                                 </>
                               )}
                             </div>
@@ -473,225 +431,197 @@ export default function ProyectosPage() {
                         </div>
 
                         {/* Financiero */}
-                        <div className="grid grid-cols-3 gap-1.5 mb-3">
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
                           {[
-                            { l: 'Inv. HASU',    v: invHasu ? fmt(invHasu) : '—', c: '#fff' },
-                            { l: 'Venta obj.',   v: ventaBase ? fmt(ventaBase) : '—', c: '#22C55E' },
-                            { l: 'Benef. HASU',  v: ventaBase ? (escenarios[1].benef >= 0 ? '+' : '') + fmt(escenarios[1].benef) : '—', c: escenarios[1].benef >= 0 ? '#22C55E' : '#EF4444' },
+                            { l: 'Inv. HASU', v: invHasu ? fmt(invHasu) : '—', c: '#111' },
+                            { l: 'Venta obj.', v: ventaBase ? fmt(ventaBase) : '—', c: '#22C55E' },
+                            { l: 'Benef. HASU', v: ventaBase ? (escenarios[1].benef >= 0 ? '+' : '') + fmt(escenarios[1].benef) : '—', c: escenarios[1].benef >= 0 ? '#22C55E' : '#EF4444' },
                           ].map(k => (
-                            <div key={k.l} className="rounded-xl p-2.5" style={{ background: '#1E1E1E' }}>
-                              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#666' }}>{k.l}</div>
-                              <div className="font-black text-[13px] leading-tight" style={{ color: k.c }}>{k.v}</div>
+                            <div key={k.l} style={{ borderRadius: 10, padding: '8px 10px', background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 3 }}>{k.l}</div>
+                              <div style={{ fontSize: 12, fontWeight: 900, color: k.c }}>{k.v}</div>
                             </div>
                           ))}
                         </div>
 
                         {/* Fechas */}
-                        <div className="grid grid-cols-2 gap-1.5 mb-3">
-                          <div className="rounded-xl p-2.5" style={{ background: '#1E1E1E' }}>
-                            <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#666' }}>F. compra · Duración</div>
-                            <div className="text-sm font-bold text-white">
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                          <div style={{ borderRadius: 10, padding: '8px 10px', background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 3 }}>F. compra · Duración</div>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: '#111' }}>
                               {p.fecha_compra ? new Date(p.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) : '—'}
                               {durMeses !== null ? ` · ${durMeses}m` : ''}
                             </div>
                           </div>
-                          <div className="rounded-xl p-2.5" style={{ background: '#1E1E1E' }}>
-                            <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#666' }}>Días desde compra</div>
-                            <div className="text-sm font-bold text-white">{diasDesde !== null ? `${diasDesde} días` : '—'}</div>
-                          </div>
-                          <div className="rounded-xl p-2.5 col-span-2" style={{ background: '#1E1E1E' }}>
-                            <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#666' }}>Fecha estimada de salida</div>
-                            <div className="text-sm font-bold text-white">
-                              {p.fecha_salida_estimada ? new Date(p.fecha_salida_estimada).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'}) : '—'}
-                            </div>
+                          <div style={{ borderRadius: 10, padding: '8px 10px', background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 3 }}>Días desde compra</div>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: '#111' }}>{diasDesde !== null ? `${diasDesde} días` : '—'}</div>
                           </div>
                         </div>
 
                         {/* Semáforo */}
-                        <div className="flex items-center gap-3 rounded-xl p-3 mb-4" style={{ background: semCfg.bg, border: `1px solid ${semCfg.color}33` }}>
-                          <div className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ background: semCfg.color, boxShadow: `0 0 8px ${semCfg.color}80` }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 12, padding: '10px 14px', background: semCfg.bg, border: `1px solid ${semCfg.color}30`, marginBottom: 12 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: semCfg.color, flexShrink: 0, boxShadow: `0 0 6px ${semCfg.color}` }} />
                           <div>
-                            <div className="text-sm font-black" style={{ color: semCfg.color }}>
-                              {sem === 'verde' ? '✓ Proyecto saludable' : sem === 'naranja' ? '⚠ Atención' : '✕ Acción urgente'}
-                            </div>
-                            <div className="text-[11px] font-medium mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>{semCfg.label}</div>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: semCfg.color }}>{sem === 'verde' ? '✓ Proyecto saludable' : sem === 'naranja' ? '⚠ Atención' : '✕ Acción urgente'}</div>
+                            <div style={{ fontSize: 10, color: '#888', marginTop: 1 }}>{semCfg.label}</div>
                           </div>
                         </div>
 
-                        {/* Marcar como vendido */}
                         <button onClick={ev => marcarVendido(p, ev)}
-                          className="w-full py-3 rounded-xl text-sm font-black mb-2"
-                          style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}>
+                          style={{ width: '100%', padding: '11px', borderRadius: 12, fontSize: 12, fontWeight: 900, background: 'rgba(34,197,94,0.10)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)', cursor: 'pointer', marginBottom: 8 }}>
                           Marcar como Vendido ✓
                         </button>
-
-                        {/* Abrir completo */}
                         <button onClick={() => router.push(`/proyectos/${p.id}`)}
-                          className="w-full py-3.5 rounded-xl text-sm font-black text-white"
-                          style={{ background: '#F26E1F' }}>
+                          style={{ width: '100%', padding: '11px', borderRadius: 12, fontSize: 12, fontWeight: 900, background: '#F26E1F', color: '#fff', border: 'none', cursor: 'pointer' }}>
                           Abrir proyecto completo →
                         </button>
                       </div>
                     </div>
 
-                    {/* ── VER MÁS / MENOS ── */}
+                    {/* Ver más */}
                     <button onClick={() => toggle(p.id)}
-                      className="w-full py-2.5 text-xs font-black tracking-wide text-center transition-colors"
-                      style={{ borderTop: '1px solid rgba(255,255,255,0.07)', color: isExp ? 'rgba(255,255,255,0.3)' : '#F26E1F' }}>
+                      style={{ width: '100%', padding: '10px', fontSize: 11, fontWeight: 900, textAlign: 'center', borderTop: '1px solid #F2F1ED', background: 'none', border: 'none', borderTop: '1px solid #F2F1ED', color: isExp ? '#CCC' : '#F26E1F', cursor: 'pointer', letterSpacing: '0.04em' } as React.CSSProperties}>
                       {isExp ? 'Ver menos ↑' : 'Ver más ↓'}
                     </button>
                   </div>
                 )
               })}
-            </>
-          )}
+            </div>
+          </>
+        )}
 
-          {/* Pipeline */}
-          {pipeline.length > 0 && (
-            <>
-              <div className="font-black text-[15px] text-white mb-3 mt-2">En pipeline</div>
+        {/* ── PIPELINE ── */}
+        {pipeline.length > 0 && (
+          <>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em', marginBottom: 20 }}>EN PIPELINE</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
               {pipeline.map(p => (
-                <div key={p.id} className="rounded-2xl mb-2.5 p-4 flex gap-3"
-                  style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.7 }}>
-                  <div onClick={() => router.push(`/proyectos/${p.id}`)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
-                    <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: '#282828' }}>🏠</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-black text-base text-white">{p.nombre}</div>
-                      <div className="text-xs font-medium mt-1" style={{ color: '#888' }}>📍 {p.ciudad || '—'}</div>
-                      <div className="flex gap-1.5 mt-2 items-center">
-                        {/* Estado dropdown en pipeline */}
-                        <select
-                          value={p.estado}
-                          disabled={saving[p.id]}
-                          onClick={e => e.stopPropagation()}
-                          onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
-                          className="text-[11px] font-bold px-2 py-0.5 rounded-full border-0 outline-none cursor-pointer appearance-none"
-                          style={{ background: '#282828', color: '#888', WebkitAppearance: 'none', MozAppearance: 'none' }}
-                        >
-                          {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
-                            <option key={e} value={e} style={{ background: '#1E1E1E', color: '#fff' }}>
-                              {ESTADO_LABEL[e]}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: 20, opacity: 0.75 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                    <div onClick={() => router.push(`/proyectos/${p.id}`)} style={{ cursor: 'pointer', flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>{p.nombre}</div>
+                      <div style={{ fontSize: 11, color: '#999', marginTop: 3 }}>📍 {p.ciudad || '—'}</div>
                     </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    {p.precio_compra && (
-                      <>
-                        <div className="font-black text-[17px] text-white">€{(p.precio_compra/1000).toFixed(0)}k</div>
-                        <div className="text-[11px] font-medium" style={{ color: '#888' }}>precio</div>
-                      </>
-                    )}
                     <button onClick={e => deleteProyecto(p, e)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-sm mt-auto"
-                      style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
+                      style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: 'none', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <select
+                      value={p.estado}
+                      disabled={saving[p.id]}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
+                      style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, border: 'none', outline: 'none', cursor: 'pointer', background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888', WebkitAppearance: 'none', MozAppearance: 'none' } as React.CSSProperties}
+                    >
+                      {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
+                        <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
+                      ))}
+                    </select>
+                    {p.precio_compra && (
+                      <span style={{ fontSize: 12, fontWeight: 900, color: '#111' }}>{fmt(p.precio_compra)}</span>
+                    )}
                   </div>
                 </div>
               ))}
-            </>
-          )}
+            </div>
+          </>
+        )}
 
-          {/* Finalizados */}
-          {finalizados.length > 0 && (
-            <>
-              <div className="font-black text-[15px] text-white mb-3 mt-4" style={{ color: '#555' }}>Vendidos · {finalizados.length}</div>
+        {/* ── PROYECTOS VENDIDOS ── */}
+        {finalizados.length > 0 && (
+          <>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em', marginBottom: 20 }}>PROYECTOS VENDIDOS · {finalizados.length}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
               {finalizados.map(p => {
                 const inversion = getInv(p)
                 const invH      = getInvHasu(p)
-                const benef     = getBenefHasu(p)   // parte HASU, igual que HASU page
+                const benef     = getBenefHasu(p)
                 const roi       = invH > 0 ? (benef / invH) * 100 : null
                 const isExp     = expanded.has(p.id)
                 const ef        = editFinalizado[p.id]
+
                 return (
-                  <div key={p.id} className="rounded-2xl mb-2.5 overflow-hidden"
-                    style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)', opacity: 0.75 }}>
-                    <div className="p-4 flex gap-3">
-                      <div onClick={() => router.push(`/proyectos/${p.id}`)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
-                        <div className="w-[46px] h-[46px] rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: '#1E1E1E' }}>🏛️</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-black text-base text-white">{p.nombre}</div>
-                          <div className="text-xs font-medium mt-0.5" style={{ color: '#666' }}>📍 {p.ciudad || '—'}</div>
-                          <div className="mt-1.5">
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
-                              Vendido
-                            </span>
-                          </div>
+                  <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', overflow: 'hidden', opacity: 0.85 }}>
+                    <div style={{ padding: 20 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                        <div onClick={() => router.push(`/proyectos/${p.id}`)} style={{ cursor: 'pointer', flex: 1, minWidth: 0, marginRight: 8 }}>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>{p.nombre}</div>
+                          <div style={{ fontSize: 11, color: '#999', marginTop: 3 }}>📍 {p.ciudad || '—'}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          {roi !== null && (
+                            <>
+                              <div style={{ fontSize: 18, fontWeight: 900, color: roi >= 0 ? '#22C55E' : '#EF4444' }}>{roi >= 0 ? '+' : ''}{roi.toFixed(1)}%</div>
+                              <div style={{ fontSize: 10, color: '#BBB', fontWeight: 700 }}>ROI real</div>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        {roi !== null && (
-                          <>
-                            <div className="font-black text-[17px]" style={{ color: roi >= 0 ? '#22C55E' : '#EF4444' }}>
-                              {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
-                            </div>
-                            <div className="text-[11px] font-medium" style={{ color: '#666' }}>ROI real</div>
-                          </>
-                        )}
-                        <div className="flex gap-1 mt-auto">
-                          <button onClick={e => { e.stopPropagation(); toggle(p.id) }}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                            style={{ background: 'rgba(242,110,31,0.12)', color: '#F26E1F' }}>✎</button>
-                          <button onClick={e => deleteProyecto(p, e)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                            style={{ background:'rgba(239,68,68,0.08)', color:'#EF4444' }}>✕</button>
-                        </div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, background: 'rgba(34,197,94,0.10)', color: '#22C55E' }}>Vendido</span>
+                        {benef > 0 && <span style={{ fontSize: 11, fontWeight: 900, color: '#22C55E' }}>+{fmt(benef)}</span>}
                       </div>
                     </div>
-                    {/* Expanded edit panel */}
-                    <div style={{ maxHeight: isExp ? '300px' : '0', overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
-                      <div className="px-4 pb-4 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#888' }}>Editar datos reales</div>
+
+                    {/* Expanded edit */}
+                    <div style={{ maxHeight: isExp ? 280 : 0, overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
+                      <div style={{ padding: '14px 20px 20px', borderTop: '1px solid #F2F1ED' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, color: '#999' }}>Editar datos reales</div>
                           {!ef ? (
                             <button onClick={() => setEditFinalizado(e => ({ ...e, [p.id]: { venta: p.precio_venta_real ? String(p.precio_venta_real) : '', inv: p.valor_total_operacion ? String(p.valor_total_operacion) : '' } }))}
-                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
-                              style={{ background: 'rgba(242,110,31,0.15)', color: '#F26E1F' }}>Editar ✎</button>
+                              style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: 'rgba(242,110,31,0.1)', color: '#F26E1F', border: 'none', cursor: 'pointer' }}>Editar ✎</button>
                           ) : (
-                            <div className="flex gap-1.5">
+                            <div style={{ display: 'flex', gap: 6 }}>
                               <button onClick={() => setEditFinalizado(e => { const n2 = { ...e }; delete n2[p.id]; return n2 })}
-                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
-                                style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F2F1ED', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
                               <button onClick={() => guardarFinalizado(p.id)} disabled={saving[p.id + '_fin']}
-                                className="text-[11px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50"
-                                style={{ background: '#F26E1F', color: '#fff' }}>
-                                {saving[p.id + '_fin'] ? 'Guardando…' : 'Guardar'}
-                              </button>
+                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F26E1F', color: '#fff', border: 'none', cursor: 'pointer' }}>Guardar</button>
                             </div>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                           {[
-                            { label: 'Precio venta real', key: 'venta' as const, placeholder: 'Ej. 69000' },
-                            { label: 'Inversión total',   key: 'inv'   as const, placeholder: 'Ej. 42000' },
+                            { label: 'Precio venta real', key: 'venta' as const, val: p.precio_venta_real },
+                            { label: 'Inversión total', key: 'inv' as const, val: p.valor_total_operacion },
                           ].map(f => (
-                            <div key={f.key} className="rounded-xl p-2.5" style={{ background: '#1E1E1E' }}>
-                              <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>{f.label}</div>
+                            <div key={f.key} style={{ borderRadius: 10, padding: '8px 10px', background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 4 }}>{f.label}</div>
                               {ef ? (
                                 <input type="number" value={ef[f.key]}
                                   onChange={e => setEditFinalizado(prev => ({ ...prev, [p.id]: { ...prev[p.id], [f.key]: e.target.value } }))}
-                                  placeholder={f.placeholder}
-                                  className="w-full text-xs font-black text-white rounded outline-none py-0.5 px-1"
-                                  style={{ background: '#282828', border: '1px solid rgba(242,110,31,0.4)', MozAppearance: 'textfield' }}
+                                  style={{ width: '100%', fontSize: 12, fontWeight: 900, border: '1px solid rgba(242,110,31,0.4)', borderRadius: 6, outline: 'none', background: '#fff', padding: '2px 4px' }}
                                 />
                               ) : (
-                                <div className="text-sm font-black text-white">
-                                  {f.key === 'venta' ? (p.precio_venta_real ? fmt(p.precio_venta_real) : '—') : (p.valor_total_operacion ? fmt(p.valor_total_operacion) : '—')}
-                                </div>
+                                <div style={{ fontSize: 12, fontWeight: 900, color: '#111' }}>{f.val ? fmt(f.val) : '—'}</div>
                               )}
                             </div>
                           ))}
                         </div>
                       </div>
                     </div>
+
+                    <button onClick={() => toggle(p.id)}
+                      style={{ width: '100%', padding: '10px', fontSize: 11, fontWeight: 900, background: 'none', border: 'none', borderTop: '1px solid #F2F1ED', color: isExp ? '#CCC' : '#F26E1F', cursor: 'pointer' } as React.CSSProperties}>
+                      {isExp ? 'Cerrar ↑' : 'Editar datos ✎'}
+                    </button>
                   </div>
                 )
               })}
-            </>
-          )}
-        </>
-      )}
+            </div>
+          </>
+        )}
+
+        {/* Empty state */}
+        {!loading && activos.length === 0 && pipeline.length === 0 && finalizados.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#BBB' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🏠</div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>No hay proyectos todavía</div>
+            <div style={{ fontSize: 12, marginTop: 4 }}>Usá el bot para crear el primero</div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
