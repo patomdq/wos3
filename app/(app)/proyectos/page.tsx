@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUser, canAccessProject } from '@/lib/user-context'
-import { useBotPanel } from '@/lib/bot-context'
+import { openBotPanel } from '@/lib/bot-context'
 import { authFetch } from '@/lib/auth-fetch'
 
 const ESTADOS_PIPELINE  = ['captado','analisis','ofertado']
@@ -66,7 +66,6 @@ const SEM_CFG = {
 export default function ProyectosPage() {
   const router = useRouter()
   const user = useUser()
-  const { openBot } = useBotPanel()
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
   const [gastosMap, setGastosMap] = useState<Record<string, number>>({})
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -218,7 +217,7 @@ export default function ProyectosPage() {
           </div>
         </div>
         <button
-          onClick={() => openBot()}
+          onClick={() => openBotPanel()}
           style={{ position: 'absolute', top: 16, right: 16, background: '#F26E1F', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.02em' }}>
           + Nuevo
         </button>
@@ -300,7 +299,7 @@ export default function ProyectosPage() {
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>PROYECTOS ACTIVOS</div>
-              <button onClick={() => openBot()} style={{ fontSize: 12, fontWeight: 800, color: '#F26E1F', background: 'none', border: 'none', cursor: 'pointer' }}>+ Nuevo vía bot</button>
+              <button onClick={() => openBotPanel()} style={{ fontSize: 12, fontWeight: 800, color: '#F26E1F', background: 'none', border: 'none', cursor: 'pointer' }}>+ Nuevo vía bot</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
               {activos.map(p => {
