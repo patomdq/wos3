@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import Nav from '@/components/Nav'
+import AppShell from '@/components/AppShell'
 import { UserContext, UserInfo } from '@/lib/user-context'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -34,12 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <UserContext.Provider value={user}>
-      <div className="flex h-screen overflow-hidden" style={{ background: '#0A0A0A' }}>
-        <Nav />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[70px]">
-          {children}
-        </main>
-      </div>
+      <AppShell>{children}</AppShell>
     </UserContext.Provider>
   )
 }

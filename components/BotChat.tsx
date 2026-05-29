@@ -1,0 +1,446 @@
+'use client'
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from '@/lib/supabase'
+
+type ToolData = { id: string; result: string; table?: string; recordId?: string; label?: string; url?: string; action?: string }
+type Msg = { role: 'bot' | 'user'; text: string; time: string; toolData?: ToolData[]; imagePreviews?: string[] }
+type AttachedImage = { file: File; preview: string; base64: string; mediaType: string }
+
+const QUICK = ['📄 Factura', '💰 Saldo HASU', '🔨 Estado obra', '📋 Liquidación', '📅 ¿Qué tareas hay?']
+
+function now() {
+  const d = new Date()
+  return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0')
+}
+
+const WELCOME: Msg = { role: 'bot', text: 'Hola 👋 ¿En qué puedo ayudarte hoy?', time: '—' }
+
+type EditState = { recordId: string; table: string; label: string; concepto: string; monto: string }
+
+interface BotChatProps {
+  proyectoId?: string | null
+  storageKeySuffix?: string
+}
+
+export default function BotChat({ proyectoId, storageKeySuffix }: BotChatProps) {
+  const [msgs, setMsgs] = useState<Msg[]>([WELCOME])
+  const [input, setInput] = useState('')
+  const [typing, setTyping] = useState(false)
+  const [historial, setHistorial] = useState<{role:string;content:string}[]>([])
+  const [userId, setUserId] = useState<string>('')
+  const [sessionToken, setSessionToken] = useState<string>('')
+  const [editState, setEditState] = useState<EditState | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
+  const [proyectoNombre, setProyectoNombre] = useState('')
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([])
+  const endRef = useRef<HTMLDivElement>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const contextRef = useRef('')
+
+  const keySuffix = storageKeySuffix ?? (proyectoId ? '_' + proyectoId : '')
+
+  const loadContext = async () => {
+    let ctx = ''
+    if (proyectoId) {
+      const [{ data: proy }, { data: partidas }, { data: movs }, { data: tareas }, { data: prospectos }] = await Promise.all([
+        supabase.from('proyectos').select('id,nombre,estado,ciudad,precio_compra,avance_reforma').eq('id', proyectoId).single(),
+        supabase.from('partidas_reforma').select('id,nombre,estado,presupuesto,ejecutado,fecha_inicio,fecha_fin_estimada').eq('proyecto_id', proyectoId).order('orden'),
+        supabase.from('movimientos').select('id,concepto,monto,fecha,cuenta').eq('proyecto_id', proyectoId).order('fecha', { ascending: false }).limit(20),
+        supabase.from('tareas').select('id,titulo,prioridad,estado').eq('proyecto_id', proyectoId).eq('estado', 'Pendiente').limit(10),
+        supabase.from('prospectos').select('id,nombre,telefono,email,estado,mejor_oferta,proxima_visita').eq('proyecto_id', proyectoId).order('created_at', { ascending: false }),
+      ])
+      if (proy) setProyectoNombre(proy.nombre)
+      ctx = [
+        proy ? `Proyecto: ${proy.nombre} | ID: ${proy.id} | Estado: ${proy.estado} | Ciudad: ${proy.ciudad} | Compra: ${proy.precio_compra ?? '-'}€ | Avance: ${proy.avance_reforma ?? 0}%` : '',
+        partidas?.length ? `Partidas (ID|Nombre|Estado|Presup|Ejecutado|Inicio|FinEst):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.presupuesto}€|${p.ejecutado}€|${p.fecha_inicio??'-'}|${p.fecha_fin_estimada??'-'}`).join('\n')}` : '',
+        movs?.length ? `Movimientos (ID|Concepto|Monto|Fecha|Cuenta):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}|${m.cuenta??'-'}`).join('\n')}` : '',
+        tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
+        prospectos?.length ? `Prospectos Comercialización (ID|Nombre|Estado|Oferta|ProxVisita):\n${prospectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.mejor_oferta??'-'}€|${p.proxima_visita??'-'}`).join('\n')}` : 'Prospectos: sin datos aún.',
+      ].filter(Boolean).join('\n')
+    } else {
+      const [{ count: activos }, { data: movs }, { data: tareas }, { data: proyectos }, { data: partidas }, { data: radar }, { data: estudio }, { data: proveedores }, { data: prospectos }] = await Promise.all([
+        supabase.from('proyectos').select('id', { count: 'exact' }).in('estado', ['comprado','reforma','venta','reservado','con_oferta','en_arras']),
+        supabase.from('movimientos').select('id,concepto,monto,fecha,cuenta,proyecto_id').order('fecha', { ascending: false }).limit(30),
+        supabase.from('tareas').select('id,titulo,prioridad,estado').eq('estado', 'Pendiente').limit(10),
+        supabase.from('proyectos').select('id,nombre,estado,ciudad,porcentaje_hasu,precio_compra,precio_venta_real,precio_venta_estimado,valor_total_operacion,socio_nombre,fecha_compra,fecha_salida_estimada').order('created_at'),
+        supabase.from('partidas_reforma').select('id,nombre,presupuesto,estado,proyecto_id').order('created_at', { ascending: false }).limit(10),
+        supabase.from('inmuebles_radar').select('id,titulo,direccion,ciudad,precio,estado').eq('estado', 'activo').order('created_at', { ascending: false }).limit(20),
+        supabase.from('inmuebles_estudio').select('id,titulo,nombre,direccion,ciudad,precio_compra,precio_venta_conservador,precio_venta_realista,precio_venta_optimista,roi_estimado,estado,superficie,habitaciones').neq('estado', 'comprado').order('created_at', { ascending: false }).limit(20),
+        supabase.from('proveedores').select('id,nombre,rubro,telefono').eq('activo', true).order('nombre').limit(30),
+        supabase.from('prospectos').select('id,proyecto_id,nombre,estado,mejor_oferta').order('created_at', { ascending: false }).limit(20),
+      ])
+      ctx = [
+        `Proyectos activos: ${activos ?? 0}`,
+        proyectos?.length ? `Proyectos (ID|Nombre|Estado|Ciudad|%HASU|Socio|Compra|CostoTotal|VentaReal|VentaEst|FechaCompra|FechaSalida):\n${proyectos.map(p => `- ${p.id}|${p.nombre}|${p.estado}|${p.ciudad ?? '-'}|${p.porcentaje_hasu ?? 100}%|${p.socio_nombre ?? '-'}|${p.precio_compra ?? '-'}€|${p.valor_total_operacion ?? '-'}€|${p.precio_venta_real ?? '-'}€|${p.precio_venta_estimado ?? '-'}€|${p.fecha_compra ?? '-'}|${p.fecha_salida_estimada ?? '-'}`).join('\n')}` : '',
+        movs?.length ? `Últimos movimientos (ID|Concepto|Monto|Fecha|Cuenta):\n${movs.map(m => `- ${m.id}|${m.concepto}|${m.monto}€|${m.fecha}|${m.cuenta ?? '-'}`).join('\n')}` : '',
+        tareas?.length ? `Tareas pendientes (ID|Título|Prioridad):\n${tareas.map(t => `- ${t.id}|${t.titulo}|${t.prioridad}`).join('\n')}` : '',
+        partidas?.length ? `Partidas recientes (ID|Nombre|Presup|Estado):\n${partidas.map(p => `- ${p.id}|${p.nombre}|${p.presupuesto}€|${p.estado}`).join('\n')}` : '',
+        radar?.length ? `Inmuebles en radar (ID|Título|Dirección|Ciudad|Precio):\n${radar.map(r => `- ${r.id}|${r.titulo ?? '-'}|${r.direccion}|${r.ciudad ?? '-'}|${r.precio}€`).join('\n')}` : 'Radar: sin inmuebles activos.',
+        estudio?.length ? `Inmuebles en estudio (ID|Título|Nombre/Dirección|Ciudad|PrecioCompra|PvConservador|PvRealista|PvOptimista|ROI|Estado|m²|Hab):\n${estudio.map(e => `- ${e.id}|${e.titulo ?? '-'}|${e.titulo || e.nombre || e.direccion}|${e.ciudad ?? '-'}|${e.precio_compra ?? '-'}€|${e.precio_venta_conservador ?? '-'}€|${e.precio_venta_realista ?? '-'}€|${e.precio_venta_optimista ?? '-'}€|${e.roi_estimado?.toFixed(1) ?? '-'}%|${e.estado}|${e.superficie ?? '-'}m²|${e.habitaciones ?? '-'}hab`).join('\n')}` : 'Estudio: sin inmuebles.',
+        proveedores?.length ? `Proveedores activos (ID|Nombre|Rubro|Tel):\n${proveedores.map(p => `- ${p.id}|${p.nombre}|${p.rubro ?? '-'}|${p.telefono ?? '-'}`).join('\n')}` : 'Proveedores: sin registros.',
+        prospectos?.length ? `Prospectos (ID|ProyectoID|Nombre|Estado|Oferta):\n${prospectos.map(p => `- ${p.id}|${p.proyecto_id ?? '-'}|${p.nombre}|${p.estado}|${p.mejor_oferta ?? '-'}€`).join('\n')}` : '',
+      ].filter(Boolean).join('\n')
+    }
+    contextRef.current = ctx
+  }
+
+  useEffect(() => {
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession()
+      const uid = session?.user?.id || 'anon'
+      setUserId(uid)
+      setSessionToken(session?.access_token || '')
+
+      const stored = localStorage.getItem(`wos3_chat_${uid}${keySuffix}`)
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMsgs(parsed)
+            const hist = parsed.map((m: Msg) => ({ role: m.role === 'bot' ? 'assistant' : 'user', content: m.text.replace(/<[^>]+>/g, '') }))
+            setHistorial(hist)
+          }
+        } catch {}
+      }
+
+      await loadContext()
+    }
+    init()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, typing])
+
+  useEffect(() => {
+    if (userId && msgs.length > 1) {
+      localStorage.setItem(`wos3_chat_${userId}${keySuffix}`, JSON.stringify(msgs))
+    }
+  }, [msgs, userId, keySuffix])
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    files.forEach(file => {
+      if (file.size > 10 * 1024 * 1024) { alert(`"${file.name}" supera los 10 MB.`); return }
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string
+        const base64 = dataUrl.split(',')[1]
+        setAttachedImages(prev => [...prev, { file, preview: dataUrl, base64, mediaType: file.type }])
+      }
+      reader.readAsDataURL(file)
+    })
+    e.target.value = ''
+  }
+
+  const removeImage = (idx: number) => setAttachedImages(prev => prev.filter((_, i) => i !== idx))
+
+  const send = async (text: string) => {
+    if (!text.trim() && attachedImages.length === 0) return
+    const t = now()
+    const displayText = text || (attachedImages.length > 0 ? `📎 ${attachedImages.length} imagen${attachedImages.length > 1 ? 'es' : ''} adjunta${attachedImages.length > 1 ? 's' : ''}` : '')
+    const previews = attachedImages.map(img => img.preview)
+    const userMsg: Msg = { role: 'user', text: displayText, time: t, imagePreviews: previews.length ? previews : undefined }
+    setMsgs(m => [...m, userMsg])
+    setInput('')
+    if (taRef.current) taRef.current.style.height = 'auto'
+    const imgs = [...attachedImages]
+    setAttachedImages([])
+    setTyping(true)
+
+    const historialText = imgs.length > 0 ? `[${imgs.length} imagen${imgs.length > 1 ? 'es' : ''} adjunta${imgs.length > 1 ? 's' : ''}: ${imgs.map(i => i.file.name).join(', ')}] ${text}`.trim() : text
+    const newHistorial = [...historial, { role: 'user', content: historialText }]
+    setHistorial(newHistorial)
+
+    try {
+      const body: Record<string, unknown> = { messages: newHistorial, context: contextRef.current }
+      if (imgs.length > 0) {
+        body.images = imgs.map(img => ({ base64: img.base64, mediaType: img.mediaType }))
+      }
+
+      const { data: { session: freshSession } } = await supabase.auth.getSession()
+      const token = freshSession?.access_token || sessionToken
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      })
+      const { text: resp, toolResults } = await res.json()
+      setTyping(false)
+
+      const html = resp
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:#F26E1F;text-decoration:underline;">$1</a>')
+        .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>')
+      const botMsg: Msg = { role: 'bot', text: html, time: now(), toolData: toolResults?.length ? toolResults : undefined }
+      setMsgs(m => [...m, botMsg])
+      setHistorial(h => [...h, { role: 'assistant', content: resp }])
+
+      if (toolResults?.length) {
+        loadContext().catch(() => {})
+      }
+    } catch {
+      setTyping(false)
+      setMsgs(m => [...m, { role: 'bot', text: 'Error de conexión. Intentá de nuevo.', time: now() }])
+    }
+  }
+
+  const clearChat = () => {
+    setMsgs([WELCOME])
+    setHistorial([])
+    if (userId) localStorage.removeItem(`wos3_chat_${userId}${keySuffix}`)
+  }
+
+  const deleteRecord = async (msgIdx: number, td: ToolData) => {
+    if (!td.table || !td.recordId) return
+    if (!confirm(`¿Eliminar "${td.label}"?`)) return
+    const { error } = await supabase.from(td.table).delete().eq('id', td.recordId)
+    if (!error) {
+      setMsgs(prev => prev.map((m, i) => {
+        if (i !== msgIdx) return m
+        return { ...m, toolData: m.toolData?.filter(t => t.id !== td.id) }
+      }))
+    }
+  }
+
+  const openEdit = (td: ToolData) => {
+    if (!td.table || !td.recordId) return
+    const parts = (td.label || '').split(' · ')
+    setEditState({
+      recordId: td.recordId,
+      table: td.table,
+      label: td.label || '',
+      concepto: parts[0] || '',
+      monto: parts[1]?.replace('€','') || '',
+    })
+  }
+
+  const saveEdit = async () => {
+    if (!editState) return
+    setEditSaving(true)
+    const { table, recordId, concepto, monto } = editState
+    let payload: Record<string, unknown> = {}
+    if (table === 'movimientos') {
+      const n = parseFloat(monto) || 0
+      payload = { concepto, monto: n }
+    } else if (table === 'partidas_reforma') {
+      payload = { nombre: concepto, presupuesto: parseFloat(monto) || 0 }
+    } else if (table === 'tareas') {
+      payload = { titulo: concepto }
+    }
+    await supabase.from(table).update(payload).eq('id', recordId)
+    setEditSaving(false)
+    setEditState(null)
+    const newLabel = `${concepto} · ${monto}€`
+    setMsgs(prev => prev.map(m => ({
+      ...m,
+      toolData: m.toolData?.map(td => td.recordId === recordId ? { ...td, label: newLabel } : td)
+    })))
+  }
+
+  const tableIcon = (table?: string) => {
+    if (table === 'movimientos') return '💰'
+    if (table === 'partidas_reforma') return '🔨'
+    if (table === 'tareas') return '📋'
+    return '✓'
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Topbar */}
+      <div className="flex items-center gap-3 px-4 h-[54px] flex-shrink-0" style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
+        <div className="flex-1 font-bold text-[17px] text-white tracking-[-0.3px]">
+          {proyectoNombre ? proyectoNombre : 'Bot'}
+          {proyectoNombre && <span className="ml-2 text-xs font-medium opacity-40">Bot</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
+          <button onClick={clearChat} className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ color: '#555', background: '#1E1E1E' }}>Limpiar</button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3" style={{ background: '#0A0A0A' }}>
+        {msgs.map((m, i) => (
+          <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+            <div className="w-7 h-7 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center text-xs font-black"
+              style={{ background: m.role === 'bot' ? '#F26E1F' : '#282828', color: '#fff', border: m.role === 'user' ? '1px solid rgba(255,255,255,0.14)' : 'none' }}>
+              {m.role === 'bot' ? 'W' : 'P'}
+            </div>
+            <div className="max-w-[calc(100%-60px)]">
+              {m.role === 'bot' ? (
+                <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5 rounded-2xl"
+                  style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '4px 14px 14px 14px' }}
+                  dangerouslySetInnerHTML={{ __html: m.text }} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                  {m.imagePreviews && m.imagePreviews.length > 0 && (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: m.imagePreviews.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+                      gap: 4, maxWidth: 220,
+                      borderRadius: m.text && !m.text.startsWith('📎') ? '14px 4px 0 0' : '14px 4px 14px 14px',
+                      overflow: 'hidden',
+                    }}>
+                      {m.imagePreviews.map((src, pi) => (
+                        <img key={pi} src={src} alt="adjunto" style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }} />
+                      ))}
+                    </div>
+                  )}
+                  {m.text && !m.text.startsWith('📎') && (
+                    <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5"
+                      style={{ background: '#F26E1F', color: '#fff', borderRadius: m.imagePreviews?.length ? '0 0 14px 14px' : '14px 4px 14px 14px', whiteSpace: 'pre-wrap' }}>
+                      {m.text}
+                    </div>
+                  )}
+                  {m.text?.startsWith('📎') && (
+                    <div className="text-xs font-semibold px-2 pt-1" style={{ color: '#888' }}>{m.text}</div>
+                  )}
+                </div>
+              )}
+
+              {m.toolData?.map((td, ti) => (
+                <div key={ti} className="mt-1.5 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(34,197,94,0.22)' }}>
+                  <div className="px-3 py-2 flex items-center justify-between gap-2" style={{ background: 'rgba(34,197,94,0.10)' }}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm">{tableIcon(td.table)}</span>
+                      <span className="text-xs font-bold truncate" style={{ color: '#22C55E' }}>{td.label || '✓ Guardado'}</span>
+                    </div>
+                    {td.table && td.table !== 'tareas' && td.table !== 'inmuebles_estudio' && (
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <button onClick={() => openEdit(td)}
+                          className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold"
+                          style={{ background: 'rgba(255,255,255,0.08)', color: '#ccc' }}>✎</button>
+                        <button onClick={() => deleteRecord(i, td)}
+                          className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold"
+                          style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>✕</button>
+                      </div>
+                    )}
+                  </div>
+                  {td.url && (
+                    <a href={td.url} target="_blank" rel="noopener"
+                      className="flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold w-full"
+                      style={{ background: '#F26E1F', color: '#fff', textDecoration: 'none' }}>
+                      <span>📄</span> Descargar PDF
+                    </a>
+                  )}
+                </div>
+              ))}
+
+              <div className="text-[10px] mt-1 font-semibold tracking-wide" style={{ color: '#555' }}>{m.time}</div>
+            </div>
+          </div>
+        ))}
+        {typing && (
+          <div className="flex gap-2">
+            <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-black" style={{ background: '#F26E1F' }}>W</div>
+            <div className="px-3.5 py-3 rounded-2xl" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px 14px 14px 14px' }}>
+              <div className="flex gap-1.5 items-center">
+                {[0,1,2].map(i => (
+                  <span key={i} className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: '#555', animation: `bounce 0.9s ${i * 0.2}s infinite`, display: 'inline-block' }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {/* Quick replies */}
+      <div className="flex gap-2 px-3.5 py-2.5 overflow-x-auto flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: '#141414' }}>
+        {QUICK.map(q => (
+          <button key={q} onClick={() => send(q.replace(/^[^\s]+ /, ''))}
+            className="flex-shrink-0 text-xs font-bold px-3.5 py-2 rounded-full whitespace-nowrap"
+            style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#ccc' }}>
+            {q}
+          </button>
+        ))}
+      </div>
+
+      {/* Attached images strip */}
+      {attachedImages.length > 0 && (
+        <div className="flex items-center gap-2 px-3.5 py-2 flex-shrink-0 overflow-x-auto" style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          {attachedImages.map((img, idx) => (
+            <div key={idx} className="relative flex-shrink-0">
+              <img src={img.preview} alt="preview" className="w-14 h-14 object-cover rounded-lg" />
+              <button onClick={() => removeImage(idx)}
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black"
+                style={{ background: '#EF4444', color: '#fff' }}>✕</button>
+            </div>
+          ))}
+          <div className="text-xs font-medium ml-1" style={{ color: '#888' }}>
+            {attachedImages.length} imagen{attachedImages.length > 1 ? 'es' : ''}
+          </div>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="flex gap-2 px-3.5 py-2.5 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: '#141414' }}>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={handleImageSelect} />
+        <button onClick={() => fileRef.current?.click()}
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-base"
+          style={{ background: attachedImages.length > 0 ? 'rgba(242,110,31,0.18)' : '#1E1E1E', border: `1.5px solid ${attachedImages.length > 0 ? '#F26E1F' : 'rgba(255,255,255,0.08)'}`, color: attachedImages.length > 0 ? '#F26E1F' : '#555' }}>
+          📎
+        </button>
+        <textarea ref={taRef} value={input}
+          onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px' }}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
+          placeholder={attachedImages.length > 0 ? 'Añadí un comentario (opcional)…' : 'Escribí un mensaje…'} rows={1}
+          className="flex-1 rounded-xl px-3.5 py-3 text-sm text-white outline-none resize-none font-medium placeholder:text-[#555]"
+          style={{ background: '#1E1E1E', border: '1.5px solid rgba(255,255,255,0.08)', maxHeight: 80, lineHeight: 1.4 }}
+          onFocus={e => e.target.style.borderColor = '#F26E1F'}
+          onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
+        <button onClick={() => send(input)}
+          className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg text-white flex-shrink-0"
+          style={{ background: (input.trim() || attachedImages.length > 0) ? '#F26E1F' : '#282828' }}>↑</button>
+      </div>
+
+      {/* Edit sheet */}
+      {editState && (
+        <>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => setEditState(null)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] p-5 pb-8" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 480, margin: '0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
+            <div className="font-black text-[16px] text-white mb-4">Editar registro</div>
+            <div className="mb-3">
+              <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>
+                {editState.table === 'movimientos' ? 'Concepto' : editState.table === 'partidas_reforma' ? 'Nombre' : 'Título'}
+              </label>
+              <input type="text" value={editState.concepto} onChange={e => setEditState(s => s ? { ...s, concepto: e.target.value } : s)}
+                className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium"
+                style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
+                onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+            </div>
+            {editState.table !== 'tareas' && (
+              <div className="mb-5">
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>
+                  {editState.table === 'movimientos' ? 'Monto (€)' : 'Presupuesto (€)'}
+                </label>
+                <input type="number" value={editState.monto} onChange={e => setEditState(s => s ? { ...s, monto: e.target.value } : s)}
+                  className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium font-mono"
+                  style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
+                  onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => setEditState(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+              <button onClick={saveEdit} disabled={editSaving} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-50" style={{ background: '#F26E1F' }}>
+                {editSaving ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <style>{`@keyframes bounce{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1.1)}}`}</style>
+    </div>
+  )
+}
