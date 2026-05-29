@@ -190,8 +190,8 @@ export default function ProyectosPage() {
     ? roisValidos.reduce((s, p) => s + getRoi(p), 0) / roisValidos.length
     : null
 
-  // Objetivo 1M — solo operaciones con precio de venta real confirmado (igual que HASU)
-  const benefVendidos = finalizados
+  // Objetivo 1M — idéntico a HASU: todos los proyectos con precio_venta_real confirmado, sin filtro de estado
+  const benefVendidos = visibles
     .filter(p => p.precio_venta_real && p.precio_venta_real > 0)
     .reduce((s, p) => s + getBenefHasu(p), 0)
   const pctObjetivo   = Math.min(100, (benefVendidos / 1_000_000) * 100)
