@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUser, canAccessPage } from '@/lib/user-context'
 import BotChat from '@/components/BotChat'
+import { BotProvider, useBotPanel } from '@/lib/bot-context'
 
 type WosNotif = {
   id: string
@@ -32,13 +33,17 @@ const ALL_MOBILE_ITEMS = [
 const initials = (s: string) => s.split(/[\s@]+/).slice(0,2).map(n => n[0]?.toUpperCase() || '').join('') || '?'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  return <BotProvider><AppShellInner>{children}</AppShellInner></BotProvider>
+}
+
+function AppShellInner({ children }: { children: React.ReactNode }) {
+  const { botOpen, openBot, closeBot } = useBotPanel()
   const pathname = usePathname()
   const router = useRouter()
   const user = useUser()
 
   // Sidebar state
   const [collapsed, setCollapsed] = useState(false)
-  const [botOpen, setBotOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   // Profile / pw
@@ -311,7 +316,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   <div style={{ fontSize: 13, fontWeight: 900, color: '#111' }}>WOS Bot</div>
                   <div style={{ fontSize: 10, color: '#BBB' }}>Análisis · ROI · Operaciones</div>
                 </div>
-                <button onClick={() => setBotOpen(false)} style={{
+                <button onClick={() => closeBot()} style={{
                   width: 28, height: 28, borderRadius: '50%', background: '#F2F1ED',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, color: '#888', cursor: 'pointer', border: 'none',
@@ -325,7 +330,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Bot FAB — only visible when panel is closed */}
         {!botOpen && (
           <button
-            onClick={() => setBotOpen(true)}
+            onClick={() => openBot()}
             style={{
               position: 'fixed', bottom: 24, right: 24,
               width: 62, height: 62, borderRadius: '50%',
