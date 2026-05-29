@@ -198,7 +198,7 @@ export default function ProyectosPage() {
     <div style={{ background: '#F2F1ED', minHeight: '100vh', paddingBottom: 90 }}>
 
       {/* ── HERO ── */}
-      <div style={{ position: 'relative', height: 200, overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: 250, overflow: 'hidden' }}>
         <img
           src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1400&q=80"
           alt=""
