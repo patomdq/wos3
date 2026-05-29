@@ -140,56 +140,57 @@ export default function AdminPage() {
   }
 
   const isRestricted = editForm.role === 'inversor' || editForm.role === 'viewer'
-  const INP = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', color: '#fff' } as const
+  const INP = { background: '#F2F1ED', border: '1.5px solid #ECEAE4', color: '#111' } as const
+  const card = { background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04)' }
 
   return (
-    <div className="p-4" style={{ background: '#0A0A0A', minHeight: '100vh' }}>
+    <div style={{ maxWidth: 700, margin: '0 auto', padding: '28px 20px 40px' }}>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-6">
         <button onClick={() => router.back()}
-          className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-base text-white"
-          style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>←</button>
-        <div className="flex-1 font-bold text-[17px] text-white">Usuarios y permisos</div>
+          className="w-[32px] h-[32px] rounded-xl flex items-center justify-center font-black text-base"
+          style={{ background: '#fff', border: '1px solid #ECEAE4', color: '#555', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>←</button>
+        <div className="flex-1 font-black text-[22px]" style={{ color: '#111', letterSpacing: '-0.02em' }}>Usuarios y permisos</div>
       </div>
 
       {/* Users list */}
-      <div className="rounded-2xl mb-4" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="p-4 pb-3 flex items-center justify-between">
+      <div style={{ ...card, overflow: 'hidden', marginBottom: 16 }}>
+        <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid #F2F1ED' }}>
           <div>
-            <div className="font-black text-[15px] text-white">Usuarios</div>
-            <div className="text-xs mt-0.5" style={{ color: '#888' }}>{displayUsers.length} miembro{displayUsers.length !== 1 ? 's' : ''}</div>
+            <div className="font-black text-[15px]" style={{ color: '#111' }}>Usuarios</div>
+            <div className="text-xs mt-0.5" style={{ color: '#AAA' }}>{displayUsers.length} miembro{displayUsers.length !== 1 ? 's' : ''}</div>
           </div>
           <button onClick={() => setInviteOpen(true)}
-            className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
+            className="text-sm font-black px-4 py-2 rounded-xl text-white"
             style={{ background: '#F26E1F' }}>
             + Invitar
           </button>
         </div>
 
         {loading ? (
-          [1,2,3].map(i => <div key={i} className="mx-4 mb-2 h-14 rounded-xl animate-pulse" style={{ background: '#1E1E1E' }} />)
+          [1,2,3].map(i => <div key={i} className="mx-5 my-3 h-14 rounded-xl animate-pulse" style={{ background: '#F2F1ED' }} />)
         ) : displayUsers.map((u, i) => (
-          <div key={u.id} className="px-4 py-3.5 flex items-center gap-3"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="w-[38px] h-[38px] rounded-full flex items-center justify-center text-[13px] font-black text-white flex-shrink-0"
+          <div key={u.id} className="px-5 py-4 flex items-center gap-3"
+            style={{ borderTop: i > 0 ? '1px solid #F2F1ED' : 'none' }}>
+            <div className="w-[40px] h-[40px] rounded-full flex items-center justify-center text-[13px] font-black text-white flex-shrink-0"
               style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}>
               {initials(u.nombre || u.email || '?')}
             </div>
             <div className="flex-1 min-w-0">
-              {u.nombre && <div className="text-sm font-bold text-white truncate">{u.nombre}</div>}
-              <div className="text-xs font-mono mt-0.5 truncate" style={{ color: '#888' }}>{u.email || u.user_id}</div>
+              {u.nombre && <div className="text-sm font-bold truncate" style={{ color: '#111' }}>{u.nombre}</div>}
+              <div className="text-xs font-mono mt-0.5 truncate" style={{ color: '#AAA' }}>{u.email || u.user_id}</div>
             </div>
             <span className="text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0"
-              style={{ background: ROLE_BG[u.role] || '#282828', color: ROLE_COLOR[u.role] || '#888' }}>
+              style={{ background: ROLE_BG[u.role] || '#F2F1ED', color: ROLE_COLOR[u.role] || '#888' }}>
               {ROLE_LABEL[u.role] || u.role}
             </span>
             <button onClick={() => openEdit(u)}
               className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
-              style={{ background: 'rgba(255,255,255,0.08)', color: '#fff' }}>✎</button>
+              style={{ background: '#F2F1ED', color: '#555' }}>✎</button>
             {roles.length > 0 && (
               <button onClick={() => deleteUser(u)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
-                style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}>✕</button>
+                style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>✕</button>
             )}
           </div>
         ))}
@@ -198,29 +199,28 @@ export default function AdminPage() {
       {/* ── EDIT MODAL ── */}
       {editUser && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setEditUser(null)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] overflow-y-auto"
-            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 480, margin: '0 auto', maxHeight: '90vh' }}>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setEditUser(null)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[24px] overflow-y-auto"
+            style={{ background: '#fff', maxWidth: 520, margin: '0 auto', maxHeight: '90vh' }}>
             <div className="p-5 pb-10">
-              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
-              <div className="font-black text-[17px] text-white mb-5">Editar usuario</div>
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#ECEAE4' }} />
+              <div className="font-black text-[17px] mb-5" style={{ color: '#111' }}>Editar usuario</div>
 
-              {/* Datos básicos */}
               <div className="space-y-3 mb-5">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Nombre</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Nombre</label>
                   <input type="text" value={editForm.nombre} onChange={e => setEditForm(f => ({ ...f, nombre: e.target.value }))}
-                    className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INP} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Email</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Email</label>
                   <input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-                    className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INP} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Rol</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Rol</label>
                   <select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
-                    className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium"
+                    className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
                     style={{ ...INP, appearance: 'none' } as any}>
                     <option value="admin">Admin — acceso total</option>
                     <option value="pm">PM — acceso total</option>
@@ -230,17 +230,14 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Permisos (solo para inversor/viewer) */}
               {isRestricted && (
-                <div className="mb-5 rounded-2xl p-4" style={{ background: '#1A1A1A', border: '1px solid rgba(242,110,31,0.2)' }}>
+                <div className="mb-5 rounded-2xl p-4" style={{ background: '#FFF7F0', border: '1.5px solid rgba(242,110,31,0.2)' }}>
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#F26E1F' }} />
                     <div className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#F26E1F' }}>Control de acceso</div>
                   </div>
-
-                  {/* Páginas */}
                   <div className="mb-4">
-                    <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: '#666' }}>Páginas visibles</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: '#AAA' }}>Páginas visibles</div>
                     <div className="grid grid-cols-2 gap-2">
                       {ALL_PAGES.map(p => {
                         const on = editPages.includes(p.id)
@@ -248,30 +245,27 @@ export default function AdminPage() {
                           <button key={p.id} onClick={() => togglePage(p.id)}
                             className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold"
                             style={{
-                              background: on ? 'rgba(242,110,31,0.15)' : '#111',
-                              border: `1.5px solid ${on ? '#F26E1F' : 'rgba(255,255,255,0.07)'}`,
-                              color: on ? '#F26E1F' : '#555',
+                              background: on ? 'rgba(242,110,31,0.10)' : '#F2F1ED',
+                              border: `1.5px solid ${on ? '#F26E1F' : '#ECEAE4'}`,
+                              color: on ? '#F26E1F' : '#888',
                             }}>
-                            <span style={{ fontSize: 16 }}>{on ? '✓' : '○'}</span>
+                            <span>{on ? '✓' : '○'}</span>
                             <span>{p.label}</span>
                           </button>
                         )
                       })}
                     </div>
                   </div>
-
-                  {/* Proyectos */}
                   {editPages.includes('proyectos') && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#666' }}>Proyectos permitidos</div>
-                        <button
-                          onClick={() => setEditProjectIds(editProjectIds === null ? [] : null)}
+                        <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#AAA' }}>Proyectos permitidos</div>
+                        <button onClick={() => setEditProjectIds(editProjectIds === null ? [] : null)}
                           className="text-xs font-black px-2.5 py-1 rounded-lg"
                           style={{
-                            background: editProjectIds === null ? 'rgba(34,197,94,0.15)' : '#111',
-                            color: editProjectIds === null ? '#22C55E' : '#888',
-                            border: `1px solid ${editProjectIds === null ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                            background: editProjectIds === null ? 'rgba(34,197,94,0.10)' : '#F2F1ED',
+                            color: editProjectIds === null ? '#16A34A' : '#888',
+                            border: `1px solid ${editProjectIds === null ? 'rgba(34,197,94,0.3)' : '#ECEAE4'}`,
                           }}>
                           {editProjectIds === null ? '✓ Todos' : 'Seleccionar'}
                         </button>
@@ -279,18 +273,18 @@ export default function AdminPage() {
                       {editProjectIds !== null && (
                         <div className="space-y-1.5 max-h-44 overflow-y-auto">
                           {proyectos.length === 0 ? (
-                            <div className="text-xs text-center py-4" style={{ color: '#444' }}>Sin proyectos en la base de datos</div>
+                            <div className="text-xs text-center py-4" style={{ color: '#AAA' }}>Sin proyectos</div>
                           ) : proyectos.map(p => {
                             const sel = editProjectIds.includes(p.id)
                             return (
                               <button key={p.id} onClick={() => toggleProject(p.id)}
                                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-left"
                                 style={{
-                                  background: sel ? 'rgba(242,110,31,0.12)' : '#111',
-                                  border: `1px solid ${sel ? 'rgba(242,110,31,0.35)' : 'rgba(255,255,255,0.06)'}`,
+                                  background: sel ? 'rgba(242,110,31,0.08)' : '#F2F1ED',
+                                  border: `1px solid ${sel ? 'rgba(242,110,31,0.35)' : '#ECEAE4'}`,
                                   color: sel ? '#F26E1F' : '#888',
                                 }}>
-                                <span style={{ fontSize: 15 }}>{sel ? '✓' : '○'}</span>
+                                <span>{sel ? '✓' : '○'}</span>
                                 <span>{p.nombre}</span>
                               </button>
                             )
@@ -302,14 +296,12 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {editMsg && (
-                <div className="mb-4 text-sm font-bold text-center" style={{ color: '#EF4444' }}>{editMsg}</div>
-              )}
+              {editMsg && <div className="mb-4 text-sm font-bold text-center" style={{ color: '#EF4444' }}>{editMsg}</div>}
 
               <div className="flex gap-2">
                 <button onClick={() => setEditUser(null)}
                   className="flex-1 py-3.5 rounded-xl text-sm font-black"
-                  style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+                  style={{ background: '#F2F1ED', color: '#888' }}>Cancelar</button>
                 <button onClick={saveEdit} disabled={savingEdit}
                   className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
                   style={{ background: '#F26E1F' }}>
@@ -324,35 +316,35 @@ export default function AdminPage() {
       {/* ── INVITE MODAL ── */}
       {inviteOpen && (
         <>
-          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setInviteOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[20px] p-5 pb-8"
-            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 480, margin: '0 auto' }}>
-            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
-            <div className="font-black text-[17px] text-white mb-5">Invitar usuario</div>
+          <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setInviteOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[24px] p-5 pb-10"
+            style={{ background: '#fff', maxWidth: 520, margin: '0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#ECEAE4' }} />
+            <div className="font-black text-[17px] mb-5" style={{ color: '#111' }}>Invitar usuario</div>
 
             <div className="space-y-3 mb-5">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Email *</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Email *</label>
                 <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                   placeholder="usuario@ejemplo.com"
-                  className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium"
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
                   style={INP}
                   onFocus={e => e.target.style.borderColor='#F26E1F'}
-                  onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                  onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Nombre</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Nombre</label>
                 <input type="text" value={inviteNombre} onChange={e => setInviteNombre(e.target.value)}
                   placeholder="Nombre completo"
-                  className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium"
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
                   style={INP}
                   onFocus={e => e.target.style.borderColor='#F26E1F'}
-                  onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                  onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Rol</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Rol</label>
                 <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-                  className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium"
+                  className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
                   style={{ ...INP, appearance: 'none' } as any}>
                   <option value="admin">Admin</option>
                   <option value="pm">PM</option>
@@ -372,7 +364,7 @@ export default function AdminPage() {
             <div className="flex gap-2">
               <button onClick={() => setInviteOpen(false)}
                 className="flex-1 py-3.5 rounded-xl text-sm font-black"
-                style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+                style={{ background: '#F2F1ED', color: '#888' }}>Cancelar</button>
               <button onClick={handleInvite} disabled={inviting || !inviteEmail}
                 className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
                 style={{ background: '#F26E1F' }}>

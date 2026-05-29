@@ -288,7 +288,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden" style={{ background: '#F2F1ED' }}>
           {children}
         </main>
 
@@ -359,7 +359,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           MOBILE (bottom nav + full content)
       ══════════════════════════════════════════ */}
       <div className="flex flex-col md:hidden h-screen overflow-hidden">
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[70px]">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[70px]" style={{ background: '#F2F1ED' }}>
           {children}
         </main>
 
