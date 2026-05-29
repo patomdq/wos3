@@ -20,9 +20,11 @@ type EditState = { recordId: string; table: string; label: string; concepto: str
 interface BotChatProps {
   proyectoId?: string | null
   storageKeySuffix?: string
+  hideHeader?: boolean
+  onClose?: () => void
 }
 
-export default function BotChat({ proyectoId, storageKeySuffix }: BotChatProps) {
+export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, onClose }: BotChatProps) {
   const [msgs, setMsgs] = useState<Msg[]>([WELCOME])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
@@ -251,18 +253,20 @@ export default function BotChat({ proyectoId, storageKeySuffix }: BotChatProps) 
 
   return (
     <div className="flex flex-col h-full">
-      {/* Topbar */}
-      <div className="flex items-center gap-3 px-4 h-[54px] flex-shrink-0" style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
-        <div className="flex-1 font-bold text-[17px] text-white tracking-[-0.3px]">
-          {proyectoNombre ? proyectoNombre : 'Bot'}
-          {proyectoNombre && <span className="ml-2 text-xs font-medium opacity-40">Bot</span>}
+      {/* Topbar — hidden in panel mode (AppShell provides its own header) */}
+      {!hideHeader && (
+        <div className="flex items-center gap-3 px-4 h-[54px] flex-shrink-0" style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
+          <div className="flex-1 font-bold text-[17px] text-white tracking-[-0.3px]">
+            {proyectoNombre ? proyectoNombre : 'Bot'}
+            {proyectoNombre && <span className="ml-2 text-xs font-medium opacity-40">Bot</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
+            <button onClick={clearChat} className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ color: '#555', background: '#1E1E1E' }}>Limpiar</button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
-          <button onClick={clearChat} className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ color: '#555', background: '#1E1E1E' }}>Limpiar</button>
-        </div>
-      </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3" style={{ background: '#0A0A0A' }}>

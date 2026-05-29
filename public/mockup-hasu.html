@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — HASU Dashboard</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#F2F1ED; font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; color:#111; min-height:100vh; padding-bottom:80px; }
+
+/* ── HERO ── */
+.hero { position:relative; height:250px; overflow:hidden; }
+.hero img { width:100%; height:100%; object-fit:cover; object-position:center 40%; }
+.hero-gradient { position:absolute; inset:0; background:linear-gradient(180deg,rgba(10,10,10,0.1) 0%,rgba(10,10,10,0.55) 60%,rgba(242,241,237,1) 100%); }
+.hero-content { position:absolute; bottom:0; left:0; right:0; padding:0 20px 14px; }
+.hero-title { font-size:26px; font-weight:900; color:#fff; letter-spacing:-0.03em; text-shadow:0 1px 8px rgba(0,0,0,0.3); }
+.hero-sub { font-size:12px; color:rgba(255,255,255,0.7); margin-top:3px; font-weight:600; }
+
+/* ── PAGE ── */
+.page { max-width:1200px; margin:0 auto; padding:28px 20px 40px; }
+
+/* ── CARD base ── */
+.card { background:#fff; border-radius:18px; box-shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04); }
+
+/* ── GRIDS ── */
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:28px; margin-bottom:28px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-bottom:28px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:28px; margin-bottom:28px; }
+
+/* ── KPI CARD ── */
+.kpi { padding:28px 24px; }
+.kpi-icon { font-size:24px; margin-bottom:12px; }
+.kpi-val { font-size:22px; font-weight:900; letter-spacing:-0.02em; line-height:1; }
+.kpi-label { font-size:11px; font-weight:700; color:#999; margin-top:6px; text-transform:uppercase; letter-spacing:0.05em; }
+.kpi-sub { font-size:11px; color:#BBB; margin-top:4px; }
+
+/* ── SECTION HEADING ── */
+.section-heading { font-size:20px; font-weight:900; color:#111; letter-spacing:-0.01em; margin:0 0 20px; }
+
+/* ── OBJETIVO CARD ── */
+.objetivo-card { padding:28px 32px; }
+.objetivo-num { font-size:36px; font-weight:900; color:#F26E1F; letter-spacing:-0.03em; line-height:1; }
+.objetivo-pct { font-size:22px; font-weight:900; color:#F26E1F; }
+.progress-bar { height:8px; background:#F2F1ED; border-radius:99px; overflow:hidden; margin:14px 0 8px; }
+.progress-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#F26E1F,#FBBF24); }
+
+/* ── TRACK RECORD CARD ── */
+.track-card { padding:24px; }
+.track-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+.track-kpi { background:#FAFAF8; border-radius:12px; padding:14px 16px; border:1px solid #ECEAE4; }
+.track-kpi-val { font-size:20px; font-weight:900; color:#111; }
+.track-kpi-label { font-size:10px; font-weight:700; color:#BBB; text-transform:uppercase; letter-spacing:0.05em; margin-top:4px; }
+
+/* ── TABLA ── */
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:12px; min-width:800px; }
+thead th { padding:10px 14px; text-align:left; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#BBB; border-bottom:1px solid #ECEAE4; white-space:nowrap; }
+tbody td { padding:11px 14px; border-bottom:1px solid #F2F1ED; white-space:nowrap; }
+tbody tr:last-child td { border-bottom:none; }
+tfoot td { padding:10px 14px; border-top:2px solid #ECEAE4; font-weight:900; font-size:12px; background:#FAFAF8; }
+.tag { display:inline-block; padding:2px 8px; border-radius:100px; font-size:10px; font-weight:800; }
+
+/* ── MÓDULOS ── */
+.modulos-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-bottom:28px; }
+.modulo-card { padding:22px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:box-shadow 0.15s; }
+.modulo-card:hover { box-shadow:0 4px 20px rgba(0,0,0,0.10); }
+.modulo-icon { width:46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.modulo-name { font-size:14px; font-weight:900; color:#111; }
+.modulo-desc { font-size:11px; color:#BBB; margin-top:3px; }
+.modulo-arrow { margin-left:auto; font-size:20px; color:#DDD; flex-shrink:0; }
+
+/* ── ROI CHART ── */
+.roi-bars { display:flex; gap:10px; align-items:flex-end; height:90px; }
+.roi-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.roi-bar { width:100%; border-radius:6px 6px 0 0; }
+.roi-bar-label { font-size:9px; font-weight:800; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60px; }
+.roi-bar-pct { font-size:9px; font-weight:800; }
+
+/* ── TABS ── */
+.tabs { display:flex; gap:8px; margin-bottom:16px; }
+.tab { padding:6px 14px; border-radius:99px; font-size:11px; font-weight:800; cursor:pointer; border:1.5px solid #ECEAE4; background:#FAFAF8; color:#999; }
+.tab.active { background:#F26E1F; color:#fff; border-color:#F26E1F; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav { position:fixed; bottom:0; left:0; right:0; height:70px; background:#0A0A0A; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:space-around; z-index:50; }
+.nav-item { display:flex; flex-direction:column; align-items:center; gap:3px; color:#555; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+.nav-item.active { color:#F26E1F; }
+.nav-icon { font-size:18px; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <img src="https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=1400&q=80" alt="">
+  <div class="hero-gradient"></div>
+  <div class="hero-content">
+    <div class="hero-title">HASU</div>
+    <div class="hero-sub">Control de empresa · Track Record · Módulos</div>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ── KPI ROW ── -->
+  <div class="grid-4" style="margin-bottom:28px;">
+    <div class="card kpi">
+      <div class="kpi-icon">🏆</div>
+      <div class="kpi-val" style="color:#22C55E">94.500€</div>
+      <div class="kpi-label">Beneficio HASU</div>
+      <div class="kpi-sub">acumulado real</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-icon">🎯</div>
+      <div class="kpi-val" style="color:#F26E1F">905.500€</div>
+      <div class="kpi-label">Faltan para 1M€</div>
+      <div class="kpi-sub">9.4% alcanzado</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-val" style="color:#a78bfa">+44.4%</div>
+      <div class="kpi-label">ROI medio</div>
+      <div class="kpi-sub">media operaciones</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-icon">🤝</div>
+      <div class="kpi-val" style="color:#60A5FA">3</div>
+      <div class="kpi-label">Inversores JV</div>
+      <div class="kpi-sub">activos</div>
+    </div>
+  </div>
+
+  <!-- ── OBJETIVO 1M + ROI CHART ── -->
+  <div class="grid-2" style="margin-bottom:48px;">
+
+    <!-- Objetivo 1M€ -->
+    <div class="card objetivo-card">
+      <div style="font-size:14px;font-weight:800;color:#111;margin-bottom:4px;">Objetivo 1.000.000 € · Dic 2027</div>
+      <div style="font-size:11px;color:#BBB;margin-bottom:16px;">Beneficio acumulado de operaciones con venta real</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+        <div class="objetivo-num">94.500 €</div>
+        <div class="objetivo-pct">9.4%</div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:9.4%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#CCC;font-weight:700;margin-bottom:20px;">
+        <span>0€</span><span>→ 1M€</span>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <div style="flex:1;background:#FAFAF8;border-radius:12px;padding:12px 14px;border:1px solid #ECEAE4;">
+          <div style="font-size:10px;font-weight:700;color:#BBB;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Meses restantes</div>
+          <div style="font-size:18px;font-weight:900;color:#111;">19</div>
+        </div>
+        <div style="flex:1;background:#FAFAF8;border-radius:12px;padding:12px 14px;border:1px solid #ECEAE4;">
+          <div style="font-size:10px;font-weight:700;color:#BBB;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Necesario/mes</div>
+          <div style="font-size:18px;font-weight:900;color:#F26E1F;">47.658€</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROI por operación -->
+    <div class="card" style="padding:24px;">
+      <div style="font-size:14px;font-weight:800;color:#111;margin-bottom:4px;">ROI por operación</div>
+      <div style="font-size:11px;color:#BBB;margin-bottom:20px;">Naranja = activo · Verde = vendido</div>
+      <div class="roi-bars">
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-pct" style="color:#F26E1F;">43%</div>
+          <div class="roi-bar" style="height:52px;background:linear-gradient(180deg,#F26E1F,#F59E0B);"></div>
+          <div class="roi-bar-label" style="color:#BBB;">Cervantes</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-pct" style="color:#F26E1F;">53%</div>
+          <div class="roi-bar" style="height:64px;background:linear-gradient(180deg,#F26E1F,#F59E0B);"></div>
+          <div class="roi-bar-label" style="color:#BBB;">San José</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-pct" style="color:#F26E1F;">37%</div>
+          <div class="roi-bar" style="height:44px;background:linear-gradient(180deg,#F26E1F,#F59E0B);"></div>
+          <div class="roi-bar-label" style="color:#BBB;">Las Dalias</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-pct" style="color:#22C55E;">80%</div>
+          <div class="roi-bar" style="height:90px;background:linear-gradient(180deg,#22C55E,#16A34A);"></div>
+          <div class="roi-bar-label" style="color:#BBB;">19 Oct</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-pct" style="color:#22C55E;">73%</div>
+          <div class="roi-bar" style="height:82px;background:linear-gradient(180deg,#22C55E,#16A34A);"></div>
+          <div class="roi-bar-label" style="color:#BBB;">Estación</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-pct" style="color:#22C55E;">60%</div>
+          <div class="roi-bar" style="height:72px;background:linear-gradient(180deg,#22C55E,#16A34A);"></div>
+          <div class="roi-bar-label" style="color:#BBB;">Herrera</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-pct" style="color:#22C55E;">18%</div>
+          <div class="roi-bar" style="height:22px;background:linear-gradient(180deg,#22C55E,#16A34A);"></div>
+          <div class="roi-bar-label" style="color:#BBB;">Travesía</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TRACK RECORD ── -->
+  <div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+    <div class="section-heading" style="margin:0;">TRACK RECORD</div>
+    <div class="tabs" style="margin:0;">
+      <div class="tab active">Todos</div>
+      <div class="tab">Inmuebles</div>
+      <div class="tab">Edificios</div>
+      <div class="tab">Extranjero</div>
+    </div>
+  </div>
+
+  <!-- Track KPIs 4 col -->
+  <div class="grid-4" style="margin-bottom:28px;">
+    <div class="card kpi">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-val" style="color:#111;">8</div>
+      <div class="kpi-label">Operaciones</div>
+      <div class="kpi-sub">5 con venta real</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-icon">⏱</div>
+      <div class="kpi-val" style="color:#111;">7m</div>
+      <div class="kpi-label">Duración media</div>
+      <div class="kpi-sub">por operación</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-val" style="color:#60A5FA;">452k€</div>
+      <div class="kpi-label">Capital HASU</div>
+      <div class="kpi-sub">parte HASU invertida</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-icon">⚡</div>
+      <div class="kpi-val" style="color:#a78bfa;">+68%</div>
+      <div class="kpi-label">ROI anualizado</div>
+      <div class="kpi-sub">media anualizada</div>
+    </div>
+  </div>
+
+  <!-- Tabla Track Record -->
+  <div class="section-heading">OPERACIONES</div>
+  <div class="card" style="margin-bottom:48px;">
+    <div style="padding:16px 20px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #F2F1ED;">
+      <div class="tabs" style="margin:0;">
+        <div class="tab active">Todos</div>
+        <div class="tab">En curso</div>
+        <div class="tab">Finalizados</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+        <span style="font-size:10px;font-weight:700;color:#BBB;">Ordenar:</span>
+        <button style="padding:4px 10px;border-radius:8px;font-size:10px;font-weight:800;background:rgba(242,110,31,0.1);color:#F26E1F;border:none;cursor:pointer;">ROI</button>
+        <button style="padding:4px 10px;border-radius:8px;font-size:10px;font-weight:800;background:#F2F1ED;color:#BBB;border:none;cursor:pointer;">Fecha</button>
+        <button style="padding:4px 10px;border-radius:8px;font-size:10px;font-weight:800;background:#F2F1ED;color:#BBB;border:none;cursor:pointer;">Duración</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Proyecto</th><th>Tipo</th><th>Estructura</th>
+            <th>P. Compra</th><th>P. Venta</th><th>Dur.</th>
+            <th>Inv. HASU</th><th>Benef. HASU</th><th>ROI HASU</th><th>ROI Anual.</th><th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color:#BBB;">E-01</td>
+            <td style="font-weight:800;">Proyecto Cervantes</td>
+            <td style="color:#888;">Edificio</td>
+            <td><span class="tag" style="background:rgba(242,110,31,0.1);color:#F26E1F;">JV 2%</span></td>
+            <td style="font-weight:700;">54.4k€</td>
+            <td style="font-weight:700;color:#888;">— <span style="font-size:10px;color:#CCC;">est.</span></td>
+            <td style="color:#888;text-align:center;">—</td>
+            <td style="font-weight:700;">1.1k€</td>
+            <td style="color:#888;">—</td>
+            <td style="color:#888;">—</td>
+            <td style="color:#888;">—</td>
+            <td><span class="tag" style="background:rgba(34,197,94,0.1);color:#22C55E;">En arras</span></td>
+          </tr>
+          <tr>
+            <td style="color:#BBB;">I-01</td>
+            <td style="font-weight:800;">Proyecto San José</td>
+            <td style="color:#888;">Piso</td>
+            <td><span class="tag" style="background:rgba(255,255,255,0.06);color:#888;">100%</span></td>
+            <td style="font-weight:700;">28k€</td>
+            <td style="font-weight:700;color:#888;">— <span style="font-size:10px;color:#CCC;">est.</span></td>
+            <td style="color:#888;text-align:center;">—</td>
+            <td style="font-weight:700;">28k€</td>
+            <td style="color:#888;">—</td>
+            <td style="color:#888;">—</td>
+            <td style="color:#888;">—</td>
+            <td><span class="tag" style="background:rgba(34,197,94,0.1);color:#22C55E;">En arras</span></td>
+          </tr>
+          <tr>
+            <td style="color:#BBB;">I-02</td>
+            <td style="font-weight:800;">Chalet Las Dalias</td>
+            <td style="color:#888;">Casa</td>
+            <td><span class="tag" style="background:rgba(255,255,255,0.06);color:#888;">100%</span></td>
+            <td style="font-weight:700;">91.2k€</td>
+            <td style="font-weight:700;color:#888;">— <span style="font-size:10px;color:#CCC;">est.</span></td>
+            <td style="color:#888;text-align:center;">—</td>
+            <td style="font-weight:700;">91.2k€</td>
+            <td style="color:#888;">—</td>
+            <td style="color:#888;">—</td>
+            <td style="color:#888;">—</td>
+            <td><span class="tag" style="background:rgba(242,110,31,0.1);color:#F26E1F;">Reforma</span></td>
+          </tr>
+          <tr>
+            <td style="color:#BBB;">I-03</td>
+            <td style="font-weight:800;">C/ Herrera 12</td>
+            <td style="color:#888;">Piso</td>
+            <td><span class="tag" style="background:rgba(255,255,255,0.06);color:#888;">100%</span></td>
+            <td style="font-weight:700;">22k€</td>
+            <td style="font-weight:700;">34k€</td>
+            <td style="color:#888;text-align:center;">6m</td>
+            <td style="font-weight:700;">22k€</td>
+            <td style="font-weight:800;color:#22C55E;">+12k€</td>
+            <td style="font-weight:900;color:#22C55E;">+60%</td>
+            <td style="font-weight:900;color:#22C55E;">+120%</td>
+            <td><span class="tag" style="background:rgba(34,197,94,0.1);color:#22C55E;">Vendido</span></td>
+          </tr>
+          <tr>
+            <td style="color:#BBB;">I-04</td>
+            <td style="font-weight:800;">Piso Estación</td>
+            <td style="color:#888;">Piso</td>
+            <td><span class="tag" style="background:rgba(255,255,255,0.06);color:#888;">100%</span></td>
+            <td style="font-weight:700;">18k€</td>
+            <td style="font-weight:700;">31.2k€</td>
+            <td style="color:#888;text-align:center;">5m</td>
+            <td style="font-weight:700;">18k€</td>
+            <td style="font-weight:800;color:#22C55E;">+13.2k€</td>
+            <td style="font-weight:900;color:#22C55E;">+73%</td>
+            <td style="font-weight:900;color:#22C55E;">+175%</td>
+            <td><span class="tag" style="background:rgba(34,197,94,0.1);color:#22C55E;">Vendido</span></td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td></td>
+            <td style="font-size:10px;font-weight:800;color:#BBB;text-transform:uppercase;">8 operaciones</td>
+            <td colspan="2"></td>
+            <td></td><td></td>
+            <td style="color:#888;text-align:center;font-weight:800;">7m</td>
+            <td style="font-weight:900;">452k€</td>
+            <td style="font-weight:900;color:#22C55E;">+94.5k€</td>
+            <td style="font-weight:900;color:#22C55E;">+44.4%</td>
+            <td style="font-weight:900;color:#22C55E;">+68%</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── MÓDULOS EMPRESA ── -->
+  <div class="section-heading">MÓDULOS EMPRESA</div>
+  <div class="modulos-grid">
+    <div class="card modulo-card">
+      <div class="modulo-icon" style="background:rgba(34,197,94,0.12);">📊</div>
+      <div>
+        <div class="modulo-name">Finanzas</div>
+        <div class="modulo-desc">Flujo de caja · todos los proyectos</div>
+      </div>
+      <div class="modulo-arrow">›</div>
+    </div>
+    <div class="card modulo-card">
+      <div class="modulo-icon" style="background:rgba(96,165,250,0.12);">🔧</div>
+      <div>
+        <div class="modulo-name">Proveedores</div>
+        <div class="modulo-desc">Gestión de proveedores y contactos</div>
+      </div>
+      <div class="modulo-arrow">›</div>
+    </div>
+    <div class="card modulo-card">
+      <div class="modulo-icon" style="background:rgba(245,158,11,0.12);">🧾</div>
+      <div>
+        <div class="modulo-name">Fiscal y gestoría</div>
+        <div class="modulo-desc">IVA, IRPF, documentos legales</div>
+      </div>
+      <div class="modulo-arrow">›</div>
+    </div>
+    <div class="card modulo-card">
+      <div class="modulo-icon" style="background:rgba(242,110,31,0.12);">⚙</div>
+      <div>
+        <div class="modulo-name">Usuarios y permisos</div>
+        <div class="modulo-desc">Roles · accesos · proyectos</div>
+      </div>
+      <div class="modulo-arrow">›</div>
+    </div>
+    <div class="card modulo-card">
+      <div class="modulo-icon" style="background:rgba(96,165,250,0.12);">📅</div>
+      <div>
+        <div class="modulo-name">Calendario</div>
+        <div class="modulo-desc">Google Calendar · hola@hasu.in</div>
+      </div>
+      <div class="modulo-arrow">›</div>
+    </div>
+    <div class="card modulo-card">
+      <div class="modulo-icon" style="background:rgba(167,139,250,0.12);">📁</div>
+      <div>
+        <div class="modulo-name">Docs de empresa</div>
+        <div class="modulo-desc">Estatutos · contratos · CIF</div>
+      </div>
+      <div class="modulo-arrow">›</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item"><span class="nav-icon">⊙</span>BOT</div>
+  <div class="nav-item"><span class="nav-icon">⊞</span>PROYECTOS</div>
+  <div class="nav-item"><span class="nav-icon">⌖</span>MERCADO</div>
+  <div class="nav-item active"><span class="nav-icon">▦</span>HASU</div>
+  <div class="nav-item"><span class="nav-icon">🔔</span>ALERTAS</div>
+  <div class="nav-item"><span class="nav-icon">●</span>CUENTA</div>
+</div>
+
+</body>
+</html>

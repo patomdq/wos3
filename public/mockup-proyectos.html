@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — Proyectos Dashboard</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#F2F1ED; font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; color:#111; min-height:100vh; padding-bottom:80px; }
+
+/* ── HERO ── */
+.hero {
+  position:relative; height:200px; overflow:hidden;
+  background: url('https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1400&q=80') center 35%/cover;
+}
+.hero-gradient {
+  position:absolute; inset:0;
+  background: linear-gradient(180deg, rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.5) 60%, rgba(242,241,237,1) 100%);
+}
+.hero-content { position:absolute; bottom:0; left:0; right:0; padding:20px 16px 12px; }
+.hero-title { font-size:26px; font-weight:900; color:#fff; letter-spacing:-0.03em; text-shadow:0 1px 8px rgba(0,0,0,0.3); }
+.hero-sub { font-size:12px; color:rgba(255,255,255,0.7); margin-top:3px; font-weight:600; }
+.hero-btn {
+  position:absolute; top:16px; right:16px;
+  background:#F26E1F; color:#fff; border:none;
+  border-radius:10px; padding:8px 16px; font-size:12px; font-weight:800;
+  cursor:pointer; letter-spacing:0.02em;
+}
+
+/* ── PAGE ── */
+.page { padding:30px 30px 30px; background:#F2F1ED; }
+
+/* ── CARD base ── */
+.card {
+  background:#fff; border-radius:18px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  padding:18px;
+}
+
+/* ── KPI ROW ── */
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:28px; margin-bottom:48px; }
+.kpi { padding:28px 24px; }
+.kpi-icon { font-size:24px; margin-bottom:12px; }
+.kpi-val { font-size:22px; font-weight:900; letter-spacing:-0.02em; line-height:1; }
+.kpi-label { font-size:11px; font-weight:700; color:#999; margin-top:6px; text-transform:uppercase; letter-spacing:0.05em; }
+.kpi-sub { font-size:11px; color:#BBB; margin-top:4px; }
+
+/* ── GRID 2 cols ── */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:28px; margin-bottom:48px; }
+.grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:28px; margin-bottom:48px; }
+.span2 { grid-column:span 2; }
+
+/* ── SECTION LABEL ── */
+.section-label { font-size:10px; font-weight:800; color:#AAA; text-transform:uppercase; letter-spacing:0.08em; margin:16px 0 8px; }
+
+/* ── SECTION HEADING grande ── */
+.section-heading {
+  font-size:20px; font-weight:900; color:#111; letter-spacing:-0.02em;
+  margin:24px 0 12px; display:flex; align-items:center; gap:10px;
+}
+.section-heading span { font-size:13px; font-weight:600; color:#AAA; }
+
+/* ── CARDS GRID 3 col ── */
+.cards-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-bottom:48px; }
+
+/* ── OBJETIVO CARD ── */
+.obj-numbers { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; }
+.obj-main { font-size:28px; font-weight:900; letter-spacing:-0.03em; color:#F26E1F; }
+.obj-total { font-size:13px; color:#CCC; font-weight:600; }
+.obj-pct { font-size:32px; font-weight:900; color:#F26E1F; letter-spacing:-0.03em; }
+.obj-pct-label { font-size:10px; color:#BBB; font-weight:600; }
+.bar-bg { height:10px; background:#F5F4F0; border-radius:99px; overflow:hidden; margin-bottom:8px; }
+.bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#F26E1F,#FF9A3C); }
+.obj-meta { display:flex; justify-content:space-between; font-size:10px; color:#CCC; font-weight:600; }
+
+/* ── AREA CHART (SVG) ── */
+.chart-title { font-size:12px; font-weight:800; color:#333; margin-bottom:4px; }
+.chart-sub { font-size:10px; color:#BBB; margin-bottom:12px; }
+svg { width:100%; overflow:visible; }
+
+/* ── DONUT ── */
+.donut-wrap { display:flex; align-items:center; gap:16px; }
+.donut-svg { width:90px; height:90px; flex-shrink:0; }
+.donut-legend { flex:1; }
+.donut-item { display:flex; align-items:center; gap:6px; margin-bottom:7px; }
+.donut-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.donut-name { font-size:11px; font-weight:600; color:#555; flex:1; }
+.donut-pct { font-size:11px; font-weight:800; color:#333; }
+
+/* ── ROI BARS ── */
+.roi-bars { display:flex; align-items:flex-end; gap:6px; height:70px; margin-top:8px; }
+.roi-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+.roi-bar { width:100%; border-radius:5px 5px 0 0; min-height:4px; }
+.roi-bar-name { font-size:8px; color:#BBB; font-weight:700; text-align:center; line-height:1.2; }
+.roi-bar-val { font-size:9px; font-weight:800; color:#888; }
+
+/* ── PROYECTO CARD activo ── */
+.proy { padding:16px; margin-bottom:10px; position:relative; border-left:3px solid var(--c,#F26E1F); }
+.proy-head { display:flex; justify-content:space-between; align-items:flex-start; }
+.proy-name { font-size:14px; font-weight:900; color:#111; }
+.proy-loc { font-size:10px; color:#AAA; margin-top:2px; }
+.proy-roi { font-size:18px; font-weight:900; }
+.proy-roi-lbl { font-size:9px; color:#AAA; font-weight:700; text-align:right; text-transform:uppercase; }
+.badges { display:flex; gap:4px; flex-wrap:wrap; margin:8px 0; }
+.bdg { font-size:9px; font-weight:800; padding:2px 7px; border-radius:5px; text-transform:uppercase; letter-spacing:0.03em; }
+.bdg-o { background:rgba(242,110,31,0.1); color:#F26E1F; }
+.bdg-g { background:rgba(34,197,94,0.1); color:#16A34A; }
+.bdg-b { background:rgba(96,165,250,0.1); color:#3B82F6; }
+.bdg-a { background:rgba(245,158,11,0.1); color:#D97706; }
+.prog-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.prog-label { font-size:10px; color:#BBB; font-weight:700; white-space:nowrap; }
+.prog-bg { flex:1; height:5px; background:#F5F4F0; border-radius:99px; overflow:hidden; }
+.prog-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#F26E1F,#FF9A3C); }
+.prog-val { font-size:10px; font-weight:800; color:#888; width:24px; text-align:right; }
+.fin-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding-top:10px; border-top:1px solid #F5F4F0; }
+.fin-item { text-align:center; }
+.fin-val { font-size:12px; font-weight:800; }
+.fin-lbl { font-size:9px; color:#BBB; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; margin-top:2px; }
+
+/* ── VENDIDO CARD ── */
+.sold-card { padding:14px 16px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.sold-name { font-size:13px; font-weight:800; color:#111; }
+.sold-loc { font-size:10px; color:#AAA; margin-top:2px; }
+.sold-roi { font-size:17px; font-weight:900; color:#16A34A; text-align:right; }
+.sold-lbl { font-size:9px; color:#AAA; font-weight:700; text-transform:uppercase; margin-top:2px; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position:fixed; bottom:0; left:0; right:0;
+  height:70px; background:#0A0A0A;
+  border-top:1px solid rgba(255,255,255,0.07);
+  display:flex; align-items:center; justify-content:space-around; padding:0 8px;
+  z-index:10;
+}
+.nav-item { display:flex; flex-direction:column; align-items:center; gap:3px; color:rgba(255,255,255,0.3); font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; }
+.nav-item.active { color:#F26E1F; }
+.nav-icon { font-size:18px; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-gradient"></div>
+  <div class="hero-content">
+    <div class="hero-title">Proyectos</div>
+    <div class="hero-sub">3 activos · 5 vendidos · Capital 119.600 €</div>
+  </div>
+  <button class="hero-btn">+ Nuevo</button>
+</div>
+
+<div class="page">
+
+  <!-- KPIs 4 en fila -->
+  <div class="kpi-row">
+    <div class="card kpi">
+      <div class="kpi-icon">🏠</div>
+      <div class="kpi-val" style="color:#F26E1F">3</div>
+      <div class="kpi-label">Activos</div>
+      <div class="kpi-sub">En cartera</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-val" style="color:#3B82F6">119.600€</div>
+      <div class="kpi-label">Capital HASU</div>
+      <div class="kpi-sub">3 proyectos</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-val" style="color:#16A34A">52.120€</div>
+      <div class="kpi-label">Beneficio est.</div>
+      <div class="kpi-sub">Escenario realista</div>
+    </div>
+    <div class="card kpi">
+      <div class="kpi-icon">⚡</div>
+      <div class="kpi-val" style="color:#7C3AED">+44.4%</div>
+      <div class="kpi-label">ROI medio</div>
+      <div class="kpi-sub">Sobre inversión</div>
+    </div>
+  </div>
+
+  <!-- FILA 2: Objetivo 1M + Gráfico área capital -->
+  <div class="grid-2">
+
+    <!-- Objetivo 1M€ -->
+    <div class="card">
+      <div class="chart-title">Objetivo 1.000.000 €</div>
+      <div class="chart-sub">Beneficio acumulado de operaciones vendidas</div>
+      <div class="obj-numbers">
+        <div>
+          <div class="obj-main">326.200 €</div>
+          <div class="obj-total">de 1.000.000 €</div>
+        </div>
+        <div style="text-align:right">
+          <div class="obj-pct">32.6%</div>
+          <div class="obj-pct-label">completado</div>
+        </div>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" style="width:32.6%"></div></div>
+      <div class="obj-meta"><span>0€</span><span>5 vendidas</span><span>1M€</span></div>
+      <!-- mini sparkline de operaciones -->
+      <div style="margin-top:14px;">
+        <svg viewBox="0 0 260 50" height="50">
+          <defs>
+            <linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#F26E1F" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#F26E1F" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M0,45 L40,38 L80,28 L120,22 L160,14 L200,10 L240,6" fill="none" stroke="#F26E1F" stroke-width="2" stroke-linecap="round"/>
+          <path d="M0,45 L40,38 L80,28 L120,22 L160,14 L200,10 L240,6 L240,50 L0,50 Z" fill="url(#gArea)"/>
+          <!-- puntos -->
+          <circle cx="40" cy="38" r="3" fill="#F26E1F"/>
+          <circle cx="80" cy="28" r="3" fill="#F26E1F"/>
+          <circle cx="120" cy="22" r="3" fill="#F26E1F"/>
+          <circle cx="160" cy="14" r="3" fill="#F26E1F"/>
+          <circle cx="200" cy="10" r="3" fill="#F26E1F"/>
+          <!-- labels -->
+          <text x="28" y="34" font-size="7" fill="#CCC" font-family="sans-serif">19 Oct</text>
+          <text x="68" y="24" font-size="7" fill="#CCC" font-family="sans-serif">Estación</text>
+          <text x="108" y="18" font-size="7" fill="#CCC" font-family="sans-serif">Herrera</text>
+          <text x="148" y="10" font-size="7" fill="#CCC" font-family="sans-serif">Travesía</text>
+          <text x="188" y="6" font-size="7" fill="#CCC" font-family="sans-serif">—</text>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#CCC;font-weight:600;margin-top:4px;">
+          <span>2022</span><span>2023</span><span>2024</span><span>2025</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROI por operación -->
+    <div class="card">
+      <div class="chart-title">ROI por operación</div>
+      <div class="chart-sub">Naranja = activo · Verde = vendido</div>
+      <div class="roi-bars">
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-val">80%</div>
+          <div class="roi-bar" style="height:80%;background:linear-gradient(180deg,#22C55E,rgba(34,197,94,0.3))"></div>
+          <div class="roi-bar-name">19 Oct</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-val">73%</div>
+          <div class="roi-bar" style="height:73%;background:linear-gradient(180deg,#22C55E,rgba(34,197,94,0.3))"></div>
+          <div class="roi-bar-name">Estación</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-val">60%</div>
+          <div class="roi-bar" style="height:60%;background:linear-gradient(180deg,#22C55E,rgba(34,197,94,0.3))"></div>
+          <div class="roi-bar-name">Herrera</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-val">18%</div>
+          <div class="roi-bar" style="height:18%;background:linear-gradient(180deg,#22C55E,rgba(34,197,94,0.3))"></div>
+          <div class="roi-bar-name">Travesía</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-val">53%</div>
+          <div class="roi-bar" style="height:53%;background:linear-gradient(180deg,#F26E1F,rgba(242,110,31,0.3))"></div>
+          <div class="roi-bar-name">San José</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-val">43%</div>
+          <div class="roi-bar" style="height:43%;background:linear-gradient(180deg,#F26E1F,rgba(242,110,31,0.3))"></div>
+          <div class="roi-bar-name">Cervantes</div>
+        </div>
+        <div class="roi-bar-wrap">
+          <div class="roi-bar-val">37%</div>
+          <div class="roi-bar" style="height:37%;background:linear-gradient(180deg,#F26E1F,rgba(242,110,31,0.3))"></div>
+          <div class="roi-bar-name">Las Dalias</div>
+        </div>
+      </div>
+
+      <!-- Donut distribución capital -->
+      <div style="border-top:1px solid #F5F4F0;margin-top:14px;padding-top:14px;">
+        <div style="font-size:10px;font-weight:800;color:#AAA;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Distribución capital activo</div>
+        <div class="donut-wrap">
+          <svg class="donut-svg" viewBox="0 0 90 90">
+            <!-- bg circle -->
+            <circle cx="45" cy="45" r="32" fill="none" stroke="#F5F4F0" stroke-width="10"/>
+            <!-- Cervantes 45% -->
+            <circle cx="45" cy="45" r="32" fill="none" stroke="#F26E1F" stroke-width="10"
+              stroke-dasharray="90 201" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 45 45)"/>
+            <!-- San José 32% -->
+            <circle cx="45" cy="45" r="32" fill="none" stroke="#3B82F6" stroke-width="10"
+              stroke-dasharray="64 201" stroke-dashoffset="-90" stroke-linecap="round" transform="rotate(-90 45 45)"/>
+            <!-- Dalias 23% -->
+            <circle cx="45" cy="45" r="32" fill="none" stroke="#7C3AED" stroke-width="10"
+              stroke-dasharray="46 201" stroke-dashoffset="-154" stroke-linecap="round" transform="rotate(-90 45 45)"/>
+            <text x="45" y="49" text-anchor="middle" font-size="11" font-weight="900" fill="#111" font-family="sans-serif">119.6k</text>
+          </svg>
+          <div class="donut-legend">
+            <div class="donut-item"><div class="donut-dot" style="background:#F26E1F"></div><div class="donut-name">Cervantes</div><div class="donut-pct">45%</div></div>
+            <div class="donut-item"><div class="donut-dot" style="background:#3B82F6"></div><div class="donut-name">San José</div><div class="donut-pct">32%</div></div>
+            <div class="donut-item"><div class="donut-dot" style="background:#7C3AED"></div><div class="donut-name">Las Dalias</div><div class="donut-pct">23%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROYECTOS ACTIVOS -->
+  <div class="section-heading">Proyectos activos <span>3</span></div>
+
+  <div class="cards-grid">
+
+    <div class="card proy" style="--c:#F26E1F">
+      <div class="proy-head">
+        <div><div class="proy-name">Proyecto Cervantes</div><div class="proy-loc">📍 Cuevas del Almanzora</div></div>
+        <div><div class="proy-roi" style="color:#16A34A">+42.9%</div><div class="proy-roi-lbl">ROI est.</div></div>
+      </div>
+      <div class="badges"><span class="bdg bdg-b">JV 2%</span><span class="bdg bdg-g">En arras</span></div>
+      <div class="prog-row">
+        <span class="prog-label">Reforma</span>
+        <div class="prog-bg"><div class="prog-fill" style="width:99%"></div></div>
+        <span class="prog-val">99%</span>
+      </div>
+      <div class="fin-row">
+        <div class="fin-item"><div class="fin-val" style="color:#3B82F6">54.400€</div><div class="fin-lbl">Inversión</div></div>
+        <div class="fin-item"><div class="fin-val" style="color:#16A34A">+23.3k€</div><div class="fin-lbl">Benef. est.</div></div>
+        <div class="fin-item"><div class="fin-val" style="color:#AAA">May 2025</div><div class="fin-lbl">Salida</div></div>
+      </div>
+    </div>
+
+    <div class="card proy" style="--c:#16A34A">
+      <div class="proy-head">
+        <div><div class="proy-name">Proyecto San José</div><div class="proy-loc">📍 San Jose bloque 1</div></div>
+        <div><div class="proy-roi" style="color:#16A34A">+53.3%</div><div class="proy-roi-lbl">ROI est.</div></div>
+      </div>
+      <div class="badges"><span class="bdg bdg-o">100% HASU</span><span class="bdg bdg-g">En arras</span></div>
+      <div class="fin-row">
+        <div class="fin-item"><div class="fin-val" style="color:#3B82F6">38.000€</div><div class="fin-lbl">Inversión</div></div>
+        <div class="fin-item"><div class="fin-val" style="color:#16A34A">+20.2k€</div><div class="fin-lbl">Benef. est.</div></div>
+        <div class="fin-item"><div class="fin-val" style="color:#AAA">Jun 2025</div><div class="fin-lbl">Salida</div></div>
+      </div>
+    </div>
+
+    <div class="card proy" style="--c:#7C3AED">
+      <div class="proy-head">
+        <div><div class="proy-name">Chalet Las Dalias</div><div class="proy-loc">📍 —</div></div>
+        <div><div class="proy-roi" style="color:#16A34A">+36.9%</div><div class="proy-roi-lbl">ROI est.</div></div>
+      </div>
+      <div class="badges"><span class="bdg bdg-o">100% HASU</span><span class="bdg bdg-a">Reforma</span></div>
+      <div class="prog-row">
+        <span class="prog-label">Reforma</span>
+        <div class="prog-bg"><div class="prog-fill" style="width:80%"></div></div>
+        <span class="prog-val">80%</span>
+      </div>
+      <div class="fin-row">
+        <div class="fin-item"><div class="fin-val" style="color:#3B82F6">27.200€</div><div class="fin-lbl">Inversión</div></div>
+        <div class="fin-item"><div class="fin-val" style="color:#16A34A">+10.0k€</div><div class="fin-lbl">Benef. est.</div></div>
+        <div class="fin-item"><div class="fin-val" style="color:#AAA">Jul 2025</div><div class="fin-lbl">Salida</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- VENDIDOS -->
+  <div class="section-heading">Proyectos vendidos <span>5</span></div>
+
+  <div class="cards-grid">
+
+    <div class="card" style="padding:16px;border-top:3px solid #16A34A;">
+      <div style="font-size:15px;font-weight:900;color:#111;margin-bottom:4px;">Proyecto 19 de Octubre</div>
+      <div style="font-size:11px;color:#AAA;margin-bottom:12px;">📍 Zurgena</div>
+      <div style="font-size:28px;font-weight:900;color:#16A34A;letter-spacing:-0.02em;">+80.0%</div>
+      <div style="font-size:10px;color:#AAA;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;">ROI real</div>
+    </div>
+
+    <div class="card" style="padding:16px;border-top:3px solid #16A34A;">
+      <div style="font-size:15px;font-weight:900;color:#111;margin-bottom:4px;">Proyecto Estación</div>
+      <div style="font-size:11px;color:#AAA;margin-bottom:12px;">📍 Albox</div>
+      <div style="font-size:28px;font-weight:900;color:#16A34A;letter-spacing:-0.02em;">+73.1%</div>
+      <div style="font-size:10px;color:#AAA;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;">ROI real</div>
+    </div>
+
+    <div class="card" style="padding:16px;border-top:3px solid #16A34A;">
+      <div style="font-size:15px;font-weight:900;color:#111;margin-bottom:4px;">Proyecto Herrera</div>
+      <div style="font-size:11px;color:#AAA;margin-bottom:12px;">📍 Cuevas del Almanzora</div>
+      <div style="font-size:28px;font-weight:900;color:#16A34A;letter-spacing:-0.02em;">+59.6%</div>
+      <div style="font-size:10px;color:#AAA;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;">ROI real</div>
+    </div>
+
+    <div class="card" style="padding:16px;border-top:3px solid #16A34A;">
+      <div style="font-size:15px;font-weight:900;color:#111;margin-bottom:4px;">Proyecto Travesía</div>
+      <div style="font-size:11px;color:#AAA;margin-bottom:12px;">📍 Cuevas del Almanzora</div>
+      <div style="font-size:28px;font-weight:900;color:#16A34A;letter-spacing:-0.02em;">+17.6%</div>
+      <div style="font-size:10px;color:#AAA;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;">ROI real</div>
+    </div>
+
+    <div class="card" style="padding:16px;border-top:3px solid #16A34A;">
+      <div style="font-size:15px;font-weight:900;color:#111;margin-bottom:4px;">Proyecto — </div>
+      <div style="font-size:11px;color:#AAA;margin-bottom:12px;">📍 —</div>
+      <div style="font-size:28px;font-weight:900;color:#16A34A;letter-spacing:-0.02em;">—</div>
+      <div style="font-size:10px;color:#AAA;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;">ROI real</div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Bottom nav -->
+<div class="bottom-nav">
+  <div class="nav-item"><span class="nav-icon">⊙</span>BOT</div>
+  <div class="nav-item active"><span class="nav-icon">⊞</span>PROYECTOS</div>
+  <div class="nav-item"><span class="nav-icon">⌖</span>MERCADO</div>
+  <div class="nav-item"><span class="nav-icon">▦</span>HASU</div>
+  <div class="nav-item"><span class="nav-icon">🔔</span>ALERTAS</div>
+  <div class="nav-item"><span class="nav-icon">●</span>CUENTA</div>
+</div>
+
+</body>
+</html>

@@ -76,7 +76,23 @@
       "mcp__scheduled-tasks__list_scheduled_tasks",
       "mcp__48a3cc9e-8dc2-4a3b-99c8-a7dccbd10128__list_projects",
       "mcp__48a3cc9e-8dc2-4a3b-99c8-a7dccbd10128__get_project",
-      "mcp__48a3cc9e-8dc2-4a3b-99c8-a7dccbd10128__list_deployments"
+      "mcp__48a3cc9e-8dc2-4a3b-99c8-a7dccbd10128__list_deployments",
+      "Bash(node_modules/.bin/next build *)",
+      "Bash(xargs cat *)",
+      "Bash(git -C /Users/patofavora/Documents/W3/mesa-juntas remote -v)",
+      "Bash(git -C /Users/patofavora/Documents/W3/mesa-juntas log --oneline -5)",
+      "Bash(vercel deploy *)",
+      "Bash(vercel --prod)",
+      "Bash(/usr/local/bin/vercel deploy *)",
+      "Bash(npx vercel *)",
+      "Bash(/opt/homebrew/bin/vercel deploy *)",
+      "Bash(/opt/homebrew/bin/vercel --version)",
+      "Bash(/opt/homebrew/bin/vercel ls *)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git revert *)",
+      "Bash(open -a Safari \"file:///Users/patofavora/Documents/W3/wos3/public/mockup-proyectos.html\")",
+      "Bash(node node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mercado — Mockup v2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F7F7F5; }
+
+  /* ── BANNER ── */
+  .banner { position: relative; width: 100%; height: 200px; overflow: hidden; }
+  .banner img { width: 100%; height: 100%; object-fit: cover; }
+  .banner-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.68) 100%); }
+  .banner-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 0 32px 28px; display: flex; align-items: flex-end; justify-content: space-between; }
+  .banner-title { font-size: 28px; font-weight: 900; color: #fff; line-height: 1; letter-spacing: -0.5px; cursor: pointer; }
+  .banner-title:hover { text-decoration: underline; }
+  .banner-sub { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6); margin-top: 5px; }
+  .btn-agregar { background: #F26E1F; color: #fff; font-size: 14px; font-weight: 800; padding: 11px 22px; border-radius: 14px; border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+
+  /* ── CONTENIDO ── */
+  .content { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  /* ── FILTROS ── */
+  .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+  .filtro { padding: 8px 18px; border-radius: 100px; font-size: 13px; font-weight: 700; border: 1.5px solid #E2E2E2; background: #fff; color: #666; cursor: pointer; }
+  .filtro.active { background: #F26E1F; border-color: #F26E1F; color: #fff; }
+
+  /* ── GRID ── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+
+  /* ── CARD BASE ── */
+  .card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; }
+  .card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.12); transform: translateY(-1px); transition: all 0.2s; }
+
+  /* imagen */
+  .card-img { position: relative; height: 160px; overflow: hidden; background: #F0F0F0; cursor: pointer; }
+  .card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+  .card-img:hover img { transform: scale(1.03); }
+  .badge { position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; }
+  .badge span { font-size: 10px; font-weight: 800; padding: 4px 9px; border-radius: 100px; background: rgba(0,0,0,0.55); color: #fff; backdrop-filter: blur(4px); }
+  .badge-estado { position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 800; padding: 4px 9px; border-radius: 100px; }
+
+  /* body */
+  .card-body { padding: 14px 16px 6px; flex: 1; }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+  .card-title { font-size: 15px; font-weight: 900; color: #111; line-height: 1.25; flex: 1; min-width: 0; cursor: pointer; }
+  .card-title:hover { color: #F26E1F; }
+  .card-title-sub { font-size: 11px; color: #999; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-price { font-size: 15px; font-weight: 900; color: #F26E1F; flex-shrink: 0; }
+
+  /* pills */
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .pill { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px; background: #F3F3F3; color: #555; }
+
+  /* ── METRICAS edificio ── */
+  .metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 12px; border-radius: 12px; overflow: hidden; background: #EBEBEB; }
+  .metrica { background: #F9F9F9; padding: 9px 8px; text-align: center; }
+  .metrica-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #AAA; margin-bottom: 2px; }
+  .metrica-val { font-size: 13px; font-weight: 900; color: #222; }
+
+  /* ── ROI strip piso ── */
+  .roi-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 12px; border-radius: 12px; overflow: hidden; background: #EBEBEB; }
+  .roi-cell { background: #F9F9F9; padding: 9px 8px; text-align: center; }
+  .roi-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
+  .roi-val { font-size: 12px; font-weight: 900; }
+
+  /* ── VER DETALLE btn ── */
+  .btn-detalle { margin: 12px 0 0; width: 100%; padding: 9px; border-radius: 12px; border: 1.5px solid #EBEBEB; background: #FAFAFA; color: #888; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn-detalle:hover { border-color: #F26E1F; color: #F26E1F; background: rgba(242,110,31,0.04); }
+
+  /* ── DETALLE EDIFICIO (expandido) ── */
+  .detalle-edificio { margin-top: 10px; border-top: 1.5px solid #F0F0F0; padding-top: 12px; }
+  .detalle-section-title { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; color: #BBB; margin-bottom: 8px; }
+  .detalle-notas { font-size: 12px; color: #555; line-height: 1.6; margin-bottom: 14px; background: #FAFAFA; padding: 10px 12px; border-radius: 10px; border: 1px solid #F0F0F0; }
+
+  /* tabla unidades */
+  .unidades-table { border-radius: 12px; overflow: hidden; border: 1.5px solid #EBEBEB; }
+  .unidades-header { display: grid; grid-template-columns: 1fr 60px 70px 80px; gap: 0; background: #F5F5F5; padding: 7px 12px; }
+  .unidades-header span { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #AAA; }
+  .unidad-row { display: grid; grid-template-columns: 1fr 60px 70px 80px; gap: 0; padding: 9px 12px; border-top: 1px solid #F3F3F3; align-items: center; }
+  .unidad-row:hover { background: #FAFAFA; }
+  .unidad-tipo { font-size: 13px; font-weight: 700; color: #222; }
+  .unidad-sub { font-size: 10px; color: #AAA; margin-top: 1px; }
+  .unidad-val { font-size: 12px; font-weight: 700; color: #444; }
+  .unidad-precio { font-size: 12px; font-weight: 900; color: #22C55E; }
+  .unidad-estado { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 100px; }
+
+  /* resumen financiero edificio */
+  .resumen-fin { margin-top: 10px; background: #F9F9F9; border-radius: 12px; padding: 12px 14px; border: 1.5px solid #EBEBEB; }
+  .resumen-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #F0F0F0; }
+  .resumen-row:last-child { border: none; }
+  .resumen-label { font-size: 11px; color: #888; font-weight: 600; }
+  .resumen-val { font-size: 12px; font-weight: 900; color: #111; }
+
+  /* ── CARD FOOTER ── */
+  .card-footer { border-top: 1px solid #F0F0F0; }
+  .card-actions { display: flex; gap: 6px; padding: 10px 12px; }
+  .btn-calc { flex: 1; padding: 9px; border-radius: 11px; border: none; background: rgba(242,110,31,0.1); color: #F26E1F; font-size: 12px; font-weight: 800; cursor: pointer; }
+  .btn-icon { width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid #EBEBEB; background: #FAFAFA; color: #888; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .btn-icon.danger { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); color: #EF4444; }
+  .card-secondary { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-top: 1px solid #F0F0F0; }
+  .card-secondary-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #C0C0C0; }
+  .btn-sm { font-size: 11px; font-weight: 800; padding: 5px 11px; border-radius: 8px; border: 1.5px solid #EBEBEB; background: #fff; color: #666; cursor: pointer; }
+  .btn-sm.primary { background: rgba(242,110,31,0.08); border-color: rgba(242,110,31,0.3); color: #F26E1F; }
+
+  /* ── PANEL DETALLE DERECHO (desktop) ── */
+  .panel-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 100; display: flex; justify-content: flex-end; }
+  .panel { width: min(780px, 95vw); height: 100vh; background: #fff; overflow-y: auto; display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.15); }
+  .panel-img { height: 260px; overflow: hidden; position: relative; flex-shrink: 0; }
+  .panel-img img { width: 100%; height: 100%; object-fit: cover; }
+  .panel-img-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.55)); }
+  .panel-img-info { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px 28px; }
+  .panel-title { font-size: 22px; font-weight: 900; color: #fff; line-height: 1.2; }
+  .panel-sub { font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 4px; }
+  .panel-price { font-size: 20px; font-weight: 900; color: #F26E1F; margin-top: 6px; }
+  .panel-body { padding: 24px 28px; flex: 1; }
+  .panel-close { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 100px; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); border: none; color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+  .panel-section { margin-bottom: 24px; }
+  .panel-section-title { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; color: #AAA; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1.5px solid #F0F0F0; }
+
+  /* unidades en panel */
+  .panel-unidades { display: flex; flex-direction: column; gap: 8px; }
+  .panel-unidad { background: #FAFAFA; border: 1.5px solid #EBEBEB; border-radius: 14px; padding: 12px 16px; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+  .panel-unidad-tipo { font-size: 14px; font-weight: 800; color: #111; }
+  .panel-unidad-detail { font-size: 11px; color: #888; margin-top: 3px; }
+  .panel-unidad-right { text-align: right; }
+  .panel-unidad-precio { font-size: 14px; font-weight: 900; color: #22C55E; }
+  .panel-unidad-renta { font-size: 11px; color: #888; margin-top: 2px; }
+  .panel-unidad-estado { display: inline-block; font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 100px; margin-top: 4px; }
+
+  /* resumen panel */
+  .panel-resumen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .panel-resumen-cell { background: #F9F9F9; border: 1.5px solid #EBEBEB; border-radius: 12px; padding: 12px; text-align: center; }
+  .panel-resumen-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #AAA; margin-bottom: 4px; }
+  .panel-resumen-val { font-size: 16px; font-weight: 900; color: #111; }
+  .panel-resumen-sub { font-size: 10px; color: #AAA; margin-top: 2px; }
+
+  .panel-actions { padding: 16px 28px; border-top: 1.5px solid #F0F0F0; display: flex; gap: 10px; flex-shrink: 0; }
+  .panel-btn-calc { flex: 1; padding: 14px; border-radius: 14px; border: none; background: #F26E1F; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; }
+  .panel-btn-sec { padding: 14px 18px; border-radius: 14px; border: 1.5px solid #EBEBEB; background: #fff; color: #666; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 100px; margin-right: 6px; }
+</style>
+</head>
+<body>
+
+<!-- BANNER -->
+<div class="banner">
+  <img src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1400&h=400&fit=crop&q=80" alt="Mercado">
+  <div class="banner-overlay"></div>
+  <div class="banner-content">
+    <div>
+      <div class="banner-title">Mercado</div>
+      <div class="banner-sub">Inmuebles en estudio</div>
+    </div>
+    <button class="btn-agregar">+ Agregar</button>
+  </div>
+</div>
+
+<!-- CONTENIDO -->
+<div class="content">
+  <div class="filtros">
+    <div class="filtro active">Todos (5)</div>
+    <div class="filtro">Piso (1)</div>
+    <div class="filtro">Casa (0)</div>
+    <div class="filtro">Dúplex (0)</div>
+    <div class="filtro">Edificio (4)</div>
+    <div class="filtro">Suelo (0)</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ══ CARD EDIFICIO cerrada ══ -->
+    <div class="card" onclick="document.getElementById('panel').style.display='flex'">
+      <div class="card-img">
+        <img src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=600&h=320&fit=crop&q=80" alt="">
+        <div class="badge"><span>Edificio</span><span>Contacto directo</span></div>
+        <div class="badge-estado" style="background:rgba(96,165,250,0.13);color:#3B82F6;">En estudio</div>
+      </div>
+      <div class="card-body">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Edificio Centro Albox</div>
+            <div class="card-title-sub">Plaza San Francisco, Albox · Almería</div>
+          </div>
+          <div class="card-price">220.000 €</div>
+        </div>
+        <div class="pills"><div class="pill">3 plantas</div></div>
+        <div class="metricas">
+          <div class="metrica"><div class="metrica-label">Precio</div><div class="metrica-val">220k €</div></div>
+          <div class="metrica"><div class="metrica-label">Unidades</div><div class="metrica-val">6</div></div>
+          <div class="metrica"><div class="metrica-label">m²</div><div class="metrica-val">320</div></div>
+        </div>
+        <button class="btn-detalle" onclick="event.stopPropagation(); this.closest('.card').querySelector('.detalle-edificio').style.display = this.closest('.card').querySelector('.detalle-edificio').style.display === 'block' ? 'none' : 'block'; this.textContent = this.closest('.card').querySelector('.detalle-edificio').style.display === 'block' ? '▲ Cerrar detalle' : '▼ Ver detalle'">▼ Ver detalle</button>
+
+        <!-- DETALLE EXPANDIDO EDIFICIO -->
+        <div class="detalle-edificio" style="display:none;">
+          <div class="detalle-section-title">Descripción</div>
+          <div class="detalle-notas">Edificio mixto 3 plantas. Sin ascensor. Terraza comunitaria con potencial solárium. Excelente ubicación centro Albox junto Plaza San Francisco. Potencial turístico, residencial o alquiler.</div>
+
+          <div class="detalle-section-title" style="margin-top:12px;">Unidades (6)</div>
+          <div class="unidades-table">
+            <div class="unidades-header">
+              <span>Unidad</span><span>m²</span><span>Estado</span><span style="text-align:right">P. Venta est.</span>
+            </div>
+            <div class="unidad-row">
+              <div><div class="unidad-tipo">Local PB</div><div class="unidad-sub">Planta baja</div></div>
+              <div class="unidad-val">45</div>
+              <div><span class="unidad-estado" style="background:rgba(245,158,11,0.12);color:#D97706;">Ocupado</span></div>
+              <div class="unidad-precio" style="text-align:right">40.000 €</div>
+            </div>
+            <div class="unidad-row">
+              <div><div class="unidad-tipo">Piso 1A</div><div class="unidad-sub">Primera planta</div></div>
+              <div class="unidad-val">60</div>
+              <div><span class="unidad-estado" style="background:rgba(34,197,94,0.12);color:#16A34A;">Libre</span></div>
+              <div class="unidad-precio" style="text-align:right">55.000 €</div>
+            </div>
+            <div class="unidad-row">
+              <div><div class="unidad-tipo">Piso 1B</div><div class="unidad-sub">Primera planta</div></div>
+              <div class="unidad-val">60</div>
+              <div><span class="unidad-estado" style="background:rgba(34,197,94,0.12);color:#16A34A;">Libre</span></div>
+              <div class="unidad-precio" style="text-align:right">52.000 €</div>
+            </div>
+            <div class="unidad-row">
+              <div><div class="unidad-tipo">Piso 2A</div><div class="unidad-sub">Segunda planta</div></div>
+              <div class="unidad-val">60</div>
+              <div><span class="unidad-estado" style="background:rgba(239,68,68,0.1);color:#DC2626;">Ocupado</span></div>
+              <div class="unidad-precio" style="text-align:right">53.000 €</div>
+            </div>
+            <div class="unidad-row">
+              <div><div class="unidad-tipo">Piso 2B</div><div class="unidad-sub">Segunda planta</div></div>
+              <div class="unidad-val">58</div>
+              <div><span class="unidad-estado" style="background:rgba(34,197,94,0.12);color:#16A34A;">Libre</span></div>
+              <div class="unidad-precio" style="text-align:right">50.000 €</div>
+            </div>
+            <div class="unidad-row">
+              <div><div class="unidad-tipo">Ático</div><div class="unidad-sub">Planta 3 + terraza</div></div>
+              <div class="unidad-val">80</div>
+              <div><span class="unidad-estado" style="background:rgba(34,197,94,0.12);color:#16A34A;">Libre</span></div>
+              <div class="unidad-precio" style="text-align:right">72.000 €</div>
+            </div>
+          </div>
+
+          <div class="resumen-fin" style="margin-top:12px;">
+            <div class="resumen-row"><span class="resumen-label">Total venta estimado</span><span class="resumen-val" style="color:#22C55E;">322.000 €</span></div>
+            <div class="resumen-row"><span class="resumen-label">Beneficio bruto est.</span><span class="resumen-val">102.000 €</span></div>
+            <div class="resumen-row"><span class="resumen-label">Renta mensual</span><span class="resumen-val">1.240 €/mes</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="card-actions">
+          <button class="btn-calc">⊕ Calcular</button>
+          <button class="btn-icon">✎</button>
+          <button class="btn-icon danger">🗑</button>
+        </div>
+        <div class="card-secondary">
+          <span class="card-secondary-label">Visitas</span>
+          <div style="display:flex;gap:6px;"><button class="btn-sm primary">+ Agendar</button><button class="btn-sm">▼ Ver</button></div>
+        </div>
+        <div class="card-secondary">
+          <span class="card-secondary-label">Bitácora</span>
+          <button class="btn-sm">▼ Bitácora</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CARD PISO con ROI ══ -->
+    <div class="card">
+      <div class="card-img">
+        <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&h=320&fit=crop&q=80" alt="">
+        <div class="badge"><span>Piso</span></div>
+        <div class="badge-estado" style="background:rgba(245,158,11,0.12);color:#F59E0B;">Ofertado</div>
+      </div>
+      <div class="card-body">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Dúplex Pulpí</div>
+            <div class="card-title-sub">Calle Mayor 12, Pulpí · Almería</div>
+          </div>
+          <div class="card-price">89.000 €</div>
+        </div>
+        <div class="pills"><div class="pill">95 m²</div><div class="pill">3 hab</div><div class="pill">2 baños</div></div>
+        <div class="roi-strip">
+          <div class="roi-cell"><div class="roi-label" style="color:#EF4444;">Pesimista</div><div class="roi-val" style="color:#EF4444;">120k €</div></div>
+          <div class="roi-cell"><div class="roi-label" style="color:#F59E0B;">Realista</div><div class="roi-val" style="color:#F59E0B;">135k €</div></div>
+          <div class="roi-cell"><div class="roi-label" style="color:#22C55E;">Optimista</div><div class="roi-val" style="color:#22C55E;">148k €</div></div>
+        </div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:12px;font-weight:800;color:#22C55E;">↗ ROI 34.2%</span>
+          <span style="font-size:10px;color:#CCC;">· 12/05/2026</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="card-actions">
+          <button class="btn-calc">✎ Análisis</button>
+          <button class="btn-icon">✎</button>
+          <button class="btn-icon danger">🗑</button>
+        </div>
+        <div class="card-secondary">
+          <span class="card-secondary-label">Visitas</span>
+          <div style="display:flex;gap:6px;"><button class="btn-sm primary">+ Agendar</button><button class="btn-sm">▼ Ver</button></div>
+        </div>
+        <div class="card-secondary">
+          <span class="card-secondary-label">Bitácora</span>
+          <button class="btn-sm">▼ Bitácora</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CARD EDIFICIO sin analizar ══ -->
+    <div class="card">
+      <div class="card-img" style="background:linear-gradient(135deg,#F0EEE8,#E8E6E0);display:flex;align-items:center;justify-content:center;font-size:52px;color:#CCC;">🏢</div>
+      <div class="card-body">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Calle Nueva — Huercal Overa</div>
+            <div class="card-title-sub">Calle Nueva 6, Huercal-Overa · Almería</div>
+          </div>
+          <div class="card-price">250.000 €</div>
+        </div>
+        <div class="pills"><div class="pill">242 m²</div><div class="pill">3 plantas</div></div>
+        <div class="metricas">
+          <div class="metrica"><div class="metrica-label">Precio</div><div class="metrica-val">250k €</div></div>
+          <div class="metrica"><div class="metrica-label">Unidades</div><div class="metrica-val">—</div></div>
+          <div class="metrica"><div class="metrica-label">m²</div><div class="metrica-val">242</div></div>
+        </div>
+        <button class="btn-detalle">▼ Ver detalle</button>
+      </div>
+      <div class="card-footer">
+        <div class="card-actions">
+          <button class="btn-calc">⊕ Calcular</button>
+          <button class="btn-icon">✎</button>
+          <button class="btn-icon danger">🗑</button>
+        </div>
+        <div class="card-secondary">
+          <span class="card-secondary-label">Visitas</span>
+          <div style="display:flex;gap:6px;"><button class="btn-sm primary">+ Agendar</button><button class="btn-sm">▼ Ver</button></div>
+        </div>
+        <div class="card-secondary">
+          <span class="card-secondary-label">Bitácora</span>
+          <button class="btn-sm">▼ Bitácora</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ PANEL LATERAL DETALLE (click en card edificio) ══ -->
+<div id="panel" class="panel-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="panel">
+    <div class="panel-img">
+      <img src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&h=520&fit=crop&q=80" alt="">
+      <div class="panel-img-overlay"></div>
+      <div class="panel-img-info">
+        <div style="margin-bottom:8px;">
+          <span class="tag" style="background:rgba(0,0,0,0.5);color:#fff;backdrop-filter:blur(4px)">Edificio</span>
+          <span class="tag" style="background:rgba(96,165,250,0.2);color:#93C5FD;backdrop-filter:blur(4px)">En estudio</span>
+        </div>
+        <div class="panel-title">Edificio Centro Albox</div>
+        <div class="panel-sub">Plaza San Francisco, Albox · Almería</div>
+        <div class="panel-price">220.000 €</div>
+      </div>
+      <button class="panel-close" onclick="document.getElementById('panel').style.display='none'">✕</button>
+    </div>
+    <div class="panel-body">
+
+      <!-- Resumen rápido -->
+      <div class="panel-section">
+        <div class="panel-section-title">Resumen</div>
+        <div class="panel-resumen">
+          <div class="panel-resumen-cell"><div class="panel-resumen-label">Superficie</div><div class="panel-resumen-val">320</div><div class="panel-resumen-sub">m²</div></div>
+          <div class="panel-resumen-cell"><div class="panel-resumen-label">Plantas</div><div class="panel-resumen-val">3</div><div class="panel-resumen-sub">plantas</div></div>
+          <div class="panel-resumen-cell"><div class="panel-resumen-label">Unidades</div><div class="panel-resumen-val">6</div><div class="panel-resumen-sub">unidades</div></div>
+        </div>
+      </div>
+
+      <!-- Descripción -->
+      <div class="panel-section">
+        <div class="panel-section-title">Descripción</div>
+        <div style="font-size:13px;color:#555;line-height:1.7;background:#FAFAFA;padding:14px;border-radius:12px;border:1.5px solid #EBEBEB;">Edificio mixto 3 plantas. Sin ascensor. Terraza comunitaria con potencial solárium o apartamento extra. Aljibe. Excelente ubicación centro Albox junto Plaza San Francisco. Potencial turístico, residencial o alquiler.</div>
+      </div>
+
+      <!-- Unidades -->
+      <div class="panel-section">
+        <div class="panel-section-title">Unidades (6)</div>
+        <div class="panel-unidades">
+          <div class="panel-unidad">
+            <div><div class="panel-unidad-tipo">Local Planta Baja</div><div class="panel-unidad-detail">45 m² · Ocupado</div></div>
+            <div class="panel-unidad-right"><div class="panel-unidad-precio">40.000 €</div><div class="panel-unidad-renta">350 €/mes</div><span class="panel-unidad-estado" style="background:rgba(245,158,11,0.12);color:#D97706;">Ocupado</span></div>
+          </div>
+          <div class="panel-unidad">
+            <div><div class="panel-unidad-tipo">Piso 1ª A</div><div class="panel-unidad-detail">60 m² · Libre · Reforma estimada 8k</div></div>
+            <div class="panel-unidad-right"><div class="panel-unidad-precio">55.000 €</div><div class="panel-unidad-renta">480 €/mes</div><span class="panel-unidad-estado" style="background:rgba(34,197,94,0.1);color:#16A34A;">Libre</span></div>
+          </div>
+          <div class="panel-unidad">
+            <div><div class="panel-unidad-tipo">Piso 1ª B</div><div class="panel-unidad-detail">60 m² · Libre · Reforma estimada 7k</div></div>
+            <div class="panel-unidad-right"><div class="panel-unidad-precio">52.000 €</div><div class="panel-unidad-renta">460 €/mes</div><span class="panel-unidad-estado" style="background:rgba(34,197,94,0.1);color:#16A34A;">Libre</span></div>
+          </div>
+          <div class="panel-unidad">
+            <div><div class="panel-unidad-tipo">Piso 2ª A</div><div class="panel-unidad-detail">60 m² · Ocupado</div></div>
+            <div class="panel-unidad-right"><div class="panel-unidad-precio">53.000 €</div><div class="panel-unidad-renta">420 €/mes</div><span class="panel-unidad-estado" style="background:rgba(239,68,68,0.1);color:#DC2626;">Ocupado</span></div>
+          </div>
+          <div class="panel-unidad">
+            <div><div class="panel-unidad-tipo">Piso 2ª B</div><div class="panel-unidad-detail">58 m² · Libre · Reforma estimada 6k</div></div>
+            <div class="panel-unidad-right"><div class="panel-unidad-precio">50.000 €</div><div class="panel-unidad-renta">440 €/mes</div><span class="panel-unidad-estado" style="background:rgba(34,197,94,0.1);color:#16A34A;">Libre</span></div>
+          </div>
+          <div class="panel-unidad">
+            <div><div class="panel-unidad-tipo">Ático + Terraza</div><div class="panel-unidad-detail">80 m² · Terraza 30 m² · Libre</div></div>
+            <div class="panel-unidad-right"><div class="panel-unidad-precio">72.000 €</div><div class="panel-unidad-renta">620 €/mes</div><span class="panel-unidad-estado" style="background:rgba(34,197,94,0.1);color:#16A34A;">Libre</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proyección financiera -->
+      <div class="panel-section">
+        <div class="panel-section-title">Proyección financiera</div>
+        <div style="background:#F9F9F9;border:1.5px solid #EBEBEB;border-radius:14px;overflow:hidden;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:#EBEBEB;">
+            <div style="background:#F9F9F9;padding:10px;text-align:center;"><div style="font-size:9px;font-weight:800;text-transform:uppercase;color:#AAA;letter-spacing:.6px;margin-bottom:4px">Total venta est.</div><div style="font-size:15px;font-weight:900;color:#22C55E;">322.000 €</div></div>
+            <div style="background:#F9F9F9;padding:10px;text-align:center;"><div style="font-size:9px;font-weight:800;text-transform:uppercase;color:#AAA;letter-spacing:.6px;margin-bottom:4px">Beneficio bruto</div><div style="font-size:15px;font-weight:900;color:#111;">102.000 €</div></div>
+            <div style="background:#F9F9F9;padding:10px;text-align:center;"><div style="font-size:9px;font-weight:800;text-transform:uppercase;color:#AAA;letter-spacing:.6px;margin-bottom:4px">Renta mensual</div><div style="font-size:15px;font-weight:900;color:#3B82F6;">1.240 €</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="panel-actions">
+      <button class="panel-btn-calc">⊕ Abrir calculadora</button>
+      <button class="panel-btn-sec">📅 Agendar visita</button>
+      <button class="panel-btn-sec">📝 Bitácora</button>
+    </div>
+  </div>
+</div>
+
+<p style="text-align:center;font-size:12px;color:#CCC;margin-top:20px;padding-bottom:20px;">→ Haz clic en la primera card (Edificio Centro Albox) para ver el panel lateral de detalle</p>
+
+</body>
+</html>

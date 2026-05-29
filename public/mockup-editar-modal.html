@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — Modal Editar inmueble</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a1a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Fondo simulado */
+  .bg {
+    position: fixed; inset: 0;
+    background: url('https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1400&q=80') center/cover;
+    filter: brightness(0.3);
+  }
+
+  /* Bottom nav — 64px fija */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    height: 64px;
+    background: rgba(10,10,10,0.97);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 8px;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: #555; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .nav-item.active { color: #F26E1F; }
+  .nav-icon { font-size: 18px; }
+
+  /* Overlay */
+  .overlay { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.5); }
+
+  /* Modal wrapper — items-center en desktop */
+  .modal-wrap {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex;
+    align-items: center;   /* centrado vertical */
+    justify-content: center;
+    /* key fix: el padding-bottom = altura bottom nav, para que nunca lo tape */
+    padding: 12px 12px 72px 12px;
+  }
+
+  /* El modal — mismas dimensiones que en producción: max 900px, max 92vh */
+  .modal {
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid #E8E6E0;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+    width: 100%;
+    max-width: 900px;
+    /* max-height = 92vh pero restamos la altura del nav para nunca taparlo */
+    max-height: calc(92vh - 64px);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Handle + header */
+  .modal-top {
+    padding: 14px 20px 0 20px;
+    flex-shrink: 0;
+  }
+  .handle { width: 36px; height: 4px; background: #DCDAD4; border-radius: 99px; margin: 0 auto 16px; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .modal-title { font-size: 17px; font-weight: 900; color: #111; }
+  .modal-sub { font-size: 12px; color: #999; margin-top: 2px; }
+  .btn-close {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #F5F4F0; color: #666; border: 1px solid #ECEAE4;
+    font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Tipo row — FULL WIDTH, fuera del grid, igual que Agregar */
+  .tipo-row {
+    display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+    margin-bottom: 14px; padding: 0 20px;
+    overflow-x: auto;
+  }
+  .tipo-label {
+    font-size: 10px; font-weight: 900; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #666; white-space: nowrap; margin-right: 4px;
+  }
+  .chip {
+    padding: 5px 11px; border-radius: 10px; font-size: 11px; font-weight: 800;
+    border: 1.5px solid #ECEAE4; background: #F5F4F0; color: #666;
+    white-space: nowrap; cursor: pointer; flex-shrink: 0;
+  }
+  .chip.active { background: #F26E1F; color: #fff; border-color: #F26E1F; }
+
+  /* Body — 2 columnas */
+  .modal-body {
+    padding: 0 20px 20px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  /* Columna izquierda */
+  .col-left { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.full { grid-column: span 2; }
+  .field label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #666;
+  }
+  .field input, .field textarea {
+    border: 1.5px solid #ECEAE4; border-radius: 12px; padding: 10px 12px;
+    font-size: 13px; font-weight: 500; color: #111; background: #FAFAF8;
+    outline: none; resize: none; width: 100%;
+    font-family: inherit;
+  }
+  .field textarea { min-height: 72px; }
+
+  /* Columna derecha */
+  .col-right { display: flex; flex-direction: column; gap: 12px; }
+
+  /* Upload area */
+  .upload-area {
+    flex: 1;
+    border-radius: 16px; overflow: hidden;
+    border: 2px dashed #DDDBD5; background: #FAFAF8;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 160px; cursor: pointer; position: relative;
+    transition: border-color 0.15s;
+  }
+  .upload-area:hover { border-color: #F26E1F; }
+  .upload-area .ico { font-size: 28px; margin-bottom: 8px; opacity: 0.35; }
+  .upload-area .utext { font-size: 13px; font-weight: 700; color: #888; }
+  .upload-area .usubtext { font-size: 11px; color: #BBB; text-align: center; margin-top: 4px; line-height: 1.5; }
+
+  /* Upload con imagen existente */
+  .upload-area.has-image { border: 1.5px solid #ECEAE4; }
+  .upload-area.has-image img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  }
+  .change-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .upload-area.has-image:hover .change-overlay { background: rgba(0,0,0,0.45); }
+  .change-label {
+    font-size: 12px; font-weight: 800; color: #fff; opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .upload-area.has-image:hover .change-label { opacity: 1; }
+
+  /* Botones */
+  .btn-row { display: flex; gap: 8px; flex-shrink: 0; }
+  .btn-cancel {
+    flex: 1; padding: 13px; border-radius: 12px; font-size: 13px; font-weight: 800;
+    background: #F5F4F0; color: #666; border: 1.5px solid #ECEAE4; cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-save {
+    flex: 1; padding: 13px; border-radius: 12px; font-size: 13px; font-weight: 800;
+    background: #F26E1F; color: #fff; border: none; cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* Demo controls */
+  .demo-controls {
+    position: fixed; top: 14px; right: 14px; z-index: 100;
+    display: flex; gap: 6px;
+  }
+  .demo-btn {
+    padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700;
+    cursor: pointer; background: rgba(255,255,255,0.1); color: #fff;
+    border: 1px solid rgba(255,255,255,0.2); font-family: inherit;
+  }
+  .demo-btn.on { background: #F26E1F; border-color: #F26E1F; }
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+
+<!-- Demo controls -->
+<div class="demo-controls">
+  <button class="demo-btn on" onclick="setMode('no-image')" id="btn-no-image">Sin imagen</button>
+  <button class="demo-btn" onclick="setMode('has-image')" id="btn-has-image">Con imagen</button>
+</div>
+
+<!-- Bottom nav -->
+<div class="bottom-nav">
+  <div class="nav-item"><span class="nav-icon">⊙</span>BOT</div>
+  <div class="nav-item"><span class="nav-icon">⊞</span>PROYECTOS</div>
+  <div class="nav-item active"><span class="nav-icon">⌖</span>MERCADO</div>
+  <div class="nav-item"><span class="nav-icon">▦</span>HASU</div>
+  <div class="nav-item"><span class="nav-icon">🔔</span>ALERTAS</div>
+  <div class="nav-item"><span class="nav-icon">●</span>CUENTA</div>
+</div>
+
+<!-- Overlay -->
+<div class="overlay"></div>
+
+<!-- Modal -->
+<div class="modal-wrap">
+  <div class="modal">
+
+    <div class="modal-top">
+      <div class="handle"></div>
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Editar inmueble</div>
+          <div class="modal-sub">Dos viviendas en Albox</div>
+        </div>
+        <button class="btn-close">✕</button>
+      </div>
+    </div>
+
+    <!-- Tipo: full width, fuera del grid, igual que Agregar -->
+    <div class="tipo-row">
+      <span class="tipo-label">Tipo</span>
+      <button class="chip active" onclick="selectChip(this)">Piso</button>
+      <button class="chip" onclick="selectChip(this)">Casa</button>
+      <button class="chip" onclick="selectChip(this)">Dúplex</button>
+      <button class="chip" onclick="selectChip(this)">Edificio</button>
+      <button class="chip" onclick="selectChip(this)">Suelo</button>
+      <button class="chip" onclick="selectChip(this)">Nave</button>
+    </div>
+
+    <!-- Body 2 columnas -->
+    <div class="modal-body">
+
+      <!-- Columna izquierda -->
+      <div class="col-left">
+        <div class="field full">
+          <label>Título</label>
+          <input type="text" value="Dos viviendas en Albox">
+        </div>
+        <div class="field full">
+          <label>Dirección *</label>
+          <input type="text" value="Calle Tijola 2">
+        </div>
+        <div class="field">
+          <label>Municipio</label>
+          <input type="text" value="Albox">
+        </div>
+        <div class="field">
+          <label>Precio (€) *</label>
+          <input type="number" value="130000">
+        </div>
+        <div class="field">
+          <label>Habitaciones</label>
+          <input type="number" value="">
+        </div>
+        <div class="field">
+          <label>M²</label>
+          <input type="number" value="">
+        </div>
+        <div class="field full">
+          <label>Link anuncio</label>
+          <input type="text" placeholder="https://...">
+        </div>
+        <div class="field full">
+          <label>📁 Drive</label>
+          <input type="text" placeholder="https://drive.google.com/...">
+        </div>
+        <div class="field full">
+          <label>Notas</label>
+          <textarea placeholder="Observaciones..."></textarea>
+        </div>
+      </div>
+
+      <!-- Columna derecha -->
+      <div class="col-right">
+
+        <!-- Sin imagen -->
+        <div class="upload-area" id="upload-no-image">
+          <div class="ico">📷</div>
+          <div class="utext">Foto de portada</div>
+          <div class="usubtext">Click o arrastrá una imagen<br>Se usará como portada de la card</div>
+        </div>
+
+        <!-- Con imagen existente -->
+        <div class="upload-area has-image" id="upload-has-image" style="display:none">
+          <img src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=600&q=80" alt="">
+          <div class="change-overlay">
+            <span class="change-label">📷 Cambiar foto</span>
+          </div>
+        </div>
+
+        <!-- Botones al fondo de la col derecha -->
+        <div class="btn-row">
+          <button class="btn-cancel">Cancelar</button>
+          <button class="btn-save">Guardar cambios</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function setMode(mode) {
+  const noImg = document.getElementById('upload-no-image');
+  const hasImg = document.getElementById('upload-has-image');
+  const btnNo = document.getElementById('btn-no-image');
+  const btnHas = document.getElementById('btn-has-image');
+  if (mode === 'no-image') {
+    noImg.style.display = ''; hasImg.style.display = 'none';
+    btnNo.classList.add('on'); btnHas.classList.remove('on');
+  } else {
+    noImg.style.display = 'none'; hasImg.style.display = '';
+    btnHas.classList.add('on'); btnNo.classList.remove('on');
+  }
+}
+function selectChip(el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>

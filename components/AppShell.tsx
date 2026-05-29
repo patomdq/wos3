@@ -286,17 +286,43 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           width: botOpen ? 380 : 0,
           minWidth: botOpen ? 380 : 0,
           height: '100vh',
-          background: '#0A0A0A',
-          borderLeft: '1px solid rgba(255,255,255,0.06)',
+          background: '#fff',
+          borderLeft: '1px solid #ECEAE4',
           display: 'flex', flexDirection: 'column',
           transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1), min-width 0.25s',
           overflow: 'hidden',
           flexShrink: 0,
         }}>
-          {botOpen && <BotChat storageKeySuffix="_panel" />}
+          {botOpen && (
+            <>
+              {/* Panel header */}
+              <div style={{
+                padding: '14px 16px',
+                borderBottom: '1px solid #F2F1ED',
+                display: 'flex', alignItems: 'center', gap: 10,
+                flexShrink: 0, background: '#fff',
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'linear-gradient(135deg,#F26E1F,#FBBF24)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
+                }}>🤖</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: '#111' }}>WOS Bot</div>
+                  <div style={{ fontSize: 10, color: '#BBB' }}>Análisis · ROI · Operaciones</div>
+                </div>
+                <button onClick={() => setBotOpen(false)} style={{
+                  width: 28, height: 28, borderRadius: '50%', background: '#F2F1ED',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, color: '#888', cursor: 'pointer', border: 'none',
+                }}>✕</button>
+              </div>
+              <BotChat storageKeySuffix="_panel" hideHeader />
+            </>
+          )}
         </div>
 
-        {/* Bot FAB */}
+        {/* Bot FAB — only visible when panel is closed */}
         {!botOpen && (
           <button
             onClick={() => setBotOpen(true)}
@@ -314,21 +340,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(242,110,31,0.4)' }}
           >
             🤖
-          </button>
-        )}
-        {botOpen && (
-          <button
-            onClick={() => setBotOpen(false)}
-            style={{
-              position: 'fixed', bottom: 24, right: 24,
-              width: 36, height: 36, borderRadius: '50%',
-              background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, color: '#888', cursor: 'pointer',
-              zIndex: 100,
-            }}
-          >
-            ✕
           </button>
         )}
       </div>

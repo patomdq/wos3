@@ -39,9 +39,36 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
-**Última sesión — 11/05/2026**
+**Última sesión — 29/05/2026**
 
 Hecho hoy:
+- **Modal Agregar mercado (`/app/(app)/mercado/page.tsx`) — rediseño completo**
+  - Modal Agregar ahora es copia fiel del modal Editar: layout apaisado 2 columnas, mismos campos
+  - Fila de tipos (Tipo *) movida encima del grid → full-width, `flex-nowrap`, sin overflow ni segunda línea
+  - Botones Cancelar/Guardar al fondo de la columna derecha (`sm:flex sm:flex-col` + `mt-auto`)
+  - Para Edificio: panel completo de gestión de unidades con "🔗 Importar URL" + "+ Manual"
+  - Para no-Edificio (Piso, Casa, etc.): área de carga de imagen de portada (drag & drop o click)
+  - `saveNuevo`: sube imagen a Supabase Storage bucket `portadas` → guarda URL en `imagen_portada`
+  - `importarYGuardar`: guarda el edificio primero para obtener ID, luego llama `/api/unidades/import`
+  - Estado nuevo: `nuevoUnidades`, `addingNuevoUnidad`, `importandoNuevoUrl`, `nuevoImportUrl`, `nuevoPortada`, `nuevoPortadaPreview`
+  - Commits: ae41c23, d5d8579, 261c0cf (y otros intermedios)
+- **Mockup estático** `public/mockup-agregar.html` — creado para revisión de diseño antes de implementar (commit ee6a761)
+- **`/api/unidades/import`** — endpoint POST que scrape URL + extrae unidades vía Claude API e inserta en `inmueble_unidades`
+
+⚠️ Pendiente importante:
+- Bucket `portadas` en Supabase Storage todavía NO confirmado como creado con acceso público — upload de imagen fallará si no existe
+  - Crear en Supabase Dashboard: Storage → New bucket → nombre: `portadas`, Public: ON
+
+Pendiente modal mercado (próxima sesión):
+- **Rediseño landscape completo**: el modal sigue siendo algo vertical en mobile y pisa el menú inferior de navegación
+  - El usuario quiere un modal más "apaisado" que no tape el bottom nav en mobile
+  - Deferred a próxima sesión de diseño
+
+---
+
+**Sesión anterior — 11/05/2026**
+
+Hecho:
 - Bot Telegram: precio dual Fotocasa + Notariado lado a lado
 - Fotocasa filtrado por superficie ±40% para comparables específicos al producto
 - No auto-estima precio_venta si Fotocasa < precio_pedido × 1.1 (evita ROI negativo con datos incorrectos)
@@ -161,4 +188,6 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Evaluador tipología edificio | ⏳ pendiente |
 | Módulo edificios / multivivienda | ⏳ pendiente |
 | Portal inversor | ⏳ pendiente |
+| Modal Mercado — Agregar igual a Editar (2 col, tipos, imagen, unidades) | ✅ producción |
 | Desktop layout fix | ⏳ pendiente |
+| Modal Mercado — rediseño landscape mobile (no pisa bottom nav) | ⏳ pendiente |
