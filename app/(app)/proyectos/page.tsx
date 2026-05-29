@@ -221,7 +221,7 @@ export default function ProyectosPage() {
       </div>
 
       {/* ── CONTENIDO ── */}
-      <div style={{ padding: '30px 30px 0' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 40px' }}>
 
         {/* ── KPI ROW ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
