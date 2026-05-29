@@ -1191,7 +1191,7 @@ export default function MercadoPage() {
         <>
           <div className="fixed inset-x-0 top-0 z-40" style={{ bottom: 70, background: 'rgba(0,0,0,0.45)' }} onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} />
           <div className="fixed inset-x-0 top-0 z-50 flex items-end sm:items-center justify-center pointer-events-none" style={{ bottom: 70 }}>
-          <div className="w-full rounded-t-[20px] sm:rounded-2xl flex flex-col pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 8px)', maxWidth: 900 }}>
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl flex flex-col pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 8px)', maxWidth: 1000 }}>
             {/* Header fijo */}
             <div className="flex-shrink-0 px-5 pt-4 pb-3">
               <div className="w-9 h-1 rounded-full mx-auto mb-4" style={{ background: '#DCDAD4' }} />
@@ -1464,7 +1464,7 @@ export default function MercadoPage() {
         <>
           <div className="fixed inset-x-0 top-0 z-40" style={{ bottom: 70, background: 'rgba(0,0,0,0.45)' }} onClick={() => setEditInmueble(null)} />
           <div className="fixed inset-x-0 top-0 z-50 flex items-end sm:items-center justify-center pointer-events-none" style={{ bottom: 70 }}>
-          <div className="w-full rounded-t-[20px] sm:rounded-2xl flex flex-col pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 8px)', maxWidth: 900 }}>
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl flex flex-col pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 8px)', maxWidth: 1000 }}>
             {/* Header fijo */}
             <div className="flex-shrink-0 px-5 pt-4 pb-3">
               <div className="w-9 h-1 rounded-full mx-auto mb-4" style={{ background: '#DCDAD4' }} />
