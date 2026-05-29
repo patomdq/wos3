@@ -328,7 +328,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   fontSize: 11, color: '#888', cursor: 'pointer', border: 'none',
                 }}>✕</button>
               </div>
-              <BotChat storageKeySuffix="_panel" hideHeader />
+              <BotChat storageKeySuffix="_panel" hideHeader lightTheme />
             </>
           )}
         </div>

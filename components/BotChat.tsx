@@ -21,10 +21,56 @@ interface BotChatProps {
   proyectoId?: string | null
   storageKeySuffix?: string
   hideHeader?: boolean
+  lightTheme?: boolean
   onClose?: () => void
 }
 
-export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, onClose }: BotChatProps) {
+export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, lightTheme, onClose }: BotChatProps) {
+  const t = lightTheme
+    ? {
+        msgsBg:      '#F2F1ED',
+        botBubbleBg: '#fff',
+        botBubbleBorder: '1px solid #ECEAE4',
+        botBubbleColor: '#111',
+        userAvatarBg: '#E8E6E0',
+        quickBg:     '#fff',
+        quickBorder: '1px solid #ECEAE4',
+        quickBtnBg:  '#F2F1ED',
+        quickBtnColor: '#555',
+        inputBarBg:  '#fff',
+        inputFieldBg: '#F2F1ED',
+        inputFieldBorder: '1.5px solid #ECEAE4',
+        inputFocusBorder: '#F26E1F',
+        inputColor:  '#111',
+        clipBtnBg:   '#F2F1ED',
+        clipBtnBorder: '1.5px solid #ECEAE4',
+        editBtnBg:   'rgba(0,0,0,0.06)',
+        editBtnColor: '#555',
+        timeColor:   '#AAA',
+        noSendBg:    '#E8E6E0',
+      }
+    : {
+        msgsBg:      '#0A0A0A',
+        botBubbleBg: '#1E1E1E',
+        botBubbleBorder: '1px solid rgba(255,255,255,0.08)',
+        botBubbleColor: '#fff',
+        userAvatarBg: '#282828',
+        quickBg:     '#141414',
+        quickBorder: '1px solid rgba(255,255,255,0.08)',
+        quickBtnBg:  '#1E1E1E',
+        quickBtnColor: '#ccc',
+        inputBarBg:  '#141414',
+        inputFieldBg: '#1E1E1E',
+        inputFieldBorder: '1.5px solid rgba(255,255,255,0.08)',
+        inputFocusBorder: '#F26E1F',
+        inputColor:  '#fff',
+        clipBtnBg:   '#1E1E1E',
+        clipBtnBorder: '1.5px solid rgba(255,255,255,0.08)',
+        editBtnBg:   'rgba(255,255,255,0.08)',
+        editBtnColor: '#ccc',
+        timeColor:   '#555',
+        noSendBg:    '#282828',
+      }
   const [msgs, setMsgs] = useState<Msg[]>([WELCOME])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
@@ -269,17 +315,17 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, onCl
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3" style={{ background: '#0A0A0A' }}>
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3" style={{ background: t.msgsBg }}>
         {msgs.map((m, i) => (
           <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className="w-7 h-7 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center text-xs font-black"
-              style={{ background: m.role === 'bot' ? '#F26E1F' : '#282828', color: '#fff', border: m.role === 'user' ? '1px solid rgba(255,255,255,0.14)' : 'none' }}>
+              style={{ background: m.role === 'bot' ? '#F26E1F' : t.userAvatarBg, color: m.role === 'bot' ? '#fff' : (lightTheme ? '#555' : '#fff'), border: 'none' }}>
               {m.role === 'bot' ? 'W' : 'P'}
             </div>
             <div className="max-w-[calc(100%-60px)]">
               {m.role === 'bot' ? (
-                <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5 rounded-2xl"
-                  style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '4px 14px 14px 14px' }}
+                <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5"
+                  style={{ background: t.botBubbleBg, border: t.botBubbleBorder, color: t.botBubbleColor, borderRadius: '4px 14px 14px 14px' }}
                   dangerouslySetInnerHTML={{ __html: m.text }} />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -319,7 +365,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, onCl
                       <div className="flex gap-1.5 flex-shrink-0">
                         <button onClick={() => openEdit(td)}
                           className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold"
-                          style={{ background: 'rgba(255,255,255,0.08)', color: '#ccc' }}>✎</button>
+                          style={{ background: t.editBtnBg, color: t.editBtnColor }}>✎</button>
                         <button onClick={() => deleteRecord(i, td)}
                           className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold"
                           style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>✕</button>
@@ -336,14 +382,14 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, onCl
                 </div>
               ))}
 
-              <div className="text-[10px] mt-1 font-semibold tracking-wide" style={{ color: '#555' }}>{m.time}</div>
+              <div className="text-[10px] mt-1 font-semibold tracking-wide" style={{ color: t.timeColor }}>{m.time}</div>
             </div>
           </div>
         ))}
         {typing && (
           <div className="flex gap-2">
-            <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-black" style={{ background: '#F26E1F' }}>W</div>
-            <div className="px-3.5 py-3 rounded-2xl" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px 14px 14px 14px' }}>
+            <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-black" style={{ background: '#F26E1F', color: '#fff' }}>W</div>
+            <div className="px-3.5 py-3" style={{ background: t.botBubbleBg, border: t.botBubbleBorder, borderRadius: '4px 14px 14px 14px' }}>
               <div className="flex gap-1.5 items-center">
                 {[0,1,2].map(i => (
                   <span key={i} className="w-1.5 h-1.5 rounded-full"
@@ -357,11 +403,11 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, onCl
       </div>
 
       {/* Quick replies */}
-      <div className="flex gap-2 px-3.5 py-2.5 overflow-x-auto flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: '#141414' }}>
+      <div className="flex gap-2 px-3.5 py-2.5 overflow-x-auto flex-shrink-0" style={{ borderTop: t.quickBorder, background: t.quickBg }}>
         {QUICK.map(q => (
           <button key={q} onClick={() => send(q.replace(/^[^\s]+ /, ''))}
             className="flex-shrink-0 text-xs font-bold px-3.5 py-2 rounded-full whitespace-nowrap"
-            style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#ccc' }}>
+            style={{ background: t.quickBtnBg, border: t.quickBorder, color: t.quickBtnColor }}>
             {q}
           </button>
         ))}
@@ -385,24 +431,24 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, onCl
       )}
 
       {/* Input */}
-      <div className="flex gap-2 px-3.5 py-2.5 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: '#141414' }}>
+      <div className="flex gap-2 px-3.5 py-2.5 flex-shrink-0" style={{ borderTop: t.quickBorder, background: t.inputBarBg }}>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={handleImageSelect} />
         <button onClick={() => fileRef.current?.click()}
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-base"
-          style={{ background: attachedImages.length > 0 ? 'rgba(242,110,31,0.18)' : '#1E1E1E', border: `1.5px solid ${attachedImages.length > 0 ? '#F26E1F' : 'rgba(255,255,255,0.08)'}`, color: attachedImages.length > 0 ? '#F26E1F' : '#555' }}>
+          style={{ background: attachedImages.length > 0 ? 'rgba(242,110,31,0.18)' : t.clipBtnBg, border: `1.5px solid ${attachedImages.length > 0 ? '#F26E1F' : t.clipBtnBorder.replace('1.5px solid ', '')}`, color: attachedImages.length > 0 ? '#F26E1F' : '#888' }}>
           📎
         </button>
         <textarea ref={taRef} value={input}
           onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px' }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
           placeholder={attachedImages.length > 0 ? 'Añadí un comentario (opcional)…' : 'Escribí un mensaje…'} rows={1}
-          className="flex-1 rounded-xl px-3.5 py-3 text-sm text-white outline-none resize-none font-medium placeholder:text-[#555]"
-          style={{ background: '#1E1E1E', border: '1.5px solid rgba(255,255,255,0.08)', maxHeight: 80, lineHeight: 1.4 }}
-          onFocus={e => e.target.style.borderColor = '#F26E1F'}
-          onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
+          className="flex-1 rounded-xl px-3.5 py-3 text-sm outline-none resize-none font-medium"
+          style={{ background: t.inputFieldBg, border: t.inputFieldBorder, color: t.inputColor, maxHeight: 80, lineHeight: 1.4 }}
+          onFocus={e => e.target.style.borderColor = t.inputFocusBorder}
+          onBlur={e => e.target.style.borderColor = lightTheme ? '#ECEAE4' : 'rgba(255,255,255,0.08)'} />
         <button onClick={() => send(input)}
           className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg text-white flex-shrink-0"
-          style={{ background: (input.trim() || attachedImages.length > 0) ? '#F26E1F' : '#282828' }}>↑</button>
+          style={{ background: (input.trim() || attachedImages.length > 0) ? '#F26E1F' : t.noSendBg }}>↑</button>
       </div>
 
       {/* Edit sheet */}
