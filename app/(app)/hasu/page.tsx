@@ -45,6 +45,12 @@ type FilterKey = 'todos' | 'en_curso' | 'finalizado'
 const EN_CURSO = ['comprado','reforma','venta','reservado','con_oferta','en_arras']
 const VENDIDOS = ['vendido','cerrado']
 
+const card: React.CSSProperties = {
+  background: '#fff',
+  borderRadius: 18,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
+}
+
 export default function HasuPage() {
   const router = useRouter()
   const [cuentas,    setCuentas]    = useState<any[]>([])
@@ -82,7 +88,6 @@ export default function HasuPage() {
     })
   }, [])
 
-  // ── Helpers de fila — única fuente de verdad para tabla, tfoot y tarjetas ──
   const activos = proyectos.filter(p => EN_CURSO.includes(p.estado))
 
   const getInv     = (r: TrackRow) => r.valor_total_operacion || r.precio_compra || 0
@@ -97,7 +102,6 @@ export default function HasuPage() {
   const getRoi       = (r: TrackRow) => { const i = getInvHasu(r) ?? getInv(r); return i > 0 ? (getBenefHasu(r) / i) * 100 : 0 }
   const getDur       = (r: TrackRow) => duracionMeses(r.fecha_compra, r.fecha_salida_estimada)
 
-  // Objetivo 1M€ — solo operaciones con precio de venta real confirmado
   const cerradosReal   = trackRows.filter(r => r.precio_venta_real && r.precio_venta_real > 0)
   const totalBenefReal = cerradosReal.reduce((s, r) => s + getBenefHasu(r), 0)
   const OBJETIVO       = 1_000_000
@@ -105,10 +109,8 @@ export default function HasuPage() {
   const mesesRest      = monthsUntilDec2027()
   const porMes         = Math.max(0, (OBJETIVO - totalBenefReal) / mesesRest)
 
-  // Por categoría — base para Track Record KPIs y tabla
   const catFiltered = catTab === 'todos' ? trackRows : trackRows.filter(r => r.categoria === catTab)
 
-  // Totales por categoría — misma fuente que el pie de tabla
   const trWithVenta  = catFiltered.filter(r => getVenta(r) > 0 && getInv(r) > 0)
   const trCapTotal   = catFiltered.reduce((s, r) => s + getInv(r), 0)
   const trCapHasu    = catFiltered.reduce((s, r) => s + (getInvHasu(r) ?? 0), 0)
@@ -125,7 +127,6 @@ export default function HasuPage() {
     return rows.reduce((s, r) => s + (roiAnualizado(getRoi(r), getDur(r)) ?? 0), 0) / rows.length
   })()
 
-  // Filter + sort (opera dentro de la categoría activa)
   const filtered = catFiltered
     .filter(r => {
       if (filter === 'en_curso')   return EN_CURSO.includes(r.estado)
@@ -138,12 +139,12 @@ export default function HasuPage() {
       return (b.fecha_compra || '').localeCompare(a.fecha_compra || '')
     })
 
-  const FINANZAS_MOD = { icon: '📊', bg: 'rgba(34,197,94,0.15)', nombre: 'Finanzas', desc: 'Flujo de caja · todos los proyectos', href: '/hasu/flujo-caja' }
+  const FINANZAS_MOD = { icon: '📊', bg: 'rgba(34,197,94,0.12)', nombre: 'Finanzas', desc: 'Flujo de caja · todos los proyectos', href: '/hasu/flujo-caja' }
   const MODULOS = [
-    { icon: '🔧', bg: 'rgba(96,165,250,0.15)',  nombre: 'Proveedores',        desc: 'Gestión de proveedores y contactos',  href: '/hasu/proveedores' },
-    { icon: '🧾', bg: 'rgba(245,158,11,0.15)',  nombre: 'Fiscal y gestoría',  desc: 'IVA, IRPF, documentos legales',       href: '/hasu/fiscal' },
-    { icon: '⚙',  bg: 'rgba(242,110,31,0.18)', nombre: 'Usuarios y permisos', desc: 'Roles · accesos · proyectos',         href: '/admin' },
-    { icon: '📁', bg: '#282828',                nombre: 'Docs de empresa',    desc: 'Estatutos · contratos · CIF',         href: '/hasu/docs' },
+    { icon: '🔧', bg: 'rgba(96,165,250,0.12)',  nombre: 'Proveedores',        desc: 'Gestión de proveedores y contactos',  href: '/hasu/proveedores' },
+    { icon: '🧾', bg: 'rgba(245,158,11,0.12)',  nombre: 'Fiscal y gestoría',  desc: 'IVA, IRPF, documentos legales',       href: '/hasu/fiscal' },
+    { icon: '⚙',  bg: 'rgba(242,110,31,0.12)', nombre: 'Usuarios y permisos', desc: 'Roles · accesos · proyectos',         href: '/admin' },
+    { icon: '📁', bg: 'rgba(167,139,250,0.12)', nombre: 'Docs de empresa',    desc: 'Estatutos · contratos · CIF',         href: '/hasu/docs' },
     { icon: '📅', bg: 'rgba(96,165,250,0.12)', nombre: 'Calendario',          desc: 'Google Calendar · hola@hasu.in',      href: '/hasu/calendario' },
   ]
 
@@ -151,144 +152,109 @@ export default function HasuPage() {
   const ESTADO_LABEL: Record<string,string> = { comprado:'Comprado', reforma:'En reforma', venta:'En venta', reservado:'Reservado', con_oferta:'Ofertado', en_arras:'En arras', vendido:'Vendido', cerrado:'Vendido', captado:'Captado', analisis:'Análisis', ofertado:'Ofertado' }
 
   return (
-    <div className="p-4">
-      {/* Topbar */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
-        <div className="flex-1 font-bold text-[17px] text-white">HASU</div>
+    <div style={{ background: '#F2F1ED', minHeight: '100vh', paddingBottom: 90 }}>
+
+      {/* ── HERO ── */}
+      <div style={{ position: 'relative', height: 250, overflow: 'hidden' }}>
+        <img
+          src="https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=1400&q=80"
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%' }}
+        />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.55) 60%, rgba(242,241,237,1) 100%)' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 20px 14px' }}>
+          <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', textShadow: '0 1px 8px rgba(0,0,0,0.3)' }}>HASU</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 3, fontWeight: 600 }}>Control de empresa · Track Record · Módulos</div>
+        </div>
       </div>
 
-      {/* Objetivo hero */}
-      {loading ? (
-        <div className="h-32 rounded-2xl animate-pulse mb-5" style={{ background: '#141414' }} />
-      ) : (
-        <div className="rounded-2xl p-5 mb-5 relative overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="absolute right-[-30px] top-[-30px] w-[130px] h-[130px] rounded-full pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(242,110,31,0.12) 0%, transparent 70%)' }} />
-          <div className="text-[11px] font-bold uppercase tracking-[1.5px] mb-2" style={{ color: '#888' }}>Objetivo Hasu · Dic 2027</div>
-          <div className="font-black text-[38px] text-white leading-none tracking-tight mb-1">{fmt(totalBenefReal)}</div>
-          <div className="text-sm font-semibold mb-3" style={{ color: '#555' }}>beneficio acumulado de {fmt(OBJETIVO)}</div>
-          <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: '#282828' }}>
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${pct}%`, background: pct < 20 ? '#EF4444' : pct < 50 ? '#F59E0B' : '#22C55E' }} />
-          </div>
-          <div className="flex justify-between items-center">
-            <div className="text-xs font-black" style={{ color: pct < 20 ? '#EF4444' : pct < 50 ? '#F59E0B' : '#22C55E' }}>{pct.toFixed(1)}%</div>
-            <div className="text-xs font-semibold" style={{ color: '#555' }}>{mesesRest} meses · {fmt(porMes)}/mes necesario</div>
-          </div>
-        </div>
-      )}
+      {/* ── CONTENIDO ── */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 40px' }}>
 
-      <div className="text-[11px] font-bold uppercase tracking-[1px] mb-3" style={{ color: '#888' }}>Salud de la empresa</div>
-
-      {/* KPIs */}
-      {loading ? (
-        <div className="grid grid-cols-2 gap-2.5 mb-4">
-          {[1,2,3,4,5,6].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: '#141414' }} />)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-2.5 mb-4">
-          {[
-            { l: 'Beneficio HASU',    v: fmt(totalBenefReal),                               s: 'beneficio acumulado',       sc: '#22C55E' },
-            { l: 'Faltan para 1M€',   v: fmt(Math.max(0, OBJETIVO - totalBenefReal)),        s: `${pct.toFixed(1)}% alcanzado`, sc: '#888' },
-            { l: 'Proyectos activos', v: String(activos.length),                             s: `${proyectos.length} total`, sc: '#888' },
-            { l: 'ROI medio',         v: trWithVenta.length > 0 ? fmtPct(trRoiMedio) : '—', s: 'media operaciones',         sc: '#888' },
-            { l: 'Inversores',        v: String(inversores),                                 s: 'JV activos',                sc: '#888' },
-            { l: 'Cuentas',           v: String(cuentas.length),                             s: 'activas',                   sc: '#888' },
-          ].map(k => (
-            <div key={k.l} className="rounded-xl p-3.5" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{k.l}</div>
-              <div className="font-black text-[21px] text-white leading-none">{k.v}</div>
-              {k.s && <div className="text-xs font-semibold mt-1" style={{ color: k.sc || '#888' }}>{k.s}</div>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Finanzas */}
-      <button onClick={() => router.push(FINANZAS_MOD.href)}
-        className="w-full flex items-center gap-3.5 p-4 rounded-xl mb-5 text-left transition-colors active:opacity-70"
-        style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="w-[42px] h-[42px] rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: FINANZAS_MOD.bg }}>{FINANZAS_MOD.icon}</div>
-        <div className="flex-1">
-          <div className="text-sm font-bold text-white">{FINANZAS_MOD.nombre}</div>
-          <div className="text-xs font-medium mt-0.5" style={{ color: '#888' }}>{FINANZAS_MOD.desc}</div>
-        </div>
-        <div className="text-xl font-light" style={{ color: '#888' }}>›</div>
-      </button>
-
-      {/* ═══════════ TRACK RECORD ═══════════ */}
-      <div className="mt-6 mb-2">
-        <div className="text-[11px] font-bold uppercase tracking-[1px] mb-3" style={{ color: '#888' }}>Track Record</div>
-
-        {/* Solapas de categoría */}
-        <div className="flex rounded-xl overflow-hidden mb-4" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
-          {([
-            ['todos',            'Todos'],
-            ['inmuebles_varios', 'Inmuebles'],
-            ['edificios',        'Edificios'],
-            ['extranjero',       'Extranjero'],
-          ] as [CatTab, string][]).map(([k, l]) => (
-            <button key={k} onClick={() => setCatTab(k)}
-              className="flex-1 px-3 py-2 text-xs font-bold"
-              style={{ background: catTab === k ? '#F26E1F' : 'transparent', color: catTab === k ? '#fff' : '#888' }}>
-              {l}
-            </button>
-          ))}
-        </div>
-
-        {/* Tarjetas — misma fuente que el pie de tabla */}
+        {/* ── KPI ROW ── */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-2.5 mb-5">
-            {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: '#141414' }} />)}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
+            {[1,2,3,4].map(i => <div key={i} style={{ height: 130, borderRadius: 18, background: '#E8E6E0' }} />)}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 mb-5">
-            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Operaciones</div>
-              <div className="font-black text-[28px] text-white leading-none">{catFiltered.length}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>{catFiltered.filter(r => r.precio_venta_real && r.precio_venta_real > 0).length} con venta real</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
+            {[
+              { icon: '🏆', val: fmt(totalBenefReal), label: 'BENEFICIO HASU', sub: 'acumulado real', color: '#22C55E' },
+              { icon: '🎯', val: fmt(Math.max(0, OBJETIVO - totalBenefReal)), label: 'FALTAN PARA 1M€', sub: `${pct.toFixed(1)}% alcanzado`, color: '#F26E1F' },
+              { icon: '📈', val: trWithVenta.length > 0 ? fmtPct(trRoiMedio) : '—', label: 'ROI MEDIO', sub: 'media operaciones', color: '#a78bfa' },
+              { icon: '🤝', val: String(inversores), label: 'INVERSORES JV', sub: 'activos', color: '#60A5FA' },
+            ].map(k => (
+              <div key={k.label} style={{ ...card, padding: '28px 24px' }}>
+                <div style={{ fontSize: 24, marginBottom: 12 }}>{k.icon}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: k.color, letterSpacing: '-0.02em', lineHeight: 1 }}>{k.val}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#999', marginTop: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{k.label}</div>
+                <div style={{ fontSize: 11, color: '#BBB', marginTop: 4 }}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── OBJETIVO + ROI CHART ── */}
+        {!loading && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, marginBottom: 48 }}>
+
+            {/* Objetivo 1M€ */}
+            <div style={{ ...card, padding: '28px 32px' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>Objetivo 1.000.000 € · Dic 2027</div>
+              <div style={{ fontSize: 11, color: '#BBB', marginBottom: 16 }}>Beneficio acumulado de operaciones con venta real</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+                <div style={{ fontSize: 34, fontWeight: 900, color: '#F26E1F', letterSpacing: '-0.03em', lineHeight: 1 }}>{fmt(totalBenefReal)}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#F26E1F' }}>{pct.toFixed(1)}%</div>
+              </div>
+              <div style={{ height: 8, background: '#F2F1ED', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#F26E1F,#FBBF24)', borderRadius: 99, transition: 'width 0.8s ease' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#CCC', fontWeight: 700, marginBottom: 20 }}>
+                <span>0€</span><span>→ 1M€</span>
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1, background: '#FAFAF8', borderRadius: 12, padding: '12px 14px', border: '1px solid #ECEAE4' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#BBB', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 4 }}>Meses restantes</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#111' }}>{mesesRest}</div>
+                </div>
+                <div style={{ flex: 1, background: '#FAFAF8', borderRadius: 12, padding: '12px 14px', border: '1px solid #ECEAE4' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#BBB', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 4 }}>Necesario/mes</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#F26E1F' }}>{fmt(porMes)}</div>
+                </div>
+              </div>
             </div>
-            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Duración media</div>
-              <div className="font-black text-[28px] text-white leading-none">{trDurMedia !== null ? `${trDurMedia}m` : '—'}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>por operación</div>
-            </div>
-            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Capital total JV</div>
-              <div className="font-black text-[28px] text-white leading-none">{trCapTotal > 0 ? fmtK(trCapTotal) : '—'}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>invertido en operaciones</div>
-            </div>
-            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(242,110,31,0.2)' }}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#F26E1F' }}>Capital HASU</div>
-              <div className="font-black text-[28px] text-white leading-none">{trCapHasu > 0 ? fmtK(trCapHasu) : '—'}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>parte HASU invertida</div>
-            </div>
-            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Benef. total JV</div>
-              <div className="font-black text-[28px] text-white leading-none">{trWithVenta.length > 0 ? (trBenefTotal >= 0 ? '+' : '') + fmtK(trBenefTotal) : '—'}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>suma operaciones con venta</div>
-            </div>
-            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(242,110,31,0.2)' }}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#F26E1F' }}>Benef. HASU</div>
-              <div className="font-black text-[28px] text-white leading-none">{trWithVenta.length > 0 ? (trBenefHasu >= 0 ? '+' : '') + fmtK(trBenefHasu) : '—'}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>parte HASU del beneficio</div>
-            </div>
-            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>ROI HASU medio</div>
-              <div className="font-black text-[28px] text-white leading-none">{trWithVenta.length > 0 ? fmtPct(trRoiMedio) : '—'}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>media operaciones</div>
-            </div>
-            <div className="rounded-xl p-4" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>ROI anualizado</div>
-              <div className="font-black text-[28px] text-white leading-none">{trRoiAnual !== null ? fmtPct(trRoiAnual) : '—'}</div>
-              <div className="text-xs font-semibold mt-1" style={{ color: '#555' }}>media anualizada</div>
+
+            {/* ROI por operación */}
+            <div style={{ ...card, padding: 24 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>ROI por operación</div>
+              <div style={{ fontSize: 11, color: '#BBB', marginBottom: 20 }}>Naranja = activo · Verde = vendido</div>
+              {trackRows.filter(r => getRoi(r) !== 0).length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#CCC', fontSize: 12, padding: '20px 0' }}>Sin datos de ROI todavía</div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 90 }}>
+                  {trackRows.filter(r => getRoi(r) !== 0).slice(0, 8).map(r => {
+                    const roi = getRoi(r)
+                    const h = Math.max(12, Math.min(90, Math.abs(roi) * 0.9))
+                    const isVendido = VENDIDOS.includes(r.estado)
+                    return (
+                      <div key={r.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, color: isVendido ? '#22C55E' : '#F26E1F' }}>{roi.toFixed(0)}%</div>
+                        <div style={{ width: '100%', height: h, borderRadius: '6px 6px 0 0', background: isVendido ? 'linear-gradient(180deg,#22C55E,#16A34A)' : 'linear-gradient(180deg,#F26E1F,#F59E0B)' }} />
+                        <div style={{ fontSize: 8, color: '#BBB', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, maxWidth: 50, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.nombre.split(' ').slice(-1)[0]}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Solapas de categoría — listado (mismo control que arriba) */}
-        <div className="flex rounded-xl overflow-hidden mb-3" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+        {/* ── TRACK RECORD ── */}
+        <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em', marginBottom: 20 }}>TRACK RECORD</div>
+
+        {/* Solapas categoría */}
+        <div style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: '1px solid #ECEAE4', marginBottom: 28, background: '#fff' }}>
           {([
             ['todos',            'Todos'],
             ['inmuebles_varios', 'Inmuebles'],
@@ -296,179 +262,153 @@ export default function HasuPage() {
             ['extranjero',       'Extranjero'],
           ] as [CatTab, string][]).map(([k, l]) => (
             <button key={k} onClick={() => setCatTab(k)}
-              className="flex-1 px-3 py-2 text-xs font-bold"
-              style={{ background: catTab === k ? '#F26E1F' : 'transparent', color: catTab === k ? '#fff' : '#888' }}>
+              style={{ flex: 1, padding: '10px 16px', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', background: catTab === k ? '#F26E1F' : 'transparent', color: catTab === k ? '#fff' : '#999' }}>
               {l}
             </button>
           ))}
         </div>
 
-        {/* Filtros de estado y orden */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
-            {([['todos','Todos'],['en_curso','En curso'],['finalizado','Finalizados']] as [FilterKey,string][]).map(([k,l]) => (
-              <button key={k} onClick={() => setFilter(k)}
-                className="px-3 py-1.5 text-xs font-bold"
-                style={{ background: filter === k ? '#F26E1F' : 'transparent', color: filter === k ? '#fff' : '#888' }}>
-                {l}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1.5 ml-auto">
-            <span className="text-[11px] font-bold" style={{ color: '#666' }}>Ordenar:</span>
-            {([['roi','ROI'],['fecha','Fecha'],['duracion','Duración']] as [SortKey,string][]).map(([k,l]) => (
-              <button key={k} onClick={() => setSortBy(k)}
-                className="px-2.5 py-1 text-xs font-bold rounded-lg"
-                style={{ background: sortBy === k ? 'rgba(242,110,31,0.2)' : 'rgba(255,255,255,0.06)', color: sortBy === k ? '#F26E1F' : '#888' }}>
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tabla — no modificar */}
+        {/* Track KPIs 4 col */}
         {loading ? (
-          <div className="h-32 rounded-xl animate-pulse" style={{ background: '#141414' }} />
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-8 text-sm" style={{ color: '#555' }}>Sin operaciones</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
+            {[1,2,3,4,5,6,7,8].map(i => <div key={i} style={{ height: 110, borderRadius: 18, background: '#E8E6E0' }} />)}
+          </div>
         ) : (
-          <div className="rounded-2xl overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="overflow-x-auto">
-              <table className="w-full" style={{ minWidth: 880 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
+            {[
+              { icon: '📊', val: String(catFiltered.length), label: 'OPERACIONES', sub: `${catFiltered.filter(r => r.precio_venta_real && r.precio_venta_real > 0).length} con venta real`, color: '#111' },
+              { icon: '⏱', val: trDurMedia !== null ? `${trDurMedia}m` : '—', label: 'DURACIÓN MEDIA', sub: 'por operación', color: '#111' },
+              { icon: '💰', val: trCapHasu > 0 ? fmtK(trCapHasu) : '—', label: 'CAPITAL HASU', sub: 'parte HASU invertida', color: '#60A5FA' },
+              { icon: '⚡', val: trRoiAnual !== null ? fmtPct(trRoiAnual) : '—', label: 'ROI ANUALIZADO', sub: 'media anualizada', color: '#a78bfa' },
+              { icon: '🏦', val: trCapTotal > 0 ? fmtK(trCapTotal) : '—', label: 'CAPITAL TOTAL JV', sub: 'invertido en operaciones', color: '#111' },
+              { icon: '💵', val: trWithVenta.length > 0 ? (trBenefTotal >= 0 ? '+' : '') + fmtK(trBenefTotal) : '—', label: 'BENEF. TOTAL JV', sub: 'suma operaciones con venta', color: trBenefTotal >= 0 ? '#22C55E' : '#EF4444' },
+              { icon: '✨', val: trWithVenta.length > 0 ? (trBenefHasu >= 0 ? '+' : '') + fmtK(trBenefHasu) : '—', label: 'BENEF. HASU', sub: 'parte HASU del beneficio', color: trBenefHasu >= 0 ? '#22C55E' : '#EF4444' },
+              { icon: '📉', val: trWithVenta.length > 0 ? fmtPct(trRoiMedio) : '—', label: 'ROI HASU MEDIO', sub: 'media operaciones', color: '#a78bfa' },
+            ].map(k => (
+              <div key={k.label} style={{ ...card, padding: '24px' }}>
+                <div style={{ fontSize: 20, marginBottom: 10 }}>{k.icon}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: k.color, letterSpacing: '-0.02em', lineHeight: 1 }}>{k.val}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#999', marginTop: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{k.label}</div>
+                <div style={{ fontSize: 11, color: '#BBB', marginTop: 3 }}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── TABLA OPERACIONES ── */}
+        <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em', marginBottom: 20 }}>OPERACIONES</div>
+
+        {loading ? (
+          <div style={{ height: 200, borderRadius: 18, background: '#E8E6E0' }} />
+        ) : filtered.length === 0 ? (
+          <div style={{ ...card, padding: 40, textAlign: 'center', color: '#BBB', fontSize: 13 }}>Sin operaciones</div>
+        ) : (
+          <div style={{ ...card, marginBottom: 48, overflow: 'hidden' }}>
+            {/* Filtros dentro de la card */}
+            <div style={{ padding: '16px 20px 12px', display: 'flex', gap: 8, alignItems: 'center', borderBottom: '1px solid #F2F1ED', flexWrap: 'wrap' as const }}>
+              <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid #ECEAE4' }}>
+                {([['todos','Todos'],['en_curso','En curso'],['finalizado','Finalizados']] as [FilterKey,string][]).map(([k,l]) => (
+                  <button key={k} onClick={() => setFilter(k)}
+                    style={{ padding: '6px 14px', fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', background: filter === k ? '#F26E1F' : 'transparent', color: filter === k ? '#fff' : '#999' }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#BBB' }}>Ordenar:</span>
+                {([['roi','ROI'],['fecha','Fecha'],['duracion','Duración']] as [SortKey,string][]).map(([k,l]) => (
+                  <button key={k} onClick={() => setSortBy(k)}
+                    style={{ padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800, border: 'none', cursor: 'pointer', background: sortBy === k ? 'rgba(242,110,31,0.12)' : '#F2F1ED', color: sortBy === k ? '#F26E1F' : '#BBB' }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880, fontSize: 12 }}>
                 <thead>
-                  <tr style={{ background: '#1A1A1A', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <tr style={{ borderBottom: '1px solid #ECEAE4' }}>
                     {['#','Proyecto','Tipo','Estructura','P. Compra','P. Venta','Dur.','Inv. Total','Inv. HASU','Benef. Total','Benef. HASU','ROI HASU','ROI Anual.','Estado'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
-                        style={{ color: 'rgba(255,255,255,0.4)' }}>{h}</th>
+                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#BBB', whiteSpace: 'nowrap' as const }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((r, i) => {
-                    const inv      = getInv(r)
-                    const invHasu  = getInvHasu(r)
-                    const hasVenta = getVenta(r) > 0
-                    const benef    = getBenef(r)
+                    const inv       = getInv(r)
+                    const invHasu   = getInvHasu(r)
+                    const hasVenta  = getVenta(r) > 0
+                    const benef     = getBenef(r)
                     const benefHasu = benef * ((r.porcentaje_hasu || 100) / 100)
-                    const roi      = getRoi(r)
-                    const dur      = getDur(r)
-                    const roiAnu   = roiAnualizado(roi, dur)
-                    const estColor = ESTADO_COLOR[r.estado] || '#888'
-                    const ventaDate = r.fecha_salida_estimada
-                      ? new Date(r.fecha_salida_estimada).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})
-                      : '—'
-                    const compraDate = r.fecha_compra
-                      ? new Date(r.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})
-                      : '—'
+                    const roi       = getRoi(r)
+                    const dur       = getDur(r)
+                    const roiAnu    = roiAnualizado(roi, dur)
+                    const estColor  = ESTADO_COLOR[r.estado] || '#888'
+                    const ventaDate  = r.fecha_salida_estimada ? new Date(r.fecha_salida_estimada).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) : '—'
+                    const compraDate = r.fecha_compra ? new Date(r.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) : '—'
                     return (
-                      <tr key={r.id} style={{ borderBottom: i < filtered.length-1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                        <td className="px-3 py-3 text-[11px] font-bold whitespace-nowrap" style={{ color: '#555', fontVariantNumeric: 'tabular-nums' }}>
-                          {r.codigo || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-bold text-white whitespace-nowrap">
-                          {r.nombre}
-                        </td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                          {r.tipo || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">
+                      <tr key={r.id} style={{ borderBottom: i < filtered.length-1 ? '1px solid #F2F1ED' : 'none' }}>
+                        <td style={{ padding: '11px 14px', fontSize: 10, fontWeight: 700, color: '#CCC', whiteSpace: 'nowrap' as const }}>{r.codigo || '—'}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 800, color: '#111', whiteSpace: 'nowrap' as const }}>{r.nombre}</td>
+                        <td style={{ padding: '11px 14px', color: '#888', whiteSpace: 'nowrap' as const }}>{r.tipo || '—'}</td>
+                        <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
                           {r.porcentaje_hasu >= 100
-                            ? <span className="font-bold px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}>100%</span>
-                            : <span className="font-bold px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}>JV {r.porcentaje_hasu}%</span>
+                            ? <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: '#F2F1ED', color: '#888' }}>100%</span>
+                            : <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: 'rgba(242,110,31,0.1)', color: '#F26E1F' }}>JV {r.porcentaje_hasu}%</span>
                           }
                         </td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">
-                          <div className="font-mono font-bold text-white">
-                            {r.precio_compra ? fmtK(r.precio_compra) : '—'}
-                          </div>
-                          {compraDate !== '—' && <div className="text-[11px] mt-0.5" style={{ color: '#555' }}>{compraDate}</div>}
+                        <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
+                          <div style={{ fontWeight: 700, color: '#111' }}>{r.precio_compra ? fmtK(r.precio_compra) : '—'}</div>
+                          {compraDate !== '—' && <div style={{ fontSize: 10, color: '#CCC', marginTop: 1 }}>{compraDate}</div>}
                         </td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">
-                          <div className="font-mono font-bold text-white">
+                        <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
+                          <div style={{ fontWeight: 700, color: '#111' }}>
                             {getVenta(r) > 0 ? fmtK(getVenta(r)) : '—'}
-                            {!r.precio_venta_real && getVenta(r) > 0 && <span className="ml-1 text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>est.</span>}
+                            {!r.precio_venta_real && getVenta(r) > 0 && <span style={{ fontSize: 9, color: '#CCC', marginLeft: 3 }}>est.</span>}
                           </div>
-                          {ventaDate !== '—' && <div className="text-[11px] mt-0.5" style={{ color: '#555' }}>{ventaDate}</div>}
+                          {ventaDate !== '—' && <div style={{ fontSize: 10, color: '#CCC', marginTop: 1 }}>{ventaDate}</div>}
                         </td>
-                        <td className="px-4 py-3 text-sm font-bold whitespace-nowrap text-center" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                          {dur !== null ? `${dur}m` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-mono font-bold text-white whitespace-nowrap">
-                          {inv > 0 ? fmtK(inv) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-mono font-bold whitespace-nowrap" style={{ color: invHasu !== null ? '#fff' : '#444' }}>
-                          {invHasu !== null ? fmtK(invHasu) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-mono font-bold text-white whitespace-nowrap">
-                          {inv > 0 && hasVenta ? (benef >= 0 ? '+' : '') + fmtK(benef) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-mono font-bold text-white whitespace-nowrap">
-                          {inv > 0 && hasVenta ? (benefHasu >= 0 ? '+' : '') + fmtK(benefHasu) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-bold whitespace-nowrap" style={{ color: hasVenta ? (roi >= 0 ? '#22C55E' : '#EF4444') : '#444' }}>
-                          {inv > 0 && hasVenta ? fmtPct(roi) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-bold whitespace-nowrap" style={{ color: hasVenta && roiAnu !== null ? (roiAnu >= 0 ? '#22C55E' : '#EF4444') : '#444' }}>
-                          {roiAnu !== null && hasVenta ? fmtPct(roiAnu) : '—'}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: `${estColor}18`, color: estColor }}>
-                            {ESTADO_LABEL[r.estado] || r.estado}
-                          </span>
+                        <td style={{ padding: '11px 14px', fontWeight: 700, color: '#888', textAlign: 'center', whiteSpace: 'nowrap' as const }}>{dur !== null ? `${dur}m` : '—'}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 700, color: '#111', whiteSpace: 'nowrap' as const }}>{inv > 0 ? fmtK(inv) : '—'}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 700, color: invHasu !== null ? '#111' : '#DDD', whiteSpace: 'nowrap' as const }}>{invHasu !== null ? fmtK(invHasu) : '—'}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 700, color: '#111', whiteSpace: 'nowrap' as const }}>{inv > 0 && hasVenta ? (benef >= 0 ? '+' : '') + fmtK(benef) : '—'}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 700, color: '#111', whiteSpace: 'nowrap' as const }}>{inv > 0 && hasVenta ? (benefHasu >= 0 ? '+' : '') + fmtK(benefHasu) : '—'}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 900, color: hasVenta ? (roi >= 0 ? '#22C55E' : '#EF4444') : '#DDD', whiteSpace: 'nowrap' as const }}>{inv > 0 && hasVenta ? fmtPct(roi) : '—'}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 900, color: hasVenta && roiAnu !== null ? (roiAnu >= 0 ? '#22C55E' : '#EF4444') : '#DDD', whiteSpace: 'nowrap' as const }}>{roiAnu !== null && hasVenta ? fmtPct(roiAnu) : '—'}</td>
+                        <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: `${estColor}18`, color: estColor }}>{ESTADO_LABEL[r.estado] || r.estado}</span>
                         </td>
                       </tr>
                     )
                   })}
                 </tbody>
                 {(() => {
-                  const withVenta   = filtered.filter(r => getVenta(r) > 0 && getInv(r) > 0)
-                  const withDur     = filtered.filter(r => getDur(r) !== null)
-                  const withRoiAnu  = filtered.filter(r => {
-                    const dur = getDur(r); const roi = getRoi(r)
-                    return getVenta(r) > 0 && dur !== null && roiAnualizado(roi, dur) !== null
-                  })
-                  const totalInv     = filtered.reduce((s, r) => s + getInv(r), 0)
-                  const totalInvH    = filtered.reduce((s, r) => s + (getInvHasu(r) ?? 0), 0)
-                  const totalBenef   = withVenta.reduce((s, r) => s + getBenef(r), 0)
-                  const totalBenefH  = withVenta.reduce((s, r) => s + getBenefHasu(r), 0)
-                  const roiMedioTbl  = withVenta.length > 0 ? withVenta.reduce((s, r) => s + getRoi(r), 0) / withVenta.length : null
-                  const roiAnuMedio  = withRoiAnu.length > 0
-                    ? withRoiAnu.reduce((s, r) => { const d = getDur(r); return s + (roiAnualizado(getRoi(r), d) ?? 0) }, 0) / withRoiAnu.length
-                    : null
-                  const durMedia     = withDur.length > 0 ? Math.round(withDur.reduce((s, r) => s + (getDur(r) ?? 0), 0) / withDur.length) : null
+                  const withVenta  = filtered.filter(r => getVenta(r) > 0 && getInv(r) > 0)
+                  const withDur    = filtered.filter(r => getDur(r) !== null)
+                  const withRoiAnu = filtered.filter(r => { const d = getDur(r); return getVenta(r) > 0 && d !== null && roiAnualizado(getRoi(r), d) !== null })
+                  const totalInv    = filtered.reduce((s, r) => s + getInv(r), 0)
+                  const totalInvH   = filtered.reduce((s, r) => s + (getInvHasu(r) ?? 0), 0)
+                  const totalBenef  = withVenta.reduce((s, r) => s + getBenef(r), 0)
+                  const totalBenefH = withVenta.reduce((s, r) => s + getBenefHasu(r), 0)
+                  const roiMedioTbl = withVenta.length > 0 ? withVenta.reduce((s, r) => s + getRoi(r), 0) / withVenta.length : null
+                  const roiAnuMedio = withRoiAnu.length > 0 ? withRoiAnu.reduce((s, r) => { const d = getDur(r); return s + (roiAnualizado(getRoi(r), d) ?? 0) }, 0) / withRoiAnu.length : null
+                  const durMedia    = withDur.length > 0 ? Math.round(withDur.reduce((s, r) => s + (getDur(r) ?? 0), 0) / withDur.length) : null
                   return (
                     <tfoot>
-                      <tr style={{ borderTop: '2px solid rgba(255,255,255,0.1)', background: '#1A1A1A' }}>
-                        <td className="px-3 py-3" />
-                        <td className="px-4 py-3 text-xs font-black uppercase tracking-wide whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                          {filtered.length} operaciones
-                        </td>
+                      <tr style={{ borderTop: '2px solid #ECEAE4', background: '#FAFAF8' }}>
+                        <td style={{ padding: '10px 14px' }} />
+                        <td style={{ padding: '10px 14px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, color: '#BBB' }}>{filtered.length} operaciones</td>
                         <td colSpan={2} />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3 text-sm font-black text-center whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                          {durMedia !== null ? `${durMedia}m` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-black font-mono text-white whitespace-nowrap">
-                          {totalInv > 0 ? fmtK(totalInv) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-black font-mono text-white whitespace-nowrap">
-                          {totalInvH > 0 ? fmtK(totalInvH) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-black font-mono text-white whitespace-nowrap">
-                          {withVenta.length > 0 ? (totalBenef >= 0 ? '+' : '') + fmtK(totalBenef) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-black font-mono text-white whitespace-nowrap">
-                          {withVenta.length > 0 ? (totalBenefH >= 0 ? '+' : '') + fmtK(totalBenefH) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-black whitespace-nowrap" style={{ color: roiMedioTbl !== null ? (roiMedioTbl >= 0 ? '#22C55E' : '#EF4444') : '#444' }}>
-                          {roiMedioTbl !== null ? fmtPct(roiMedioTbl) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-black whitespace-nowrap" style={{ color: roiAnuMedio !== null ? (roiAnuMedio >= 0 ? '#22C55E' : '#EF4444') : '#444' }}>
-                          {roiAnuMedio !== null ? fmtPct(roiAnuMedio) : '—'}
-                        </td>
-                        <td className="px-4 py-3" />
+                        <td style={{ padding: '10px 14px' }} /><td style={{ padding: '10px 14px' }} />
+                        <td style={{ padding: '10px 14px', fontWeight: 900, color: '#888', textAlign: 'center' }}>{durMedia !== null ? `${durMedia}m` : '—'}</td>
+                        <td style={{ padding: '10px 14px', fontWeight: 900, color: '#111' }}>{totalInv > 0 ? fmtK(totalInv) : '—'}</td>
+                        <td style={{ padding: '10px 14px', fontWeight: 900, color: '#111' }}>{totalInvH > 0 ? fmtK(totalInvH) : '—'}</td>
+                        <td style={{ padding: '10px 14px', fontWeight: 900, color: '#111' }}>{withVenta.length > 0 ? (totalBenef >= 0 ? '+' : '') + fmtK(totalBenef) : '—'}</td>
+                        <td style={{ padding: '10px 14px', fontWeight: 900, color: '#111' }}>{withVenta.length > 0 ? (totalBenefH >= 0 ? '+' : '') + fmtK(totalBenefH) : '—'}</td>
+                        <td style={{ padding: '10px 14px', fontWeight: 900, color: roiMedioTbl !== null ? (roiMedioTbl >= 0 ? '#22C55E' : '#EF4444') : '#DDD' }}>{roiMedioTbl !== null ? fmtPct(roiMedioTbl) : '—'}</td>
+                        <td style={{ padding: '10px 14px', fontWeight: 900, color: roiAnuMedio !== null ? (roiAnuMedio >= 0 ? '#22C55E' : '#EF4444') : '#DDD' }}>{roiAnuMedio !== null ? fmtPct(roiAnuMedio) : '—'}</td>
+                        <td style={{ padding: '10px 14px' }} />
                       </tr>
                     </tfoot>
                   )
@@ -477,23 +417,24 @@ export default function HasuPage() {
             </div>
           </div>
         )}
+
+        {/* ── MÓDULOS EMPRESA ── */}
+        <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em', marginBottom: 20 }}>MÓDULOS EMPRESA</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28 }}>
+          {[FINANZAS_MOD, ...MODULOS].map(m => (
+            <button key={m.nombre} onClick={() => router.push(m.href)}
+              style={{ ...card, padding: 22, display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', textAlign: 'left', border: 'none', transition: 'box-shadow 0.15s' }}>
+              <div style={{ width: 46, height: 46, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, background: m.bg }}>{m.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>{m.nombre}</div>
+                <div style={{ fontSize: 11, color: '#BBB', marginTop: 3 }}>{m.desc}</div>
+              </div>
+              <div style={{ fontSize: 20, color: '#DDD', flexShrink: 0 }}>›</div>
+            </button>
+          ))}
+        </div>
+
       </div>
-
-      {/* Módulos empresa */}
-      <div className="text-[11px] font-bold uppercase tracking-[1px] mb-3 mt-2" style={{ color: '#888' }}>Módulos empresa</div>
-      {MODULOS.map(m => (
-        <button key={m.nombre} onClick={() => router.push(m.href)}
-          className="w-full flex items-center gap-3.5 p-4 rounded-xl mb-2 text-left transition-colors active:opacity-70"
-          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="w-[42px] h-[42px] rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: m.bg }}>{m.icon}</div>
-          <div className="flex-1">
-            <div className="text-sm font-bold text-white">{m.nombre}</div>
-            <div className="text-xs font-medium mt-0.5" style={{ color: '#888' }}>{m.desc}</div>
-          </div>
-          <div className="text-xl font-light" style={{ color: '#888' }}>›</div>
-        </button>
-      ))}
-
     </div>
   )
 }
