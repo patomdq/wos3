@@ -1191,27 +1191,30 @@ export default function MercadoPage() {
         <>
           <div className="fixed inset-x-0 top-0 z-40" style={{ bottom: 70, background: 'rgba(0,0,0,0.45)' }} onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} />
           <div className="fixed inset-x-0 top-0 z-50 flex items-end sm:items-center justify-center pointer-events-none" style={{ bottom: 70 }}>
-          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 16px)', maxWidth: 900 }}>
-            <div className="p-5 pb-8">
-              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#DCDAD4' }} />
-              <div className="flex items-center justify-between mb-5">
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl flex flex-col pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 8px)', maxWidth: 900 }}>
+            {/* Header fijo */}
+            <div className="flex-shrink-0 px-5 pt-4 pb-3">
+              <div className="w-9 h-1 rounded-full mx-auto mb-4" style={{ background: '#DCDAD4' }} />
+              <div className="flex items-center justify-between mb-3">
                 <div className="font-black text-[17px]" style={{ color: '#111' }}>Agregar inmueble</div>
                 <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
-
-              {/* Tipo — fila completa antes del grid */}
-              <div className="flex items-center gap-1.5 flex-nowrap mb-5">
+              {/* Tipo — fila completa fuera del grid */}
+              <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto pb-1">
                 <span className="text-[10px] font-black uppercase tracking-wide shrink-0 mr-1" style={{ color: '#666' }}>Tipo *</span>
                 {['piso','casa','duplex','edificio','suelo','nave'].map(t => (
                   <button key={t} onClick={() => setNuevoForm(f => ({ ...f, tipologia: t }))}
-                    className="px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap"
+                    className="px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap flex-shrink-0"
                     style={{ background: nuevoForm.tipologia === t ? '#F26E1F' : '#F5F4F0', color: nuevoForm.tipologia === t ? '#fff' : '#666', border: nuevoForm.tipologia === t ? '1.5px solid #F26E1F' : '1.5px solid #ECEAE4' }}>
                     {TIPOLOGIA_LABELS[t]}
                   </button>
                 ))}
               </div>
+            </div>
 
-              <div className="sm:grid sm:grid-cols-2 sm:gap-6">
+            {/* Contenido scrollable */}
+            <div className="flex-1 overflow-y-auto px-5">
+              <div className="sm:grid sm:grid-cols-2 sm:gap-6 pb-4">
                 {/* Columna izquierda */}
                 <div className="grid grid-cols-2 gap-3 content-start">
                   <div className="col-span-2">
@@ -1249,11 +1252,6 @@ export default function MercadoPage() {
                   <div className="col-span-2">
                     <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Notas</label>
                     <textarea value={nuevoForm.notas} onChange={e => setNuevoForm(f => ({ ...f, notas: e.target.value }))} placeholder="Observaciones..." rows={3} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
-                  </div>
-                  {/* Botones mobile */}
-                  <div className="col-span-2 flex gap-2 mt-2 sm:hidden">
-                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
-                    <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
                   </div>
                 </div>
 
@@ -1448,13 +1446,13 @@ export default function MercadoPage() {
                       )}
                     </label>
                   )}
-                  {/* Botones desktop */}
-                  <div className="hidden sm:flex gap-2 mt-auto pt-3">
-                    <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
-                    <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
-                  </div>
                 </div>
               </div>
+            </div>
+            {/* Footer fijo con botones — siempre visible */}
+            <div className="flex-shrink-0 flex gap-3 px-5 py-4" style={{ borderTop: '1px solid #ECEAE4' }}>
+              <button onClick={() => { setNuevoOpen(false); setNuevoUnidades([]); setAddingNuevoUnidad(false); setImportandoNuevoUrl(false); setNuevoImportUrl(''); setNuevoPortada(null); setNuevoPortadaPreview(null) }} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
+              <button onClick={saveNuevo} disabled={savingNuevo || !nuevoForm.direccion || !nuevoForm.precio} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingNuevo ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </div>
           </div>
@@ -1466,33 +1464,34 @@ export default function MercadoPage() {
         <>
           <div className="fixed inset-x-0 top-0 z-40" style={{ bottom: 70, background: 'rgba(0,0,0,0.45)' }} onClick={() => setEditInmueble(null)} />
           <div className="fixed inset-x-0 top-0 z-50 flex items-end sm:items-center justify-center pointer-events-none" style={{ bottom: 70 }}>
-          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 16px)', maxWidth: 900 }}>
-            <div className="p-5 pb-8">
-              {/* Handle */}
-              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#DCDAD4' }} />
-              {/* Header */}
-              <div className="flex items-center justify-between mb-5">
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl flex flex-col pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(100% - 8px)', maxWidth: 900 }}>
+            {/* Header fijo */}
+            <div className="flex-shrink-0 px-5 pt-4 pb-3">
+              <div className="w-9 h-1 rounded-full mx-auto mb-4" style={{ background: '#DCDAD4' }} />
+              <div className="flex items-center justify-between mb-3">
                 <div>
                   <div className="font-black text-[17px]" style={{ color: '#111' }}>Editar inmueble</div>
                   <div className="text-xs mt-0.5" style={{ color: '#999' }}>{editInmueble.titulo || editInmueble.direccion}</div>
                 </div>
                 <button onClick={() => setEditInmueble(null)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
-
               {/* Tipo — fila completa fuera del grid */}
-              <div className="flex items-center gap-1.5 flex-nowrap mb-5">
+              <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto pb-1">
                 <span className="text-[10px] font-black uppercase tracking-wide shrink-0 mr-1" style={{ color: '#666' }}>Tipo</span>
                 {['piso','casa','duplex','edificio','suelo','nave'].map(t => (
                   <button key={t} onClick={() => setEditForm(f => ({ ...f, tipologia: t }))}
-                    className="px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap"
+                    className="px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap flex-shrink-0"
                     style={{ background: editForm.tipologia === t ? '#F26E1F' : '#F5F4F0', color: editForm.tipologia === t ? '#fff' : '#666', border: editForm.tipologia === t ? '1.5px solid #F26E1F' : '1.5px solid #ECEAE4' }}>
                     {TIPOLOGIA_LABELS[t]}
                   </button>
                 ))}
               </div>
+            </div>
 
+            {/* Contenido scrollable */}
+            <div className="flex-1 overflow-y-auto px-5">
               {/* Layout: 2 columnas en desktop */}
-              <div className="sm:grid sm:grid-cols-2 sm:gap-6">
+              <div className="sm:grid sm:grid-cols-2 sm:gap-6 pb-4">
                 {/* Columna izquierda: datos básicos */}
                 <div className="grid grid-cols-2 gap-3 content-start">
                   <div className="col-span-2">
@@ -1532,11 +1531,6 @@ export default function MercadoPage() {
                     <textarea value={editForm.notas} onChange={e => setEditForm(f => ({ ...f, notas: e.target.value }))} rows={3} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
                   </div>
 
-                  {/* Botones guardar/cancelar — en mobile van aquí, en desktop al final de col derecha */}
-                  <div className="col-span-2 flex gap-2 mt-2 sm:hidden">
-                    <button onClick={() => setEditInmueble(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
-                    <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingEdit ? 'Guardando...' : 'Guardar cambios'}</button>
-                  </div>
                 </div>
 
                 {/* Columna derecha: unidades (edificios) o espacio vacío */}
@@ -1745,13 +1739,13 @@ export default function MercadoPage() {
                     </div>
                   )}
 
-                  {/* Botones guardar/cancelar — solo en desktop */}
-                  <div className="hidden sm:flex gap-2 mt-5">
-                    <button onClick={() => setEditInmueble(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
-                    <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingEdit ? 'Guardando...' : 'Guardar cambios'}</button>
-                  </div>
                 </div>
               </div>
+            </div>
+            {/* Footer fijo con botones — siempre visible */}
+            <div className="flex-shrink-0 flex gap-3 px-5 py-4" style={{ borderTop: '1px solid #ECEAE4' }}>
+              <button onClick={() => setEditInmueble(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>Cancelar</button>
+              <button onClick={saveEdit} disabled={savingEdit} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>{savingEdit ? 'Guardando...' : 'Guardar cambios'}</button>
             </div>
           </div>
           </div>
