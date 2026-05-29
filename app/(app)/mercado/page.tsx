@@ -162,6 +162,8 @@ export default function MercadoPage() {
   const [editInmueble, setEditInmueble] = useState<Inmueble | null>(null)
   const [editForm, setEditForm] = useState(emptyNuevoForm())
   const [savingEdit, setSavingEdit] = useState(false)
+  const [editPortada, setEditPortada] = useState<File | null>(null)
+  const [editPortadaPreview, setEditPortadaPreview] = useState<string | null>(null)
 
   // Calculadora
   const [calcOpen, setCalcOpen] = useState(false)
@@ -353,6 +355,8 @@ export default function MercadoPage() {
     })
     setAddingUnidadId(null)
     setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
+    setEditPortada(null)
+    setEditPortadaPreview(null)
     if (item.tipologia === 'edificio' && !unidades[item.id]) fetchUnidades(item.id)
   }
   const saveEdit = async () => {
@@ -371,10 +375,24 @@ export default function MercadoPage() {
       url: editForm.url || null,
       drive_url: editForm.drive_url || null,
     }
+    if (editPortada) {
+      const ext = editPortada.name.split('.').pop() || 'jpg'
+      const fileName = `portada_${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('portadas').upload(fileName, editPortada, { cacheControl: '3600', upsert: false })
+      if (!upErr) {
+        const { data: { publicUrl } } = supabase.storage.from('portadas').getPublicUrl(fileName)
+        payload.imagen_portada = publicUrl
+      }
+    }
     const { data, error } = await supabase.from('inmuebles').update(payload).eq('id', editInmueble.id).select().single()
     setSavingEdit(false)
     if (error) { alert(`Error: ${error.message}`); return }
-    if (data) { setInmuebles(prev => prev.map(x => x.id === editInmueble.id ? data : x)); setEditInmueble(null) }
+    if (data) {
+      setInmuebles(prev => prev.map(x => x.id === editInmueble.id ? data : x))
+      setEditInmueble(null)
+      setEditPortada(null)
+      setEditPortadaPreview(null)
+    }
   }
 
   const deleteInmueble = async (item: Inmueble) => {
@@ -1447,8 +1465,8 @@ export default function MercadoPage() {
       {editInmueble && (
         <>
           <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setEditInmueble(null)} />
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
-          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '92vh', maxWidth: 900 }}>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none" style={{ paddingBottom: 64 }}>
+          <div className="w-full rounded-t-[20px] sm:rounded-2xl overflow-y-auto pointer-events-auto" style={{ background: '#ffffff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: 'calc(92vh - 64px)', maxWidth: 900 }}>
             <div className="p-5 pb-8">
               {/* Handle */}
               <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#DCDAD4' }} />
@@ -1461,22 +1479,22 @@ export default function MercadoPage() {
                 <button onClick={() => setEditInmueble(null)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
 
+              {/* Tipo — fila completa fuera del grid */}
+              <div className="flex items-center gap-1.5 flex-nowrap mb-5">
+                <span className="text-[10px] font-black uppercase tracking-wide shrink-0 mr-1" style={{ color: '#666' }}>Tipo</span>
+                {['piso','casa','duplex','edificio','suelo','nave'].map(t => (
+                  <button key={t} onClick={() => setEditForm(f => ({ ...f, tipologia: t }))}
+                    className="px-2.5 py-1 rounded-xl text-[11px] font-black whitespace-nowrap"
+                    style={{ background: editForm.tipologia === t ? '#F26E1F' : '#F5F4F0', color: editForm.tipologia === t ? '#fff' : '#666', border: editForm.tipologia === t ? '1.5px solid #F26E1F' : '1.5px solid #ECEAE4' }}>
+                    {TIPOLOGIA_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+
               {/* Layout: 2 columnas en desktop */}
               <div className="sm:grid sm:grid-cols-2 sm:gap-6">
                 {/* Columna izquierda: datos básicos */}
                 <div className="grid grid-cols-2 gap-3 content-start">
-                  <div className="col-span-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Tipo</label>
-                    <div className="flex gap-2 flex-wrap">
-                      {['piso','casa','duplex','edificio','suelo','nave'].map(t => (
-                        <button key={t} onClick={() => setEditForm(f => ({ ...f, tipologia: t }))}
-                          className="px-3 py-1.5 rounded-xl text-xs font-black"
-                          style={{ background: editForm.tipologia === t ? '#F26E1F' : '#F5F4F0', color: editForm.tipologia === t ? '#fff' : '#666', border: editForm.tipologia === t ? '1.5px solid #F26E1F' : '1.5px solid #ECEAE4' }}>
-                          {TIPOLOGIA_LABELS[t]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                   <div className="col-span-2">
                     <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Título</label>
                     <input type="text" value={editForm.titulo} onChange={e => setEditForm(f => ({ ...f, titulo: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
@@ -1679,12 +1697,52 @@ export default function MercadoPage() {
                       )}
                     </div>
                   ) : (
-                    /* Para no-edificios: imagen portada si la tiene */
-                    editInmueble.imagen_portada ? (
-                      <div className="rounded-2xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
-                        <img src={editInmueble.imagen_portada} alt="" className="w-full object-cover" style={{ maxHeight: 260 }} />
+                    /* Para no-edificios: área de imagen (drag & drop o preview existente) */
+                    <div className="flex flex-col h-full gap-3">
+                      <input type="file" accept="image/*" id="editPortadaInput" className="hidden"
+                        onChange={e => {
+                          const f = e.target.files?.[0]
+                          if (!f) return
+                          setEditPortada(f)
+                          const reader = new FileReader()
+                          reader.onload = ev => setEditPortadaPreview(ev.target?.result as string)
+                          reader.readAsDataURL(f)
+                        }} />
+                      <div
+                        className="flex-1 rounded-2xl overflow-hidden cursor-pointer relative flex flex-col items-center justify-center"
+                        style={{
+                          border: (editPortadaPreview || editInmueble.imagen_portada) ? '1.5px solid #ECEAE4' : '2px dashed #DDDBD5',
+                          background: (editPortadaPreview || editInmueble.imagen_portada) ? 'transparent' : '#FAFAF8',
+                          minHeight: 200
+                        }}
+                        onClick={() => document.getElementById('editPortadaInput')?.click()}
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={e => {
+                          e.preventDefault()
+                          const f = e.dataTransfer.files?.[0]
+                          if (!f || !f.type.startsWith('image/')) return
+                          setEditPortada(f)
+                          const reader = new FileReader()
+                          reader.onload = ev => setEditPortadaPreview(ev.target?.result as string)
+                          reader.readAsDataURL(f)
+                        }}
+                      >
+                        {(editPortadaPreview || editInmueble.imagen_portada) ? (
+                          <>
+                            <img src={editPortadaPreview || editInmueble.imagen_portada!} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,0,0,0.4)' }}>
+                              <span className="text-white text-xs font-black">📷 Cambiar foto</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-3xl mb-2 opacity-30">📷</div>
+                            <div className="text-[13px] font-bold" style={{ color: '#888' }}>Foto de portada</div>
+                            <div className="text-[11px] text-center mt-1" style={{ color: '#BBB' }}>Click o arrastrá una imagen<br/>Se usará como portada de la card</div>
+                          </>
+                        )}
                       </div>
-                    ) : null
+                    </div>
                   )}
 
                   {/* Botones guardar/cancelar — solo en desktop */}
