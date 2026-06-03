@@ -298,7 +298,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Topbar — hidden in panel mode (AppShell provides its own header) */}
       {!hideHeader && (
         <div className="flex items-center gap-3 px-4 h-[54px] flex-shrink-0" style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>

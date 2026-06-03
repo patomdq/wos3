@@ -311,7 +311,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 padding: '14px 16px',
                 borderBottom: '1px solid #F2F1ED',
                 display: 'flex', alignItems: 'center', gap: 10,
-                flexShrink: 0, background: '#fff',
+                flexShrink: 0, background: '#fff', position: 'sticky', top: 0, zIndex: 10,
               }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: '50%',
@@ -328,7 +328,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   fontSize: 11, color: '#888', cursor: 'pointer', border: 'none',
                 }}>✕</button>
               </div>
-              <BotChat storageKeySuffix="_panel" hideHeader lightTheme />
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <BotChat storageKeySuffix="_panel" hideHeader lightTheme />
+              </div>
             </>
           )}
         </div>
