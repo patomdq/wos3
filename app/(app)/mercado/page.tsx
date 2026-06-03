@@ -1038,34 +1038,55 @@ export default function MercadoPage() {
                   )}
 
                   {/* Para no-edificios: ROI y precios si analizado */}
-                  {item.tipologia !== 'edificio' && isAnalizado && (
-                    <div className="grid grid-cols-3 mt-3 rounded-xl overflow-hidden" style={{ background: '#ECEAE4' }}>
-                      {[
-                        { label: 'Pesimista', val: item.precio_venta_conservador, color: '#EF4444' },
-                        { label: 'Realista',  val: item.precio_venta_realista,    color: '#F59E0B' },
-                        { label: 'Optimista', val: item.precio_venta_optimista,   color: '#22C55E' },
-                      ].map((s, i) => (
-                        <div key={s.label} className="text-center py-2.5" style={{ background: '#F9F8F5', borderLeft: i > 0 ? '1px solid #ECEAE4' : 'none' }}>
-                          <div className="text-[9px] font-bold uppercase tracking-wide mb-0.5" style={{ color: s.color }}>{s.label}</div>
-                          <div className="text-[11px] font-black font-mono" style={{ color: s.color }}>{s.val ? fmt(s.val) : '—'}</div>
+                  {item.tipologia !== 'edificio' && isAnalizado && (() => {
+                    const totalInv = item.gastos_json
+                      ? CONCEPTOS_GASTOS.reduce((sum, c) => {
+                          const g = (item.gastos_json as Gastos)[c.id] || { estimado: 0, real: 0 }
+                          const r = toNum(g.real); const e = toNum(g.estimado)
+                          return sum + (r > 0 ? r : e)
+                        }, 0)
+                      : null
+                    const roiAnual = (item.roi_estimado && item.duracion_meses && item.duracion_meses > 0)
+                      ? item.roi_estimado * 12 / item.duracion_meses
+                      : null
+                    return (
+                      <>
+                        <div className="grid grid-cols-3 mt-3 rounded-xl overflow-hidden" style={{ background: '#ECEAE4' }}>
+                          {[
+                            { label: 'Pesimista', val: item.precio_venta_conservador, color: '#EF4444' },
+                            { label: 'Realista',  val: item.precio_venta_realista,    color: '#F59E0B' },
+                            { label: 'Optimista', val: item.precio_venta_optimista,   color: '#22C55E' },
+                          ].map((s, i) => (
+                            <div key={s.label} className="text-center py-2.5" style={{ background: '#F9F8F5', borderLeft: i > 0 ? '1px solid #ECEAE4' : 'none' }}>
+                              <div className="text-[9px] font-bold uppercase tracking-wide mb-0.5" style={{ color: s.color }}>{s.label}</div>
+                              <div className="text-[11px] font-black font-mono" style={{ color: s.color }}>{s.val ? fmt(s.val) : '—'}</div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  {item.tipologia !== 'edificio' && isAnalizado && item.roi_estimado !== undefined && (
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <span className="text-xs font-black" style={{ color: '#22C55E' }}>
-                        ↗ ROI {item.roi_estimado?.toFixed(1)}%
-                        {item.duracion_meses ? <span className="font-normal text-[10px]" style={{ color: '#AAA' }}> operación ({item.duracion_meses}m)</span> : <span className="font-normal text-[10px]" style={{ color: '#AAA' }}> operación</span>}
-                      </span>
-                      {item.duracion_meses && item.duracion_meses > 0 && (
-                        <span className="text-xs font-black" style={{ color: '#3B82F6' }}>
-                          · ROI anual {(item.roi_estimado! * 12 / item.duracion_meses).toFixed(1)}%
-                        </span>
-                      )}
-                      {item.analizado_en && <span className="text-[10px]" style={{ color: '#BBB' }}>· {item.analizado_en}</span>}
-                    </div>
-                  )}
+                        {/* KPIs fila: Total inversión + ROI operación + ROI anualizado */}
+                        <div className="flex items-center justify-between mt-2 flex-wrap gap-x-2 gap-y-1">
+                          {totalInv ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#AAA' }}>Inv.</span>
+                              <span className="text-xs font-black font-mono" style={{ color: '#555' }}>{fmt(totalInv)}</span>
+                            </div>
+                          ) : null}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {item.roi_estimado !== undefined && (
+                              <span className="text-xs font-black" style={{ color: '#22C55E' }}>
+                                ↗ ROI {item.roi_estimado?.toFixed(1)}%
+                                <span className="font-normal text-[10px]" style={{ color: '#AAA' }}>{item.duracion_meses ? ` (${item.duracion_meses}m)` : ''}</span>
+                              </span>
+                            )}
+                            {roiAnual !== null && (
+                              <span className="text-xs font-black" style={{ color: '#3B82F6' }}>· {roiAnual.toFixed(1)}% anual</span>
+                            )}
+                          </div>
+                        </div>
+                        {item.analizado_en && <div className="text-[10px] mt-0.5" style={{ color: '#CCC' }}>{item.analizado_en}</div>}
+                      </>
+                    )
+                  })()}
 
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold" style={{ color: '#3B82F6' }}>🔗 Ver anuncio</a>}
