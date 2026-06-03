@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
+import { generateReportePDF } from '@/lib/generateReportePDF'
 
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
 const fmt2 = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n)
@@ -1242,10 +1243,19 @@ export default function MercadoPage() {
                         style={{ background: 'rgba(242,110,31,0.09)', color: '#F26E1F', border: '1.5px solid rgba(242,110,31,0.25)' }}>
                         {isAnalizado ? '✎ Análisis' : '⊕ Calcular'}
                       </button>
-                      {/* Enviar */}
+                      {/* Enviar — Web Share API (móvil) o WhatsApp texto (desktop) */}
                       <button
-                        title="Compartir por WhatsApp"
-                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank')}
+                        title="Compartir"
+                        onClick={async () => {
+                          const blob = await generateReportePDF(item)
+                          const file = new File([blob], `${(item.titulo || item.direccion || 'reporte').replace(/[^a-z0-9]/gi,'-')}.pdf`, { type: 'application/pdf' })
+                          if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare?.({ files: [file] })) {
+                            await navigator.share({ files: [file], title: item.titulo || item.direccion || 'Reporte Wallest' })
+                          } else {
+                            // Fallback desktop: abrir WhatsApp con texto
+                            window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank')
+                          }
+                        }}
                         className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F5F4F0', border: '1.5px solid #ECEAE4', cursor: 'pointer' }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1255,7 +1265,15 @@ export default function MercadoPage() {
                       {/* Descargar PDF */}
                       <button
                         title="Descargar PDF"
-                        onClick={() => window.open(`/reporte/${item.id}`, '_blank')}
+                        onClick={async () => {
+                          const blob = await generateReportePDF(item)
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `${(item.titulo || item.direccion || 'reporte').replace(/[^a-z0-9]/gi,'-')}.pdf`
+                          a.click()
+                          URL.revokeObjectURL(url)
+                        }}
                         className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F5F4F0', border: '1.5px solid #ECEAE4', cursor: 'pointer' }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
