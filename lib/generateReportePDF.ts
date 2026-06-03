@@ -186,16 +186,18 @@ export async function generateReportePDF(item: InmuebleReporte): Promise<Blob> {
 
   // ── NOTAS ──────────────────────────────────────────────────────────────
   if (item.notas) {
+    const wrapped = doc.splitTextToSize(item.notas, cw - 12)
+    const lineH = 4.5
+    const boxH = 8 + wrapped.length * lineH
     setColor(ORANGE, 'fill')
-    doc.rect(ml, y, 2.5, 14, 'F')
-    rect(ml + 2.5, y, cw - 2.5, 14, '#FFF8F4')
-    text('NOTAS', ml + 5, y + 4, { size: 6.5, bold: true, color: ORANGE })
-    const wrapped = doc.splitTextToSize(item.notas, cw - 10)
+    doc.rect(ml, y, 2.5, boxH, 'F')
+    rect(ml + 2.5, y, cw - 2.5, boxH, '#FFF8F4')
+    text('NOTAS', ml + 5, y + 4.5, { size: 6.5, bold: true, color: ORANGE })
     setColor('#555555', 'text')
     doc.setFontSize(8.5)
     doc.setFont('helvetica', 'normal')
-    doc.text(wrapped.slice(0, 2), ml + 5, y + 9)
-    y += 18
+    doc.text(wrapped, ml + 5, y + 9)
+    y += boxH + 4
   }
 
   // ── TABLA DE ESCENARIOS ────────────────────────────────────────────────

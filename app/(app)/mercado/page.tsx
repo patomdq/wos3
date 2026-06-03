@@ -1251,7 +1251,7 @@ export default function MercadoPage() {
                           btn.style.opacity = '0.5'
                           try {
                             const blob = await generateReportePDF(item)
-                            const fname = `${(item.titulo || item.direccion || 'reporte').replace(/[^a-z0-9]/gi,'-')}.pdf`
+                            const fname = `${(item.titulo || item.direccion || 'reporte').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')}.pdf`
                             const file = new File([blob], fname, { type: 'application/pdf' })
                             if (navigator.share && navigator.canShare?.({ files: [file] })) {
                               await navigator.share({ files: [file], title: item.titulo || item.direccion || 'Reporte Wallest' })
@@ -1266,7 +1266,9 @@ export default function MercadoPage() {
                             }
                           } catch(err) {
                             console.error('Error compartir PDF:', err)
-                            alert('Error PDF: ' + (err instanceof Error ? err.message : String(err)))
+                            // Ignorar cancelación del share dialog
+if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('cancellation'))) return
+alert('Error PDF: ' + (err instanceof Error ? err.message : String(err)))
                           } finally {
                             btn.style.opacity = '1'
                           }
@@ -1285,7 +1287,7 @@ export default function MercadoPage() {
                           btn.style.opacity = '0.5'
                           try {
                             const blob = await generateReportePDF(item)
-                            const fname = `${(item.titulo || item.direccion || 'reporte').replace(/[^a-z0-9]/gi,'-')}.pdf`
+                            const fname = `${(item.titulo || item.direccion || 'reporte').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')}.pdf`
                             const url = URL.createObjectURL(blob)
                             const a = document.createElement('a')
                             a.href = url; a.download = fname
@@ -1294,7 +1296,9 @@ export default function MercadoPage() {
                             URL.revokeObjectURL(url)
                           } catch(err) {
                             console.error('Error generar PDF:', err)
-                            alert('Error PDF: ' + (err instanceof Error ? err.message : String(err)))
+                            // Ignorar cancelación del share dialog
+if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('cancellation'))) return
+alert('Error PDF: ' + (err instanceof Error ? err.message : String(err)))
                           } finally {
                             btn.style.opacity = '1'
                           }
