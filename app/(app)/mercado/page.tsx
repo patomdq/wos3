@@ -1053,8 +1053,16 @@ export default function MercadoPage() {
                     </div>
                   )}
                   {item.tipologia !== 'edificio' && isAnalizado && item.roi_estimado !== undefined && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs font-black" style={{ color: '#22C55E' }}>↗ ROI {item.roi_estimado?.toFixed(1)}%</span>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className="text-xs font-black" style={{ color: '#22C55E' }}>
+                        ↗ ROI {item.roi_estimado?.toFixed(1)}%
+                        {item.duracion_meses ? <span className="font-normal text-[10px]" style={{ color: '#AAA' }}> operación ({item.duracion_meses}m)</span> : <span className="font-normal text-[10px]" style={{ color: '#AAA' }}> operación</span>}
+                      </span>
+                      {item.duracion_meses && item.duracion_meses > 0 && (
+                        <span className="text-xs font-black" style={{ color: '#3B82F6' }}>
+                          · ROI anual {(item.roi_estimado! * 12 / item.duracion_meses).toFixed(1)}%
+                        </span>
+                      )}
                       {item.analizado_en && <span className="text-[10px]" style={{ color: '#BBB' }}>· {item.analizado_en}</span>}
                     </div>
                   )}
