@@ -1990,14 +1990,15 @@ export default function MercadoPage() {
                     {ESC_UI.map(esc => <div key={esc.label} className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: esc.color }}>{esc.label}</div>)}
                   </div>
                   {[
-                    { label: 'P. Venta',   vals: ESC_UI.map(e => fmt(toNum(e.pv))),                                            colors: ESC_UI.map(() => '#333') },
-                    { label: 'Beneficio',  vals: ESC_UI.map((_,i) => (res.ben[i] >= 0 ? '+' : '') + fmt(res.ben[i])),         colors: ESC_UI.map((_,i) => res.ben[i] >= 0 ? '#22C55E' : '#EF4444') },
-                    { label: 'ROI oper.',  vals: ESC_UI.map((_,i) => fmtPct(res.rent[i])),                                    colors: ESC_UI.map((_,i) => res.rent[i] >= 15 ? '#22C55E' : res.rent[i] >= 0 ? '#F59E0B' : '#EF4444') },
-                    { label: `ROI anual${duracionMeses > 0 ? ` (${duracionMeses}m)` : ''}`, vals: ESC_UI.map((_,i) => res.anual[i] !== null ? fmtPct(res.anual[i]!) : '—'), colors: ESC_UI.map((_,i) => res.anual[i] === null ? '#aaa' : res.anual[i]! >= 15 ? '#22C55E' : res.anual[i]! >= 0 ? '#F59E0B' : '#EF4444') },
+                    { label: 'P. Venta',        vals: ESC_UI.map(e => fmt(toNum(e.pv))),                                                                                         colors: ESC_UI.map(() => '#333'),    bold: false },
+                    { label: 'Gastos totales',   vals: ESC_UI.map(() => fmt(res.totalReal)),                                                                                      colors: ESC_UI.map(() => '#666'),    bold: false },
+                    { label: 'Beneficio',        vals: ESC_UI.map((_,i) => (res.ben[i] >= 0 ? '+' : '') + fmt(res.ben[i])),                                                      colors: ESC_UI.map((_,i) => res.ben[i] >= 0 ? '#22C55E' : '#EF4444'),  bold: true },
+                    { label: 'ROI oper.',        vals: ESC_UI.map((_,i) => fmtPct(res.rent[i])),                                                                                  colors: ESC_UI.map((_,i) => res.rent[i] >= 15 ? '#22C55E' : res.rent[i] >= 0 ? '#F59E0B' : '#EF4444'),  bold: true },
+                    { label: `ROI anual${duracionMeses > 0 ? ` (${duracionMeses}m)` : ''}`, vals: ESC_UI.map((_,i) => res.anual[i] !== null ? fmtPct(res.anual[i]!) : '—'),     colors: ESC_UI.map((_,i) => res.anual[i] === null ? '#aaa' : res.anual[i]! >= 15 ? '#22C55E' : res.anual[i]! >= 0 ? '#F59E0B' : '#EF4444'),  bold: true },
                   ].map((row, ri) => (
-                    <div key={row.label} className="grid grid-cols-[90px_1fr_1fr_1fr] px-3 py-2.5 items-center" style={{ borderTop: ri > 0 ? '1px solid #F0EEE8' : undefined, background: '#fff' }}>
-                      <div className="text-xs font-bold" style={{ color: '#888' }}>{row.label}</div>
-                      {row.vals.map((v, i) => <div key={i} className="font-black text-xs font-mono text-center" style={{ color: row.colors[i] }}>{v}</div>)}
+                    <div key={row.label} className="grid grid-cols-[90px_1fr_1fr_1fr] px-3 py-2.5 items-center" style={{ borderTop: ri > 0 ? '1px solid #F0EEE8' : undefined, background: ri === 1 ? '#FAFAF8' : '#fff' }}>
+                      <div className="text-xs" style={{ color: '#888', fontWeight: row.bold ? 700 : 500 }}>{row.label}</div>
+                      {row.vals.map((v, i) => <div key={i} className="text-xs font-mono text-center" style={{ color: row.colors[i], fontWeight: row.bold ? 800 : 500 }}>{v}</div>)}
                     </div>
                   ))}
                 </div>
