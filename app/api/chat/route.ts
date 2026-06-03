@@ -154,7 +154,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'insert_radar',
-    description: 'Agrega un inmueble al radar de mercado para seguimiento. Usalo cuando el usuario pida agregar, guardar o meter un piso/inmueble/propiedad al radar o a vigilar.',
+    description: 'Agrega un inmueble a Mercado para seguimiento. Usalo cuando el usuario pida agregar, guardar o meter un piso/inmueble/propiedad a mercado, a seguimiento, o a vigilar.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -1199,27 +1199,27 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }
     }
     if (name === 'insert_radar') {
-      const radarRow: Record<string, any> = {
+      const mercadoRow: Record<string, any> = {
         titulo: input.titulo || null,
         direccion: input.direccion,
         ciudad: input.ciudad || null,
-        precio: input.precio,
+        precio_compra: input.precio,
         habitaciones: input.habitaciones || null,
         superficie: input.superficie || null,
-        fuente: input.fuente || 'otro',
-        estado: 'activo',
-        fecha_recibido: new Date().toISOString().split('T')[0],
+        fuente: input.fuente || 'manual',
+        tipologia: input.tipologia || 'piso',
+        estado: 'sin_analizar',
         notas: input.notas || null,
       }
-      if (input.url) radarRow.url = input.url
-      if (input.drive_url) radarRow.drive_url = input.drive_url
-      const { data, error } = await supabaseAdmin.from('inmuebles_radar').insert([radarRow]).select().single()
-      if (error) return { result: `Error al guardar en radar: ${error.message}` }
+      if (input.url) mercadoRow.url = input.url
+      if (input.drive_url) mercadoRow.drive_url = input.drive_url
+      const { data, error } = await supabaseAdmin.from('inmuebles').insert([mercadoRow]).select().single()
+      if (error) return { result: `Error al guardar en Mercado: ${error.message}` }
       return {
-        result: `Inmueble agregado al radar. ID: ${data.id}. Dirección: "${data.direccion}", Precio: ${data.precio}€, Ciudad: ${data.ciudad || 'sin especificar'}.`,
-        table: 'inmuebles_radar',
+        result: `✅ Agregado a Mercado. ID: ${data.id}. Dirección: "${data.direccion}", Precio: ${data.precio_compra}€, Ciudad: ${data.ciudad || 'sin especificar'}.`,
+        table: 'inmuebles',
         recordId: data.id,
-        label: `${data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''} · ${data.precio}€`,
+        label: `${data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''} · ${data.precio_compra}€`,
       }
     }
     if (name === 'analizar_inmueble') {
@@ -2627,7 +2627,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - TAREAS DE AGENDA (Personal/Trabajo, sin proyecto): insert_agenda_tarea, update_agenda_tarea, delete_agenda_tarea, listar_agenda_tareas. Son las tareas que aparecen en HASU → Calendario. Distintas de las tareas de proyecto. Cuando el usuario pregunte por tareas generales (no de un proyecto), usá listar_agenda_tareas directamente SIN preguntar — ya no hace falta la pregunta de aclaración.
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
-- INMUEBLES RADAR/ESTUDIO: para editar, eliminar, mover o agregar bitácora a un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para mover del radar a En Estudio usá mover_radar_a_estudio. Para agregar directamente a En Estudio sin pasar por Radar usá insert_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR un inmueble en Radar usá delete_radar; para ELIMINAR uno en En Estudio usá delete_estudio.
+- INMUEBLES MERCADO: para agregar un inmueble nuevo a seguimiento usá insert_radar (guarda en Mercado con estado sin_analizar). Para editar, eliminar o mover un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para pasar a análisis profundo usá insert_estudio o mover_radar_a_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR usá delete_radar (Mercado) o delete_estudio (En Estudio).
 - EDIFICIOS (fincas completas, bloques de pisos): área SEPARADA de los inmuebles individuales. Para agregar un edificio al radar usá insert_edificio_radar (escribe en edificios_estudio con estado=radar). Para editar usá update_edificio. Para eliminar usá delete_edificio. Para mover de radar a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — son tablas distintas. UNIDADES: cuando el usuario mencione pisos, unidades, inquilinos o información por planta, llamá insert_edificio_unidades (en la tabla edificio_unidades). Si ya hay info de unidades en el mismo mensaje donde se crea el edificio, llamá insert_edificio_radar e insert_edificio_unidades juntos en el mismo turno. Campos clave: planta (ej: "1ª DCHA"), ocupacion ("Libre" o "Alquilado"), renta_mensual, notas (inquilino + fechas de contrato). IMPORTANTE al cargar edificios: (1) num_plantas: extraélo siempre del texto — "PB+3"=4 plantas, "3 alturas"=3, "planta baja y dos pisos"=3, etc. (2) notas: copiá el texto completo literal del usuario sin resumir ni acortar — ni una palabra menos.
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
