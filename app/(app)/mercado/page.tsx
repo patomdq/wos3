@@ -777,20 +777,20 @@ export default function MercadoPage() {
       {openBitacoraId === item.id && (
         <div className="px-4 py-3" style={{ borderTop: '1px solid #F0EEE8', background: '#F9F8F5' }}>
           <div className="mb-4 rounded-xl p-3" style={{ background: '#fff', border: '1.5px solid #ECEAE4' }}>
-            <div className="text-[10px] font-black uppercase tracking-wide mb-2" style={{ color: '#555' }}>
+            <div className="text-[10px] font-black uppercase tracking-wide mb-2" style={{ color: '#888' }}>
               {editingBitacoraId ? 'Editar entrada' : 'Nueva entrada'}
             </div>
             <textarea value={bitacoraForm.contenido} onChange={ev => setBitacoraForm(f => ({ ...f, contenido: ev.target.value }))}
               placeholder="Visita realizada, llamada con API, precio negociable..." rows={2}
-              className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium resize-none placeholder:text-[#555] mb-2"
-              style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
-              onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='rgba(255,255,255,0.10)'} />
+              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none mb-2"
+              style={INP_L}
+              onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='#ECEAE4'} />
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div>
-                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#555' }}>Tipo</label>
+                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Tipo</label>
                 <select value={bitacoraForm.tipo} onChange={ev => setBitacoraForm(f => ({ ...f, tipo: ev.target.value }))}
-                  className="w-full rounded-lg px-2 py-2 text-xs text-white outline-none font-medium"
-                  style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', appearance: 'none' as const }}>
+                  className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
+                  style={{ ...INP_L, appearance: 'none' as const }}>
                   <option value="nota">📝 Nota</option>
                   <option value="llamada">📞 Llamada</option>
                   <option value="email">✉️ Email</option>
@@ -800,27 +800,27 @@ export default function MercadoPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#555' }}>Autor</label>
+                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Autor</label>
                 <input type="text" value={bitacoraForm.autor} onChange={ev => setBitacoraForm(f => ({ ...f, autor: ev.target.value }))}
                   placeholder="Patricio"
-                  className="w-full rounded-lg px-2 py-2 text-xs text-white outline-none font-medium placeholder:text-[#555]"
-                  style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
-                  onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                  className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
+                  style={INP_L}
+                  onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='#ECEAE4'} />
               </div>
             </div>
             <div className="mb-2">
-              <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#555' }}>Link externo</label>
+              <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Link externo</label>
               <input type="url" value={bitacoraForm.url} onChange={ev => setBitacoraForm(f => ({ ...f, url: ev.target.value }))} placeholder="https://..."
-                className="w-full rounded-lg px-2 py-2 text-xs text-white outline-none font-medium placeholder:text-[#555]"
-                style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
-                onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
+                style={INP_L}
+                onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='#ECEAE4'} />
             </div>
             {proveedores.length > 0 && (
               <div className="mb-2">
-                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#555' }}>Proveedor</label>
+                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Proveedor</label>
                 <select value={bitacoraForm.proveedor_id} onChange={ev => setBitacoraForm(f => ({ ...f, proveedor_id: ev.target.value }))}
-                  className="w-full rounded-lg px-2 py-2 text-xs text-white outline-none font-medium"
-                  style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', appearance: 'none' as const }}>
+                  className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
+                  style={{ ...INP_L, appearance: 'none' as const }}>
                   <option value="">— Sin proveedor —</option>
                   {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                 </select>
@@ -829,7 +829,7 @@ export default function MercadoPage() {
             <div className="flex gap-2">
               {editingBitacoraId && (
                 <button onClick={() => { setBitacoraForm({ contenido: '', tipo: 'nota', autor: '', url: '', proveedor_id: '' }); setEditingBitacoraId(null) }}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-black" style={{ background: '#282828', color: '#888' }}>Cancelar</button>
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black" style={{ background: '#F0EEE8', color: '#888', border: '1px solid #ECEAE4' }}>Cancelar</button>
               )}
               <button onClick={() => saveBitacoraEntry(item.id)} disabled={savingBitacora || !bitacoraForm.contenido.trim()}
                 className="flex-1 py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-40" style={{ background: '#F26E1F' }}>
@@ -850,16 +850,16 @@ export default function MercadoPage() {
                   <div key={entry.id as string} className="relative mb-4">
                     <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background: '#F26E1F', border: '2px solid #F9F8F5' }} />
                     <div className="flex items-center justify-between mb-0.5">
-                      <div className="text-[10px] font-bold font-mono tracking-wide" style={{ color: '#BBB' }}>
+                      <div className="text-[10px] font-bold font-mono tracking-wide" style={{ color: '#AAA' }}>
                         {new Date(entry.created_at as string).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
                         {' · '}{TIPO_ICON[entry.tipo as string] || '📝'} {((entry.tipo as string) || 'nota').toUpperCase()}
                       </div>
                       <div className="flex gap-1">
-                        <button onClick={() => openEditBitacora(entry)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: 'rgba(255,255,255,0.08)', color: '#fff' }}>✎</button>
-                        <button onClick={() => deleteBitacoraEntry(entry.id as string, item.id)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}>✕</button>
+                        <button onClick={() => openEditBitacora(entry)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: '#ECEAE4', color: '#666' }}>✎</button>
+                        <button onClick={() => deleteBitacoraEntry(entry.id as string, item.id)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>✕</button>
                       </div>
                     </div>
-                    <div className="text-sm font-bold text-white leading-relaxed">{entry.contenido as string}</div>
+                    <div className="text-sm font-bold leading-relaxed" style={{ color: '#1a1a1a' }}>{entry.contenido as string}</div>
                     {entry.url && (
                       <a href={entry.url as string} target="_blank" rel="noopener noreferrer" className="text-xs font-bold inline-flex items-center gap-1 mt-1" style={{ color: '#60A5FA' }}>🔗 Ver link</a>
                     )}
@@ -1839,51 +1839,51 @@ export default function MercadoPage() {
 
       {/* ═══ CALCULADORA FULL SCREEN ═══ */}
       {calcOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: '#0A0A0A' }}>
-          <div className="sticky top-0 z-10 flex items-center gap-3 px-4 h-[54px]" style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: '#F5F4F0' }}>
+          <div className="sticky top-0 z-10 flex items-center gap-3 px-4 h-[54px]" style={{ background: '#fff', borderBottom: '1px solid #ECEAE4' }}>
             <button onClick={() => setCalcOpen(false)} className="font-black text-xl" style={{ color: '#888' }}>←</button>
-            <div className="flex-1 font-black text-[16px] text-white">{calcInmuebleId ? 'Editar análisis' : 'Calculadora de Rentabilidad'}</div>
-            <button onClick={exportarPDF} disabled={!res} className="text-xs font-black px-3 py-1.5 rounded-lg disabled:opacity-30" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.12)', color: '#ccc' }}>PDF</button>
+            <div className="flex-1 font-black text-[16px]" style={{ color: '#1a1a1a' }}>{calcInmuebleId ? 'Editar análisis' : 'Calculadora de Rentabilidad'}</div>
+            <button onClick={exportarPDF} disabled={!res} className="text-xs font-black px-3 py-1.5 rounded-lg disabled:opacity-30" style={{ background: '#F0EEE8', border: '1px solid #DEDAD2', color: '#666' }}>PDF</button>
           </div>
           <div className="p-4 pb-10">
             <div className="grid grid-cols-2 gap-3 mb-5">
               <div className="col-span-2">
                 <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Título</label>
-                <input type="text" value={tituloEstudio} onChange={e => setTituloEstudio(e.target.value)} placeholder="Ej: Piso Vera centro..." className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                <input type="text" value={tituloEstudio} onChange={e => setTituloEstudio(e.target.value)} placeholder="Ej: Piso Vera centro..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div className="col-span-2">
                 <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Dirección</label>
-                <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Municipio</label>
-                <input type="text" value={ciudad} onChange={e => setCiudad(e.target.value)} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                <input type="text" value={ciudad} onChange={e => setCiudad(e.target.value)} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#F26E1F' }}>Duración (meses) *</label>
-                <input type="number" value={duracionMeses || ''} onChange={e => setDuracionMeses(parseFloat(e.target.value) || 0)} placeholder="ej: 6" className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                <input type="number" value={duracionMeses || ''} onChange={e => setDuracionMeses(parseFloat(e.target.value) || 0)} placeholder="ej: 6" className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
             </div>
 
             <div className="text-[11px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#888' }}>Gastos estimados y reales</div>
-            <div className="rounded-xl overflow-hidden mb-5" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="grid grid-cols-[1fr_80px_80px] px-3 py-2" style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#555' }}>Concepto</div>
-                <div className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: '#555' }}>Estimado</div>
+            <div className="rounded-xl overflow-hidden mb-5" style={{ border: '1px solid #ECEAE4' }}>
+              <div className="grid grid-cols-[1fr_80px_80px] px-3 py-2" style={{ background: '#ECEAE4', borderBottom: '1px solid #E2E0D8' }}>
+                <div className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#888' }}>Concepto</div>
+                <div className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: '#888' }}>Estimado</div>
                 <div className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: '#22C55E' }}>Real</div>
               </div>
               {CONCEPTOS_GASTOS.map((c, i) => (
-                <div key={c.id} className="grid grid-cols-[1fr_80px_80px] px-3 py-2 items-center" style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : undefined, background: '#141414' }}>
-                  <div className="text-xs font-medium pr-2" style={{ color: '#ccc', lineHeight: 1.3 }}>{c.nombre}</div>
-                  <div className="px-1"><input type="number" value={gastos[c.id].estimado || ''} onChange={e => updateGasto(c.id, 'estimado', e.target.value)} className="w-full rounded-lg px-1.5 py-1.5 text-xs outline-none font-mono text-right" style={{ background: '#0A0A0A', border: '1px solid rgba(255,255,255,0.10)', color: '#fff' }} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} /></div>
-                  <div className="px-1"><input type="number" value={gastos[c.id].real || ''} onChange={e => updateGasto(c.id, 'real', e.target.value)} className="w-full rounded-lg px-1.5 py-1.5 text-xs outline-none font-mono text-right" style={{ background: '#0A0A0A', border: '1px solid rgba(34,197,94,0.3)', color: '#22C55E' }} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(34,197,94,0.3)'} /></div>
+                <div key={c.id} className="grid grid-cols-[1fr_80px_80px] px-3 py-2 items-center" style={{ borderTop: i > 0 ? '1px solid #F0EEE8' : undefined, background: '#fff' }}>
+                  <div className="text-xs font-medium pr-2" style={{ color: '#444', lineHeight: 1.3 }}>{c.nombre}</div>
+                  <div className="px-1"><input type="number" value={gastos[c.id].estimado || ''} onChange={e => updateGasto(c.id, 'estimado', e.target.value)} className="w-full rounded-lg px-1.5 py-1.5 text-xs outline-none font-mono text-right" style={{ background: '#F9F8F5', border: '1px solid #ECEAE4', color: '#333' }} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} /></div>
+                  <div className="px-1"><input type="number" value={gastos[c.id].real || ''} onChange={e => updateGasto(c.id, 'real', e.target.value)} className="w-full rounded-lg px-1.5 py-1.5 text-xs outline-none font-mono text-right" style={{ background: '#F9F8F5', border: '1px solid rgba(34,197,94,0.4)', color: '#22C55E' }} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(34,197,94,0.4)'} /></div>
                 </div>
               ))}
               {res && (
-                <div className="grid grid-cols-[1fr_80px_80px] px-3 py-2.5" style={{ background: '#1E1E1E', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+                <div className="grid grid-cols-[1fr_80px_80px] px-3 py-2.5" style={{ background: '#ECEAE4', borderTop: '1px solid #E2E0D8' }}>
                   <div className="text-xs font-black uppercase" style={{ color: '#F26E1F' }}>TOTAL INVERSIÓN</div>
-                  <div className="text-xs font-black font-mono text-right" style={{ color: '#888' }}>{fmt(res.totalEst)}</div>
-                  <div className="text-xs font-black font-mono text-right" style={{ color: '#fff' }}>{fmt(res.totalReal)}</div>
+                  <div className="text-xs font-black font-mono text-right" style={{ color: '#666' }}>{fmt(res.totalEst)}</div>
+                  <div className="text-xs font-black font-mono text-right" style={{ color: '#333' }}>{fmt(res.totalReal)}</div>
                 </div>
               )}
             </div>
@@ -1892,44 +1892,44 @@ export default function MercadoPage() {
             <div className="grid grid-cols-3 gap-2 mb-5">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#EF4444' }}>Conservador</label>
-                <input type="number" value={pvPes || ''} onChange={e => setPvPes(parseFloat(e.target.value) || 0)} className="w-full rounded-xl px-2 py-2.5 text-sm outline-none font-mono text-center" style={{ background: '#0A0A0A', border: '1.5px solid rgba(239,68,68,0.4)', color: '#EF4444' }} onFocus={e => e.target.style.borderColor='#EF4444'} onBlur={e => e.target.style.borderColor='rgba(239,68,68,0.4)'} placeholder="€" />
+                <input type="number" value={pvPes || ''} onChange={e => setPvPes(parseFloat(e.target.value) || 0)} className="w-full rounded-xl px-2 py-2.5 text-sm outline-none font-mono text-center" style={{ background: '#FEF2F2', border: '1.5px solid rgba(239,68,68,0.3)', color: '#EF4444' }} onFocus={e => e.target.style.borderColor='#EF4444'} onBlur={e => e.target.style.borderColor='rgba(239,68,68,0.3)'} placeholder="€" />
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#F59E0B' }}>Realista</label>
-                <input type="number" value={pvReal || ''} onChange={e => setPvReal(parseFloat(e.target.value) || 0)} className="w-full rounded-xl px-2 py-2.5 text-sm outline-none font-mono text-center" style={{ background: '#0A0A0A', border: '1.5px solid rgba(245,158,11,0.4)', color: '#F59E0B' }} onFocus={e => e.target.style.borderColor='#F59E0B'} onBlur={e => e.target.style.borderColor='rgba(245,158,11,0.4)'} placeholder="€" />
+                <input type="number" value={pvReal || ''} onChange={e => setPvReal(parseFloat(e.target.value) || 0)} className="w-full rounded-xl px-2 py-2.5 text-sm outline-none font-mono text-center" style={{ background: '#FFFBEB', border: '1.5px solid rgba(245,158,11,0.3)', color: '#D97706' }} onFocus={e => e.target.style.borderColor='#F59E0B'} onBlur={e => e.target.style.borderColor='rgba(245,158,11,0.3)'} placeholder="€" />
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#22C55E' }}>Optimista</label>
-                <input type="number" value={pvOpt || ''} onChange={e => setPvOpt(parseFloat(e.target.value) || 0)} className="w-full rounded-xl px-2 py-2.5 text-sm outline-none font-mono text-center" style={{ background: '#0A0A0A', border: '1.5px solid rgba(34,197,94,0.4)', color: '#22C55E' }} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(34,197,94,0.4)'} placeholder="€" />
+                <input type="number" value={pvOpt || ''} onChange={e => setPvOpt(parseFloat(e.target.value) || 0)} className="w-full rounded-xl px-2 py-2.5 text-sm outline-none font-mono text-center" style={{ background: '#F0FDF4', border: '1.5px solid rgba(34,197,94,0.3)', color: '#16A34A' }} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='rgba(34,197,94,0.3)'} placeholder="€" />
               </div>
             </div>
 
             {/* Unidades edificio */}
             {calcTipologia === 'edificio' && (
               <div className="mb-5">
-                <button onClick={() => setUnidadesOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <button onClick={() => setUnidadesOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: '#fff', border: '1px solid #ECEAE4' }}>
                   <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#888' }}>Unidades del edificio {unidadesCalc.length > 0 ? `(${unidadesCalc.length})` : ''}</span>
-                  <span style={{ color: '#555' }}>{unidadesOpen ? '▲' : '▼'}</span>
+                  <span style={{ color: '#aaa' }}>{unidadesOpen ? '▲' : '▼'}</span>
                 </button>
                 {unidadesOpen && (
-                  <div className="mt-2 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="mt-2 rounded-xl overflow-hidden" style={{ border: '1px solid #ECEAE4' }}>
                     {unidadesCalc.length === 0 ? (
-                      <div className="px-4 py-6 text-center text-xs" style={{ color: '#555' }}>Sin unidades. Agregalas desde el chat WOS3.</div>
+                      <div className="px-4 py-6 text-center text-xs" style={{ color: '#aaa' }}>Sin unidades. Agregalas desde el chat WOS3.</div>
                     ) : (
                       <>
-                        <div className="grid grid-cols-[1fr_70px_80px] px-3 py-2" style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                          <div className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#555' }}>Unidad</div>
-                          <div className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: '#555' }}>m²</div>
+                        <div className="grid grid-cols-[1fr_70px_80px] px-3 py-2" style={{ background: '#ECEAE4', borderBottom: '1px solid #E2E0D8' }}>
+                          <div className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#888' }}>Unidad</div>
+                          <div className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: '#888' }}>m²</div>
                           <div className="text-[10px] font-black uppercase tracking-wide text-right" style={{ color: '#22C55E' }}>P. Venta Est.</div>
                         </div>
                         {unidadesCalc.map((u, i) => (
-                          <div key={u.id} className="grid grid-cols-[1fr_70px_80px] px-3 py-2 items-center" style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : undefined, background: '#141414' }}>
-                            <div className="text-xs font-medium" style={{ color: '#ccc' }}>{u.tipo}{u.planta ? ` P${u.planta}` : ''}</div>
+                          <div key={u.id} className="grid grid-cols-[1fr_70px_80px] px-3 py-2 items-center" style={{ borderTop: i > 0 ? '1px solid #F0EEE8' : undefined, background: '#fff' }}>
+                            <div className="text-xs font-medium" style={{ color: '#444' }}>{u.tipo}{u.planta ? ` P${u.planta}` : ''}</div>
                             <div className="text-xs font-mono text-center" style={{ color: '#888' }}>{u.superficie || '—'}</div>
                             <div className="text-xs font-black font-mono text-right" style={{ color: '#22C55E' }}>{u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}</div>
                           </div>
                         ))}
-                        <div className="grid grid-cols-[1fr_70px_80px] px-3 py-2" style={{ background: '#1E1E1E', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+                        <div className="grid grid-cols-[1fr_70px_80px] px-3 py-2" style={{ background: '#ECEAE4', borderTop: '1px solid #E2E0D8' }}>
                           <div className="text-xs font-black uppercase" style={{ color: '#F26E1F' }}>TOTAL</div>
                           <div />
                           <div className="text-xs font-black font-mono text-right" style={{ color: '#22C55E' }}>{fmt(unidadesCalc.reduce((s, u) => s + (u.precio_venta_est || 0), 0))}</div>
@@ -1944,29 +1944,29 @@ export default function MercadoPage() {
             <div className="grid grid-cols-1 gap-3 mb-5">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Link fuente</label>
-                <input type="url" value={urlEstudio} onChange={e => setUrlEstudio(e.target.value)} placeholder="https://..." className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium placeholder:text-[#555]" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                <input type="url" value={urlEstudio} onChange={e => setUrlEstudio(e.target.value)} placeholder="https://..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Observaciones</label>
-                <textarea value={notasEstudio} onChange={e => setNotasEstudio(e.target.value)} placeholder="Notas, condiciones, contacto..." rows={2} className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none font-medium resize-none placeholder:text-[#555]" style={INP} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='rgba(255,255,255,0.10)'} />
+                <textarea value={notasEstudio} onChange={e => setNotasEstudio(e.target.value)} placeholder="Notas, condiciones, contacto..." rows={2} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none" style={INP_L} onFocus={e => e.target.style.borderColor='#F26E1F'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
             </div>
 
             {res && (
               <>
                 <div className="text-[11px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#888' }}>Resultados por escenario</div>
-                <div className="rounded-xl overflow-hidden mb-5" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="grid grid-cols-[90px_1fr_1fr_1fr] px-3 py-2" style={{ background: '#1E1E1E', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="rounded-xl overflow-hidden mb-5" style={{ border: '1px solid #ECEAE4' }}>
+                  <div className="grid grid-cols-[90px_1fr_1fr_1fr] px-3 py-2" style={{ background: '#ECEAE4', borderBottom: '1px solid #E2E0D8' }}>
                     <div />
                     {ESC_UI.map(esc => <div key={esc.label} className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: esc.color }}>{esc.label}</div>)}
                   </div>
                   {[
-                    { label: 'P. Venta',   vals: ESC_UI.map(e => fmt(toNum(e.pv))),                                            colors: ESC_UI.map(() => '#fff') },
+                    { label: 'P. Venta',   vals: ESC_UI.map(e => fmt(toNum(e.pv))),                                            colors: ESC_UI.map(() => '#333') },
                     { label: 'Beneficio',  vals: ESC_UI.map((_,i) => (res.ben[i] >= 0 ? '+' : '') + fmt(res.ben[i])),         colors: ESC_UI.map((_,i) => res.ben[i] >= 0 ? '#22C55E' : '#EF4444') },
                     { label: 'ROI oper.',  vals: ESC_UI.map((_,i) => fmtPct(res.rent[i])),                                    colors: ESC_UI.map((_,i) => res.rent[i] >= 15 ? '#22C55E' : res.rent[i] >= 0 ? '#F59E0B' : '#EF4444') },
-                    { label: `ROI anual${duracionMeses > 0 ? ` (${duracionMeses}m)` : ''}`, vals: ESC_UI.map((_,i) => res.anual[i] !== null ? fmtPct(res.anual[i]!) : '—'), colors: ESC_UI.map((_,i) => res.anual[i] === null ? '#555' : res.anual[i]! >= 15 ? '#22C55E' : res.anual[i]! >= 0 ? '#F59E0B' : '#EF4444') },
+                    { label: `ROI anual${duracionMeses > 0 ? ` (${duracionMeses}m)` : ''}`, vals: ESC_UI.map((_,i) => res.anual[i] !== null ? fmtPct(res.anual[i]!) : '—'), colors: ESC_UI.map((_,i) => res.anual[i] === null ? '#aaa' : res.anual[i]! >= 15 ? '#22C55E' : res.anual[i]! >= 0 ? '#F59E0B' : '#EF4444') },
                   ].map((row, ri) => (
-                    <div key={row.label} className="grid grid-cols-[90px_1fr_1fr_1fr] px-3 py-2.5 items-center" style={{ borderTop: ri > 0 ? '1px solid rgba(255,255,255,0.06)' : undefined, background: '#141414' }}>
+                    <div key={row.label} className="grid grid-cols-[90px_1fr_1fr_1fr] px-3 py-2.5 items-center" style={{ borderTop: ri > 0 ? '1px solid #F0EEE8' : undefined, background: '#fff' }}>
                       <div className="text-xs font-bold" style={{ color: '#888' }}>{row.label}</div>
                       {row.vals.map((v, i) => <div key={i} className="font-black text-xs font-mono text-center" style={{ color: row.colors[i] }}>{v}</div>)}
                     </div>
