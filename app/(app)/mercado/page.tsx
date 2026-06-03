@@ -1037,54 +1037,91 @@ export default function MercadoPage() {
                     </div>
                   )}
 
-                  {/* Para no-edificios: ROI y precios si analizado */}
+                  {/* Para no-edificios: tabla de resultados si analizado */}
                   {item.tipologia !== 'edificio' && isAnalizado && (() => {
-                    const totalInv = item.gastos_json
+                    const g = item.gastos_json as Gastos | undefined
+                    const totalInv = g
                       ? CONCEPTOS_GASTOS.reduce((sum, c) => {
-                          const g = (item.gastos_json as Gastos)[c.id] || { estimado: 0, real: 0 }
-                          const r = toNum(g.real); const e = toNum(g.estimado)
+                          const gc = g[c.id] || { estimado: 0, real: 0 }
+                          const r = toNum(gc.real); const e = toNum(gc.estimado)
                           return sum + (r > 0 ? r : e)
                         }, 0)
                       : null
-                    const roiAnual = (item.roi_estimado && item.duracion_meses && item.duracion_meses > 0)
-                      ? item.roi_estimado * 12 / item.duracion_meses
-                      : null
+                    const pvs = [item.precio_venta_conservador, item.precio_venta_realista, item.precio_venta_optimista]
+                    const bens = pvs.map(pv => (pv && totalInv) ? pv - totalInv : null)
+                    const rois = bens.map(b => (b !== null && totalInv) ? (b / totalInv) * 100 : null)
+                    const dm = item.duracion_meses
+                    const roisAnual = rois.map(r => (r !== null && dm && dm > 0) ? r * 12 / dm : null)
+                    const ESC = [
+                      { label: 'Pesimista', color: '#EF4444' },
+                      { label: 'Realista',  color: '#F59E0B' },
+                      { label: 'Optimista', color: '#22C55E' },
+                    ]
+                    const roiColor = (v: number | null) =>
+                      v === null ? '#BBB' : v >= 30 ? '#22C55E' : v >= 15 ? '#F59E0B' : '#EF4444'
                     return (
-                      <>
-                        <div className="grid grid-cols-3 mt-3 rounded-xl overflow-hidden" style={{ background: '#ECEAE4' }}>
-                          {[
-                            { label: 'Pesimista', val: item.precio_venta_conservador, color: '#EF4444' },
-                            { label: 'Realista',  val: item.precio_venta_realista,    color: '#F59E0B' },
-                            { label: 'Optimista', val: item.precio_venta_optimista,   color: '#22C55E' },
-                          ].map((s, i) => (
-                            <div key={s.label} className="text-center py-2.5" style={{ background: '#F9F8F5', borderLeft: i > 0 ? '1px solid #ECEAE4' : 'none' }}>
-                              <div className="text-[9px] font-bold uppercase tracking-wide mb-0.5" style={{ color: s.color }}>{s.label}</div>
-                              <div className="text-[11px] font-black font-mono" style={{ color: s.color }}>{s.val ? fmt(s.val) : '—'}</div>
+                      <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid #ECEAE4' }}>
+                        {/* Header escenarios */}
+                        <div className="grid grid-cols-[72px_1fr_1fr_1fr]" style={{ background: '#ECEAE4', borderBottom: '1px solid #E2E0D8' }}>
+                          <div />
+                          {ESC.map(s => (
+                            <div key={s.label} className="text-center py-1.5">
+                              <span className="text-[9px] font-black uppercase tracking-wide" style={{ color: s.color }}>{s.label}</span>
                             </div>
                           ))}
                         </div>
-                        {/* KPIs fila: Total inversión + ROI operación + ROI anualizado */}
-                        <div className="flex items-center justify-between mt-2 flex-wrap gap-x-2 gap-y-1">
-                          {totalInv ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#AAA' }}>Inv.</span>
-                              <span className="text-xs font-black font-mono" style={{ color: '#555' }}>{fmt(totalInv)}</span>
-                            </div>
-                          ) : null}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {item.roi_estimado !== undefined && (
-                              <span className="text-xs font-black" style={{ color: '#22C55E' }}>
-                                ↗ ROI {item.roi_estimado?.toFixed(1)}%
-                                <span className="font-normal text-[10px]" style={{ color: '#AAA' }}>{item.duracion_meses ? ` (${item.duracion_meses}m)` : ''}</span>
-                              </span>
-                            )}
-                            {roiAnual !== null && (
-                              <span className="text-xs font-black" style={{ color: '#3B82F6' }}>· {roiAnual.toFixed(1)}% anual</span>
-                            )}
-                          </div>
+                        {/* P. Venta */}
+                        <div className="grid grid-cols-[72px_1fr_1fr_1fr] border-b" style={{ borderColor: '#F0EEE8', background: '#fff' }}>
+                          <div className="px-2.5 py-2 text-[10px] font-bold" style={{ color: '#AAA' }}>P. Venta</div>
+                          {pvs.map((pv, i) => (
+                            <div key={i} className="py-2 text-center text-[11px] font-black font-mono" style={{ color: '#333' }}>{pv ? fmt(pv) : '—'}</div>
+                          ))}
                         </div>
-                        {item.analizado_en && <div className="text-[10px] mt-0.5" style={{ color: '#CCC' }}>{item.analizado_en}</div>}
-                      </>
+                        {/* Gastos totales */}
+                        {totalInv ? (
+                          <div className="grid grid-cols-[72px_1fr_1fr_1fr] border-b" style={{ borderColor: '#F0EEE8', background: '#FAFAF8' }}>
+                            <div className="px-2.5 py-2 text-[10px] font-bold" style={{ color: '#AAA' }}>Inv. total</div>
+                            {ESC.map((_, i) => (
+                              <div key={i} className="py-2 text-center text-[11px] font-mono" style={{ color: '#888' }}>{fmt(totalInv)}</div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {/* Beneficio */}
+                        <div className="grid grid-cols-[72px_1fr_1fr_1fr] border-b" style={{ borderColor: '#F0EEE8', background: '#fff' }}>
+                          <div className="px-2.5 py-2 text-[10px] font-bold" style={{ color: '#AAA' }}>Beneficio</div>
+                          {bens.map((b, i) => (
+                            <div key={i} className="py-2 text-center text-[11px] font-black font-mono" style={{ color: b === null ? '#BBB' : b >= 0 ? '#22C55E' : '#EF4444' }}>
+                              {b !== null ? (b >= 0 ? '+' : '') + fmt(b) : '—'}
+                            </div>
+                          ))}
+                        </div>
+                        {/* ROI operación */}
+                        <div className="grid grid-cols-[72px_1fr_1fr_1fr] border-b" style={{ borderColor: '#F0EEE8', background: '#fff' }}>
+                          <div className="px-2.5 py-2 text-[10px] font-bold" style={{ color: '#AAA' }}>ROI oper.</div>
+                          {rois.map((r, i) => (
+                            <div key={i} className="py-2 text-center text-[11px] font-black font-mono" style={{ color: roiColor(r) }}>
+                              {r !== null ? r.toFixed(1) + '%' : '—'}
+                            </div>
+                          ))}
+                        </div>
+                        {/* ROI anualizado */}
+                        <div className="grid grid-cols-[72px_1fr_1fr_1fr]" style={{ background: '#F9F8F5' }}>
+                          <div className="px-2.5 py-2 text-[10px] font-bold leading-tight" style={{ color: '#AAA' }}>
+                            ROI anual{dm ? <span className="block font-normal" style={{ color: '#CCC' }}>({dm}m)</span> : null}
+                          </div>
+                          {roisAnual.map((r, i) => (
+                            <div key={i} className="py-2 text-center text-[11px] font-black font-mono" style={{ color: r === null ? '#BBB' : roiColor(r) }}>
+                              {r !== null ? r.toFixed(1) + '%' : '—'}
+                            </div>
+                          ))}
+                        </div>
+                        {/* Fecha análisis */}
+                        {item.analizado_en && (
+                          <div className="px-2.5 py-1 text-[9px]" style={{ color: '#CCC', background: '#FAFAF8', borderTop: '1px solid #F0EEE8' }}>
+                            {item.analizado_en}
+                          </div>
+                        )}
+                      </div>
                     )
                   })()}
 
