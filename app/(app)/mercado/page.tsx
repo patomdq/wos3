@@ -1243,17 +1243,32 @@ export default function MercadoPage() {
                         style={{ background: 'rgba(242,110,31,0.09)', color: '#F26E1F', border: '1.5px solid rgba(242,110,31,0.25)' }}>
                         {isAnalizado ? '✎ Análisis' : '⊕ Calcular'}
                       </button>
-                      {/* Enviar — Web Share API (móvil) o WhatsApp texto (desktop) */}
+                      {/* Enviar — Web Share API (móvil) o descarga + fallback (desktop) */}
                       <button
                         title="Compartir"
-                        onClick={async () => {
-                          const blob = await generateReportePDF(item)
-                          const file = new File([blob], `${(item.titulo || item.direccion || 'reporte').replace(/[^a-z0-9]/gi,'-')}.pdf`, { type: 'application/pdf' })
-                          if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare?.({ files: [file] })) {
-                            await navigator.share({ files: [file], title: item.titulo || item.direccion || 'Reporte Wallest' })
-                          } else {
-                            // Fallback desktop: abrir WhatsApp con texto
-                            window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank')
+                        onClick={async (e) => {
+                          const btn = e.currentTarget
+                          btn.style.opacity = '0.5'
+                          try {
+                            const blob = await generateReportePDF(item)
+                            const fname = `${(item.titulo || item.direccion || 'reporte').replace(/[^a-z0-9]/gi,'-')}.pdf`
+                            const file = new File([blob], fname, { type: 'application/pdf' })
+                            if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                              await navigator.share({ files: [file], title: item.titulo || item.direccion || 'Reporte Wallest' })
+                            } else {
+                              // Desktop: descarga el PDF directo
+                              const url = URL.createObjectURL(blob)
+                              const a = document.createElement('a')
+                              a.href = url; a.download = fname
+                              document.body.appendChild(a); a.click()
+                              document.body.removeChild(a)
+                              URL.revokeObjectURL(url)
+                            }
+                          } catch(err) {
+                            console.error('Error compartir PDF:', err)
+                            alert('Error al generar el PDF. Ver consola.')
+                          } finally {
+                            btn.style.opacity = '1'
                           }
                         }}
                         className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -1265,14 +1280,24 @@ export default function MercadoPage() {
                       {/* Descargar PDF */}
                       <button
                         title="Descargar PDF"
-                        onClick={async () => {
-                          const blob = await generateReportePDF(item)
-                          const url = URL.createObjectURL(blob)
-                          const a = document.createElement('a')
-                          a.href = url
-                          a.download = `${(item.titulo || item.direccion || 'reporte').replace(/[^a-z0-9]/gi,'-')}.pdf`
-                          a.click()
-                          URL.revokeObjectURL(url)
+                        onClick={async (e) => {
+                          const btn = e.currentTarget
+                          btn.style.opacity = '0.5'
+                          try {
+                            const blob = await generateReportePDF(item)
+                            const fname = `${(item.titulo || item.direccion || 'reporte').replace(/[^a-z0-9]/gi,'-')}.pdf`
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url; a.download = fname
+                            document.body.appendChild(a); a.click()
+                            document.body.removeChild(a)
+                            URL.revokeObjectURL(url)
+                          } catch(err) {
+                            console.error('Error generar PDF:', err)
+                            alert('Error al generar el PDF. Ver consola.')
+                          } finally {
+                            btn.style.opacity = '1'
+                          }
                         }}
                         className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F5F4F0', border: '1.5px solid #ECEAE4', cursor: 'pointer' }}>
