@@ -1243,66 +1243,34 @@ export default function MercadoPage() {
                         style={{ background: 'rgba(242,110,31,0.09)', color: '#F26E1F', border: '1.5px solid rgba(242,110,31,0.25)' }}>
                         {isAnalizado ? '✎ Análisis' : '⊕ Calcular'}
                       </button>
-                      {/* Enviar — Web Share API (móvil) o descarga + fallback (desktop) */}
+                      {/* Enviar — Web Share API con URL del reporte */}
                       <button
                         title="Compartir"
                         onClick={async (e) => {
-                          const btn = e.currentTarget
-                          btn.style.opacity = '0.5'
+                          const btn = e.currentTarget as HTMLButtonElement
+                          const reporteUrl = `${window.location.origin}/reporte/${item.id}`
                           try {
-                            const blob = await generateReportePDF(item)
-                            const fname = `${(item.titulo || item.direccion || 'reporte').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')}.pdf`
-                            const file = new File([blob], fname, { type: 'application/pdf' })
-                            if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                              await navigator.share({ files: [file], title: item.titulo || item.direccion || 'Reporte Wallest' })
+                            if (navigator.share) {
+                              await navigator.share({ url: reporteUrl, title: item.titulo || item.direccion || 'Reporte Wallest' })
                             } else {
-                              // Desktop: descarga el PDF directo
-                              const url = URL.createObjectURL(blob)
-                              const a = document.createElement('a')
-                              a.href = url; a.download = fname
-                              document.body.appendChild(a); a.click()
-                              document.body.removeChild(a)
-                              URL.revokeObjectURL(url)
+                              await navigator.clipboard.writeText(reporteUrl)
+                              btn.style.background = '#D1FAE5'
+                              setTimeout(() => { btn.style.background = '#F5F4F0' }, 1400)
                             }
                           } catch(err) {
-                            console.error('Error compartir PDF:', err)
-                            // Ignorar cancelación del share dialog
-if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('cancellation'))) return
-alert('Error PDF: ' + (err instanceof Error ? err.message : String(err)))
-                          } finally {
-                            btn.style.opacity = '1'
+                            if (err instanceof Error && err.name === 'AbortError') return
                           }
                         }}
                         className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: '#F5F4F0', border: '1.5px solid #ECEAE4', cursor: 'pointer' }}>
+                        style={{ background: '#F5F4F0', border: '1.5px solid #ECEAE4', cursor: 'pointer', transition: 'background 0.3s' }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
                         </svg>
                       </button>
-                      {/* Descargar PDF */}
+                      {/* Descargar PDF — abre página de reporte con auto-print */}
                       <button
                         title="Descargar PDF"
-                        onClick={async (e) => {
-                          const btn = e.currentTarget
-                          btn.style.opacity = '0.5'
-                          try {
-                            const blob = await generateReportePDF(item)
-                            const fname = `${(item.titulo || item.direccion || 'reporte').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')}.pdf`
-                            const url = URL.createObjectURL(blob)
-                            const a = document.createElement('a')
-                            a.href = url; a.download = fname
-                            document.body.appendChild(a); a.click()
-                            document.body.removeChild(a)
-                            URL.revokeObjectURL(url)
-                          } catch(err) {
-                            console.error('Error generar PDF:', err)
-                            // Ignorar cancelación del share dialog
-if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('cancellation'))) return
-alert('Error PDF: ' + (err instanceof Error ? err.message : String(err)))
-                          } finally {
-                            btn.style.opacity = '1'
-                          }
-                        }}
+                        onClick={() => window.open(`/reporte/${item.id}`, '_blank')}
                         className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F5F4F0', border: '1.5px solid #ECEAE4', cursor: 'pointer' }}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
