@@ -1266,7 +1266,7 @@ export default function MercadoPage() {
                             }
                           } catch(err) {
                             console.error('Error compartir PDF:', err)
-                            alert('Error al generar el PDF. Ver consola.')
+                            alert('Error PDF: ' + (err instanceof Error ? err.message : String(err)))
                           } finally {
                             btn.style.opacity = '1'
                           }
@@ -1294,7 +1294,7 @@ export default function MercadoPage() {
                             URL.revokeObjectURL(url)
                           } catch(err) {
                             console.error('Error generar PDF:', err)
-                            alert('Error al generar el PDF. Ver consola.')
+                            alert('Error PDF: ' + (err instanceof Error ? err.message : String(err)))
                           } finally {
                             btn.style.opacity = '1'
                           }

@@ -61,9 +61,12 @@ export interface InmuebleReporte {
 }
 
 function hexToRgb(hex: string): [number, number, number] {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
+  // Normalizar hex corto (#fff → #ffffff)
+  let h = hex.replace('#', '')
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2]
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
   return [r, g, b]
 }
 
