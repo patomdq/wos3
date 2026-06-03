@@ -1128,6 +1128,64 @@ export default function MercadoPage() {
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold" style={{ color: '#3B82F6' }}>🔗 Ver anuncio</a>}
                     {item.drive_url && <a href={item.drive_url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-black px-2 py-0.5 rounded-lg" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.2)' }}>📁 Drive</a>}
+                    {/* Share + PDF buttons — solo cuando hay análisis */}
+                    {isAnalizado && item.tipologia !== 'edificio' && (() => {
+                      const g2 = item.gastos_json as Gastos | undefined
+                      const inv2 = g2 ? CONCEPTOS_GASTOS.reduce((s, c) => {
+                        const gc = g2[c.id] || { estimado: 0, real: 0 }
+                        const r = toNum(gc.real); const e = toNum(gc.estimado)
+                        return s + (r > 0 ? r : e)
+                      }, 0) : null
+                      const pvs2 = [item.precio_venta_conservador, item.precio_venta_realista, item.precio_venta_optimista]
+                      const bens2 = pvs2.map(pv => (pv && inv2) ? pv - inv2 : null)
+                      const rois2 = bens2.map(b => (b !== null && inv2) ? (b / inv2) * 100 : null)
+                      const dm2 = item.duracion_meses
+                      const roisA2 = rois2.map(r => (r !== null && dm2 && dm2 > 0) ? r * 12 / dm2 : null)
+                      const nombre2 = item.titulo || item.direccion || 'Inmueble'
+                      const lines = [
+                        `🏠 *${nombre2}*`,
+                        item.ciudad ? `📍 ${item.ciudad}` : '',
+                        `💰 Precio compra: *${fmt(item.precio_compra ?? undefined)}*`,
+                        inv2 ? `📊 Inversión total: *${fmt(inv2)}*` : '',
+                        '',
+                        '📈 *Análisis de escenarios:*',
+                        ...(['Pesimista','Realista','Optimista'] as const).map((esc, i) => {
+                          const pv = pvs2[i]; const b = bens2[i]; const roi = rois2[i]; const roiA = roisA2[i]
+                          if (!pv) return ''
+                          return `${esc === 'Pesimista' ? '🔴' : esc === 'Realista' ? '🟡' : '🟢'} *${esc}*: venta ${fmt(pv)} · benef. ${b !== null ? (b >= 0 ? '+' : '') + fmt(b) : '—'} · ROI ${roi !== null ? roi.toFixed(1) + '%' : '—'}${roiA !== null ? ` (${roiA.toFixed(1)}% anual)` : ''}`
+                        }),
+                        '',
+                        dm2 ? `⏱ Duración estimada: ${dm2} meses` : '',
+                        '─────────────────',
+                        'WALLEST · HASU Activos Inmobiliarios SL',
+                      ].filter(l => l !== undefined && l !== null)
+                      const waText = lines.join('\n').trim()
+                      return (
+                        <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                          {/* Enviar (WhatsApp) */}
+                          <button
+                            title="Compartir por WhatsApp"
+                            onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank')}
+                            style={{ width: 30, height: 30, borderRadius: 8, background: '#F5F4F0', border: '1.5px solid #ECEAE4', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="22" y1="2" x2="11" y2="13"/>
+                              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>
+                          </button>
+                          {/* Descargar PDF */}
+                          <button
+                            title="Descargar PDF"
+                            onClick={() => window.open(`/reporte/${item.id}`, '_blank')}
+                            style={{ width: 30, height: 30, borderRadius: 8, background: '#F5F4F0', border: '1.5px solid #ECEAE4', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                              <polyline points="7 10 12 15 17 10"/>
+                              <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                          </button>
+                        </div>
+                      )
+                    })()}
                   </div>
                   {item.tipologia !== 'edificio' && item.notas && <div className="mt-2 text-xs leading-relaxed" style={{ color: '#888' }}>{item.notas}</div>}
 
