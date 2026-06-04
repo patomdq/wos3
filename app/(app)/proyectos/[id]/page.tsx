@@ -19,7 +19,7 @@ const fmtK = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',curr
 
 const CATEGORIAS_MOV = ['Materiales','Mano de obra','Honorarios','Impuestos','Venta','Arras','Compra','Reforma','Otros']
 const ESTADO_PARTIDA: Record<string,{c:string;bg:string;label:string}> = {
-  pendiente:  { c:'#888',     bg:'rgba(255,255,255,0.06)',   label:'Pendiente' },
+  pendiente:  { c:'#888',     bg:'rgba(0,0,0,0.04)',   label:'Pendiente' },
   en_curso:   { c:'#60A5FA', bg:'rgba(96,165,250,0.15)',   label:'En curso' },
   ok:         { c:'#22C55E', bg:'rgba(34,197,94,0.15)',    label:'OK ✓' },
   retrasada:  { c:'#F59E0B', bg:'rgba(245,158,11,0.18)',   label:'Retrasada' },
@@ -561,11 +561,11 @@ export default function ProyectoDetalle() {
 
   if (loading) return (
     <div className="p-4">
-      <div className="h-8 w-32 rounded-lg animate-pulse mb-4" style={{ background: '#141414' }} />
-      <div className="h-32 rounded-2xl animate-pulse" style={{ background: '#141414' }} />
+      <div className="h-8 w-32 rounded-lg animate-pulse mb-4" style={{ background: '#F0EEE9' }} />
+      <div className="h-32 rounded-2xl animate-pulse" style={{ background: '#F0EEE9' }} />
     </div>
   )
-  if (!proyecto) return <div className="p-4 text-center text-white">Proyecto no encontrado</div>
+  if (!proyecto) return <div className="p-4 text-center" style={{ color:'#1A1A1A' }}>Proyecto no encontrado</div>
 
   const CATS_CAPITAL = ['Transferencia', 'Aportación']
   const ingresos       = movimientos.filter(m => (m.monto > 0 || m.tipo === 'Ingreso') && !CATS_CAPITAL.includes(m.categoria)).reduce((s, m) => s + Math.abs(m.monto || m.total || 0), 0)
@@ -577,8 +577,8 @@ export default function ProyectoDetalle() {
   const tareasPrioridad = (p: string) => tareas.filter(t => t.prioridad === p && t.estado !== 'Completada')
   const tareasHechas = tareas.filter(t => t.estado === 'Completada')
 
-  const CARD = { background: '#141414', border: '1px solid rgba(255,255,255,0.10)' }
-  const INPUT_STYLE = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.12)', color: '#fff' }
+  const CARD = { background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)' }
+  const INPUT_STYLE = { background: '#F0EEE9', border: '1.5px solid rgba(0,0,0,0.12)', color: '#1A1A1A' }
 
   // Alert detection for reforma tab
   const today = new Date().toISOString().split('T')[0]
@@ -594,9 +594,9 @@ export default function ProyectoDetalle() {
   const alertPartidas = [...new Set([...partidasRetrasadas, ...partidasVencidas, ...partidasBloqueadas])]
 
   return (
-    <div className="p-4" style={{ background: '#0A0A0A', minHeight: '100vh' }}>
+    <div className="p-4" style={{ background: '#F2F1ED', minHeight: '100vh' }}>
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm font-bold text-white opacity-60 hover:opacity-100">
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm font-bold opacity-60 hover:opacity-100" style={{ color:'#1A1A1A' }}>
           ← Volver
         </button>
         <button onClick={() => router.push(`/bot?proyecto_id=${id}`)}
@@ -612,19 +612,19 @@ export default function ProyectoDetalle() {
         <div className="flex gap-3 items-start mb-4 relative">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: 'rgba(242,110,31,0.18)' }}>🏠</div>
           <div>
-            <div className="font-black text-[22px] text-white leading-tight tracking-tight">{proyecto.nombre}</div>
-            <div className="text-xs font-bold mt-1 text-white opacity-50">
+            <div className="font-black text-[22px] leading-tight tracking-tight" style={{ color:'#1A1A1A' }}>{proyecto.nombre}</div>
+            <div className="text-xs font-bold mt-1" style={{ color:'#999999' }}>
               {proyecto.porcentaje_hasu < 100 ? `JV ${100-proyecto.porcentaje_hasu}%/${proyecto.porcentaje_hasu}% · ${proyecto.socio_nombre||'—'}` : '100% HASU'} · {proyecto.ciudad||'—'}
             </div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2 relative">
           {[
-            { v: proyecto.estado ? (ESTADO_LABEL_MAP[proyecto.estado] || proyecto.estado.charAt(0).toUpperCase()+proyecto.estado.slice(1)) : '—', l:'Estado', c: ESTADO_COLOR[proyecto.estado]||'#fff' },
-            { v: `${proyecto.avance_reforma||0}%`, l:'Avance', c:'#fff' },
+            { v: proyecto.estado ? (ESTADO_LABEL_MAP[proyecto.estado] || proyecto.estado.charAt(0).toUpperCase()+proyecto.estado.slice(1)) : '—', l:'Estado', c: ESTADO_COLOR[proyecto.estado]||'#1A1A1A' },
+            { v: `${proyecto.avance_reforma||0}%`, l:'Avance', c:'#1A1A1A' },
             { v: proyecto.precio_venta_estimado ? fmtK(proyecto.precio_venta_estimado) : '—', l:'Venta est.', c:'#22C55E' },
           ].map(k => (
-            <div key={k.l} className="rounded-xl p-3 text-center" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div key={k.l} className="rounded-xl p-3 text-center" style={{ background: '#F0EEE9', border: '1px solid rgba(0,0,0,0.08)' }}>
               <div className="font-black text-[15px]" style={{ color: k.c }}>{k.v}</div>
               <div className="text-[10px] font-bold uppercase tracking-wide mt-1" style={{ color: '#888' }}>{k.l}</div>
             </div>
@@ -633,11 +633,11 @@ export default function ProyectoDetalle() {
       </div>
 
       {/* Tabs */}
-      <div className="flex overflow-x-auto mb-4 -mx-4 px-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.10)' }}>
+      <div className="flex overflow-x-auto mb-4 -mx-4 px-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
         {TABS.map((t, i) => (
           <button key={t} onClick={() => setTab(i)}
             className="flex-shrink-0 px-4 py-2.5 text-sm font-bold whitespace-nowrap"
-            style={{ color: tab===i ? '#F26E1F' : 'rgba(255,255,255,0.4)', borderBottom: tab===i ? '2.5px solid #F26E1F' : '2.5px solid transparent', marginBottom: -1 }}>
+            style={{ color: tab===i ? '#F26E1F' : '#999999', borderBottom: tab===i ? '2.5px solid #F26E1F' : '2.5px solid transparent', marginBottom: -1 }}>
             {t}
           </button>
         ))}
@@ -650,32 +650,32 @@ export default function ProyectoDetalle() {
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Ingresos</div>
-              <div className="font-black text-[22px] text-white">{fmtK(ingresos)}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>venta + devoluciones</div>
+              <div className="font-black text-[22px]" style={{ color:'#1A1A1A' }}>{fmtK(ingresos)}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: '#999999' }}>venta + devoluciones</div>
             </div>
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Gastos</div>
               <div className="font-black text-[22px]" style={{ color: '#EF4444' }}>{fmtK(gastos)}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>compra + reforma + otros</div>
+              <div className="text-[10px] mt-0.5" style={{ color: '#999999' }}>compra + reforma + otros</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2.5 mb-3">
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Beneficio</div>
               <div className="font-black text-[22px]" style={{ color: ingresos - gastos >= 0 ? '#22C55E' : '#EF4444' }}>{fmtK(ingresos - gastos)}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>ingresos − gastos</div>
+              <div className="text-[10px] mt-0.5" style={{ color: '#999999' }}>ingresos − gastos</div>
             </div>
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Capital aportado</div>
               <div className="font-black text-[22px]" style={{ color: '#60A5FA' }}>{fmtK(capitalAportado)}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>socios · no es ingreso</div>
+              <div className="text-[10px] mt-0.5" style={{ color: '#999999' }}>socios · no es ingreso</div>
             </div>
           </div>
 
           {/* Tabla movimientos */}
           <div className="rounded-2xl overflow-hidden" style={CARD}>
             <div className="p-4 pb-0 flex items-center justify-between">
-              <div className="font-black text-[15px] text-white">Movimientos <span style={{ color:'rgba(255,255,255,0.3)', fontSize:13 }}>({movimientos.length})</span></div>
+              <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Movimientos <span style={{ color:'#999999', fontSize:13 }}>({movimientos.length})</span></div>
               <button onClick={() => openMovForm()}
                 className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
                 style={{ background:'#F26E1F' }}>
@@ -684,17 +684,17 @@ export default function ProyectoDetalle() {
             </div>
 
             {movimientos.length === 0 ? (
-              <div className="p-4 text-sm text-center" style={{ color:'rgba(255,255,255,0.3)' }}>Sin movimientos registrados</div>
+              <div className="p-4 text-sm text-center" style={{ color:'#999999' }}>Sin movimientos registrados</div>
             ) : (
               <div>
                 {/* Vista compacta — 3 columnas sin scroll */}
                 {!tablaExpandida && (
                   <div className="mt-2">
                     {/* Header */}
-                    <div className="flex px-3 py-2" style={{ borderBottom:'1px solid rgba(255,255,255,0.08)', background:'#1E1E1E' }}>
-                      <div style={{ width:72, flexShrink:0, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(255,255,255,0.4)' }}>Fecha</div>
-                      <div style={{ flex:1, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(255,255,255,0.4)' }}>Concepto</div>
-                      <div style={{ width:96, textAlign:'right', flexShrink:0, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(255,255,255,0.4)' }}>Total</div>
+                    <div className="flex px-3 py-2" style={{ borderBottom:'1px solid rgba(0,0,0,0.08)', background:'#F0EEE9' }}>
+                      <div style={{ width:72, flexShrink:0, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#999999' }}>Fecha</div>
+                      <div style={{ flex:1, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#999999' }}>Concepto</div>
+                      <div style={{ width:96, textAlign:'right', flexShrink:0, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#999999' }}>Total</div>
                     </div>
                     {movimientos.map((m, i) => {
                       const isIngreso = m.tipo === 'Ingreso' || m.monto > 0
@@ -702,10 +702,10 @@ export default function ProyectoDetalle() {
                       const montoColor = isIngreso ? '#22C55E' : '#EF4444'
                       return (
                         <div key={m.id} className="flex items-center px-3 py-2.5"
-                          style={{ borderBottom: i < movimientos.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                          <div style={{ width:72, flexShrink:0, fontSize:12, fontWeight:500, color:'rgba(255,255,255,0.55)' }}>{m.fecha}</div>
+                          style={{ borderBottom: i < movimientos.length-1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                          <div style={{ width:72, flexShrink:0, fontSize:12, fontWeight:500, color:'#666666' }}>{m.fecha}</div>
                           <div style={{ flex:1, overflow:'hidden', paddingRight:8 }}>
-                            <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:13, fontWeight:500, color:'#FFFFFF' }}>
+                            <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:13, fontWeight:500, color:'#1A1A1A' }}>
                               {m.concepto || m.descripcion}
                             </div>
                           </div>
@@ -716,13 +716,13 @@ export default function ProyectoDetalle() {
                       )
                     })}
                     {/* Footer totales */}
-                    <div style={{ borderTop:'2px solid rgba(255,255,255,0.10)', background:'#1E1E1E' }}>
+                    <div style={{ borderTop:'2px solid rgba(0,0,0,0.08)', background:'#F0EEE9' }}>
                       <div className="flex px-3 py-2">
-                        <div style={{ flex:1, textAlign:'right', fontSize:12, fontWeight:700, color:'#FFFFFF', paddingRight:8 }}>Total gastos:</div>
+                        <div style={{ flex:1, textAlign:'right', fontSize:12, fontWeight:700, color:'#1A1A1A', paddingRight:8 }}>Total gastos:</div>
                         <div style={{ width:96, textAlign:'right', fontSize:13, fontWeight:900, fontFamily:'monospace', color:'#EF4444' }}>-{fmt(gastos)}</div>
                       </div>
-                      <div className="flex px-3 py-2" style={{ borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-                        <div style={{ flex:1, textAlign:'right', fontSize:12, fontWeight:700, color:'#FFFFFF', paddingRight:8 }}>Total ingresos:</div>
+                      <div className="flex px-3 py-2" style={{ borderTop:'1px solid rgba(0,0,0,0.04)' }}>
+                        <div style={{ flex:1, textAlign:'right', fontSize:12, fontWeight:700, color:'#1A1A1A', paddingRight:8 }}>Total ingresos:</div>
                         <div style={{ width:96, textAlign:'right', fontSize:13, fontWeight:900, fontFamily:'monospace', color:'#22C55E' }}>+{fmt(ingresos)}</div>
                       </div>
                     </div>
@@ -734,10 +734,10 @@ export default function ProyectoDetalle() {
                   <div className="overflow-x-auto mt-3">
                     <table className="w-full border-collapse" style={{ minWidth:900 }}>
                       <thead>
-                        <tr style={{ background:'#1E1E1E' }}>
+                        <tr style={{ background:'#F0EEE9' }}>
                           {['Fecha','Tipo','Cat.','Descripción','Proveedor','Cant.','P.Unit.','Total','Forma pago','Obs.','Acciones'].map(h => (
                             <th key={h} className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
-                              style={{ color:'rgba(255,255,255,0.4)', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>{h}</th>
+                              style={{ color:'#999999', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -747,26 +747,26 @@ export default function ProyectoDetalle() {
                           const total = Math.abs(m.monto || m.total || 0)
                           const montoColor = isIngreso ? '#22C55E' : '#EF4444'
                           return (
-                            <tr key={m.id} style={{ borderBottom: i < movimientos.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.6)', whiteSpace:'nowrap' }}>{m.fecha}</td>
+                            <tr key={m.id} style={{ borderBottom: i < movimientos.length-1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap' }}>{m.fecha}</td>
                               <td style={{ padding:'10px 12px', fontSize:12, fontWeight:700, whiteSpace:'nowrap', color: montoColor }}>{isIngreso ? 'Ingreso' : 'Gasto'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.6)', whiteSpace:'nowrap' }}>{m.categoria||'—'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:13, color:'#FFFFFF', maxWidth:160 }}>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap' }}>{m.categoria||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:13, color:'#1A1A1A', maxWidth:160 }}>
                                 <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.concepto || m.descripcion}</div>
                               </td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', whiteSpace:'nowrap' }}>{m.proveedor||'—'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', textAlign:'right', whiteSpace:'nowrap' }}>{m.cantidad||'—'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', textAlign:'right', whiteSpace:'nowrap' }}>{m.precio_unitario ? fmt(m.precio_unitario) : '—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap' }}>{m.proveedor||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', textAlign:'right', whiteSpace:'nowrap' }}>{m.cantidad||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', textAlign:'right', whiteSpace:'nowrap' }}>{m.precio_unitario ? fmt(m.precio_unitario) : '—'}</td>
                               <td style={{ padding:'10px 12px', fontSize:13, fontWeight:900, fontFamily:'monospace', textAlign:'right', whiteSpace:'nowrap', color: montoColor }}>
                                 {isIngreso ? '+' : '-'}{fmt(total)}
                               </td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', whiteSpace:'nowrap' }}>{m.forma_pago||'—'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'rgba(255,255,255,0.5)', whiteSpace:'nowrap', maxWidth:100 }}>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap' }}>{m.forma_pago||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap', maxWidth:100 }}>
                                 <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.observaciones||'—'}</div>
                               </td>
                               <td style={{ padding:'10px 12px' }}>
                                 <div style={{ display:'flex', gap:6, justifyContent:'center' }}>
-                                  <button onClick={() => openMovForm(m)} style={{ fontSize:12, fontWeight:700, padding:'3px 8px', borderRadius:6, background:'rgba(255,255,255,0.08)', color:'#FFFFFF', border:'none', cursor:'pointer' }}>✎</button>
+                                  <button onClick={() => openMovForm(m)} style={{ fontSize:12, fontWeight:700, padding:'3px 8px', borderRadius:6, background:'rgba(0,0,0,0.06)', color:'#1A1A1A', border:'none', cursor:'pointer' }}>✎</button>
                                   <button onClick={() => deleteMov(m.id)} style={{ fontSize:12, fontWeight:700, padding:'3px 8px', borderRadius:6, background:'rgba(239,68,68,0.18)', color:'#EF4444', border:'none', cursor:'pointer' }}>✕</button>
                                 </div>
                               </td>
@@ -775,13 +775,13 @@ export default function ProyectoDetalle() {
                         })}
                       </tbody>
                       <tfoot>
-                        <tr style={{ borderTop:'2px solid rgba(255,255,255,0.10)', background:'#1E1E1E' }}>
-                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:13, fontWeight:700, textAlign:'right', color:'#FFFFFF' }}>Total gastos:</td>
+                        <tr style={{ borderTop:'2px solid rgba(0,0,0,0.08)', background:'#F0EEE9' }}>
+                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:13, fontWeight:700, textAlign:'right', color:'#1A1A1A' }}>Total gastos:</td>
                           <td style={{ padding:'10px 12px', fontSize:13, fontWeight:900, fontFamily:'monospace', textAlign:'right', color:'#EF4444' }}>-{fmt(gastos)}</td>
                           <td colSpan={3}></td>
                         </tr>
-                        <tr style={{ borderTop:'1px solid rgba(255,255,255,0.06)', background:'#1E1E1E' }}>
-                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:13, fontWeight:700, textAlign:'right', color:'#FFFFFF' }}>Total ingresos:</td>
+                        <tr style={{ borderTop:'1px solid rgba(0,0,0,0.04)', background:'#F0EEE9' }}>
+                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:13, fontWeight:700, textAlign:'right', color:'#1A1A1A' }}>Total ingresos:</td>
                           <td style={{ padding:'10px 12px', fontSize:13, fontWeight:900, fontFamily:'monospace', textAlign:'right', color:'#22C55E' }}>+{fmt(ingresos)}</td>
                           <td colSpan={3}></td>
                         </tr>
@@ -792,7 +792,7 @@ export default function ProyectoDetalle() {
 
                 {/* Toggle */}
                 <button onClick={() => setTablaExpandida(!tablaExpandida)}
-                  style={{ width:'100%', padding:'11px 0', fontSize:12, fontWeight:900, textAlign:'center', background:'#FFFFFF', color:'#000000', borderTop:'1px solid rgba(255,255,255,0.1)', cursor:'pointer', border:'none' }}>
+                  style={{ width:'100%', padding:'11px 0', fontSize:12, fontWeight:900, textAlign:'center', background:'#F0EEE9', color:'#1A1A1A', borderTop:'1px solid rgba(0,0,0,0.08)', cursor:'pointer', border:'none' }}>
                   {tablaExpandida ? '▲ Vista compacta' : '▼ Ver tabla completa'}
                 </button>
               </div>
@@ -821,24 +821,24 @@ export default function ProyectoDetalle() {
           <div className="grid grid-cols-2 gap-2.5 mb-3">
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Presupuesto</div>
-              <div className="font-black text-[22px] text-white">{fmtK(presupuestoTotal)}</div>
+              <div className="font-black text-[22px]" style={{ color:'#1A1A1A' }}>{fmtK(presupuestoTotal)}</div>
             </div>
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Ejecutado</div>
               <div className="font-black text-[22px]" style={{ color:'#F26E1F' }}>{fmtK(ejecutadoTotal)}</div>
-              <div className="text-xs font-bold mt-1" style={{ color:'rgba(255,255,255,0.4)' }}>resta {fmtK(Math.max(0,presupuestoTotal-ejecutadoTotal))}</div>
+              <div className="text-xs font-bold mt-1" style={{ color:'#999999' }}>resta {fmtK(Math.max(0,presupuestoTotal-ejecutadoTotal))}</div>
             </div>
           </div>
           {/* Vista toggle */}
           <div className="flex gap-2 mb-3">
             <button onClick={() => setReformaVista('tabla')}
               className="flex-1 py-2 rounded-xl text-sm font-black"
-              style={{ background: reformaVista==='tabla' ? '#F26E1F' : '#1E1E1E', color: reformaVista==='tabla' ? '#fff' : '#888' }}>
+              style={{ background: reformaVista==='tabla' ? '#F26E1F' : '#F0EEE9', color: reformaVista==='tabla' ? '#fff' : '#888' }}>
               Tabla
             </button>
             <button onClick={() => setReformaVista('gantt')}
               className="flex-1 py-2 rounded-xl text-sm font-black"
-              style={{ background: reformaVista==='gantt' ? '#F26E1F' : '#1E1E1E', color: reformaVista==='gantt' ? '#fff' : '#888' }}>
+              style={{ background: reformaVista==='gantt' ? '#F26E1F' : '#F0EEE9', color: reformaVista==='gantt' ? '#fff' : '#888' }}>
               Timeline
             </button>
           </div>
@@ -847,7 +847,7 @@ export default function ProyectoDetalle() {
           {reformaVista === 'gantt' && (() => {
             const conFechas = partidas.filter(p => p.fecha_inicio && p.fecha_fin_estimada)
             if (conFechas.length === 0) return (
-              <div className="rounded-2xl p-8 text-center text-sm" style={{ ...CARD, color:'rgba(255,255,255,0.3)' }}>
+              <div className="rounded-2xl p-8 text-center text-sm" style={{ ...CARD, color:'#999999' }}>
                 Asigná fechas de inicio y fin a las partidas para ver el timeline
               </div>
             )
@@ -863,7 +863,7 @@ export default function ProyectoDetalle() {
             return (
               <div className="rounded-2xl overflow-hidden" style={CARD}>
                 {/* Eje de fechas */}
-                <div className="flex px-4 pt-3 pb-1" style={{ borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex px-4 pt-3 pb-1" style={{ borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
                   <div style={{ width:130, flexShrink:0 }} />
                   <div className="flex-1 relative" style={{ height:16 }}>
                     <span className="absolute left-0 text-[10px] font-bold" style={{ color:'#888' }}>{fmtDate(minMs)}</span>
@@ -880,17 +880,17 @@ export default function ProyectoDetalle() {
                     const dep = p.depende_de ? partidas.find(x => x.id === p.depende_de) : null
                     return (
                       <div key={p.id} className="flex items-center px-4 py-2"
-                        style={{ borderBottom: i < partidas.length-1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                        style={{ borderBottom: i < partidas.length-1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
                         {/* Nombre */}
                         <div style={{ width:130, flexShrink:0, paddingRight:8 }}>
-                          <div style={{ fontSize:11, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nombre}</div>
-                          {dep && <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>↳ {dep.nombre}</div>}
+                          <div style={{ fontSize:11, fontWeight:700, color:'#1A1A1A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nombre}</div>
+                          {dep && <div style={{ fontSize:10, color:'#999999', marginTop:1 }}>↳ {dep.nombre}</div>}
                         </div>
                         {/* Canvas barra */}
-                        <div className="flex-1 relative" style={{ height:22, background:'rgba(255,255,255,0.04)', borderRadius:4 }}>
+                        <div className="flex-1 relative" style={{ height:22, background:'rgba(0,0,0,0.04)', borderRadius:4 }}>
                           {/* Línea hoy */}
                           {todayMs >= minMs && todayMs <= maxMs && (
-                            <div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:1.5, background:'rgba(255,255,255,0.25)', zIndex:2 }} />
+                            <div style={{ position:'absolute', left:`${todayPct}%`, top:0, bottom:0, width:1.5, background:'rgba(0,0,0,0.2)', zIndex:2 }} />
                           )}
                           {hasDates ? (
                             <div style={{
@@ -903,7 +903,7 @@ export default function ProyectoDetalle() {
                               opacity: p.estado === 'ok' ? 0.85 : 1,
                             }} />
                           ) : (
-                            <div style={{ position:'absolute', left:4, top:'50%', transform:'translateY(-50%)', fontSize:10, color:'rgba(255,255,255,0.2)', fontStyle:'italic' }}>sin fechas</div>
+                            <div style={{ position:'absolute', left:4, top:'50%', transform:'translateY(-50%)', fontSize:10, color:'#999999', fontStyle:'italic' }}>sin fechas</div>
                           )}
                         </div>
                         {/* Estado pill */}
@@ -917,7 +917,7 @@ export default function ProyectoDetalle() {
                   })}
                 </div>
                 {/* Leyenda */}
-                <div className="flex gap-4 px-4 py-2.5" style={{ borderTop:'1px solid rgba(255,255,255,0.08)', background:'#1E1E1E' }}>
+                <div className="flex gap-4 px-4 py-2.5" style={{ borderTop:'1px solid rgba(0,0,0,0.08)', background:'#F0EEE9' }}>
                   {Object.entries(BAR_COLOR).map(([k,c]) => (
                     <div key={k} className="flex items-center gap-1.5">
                       <div style={{ width:10, height:10, borderRadius:2, background:c }} />
@@ -925,7 +925,7 @@ export default function ProyectoDetalle() {
                     </div>
                   ))}
                   <div className="flex items-center gap-1.5">
-                    <div style={{ width:2, height:10, background:'rgba(255,255,255,0.3)' }} />
+                    <div style={{ width:2, height:10, background:'rgba(0,0,0,0.2)' }} />
                     <span style={{ fontSize:10, fontWeight:700, color:'#888' }}>hoy</span>
                   </div>
                 </div>
@@ -935,8 +935,8 @@ export default function ProyectoDetalle() {
 
           {/* ── Vista Tabla ── */}
           {reformaVista === 'tabla' && <div className="rounded-2xl overflow-hidden" style={CARD}>
-            <div className="px-4 py-3.5 flex items-center justify-between" style={{ borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
-              <div className="font-black text-[15px] text-white">Partidas <span style={{ color:'rgba(255,255,255,0.3)', fontSize:13 }}>({partidas.length})</span></div>
+            <div className="px-4 py-3.5 flex items-center justify-between" style={{ borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
+              <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Partidas <span style={{ color:'#999999', fontSize:13 }}>({partidas.length})</span></div>
               <button onClick={() => openPartidaForm()}
                 className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
                 style={{ background:'#F26E1F' }}>
@@ -944,15 +944,15 @@ export default function ProyectoDetalle() {
               </button>
             </div>
             {partidas.length === 0 ? (
-              <div className="text-sm text-center py-8" style={{ color:'rgba(255,255,255,0.3)' }}>Sin partidas de reforma</div>
+              <div className="text-sm text-center py-8" style={{ color:'#999999' }}>Sin partidas de reforma</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse" style={{ minWidth:520 }}>
                   <thead>
-                    <tr style={{ background:'#1E1E1E' }}>
+                    <tr style={{ background:'#F0EEE9' }}>
                       {['','Partida','Categoría','Estado','Presupuesto','Ejecutado','%','Acciones'].map(h => (
                         <th key={h} className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
-                          style={{ color:'rgba(255,255,255,0.4)', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>{h}</th>
+                          style={{ color:'#999999', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -966,17 +966,17 @@ export default function ProyectoDetalle() {
                       const isLoadingItems = loadingItems.has(p.id)
                       return (
                         <React.Fragment key={p.id}>
-                          <tr style={{ borderBottom: (!isExpanded && i < partidas.length-1) ? '1px solid rgba(255,255,255,0.06)' : 'none', background: isExpanded ? 'rgba(242,110,31,0.04)' : 'transparent' }}>
+                          <tr style={{ borderBottom: (!isExpanded && i < partidas.length-1) ? '1px solid rgba(0,0,0,0.04)' : 'none', background: isExpanded ? 'rgba(242,110,31,0.04)' : 'transparent' }}>
                             {/* Expand toggle */}
                             <td className="px-2 py-3" style={{ width:28 }}>
                               <button onClick={() => togglePartida(p.id)}
                                 className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-black"
-                                style={{ background:'rgba(255,255,255,0.08)', color: isExpanded ? '#F26E1F' : '#888' }}>
+                                style={{ background:'rgba(0,0,0,0.06)', color: isExpanded ? '#F26E1F' : '#888' }}>
                                 {isExpanded ? '▾' : '▸'}
                               </button>
                             </td>
-                            <td className="px-3 py-3 text-sm font-bold text-white">{p.nombre}</td>
-                            <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color:'rgba(255,255,255,0.5)' }}>{p.categoria}</td>
+                            <td className="px-3 py-3 text-sm font-bold" style={{ color:'#1A1A1A' }}>{p.nombre}</td>
+                            <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color:'#666666' }}>{p.categoria}</td>
                             <td className="px-3 py-3">
                               <select value={p.estado}
                                 onChange={e => cambiarEstadoPartida(p.id, e.target.value)}
@@ -988,11 +988,11 @@ export default function ProyectoDetalle() {
                                 <option value="retrasada">Retrasada</option>
                               </select>
                             </td>
-                            <td className="px-3 py-3 text-sm font-mono text-right text-white whitespace-nowrap">{fmt(p.presupuesto||0)}</td>
+                            <td className="px-3 py-3 text-sm font-mono text-right whitespace-nowrap" style={{ color:'#1A1A1A' }}>{fmt(p.presupuesto||0)}</td>
                             <td className="px-3 py-3 text-sm font-mono text-right whitespace-nowrap" style={{ color:'#F26E1F' }}>{fmt(p.ejecutado||0)}</td>
                             <td className="px-3 py-3">
                               <div className="flex items-center gap-2">
-                                <div className="h-1.5 w-16 rounded-full overflow-hidden flex-shrink-0" style={{ background:'#282828' }}>
+                                <div className="h-1.5 w-16 rounded-full overflow-hidden flex-shrink-0" style={{ background:'#ECEAE4' }}>
                                   <div className="h-full rounded-full" style={{ width:`${Math.min(pct,100)}%`, background:col }} />
                                 </div>
                                 <span className="text-xs font-black whitespace-nowrap" style={{ color:col }}>{pct}%</span>
@@ -1000,46 +1000,46 @@ export default function ProyectoDetalle() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="flex gap-1.5">
-                                <button onClick={() => openPartidaForm(p)} className="text-xs font-bold px-2 py-1 rounded-lg text-white" style={{ background:'rgba(255,255,255,0.08)' }}>✎</button>
+                                <button onClick={() => openPartidaForm(p)} className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(0,0,0,0.06)', color:'#1A1A1A' }}>✎</button>
                                 <button onClick={() => deletePartida(p.id)} className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
                               </div>
                             </td>
                           </tr>
                           {/* ── Items expandibles ── */}
                           {isExpanded && (
-                            <tr key={`items-${p.id}`} style={{ borderBottom: i < partidas.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                              <td colSpan={8} style={{ padding:'0 0 8px 0', background:'rgba(0,0,0,0.25)' }}>
+                            <tr key={`items-${p.id}`} style={{ borderBottom: i < partidas.length-1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                              <td colSpan={8} style={{ padding:'0 0 8px 0', background:'rgba(0,0,0,0.03)' }}>
                                 {isLoadingItems ? (
-                                  <div className="px-6 py-3 text-xs" style={{ color:'rgba(255,255,255,0.3)' }}>Cargando ítems...</div>
+                                  <div className="px-6 py-3 text-xs" style={{ color:'#999999' }}>Cargando ítems...</div>
                                 ) : (
                                   <div>
                                     {/* Items list */}
                                     {items.length > 0 && (
                                       <table className="w-full border-collapse">
                                         <thead>
-                                          <tr style={{ background:'rgba(255,255,255,0.03)' }}>
+                                          <tr style={{ background:'rgba(0,0,0,0.03)' }}>
                                             {['Ítem','Estancia','Proveedor','Coste','F. Compra','Nota',''].map(h => (
                                               <th key={h} className="px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wide"
-                                                style={{ color:'rgba(255,255,255,0.3)', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>{h}</th>
+                                                style={{ color:'#999999', borderBottom:'1px solid rgba(0,0,0,0.05)' }}>{h}</th>
                                             ))}
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {items.map(item => (
-                                            <tr key={item.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
-                                              <td className="px-3 py-2 text-xs font-semibold text-white">{item.nombre}</td>
-                                              <td className="px-3 py-2 text-xs" style={{ color:'rgba(255,255,255,0.45)' }}>{item.estancia||'—'}</td>
-                                              <td className="px-3 py-2 text-xs" style={{ color:'rgba(255,255,255,0.45)' }}>{item.proveedor||'—'}</td>
-                                              <td className="px-3 py-2 text-xs font-mono text-right whitespace-nowrap" style={{ color: item.coste ? '#F26E1F' : 'rgba(255,255,255,0.3)' }}>
+                                            <tr key={item.id} style={{ borderBottom:'1px solid rgba(0,0,0,0.04)' }}>
+                                              <td className="px-3 py-2 text-xs font-semibold" style={{ color:'#1A1A1A' }}>{item.nombre}</td>
+                                              <td className="px-3 py-2 text-xs" style={{ color:'#666666' }}>{item.estancia||'—'}</td>
+                                              <td className="px-3 py-2 text-xs" style={{ color:'#666666' }}>{item.proveedor||'—'}</td>
+                                              <td className="px-3 py-2 text-xs font-mono text-right whitespace-nowrap" style={{ color: item.coste ? '#F26E1F' : '#999999' }}>
                                                 {item.coste ? fmt(item.coste) : '—'}
                                               </td>
-                                              <td className="px-3 py-2 text-xs" style={{ color:'rgba(255,255,255,0.45)' }}>{item.fecha_compra||'—'}</td>
-                                              <td className="px-3 py-2 text-xs" style={{ color:'rgba(255,255,255,0.45)', maxWidth:120 }}>
+                                              <td className="px-3 py-2 text-xs" style={{ color:'#666666' }}>{item.fecha_compra||'—'}</td>
+                                              <td className="px-3 py-2 text-xs" style={{ color:'#666666', maxWidth:120 }}>
                                                 <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.nota||'—'}</div>
                                               </td>
                                               <td className="px-2 py-2">
                                                 <div className="flex gap-1">
-                                                  <button onClick={() => openItemForm(p.id, item)} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background:'rgba(255,255,255,0.08)', color:'#fff' }}>✎</button>
+                                                  <button onClick={() => openItemForm(p.id, item)} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background:'rgba(0,0,0,0.06)', color:'#1A1A1A' }}>✎</button>
                                                   <button onClick={() => deleteItem(item)} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
                                                 </div>
                                               </td>
@@ -1047,8 +1047,8 @@ export default function ProyectoDetalle() {
                                           ))}
                                         </tbody>
                                         <tfoot>
-                                          <tr style={{ borderTop:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)' }}>
-                                            <td colSpan={3} className="px-3 py-1.5 text-[10px] font-bold text-right" style={{ color:'rgba(255,255,255,0.4)' }}>Total ítems:</td>
+                                          <tr style={{ borderTop:'1px solid rgba(0,0,0,0.08)', background:'rgba(0,0,0,0.03)' }}>
+                                            <td colSpan={3} className="px-3 py-1.5 text-[10px] font-bold text-right" style={{ color:'#999999' }}>Total ítems:</td>
                                             <td className="px-3 py-1.5 text-xs font-black font-mono text-right" style={{ color:'#F26E1F' }}>
                                               {fmt(items.reduce((s,it) => s+(it.coste||0),0))}
                                             </td>
@@ -1058,11 +1058,12 @@ export default function ProyectoDetalle() {
                                       </table>
                                     )}
                                     {items.length === 0 && (
-                                      <div className="px-6 py-2 text-xs" style={{ color:'rgba(255,255,255,0.3)' }}>Sin ítems — agregá el primero</div>
+                                      <div className="px-6 py-2 text-xs" style={{ color:'#999999' }}>Sin ítems — agregá el primero</div>
                                     )}
                                     <div className="px-3 pt-2">
                                       <button onClick={() => openItemForm(p.id)}
-                                        className="text-xs font-black px-3 py-1.5 rounded-lg text-white"
+                                        className="text-xs font-black px-3 py-1.5 rounded-lg"
+                                        style={{ color:'#F26E1F' }}
                                         style={{ background:'rgba(242,110,31,0.25)', border:'1px solid rgba(242,110,31,0.4)' }}>
                                         + Ítem
                                       </button>
@@ -1077,9 +1078,9 @@ export default function ProyectoDetalle() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr style={{ borderTop:'2px solid rgba(255,255,255,0.10)', background:'#1E1E1E' }}>
-                      <td colSpan={3} className="px-3 py-2.5 text-sm font-bold text-right text-white">Totales:</td>
-                      <td className="px-3 py-2.5 text-sm font-black font-mono text-right text-white">{fmt(presupuestoTotal)}</td>
+                    <tr style={{ borderTop:'2px solid rgba(0,0,0,0.08)', background:'#F0EEE9' }}>
+                      <td colSpan={3} className="px-3 py-2.5 text-sm font-bold text-right" style={{ color:'#1A1A1A' }}>Totales:</td>
+                      <td className="px-3 py-2.5 text-sm font-black font-mono text-right" style={{ color:'#1A1A1A' }}>{fmt(presupuestoTotal)}</td>
                       <td className="px-3 py-2.5 text-sm font-black font-mono text-right" style={{ color:'#F26E1F' }}>{fmt(ejecutadoTotal)}</td>
                       <td colSpan={2}></td>
                     </tr>
@@ -1107,16 +1108,16 @@ export default function ProyectoDetalle() {
             return (
               <div key={p} className="mb-4">
                 <div className="flex items-center justify-between mb-2.5">
-                  <div className="font-black text-[15px] text-white">{p} prioridad</div>
+                  <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>{p} prioridad</div>
                 </div>
                 {ts.map(t => (
                   <div key={t.id} className="rounded-xl p-3.5 mb-2 flex gap-2.5 items-center" style={CARD}>
                     <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p==='Alta'?'#EF4444':p==='Media'?'#F59E0B':'#888' }} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-white">{t.titulo}</div>
-                      <div className="text-xs font-medium mt-0.5" style={{ color:'rgba(255,255,255,0.4)' }}>{t.asignado_a||'Sin asignar'}{t.fecha_limite?` · ${t.fecha_limite}`:''}</div>
+                      <div className="text-sm font-semibold" style={{ color:'#1A1A1A' }}>{t.titulo}</div>
+                      <div className="text-xs font-medium mt-0.5" style={{ color:'#999999' }}>{t.asignado_a||'Sin asignar'}{t.fecha_limite?` · ${t.fecha_limite}`:''}</div>
                     </div>
-                    <button onClick={() => openTareaForm(t)} className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0" style={{ background:'rgba(255,255,255,0.08)', color:'#fff' }}>✎</button>
+                    <button onClick={() => openTareaForm(t)} className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0" style={{ background:'rgba(0,0,0,0.06)', color:'#1A1A1A' }}>✎</button>
                     <button onClick={() => deleteTarea(t.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0" style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
                   </div>
                 ))}
@@ -1129,13 +1130,13 @@ export default function ProyectoDetalle() {
               {tareasHechas.map(t => (
                 <div key={t.id} className="rounded-xl p-3.5 mb-2 flex gap-2.5 items-center opacity-40" style={CARD}>
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background:'#22C55E' }} />
-                  <div className="flex-1 text-sm font-semibold text-white">{t.titulo}</div>
+                  <div className="flex-1 text-sm font-semibold" style={{ color:'#1A1A1A' }}>{t.titulo}</div>
                   <button onClick={() => deleteTarea(t.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0" style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
                 </div>
               ))}
             </>
           )}
-          {tareas.length === 0 && <div className="text-center py-12 text-sm" style={{ color:'rgba(255,255,255,0.3)' }}>Sin tareas registradas</div>}
+          {tareas.length === 0 && <div className="text-center py-12 text-sm" style={{ color:'#999999' }}>Sin tareas registradas</div>}
         </div>
       )}
 
@@ -1143,7 +1144,7 @@ export default function ProyectoDetalle() {
       {tab === 3 && (
         <div className="rounded-2xl p-4" style={CARD}>
           <div className="flex items-center justify-between mb-4">
-            <div className="font-black text-[15px] text-white">Historial</div>
+            <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Historial</div>
             <button onClick={() => openBitacoraForm()}
               className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
               style={{ background:'#F26E1F' }}>
@@ -1151,23 +1152,23 @@ export default function ProyectoDetalle() {
             </button>
           </div>
           {bitacora.length === 0 ? (
-            <div className="text-center py-6 text-sm" style={{ color:'rgba(255,255,255,0.3)' }}>Sin entradas en bitácora</div>
+            <div className="text-center py-6 text-sm" style={{ color:'#999999' }}>Sin entradas en bitácora</div>
           ) : (
             <div className="pl-5 relative">
-              <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background:'#282828' }} />
+              <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background:'#ECEAE4' }} />
               {bitacora.map(b => (
                 <div key={b.id} className="relative mb-4">
-                  <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background:'#F26E1F', border:'2px solid #0A0A0A' }} />
+                  <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background:'#F26E1F', border:'2px solid #F2F1ED' }} />
                   <div className="flex items-center justify-between mb-1">
-                    <div className="text-[11px] font-bold font-mono tracking-wide" style={{ color:'rgba(255,255,255,0.4)' }}>
+                    <div className="text-[11px] font-bold font-mono tracking-wide" style={{ color:'#999999' }}>
                       {new Date(b.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}).toUpperCase()}
                     </div>
                     <div className="flex gap-1.5">
-                      <button onClick={() => openBitacoraForm(b)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background:'rgba(255,255,255,0.08)', color:'#fff' }}>✎</button>
+                      <button onClick={() => openBitacoraForm(b)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background:'rgba(0,0,0,0.06)', color:'#1A1A1A' }}>✎</button>
                       <button onClick={() => deleteBitacora(b.id)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background:'rgba(239,68,68,0.12)', color:'#EF4444' }}>✕</button>
                     </div>
                   </div>
-                  <div className="text-sm font-medium text-white leading-relaxed">{b.contenido}</div>
+                  <div className="text-sm font-medium leading-relaxed" style={{ color:'#1A1A1A' }}>{b.contenido}</div>
                   <div className="text-xs font-bold mt-1" style={{ color:'#F26E1F' }}>{b.autor}</div>
                 </div>
               ))}
@@ -1180,22 +1181,22 @@ export default function ProyectoDetalle() {
       {tab === 4 && (
         <div>
           {!inversor ? (
-            <div className="text-center py-12 text-sm" style={{ color:'rgba(255,255,255,0.3)' }}>Sin inversor asociado</div>
+            <div className="text-center py-12 text-sm" style={{ color:'#999999' }}>Sin inversor asociado</div>
           ) : (
             <>
               <div className="rounded-2xl p-4 mb-3" style={CARD}>
-                <div className="font-black text-base text-white mb-0.5">{inversor.inversores?.nombre||'—'}</div>
-                <div className="text-xs font-medium mb-4" style={{ color:'rgba(255,255,255,0.4)' }}>Portal inversor · {inversor.participacion}% participación</div>
+                <div className="font-black text-base mb-0.5" style={{ color:'#1A1A1A' }}>{inversor.inversores?.nombre||'—'}</div>
+                <div className="text-xs font-medium mb-4" style={{ color:'#999999' }}>Portal inversor · {inversor.participacion}% participación</div>
               </div>
               <div className="grid grid-cols-2 gap-2.5 mb-3">
                 <div className="rounded-xl p-3.5" style={CARD}>
                   <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Capital invertido</div>
-                  <div className="font-black text-[22px] text-white">{fmtK(inversor.capital_invertido||0)}</div>
+                  <div className="font-black text-[22px]" style={{ color:'#1A1A1A' }}>{fmtK(inversor.capital_invertido||0)}</div>
                 </div>
                 <div className="rounded-xl p-3.5" style={CARD}>
                   <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Retorno est.</div>
                   <div className="font-black text-[22px]" style={{ color:'#22C55E' }}>{fmtK(inversor.retorno_estimado||0)}</div>
-                  <div className="text-xs font-bold mt-1" style={{ color:'rgba(255,255,255,0.4)' }}>ROI {inversor.roi||0}%</div>
+                  <div className="text-xs font-bold mt-1" style={{ color:'#999999' }}>ROI {inversor.roi||0}%</div>
                 </div>
               </div>
             </>
@@ -1214,7 +1215,7 @@ export default function ProyectoDetalle() {
             </button>
           </div>
           {docs.length === 0 ? (
-            <div className="text-center py-12 text-sm" style={{ color:'rgba(255,255,255,0.3)' }}>Sin documentos. Agregá links de Google Drive.</div>
+            <div className="text-center py-12 text-sm" style={{ color:'#999999' }}>Sin documentos. Agregá links de Google Drive.</div>
           ) : (
             <div className="flex flex-col gap-2">
               {docs.map(d => (
@@ -1223,8 +1224,8 @@ export default function ProyectoDetalle() {
                     className="flex gap-3 items-center flex-1 min-w-0">
                     <span className="text-xl flex-shrink-0">📄</span>
                     <div className="min-w-0">
-                      <div className="text-sm font-bold text-white truncate">{d.nombre}</div>
-                      {d.tipo && <div className="text-xs font-medium mt-0.5" style={{ color:'rgba(255,255,255,0.4)' }}>{d.tipo}</div>}
+                      <div className="text-sm font-bold truncate" style={{ color:'#1A1A1A' }}>{d.nombre}</div>
+                      {d.tipo && <div className="text-xs font-medium mt-0.5" style={{ color:'#999999' }}>{d.tipo}</div>}
                     </div>
                     <span className="text-xs font-bold flex-shrink-0 px-2 py-1 rounded-lg" style={{ background:'rgba(242,110,31,0.18)', color:'#F26E1F' }}>Abrir →</span>
                   </a>
@@ -1249,7 +1250,7 @@ export default function ProyectoDetalle() {
             <div className="grid grid-cols-3 gap-2.5 mb-4">
               <div className="rounded-xl p-3.5" style={CARD}>
                 <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Activos</div>
-                <div className="font-black text-[22px] text-white">{activos.length}</div>
+                <div className="font-black text-[22px]" style={{ color:'#1A1A1A' }}>{activos.length}</div>
               </div>
               <div className="rounded-xl p-3.5" style={CARD}>
                 <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Mejor oferta</div>
@@ -1257,8 +1258,8 @@ export default function ProyectoDetalle() {
               </div>
               <div className="rounded-xl p-3.5" style={CARD}>
                 <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Próx. visita</div>
-                <div className="font-black text-[13px] text-white">{proximaVisita ? new Date(proximaVisita.proxima_visita).toLocaleDateString('es-ES',{day:'2-digit',month:'short'}) : '—'}</div>
-                {proximaVisita && <div className="text-[10px] font-bold mt-0.5" style={{ color:'rgba(255,255,255,0.4)' }}>{proximaVisita.nombre}</div>}
+                <div className="font-black text-[13px]" style={{ color:'#1A1A1A' }}>{proximaVisita ? new Date(proximaVisita.proxima_visita).toLocaleDateString('es-ES',{day:'2-digit',month:'short'}) : '—'}</div>
+                {proximaVisita && <div className="text-[10px] font-bold mt-0.5" style={{ color:'#999999' }}>{proximaVisita.nombre}</div>}
               </div>
             </div>
 
@@ -1273,7 +1274,7 @@ export default function ProyectoDetalle() {
 
             {/* Lista */}
             {prospectos.length === 0 ? (
-              <div className="text-center py-12 text-sm" style={{ color:'rgba(255,255,255,0.3)' }}>Sin prospectos. Agregá o usá el bot.</div>
+              <div className="text-center py-12 text-sm" style={{ color:'#999999' }}>Sin prospectos. Agregá o usá el bot.</div>
             ) : (
               <div className="flex flex-col gap-2">
                 {prospectos.map((p: any) => {
@@ -1286,31 +1287,31 @@ export default function ProyectoDetalle() {
                       <div className="p-3.5 flex items-start gap-3">
                         <button onClick={() => toggleProspecto(p.id)}
                           className="w-6 h-6 rounded flex items-center justify-center text-[11px] font-black flex-shrink-0 mt-0.5"
-                          style={{ background:'rgba(255,255,255,0.08)', color: isExpanded ? '#F26E1F' : '#888' }}>
+                          style={{ background:'rgba(0,0,0,0.06)', color: isExpanded ? '#F26E1F' : '#888' }}>
                           {isExpanded ? '▾' : '▸'}
                         </button>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-black text-[15px] text-white">{p.nombre}</span>
+                            <span className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>{p.nombre}</span>
                             <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background:`${ec}22`, color:ec }}>
                               {p.estado}
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-3 mt-1">
-                            {p.telefono && <span className="text-xs font-bold" style={{ color:'rgba(255,255,255,0.5)' }}>📞 {p.telefono}</span>}
-                            {p.email && <span className="text-xs font-bold truncate" style={{ color:'rgba(255,255,255,0.5)' }}>✉ {p.email}</span>}
+                            {p.telefono && <span className="text-xs font-bold" style={{ color:'#666666' }}>📞 {p.telefono}</span>}
+                            {p.email && <span className="text-xs font-bold truncate" style={{ color:'#666666' }}>✉ {p.email}</span>}
                             {p.mejor_oferta && <span className="text-xs font-black" style={{ color:'#22C55E' }}>💰 {fmtK(p.mejor_oferta)}</span>}
                             {p.proxima_visita && p.estado !== 'Descartado' && <span className="text-xs font-bold" style={{ color:'#F59E0B' }}>📅 {new Date(p.proxima_visita).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}</span>}
                           </div>
                         </div>
                         <div className="flex gap-1.5 flex-shrink-0">
-                          <button onClick={() => openProspectoForm(p)} className="text-xs font-bold px-2 py-1 rounded-lg text-white" style={{ background:'rgba(255,255,255,0.08)' }}>✎</button>
+                          <button onClick={() => openProspectoForm(p)} className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(0,0,0,0.06)', color:'#1A1A1A' }}>✎</button>
                           <button onClick={() => deleteProspecto(p.id)} className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
                         </div>
                       </div>
                       {/* Interacciones expandibles */}
                       {isExpanded && (
-                        <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)', background:'rgba(0,0,0,0.2)' }}>
+                        <div style={{ borderTop:'1px solid rgba(0,0,0,0.08)', background:'rgba(0,0,0,0.03)' }}>
                           <div className="flex items-center justify-between px-4 py-2.5">
                             <span className="text-[11px] font-black uppercase tracking-wide" style={{ color:'#888' }}>Interacciones ({ints.length})</span>
                             <button
@@ -1321,7 +1322,7 @@ export default function ProyectoDetalle() {
                             </button>
                           </div>
                           {ints.length === 0 ? (
-                            <div className="px-4 pb-3 text-xs" style={{ color:'rgba(255,255,255,0.3)' }}>Sin interacciones registradas</div>
+                            <div className="px-4 pb-3 text-xs" style={{ color:'#999999' }}>Sin interacciones registradas</div>
                           ) : (
                             <div className="px-4 pb-3 flex flex-col gap-2">
                               {ints.map((int: any) => (
@@ -1330,9 +1331,9 @@ export default function ProyectoDetalle() {
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                       <span className="text-[11px] font-black" style={{ color:'#F26E1F', textTransform:'capitalize' }}>{int.tipo}</span>
-                                      <span className="text-[11px]" style={{ color:'rgba(255,255,255,0.4)' }}>{new Date(int.fecha).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})}</span>
+                                      <span className="text-[11px]" style={{ color:'#999999' }}>{new Date(int.fecha).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})}</span>
                                     </div>
-                                    {int.nota && <div className="text-xs font-medium mt-0.5" style={{ color:'rgba(255,255,255,0.7)' }}>{int.nota}</div>}
+                                    {int.nota && <div className="text-xs font-medium mt-0.5" style={{ color:'#444444' }}>{int.nota}</div>}
                                   </div>
                                   <button onClick={() => deleteInteraccion(int.id, p.id)} className="text-[10px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
                                 </div>
@@ -1355,12 +1356,12 @@ export default function ProyectoDetalle() {
         <>
           <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowProspectoForm(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] overflow-y-auto"
-            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto', maxHeight:'90vh' }}>
+            style={{ background:'#FFFFFF', border:'1px solid rgba(0,0,0,0.08)', maxWidth:480, margin:'0 auto', maxHeight:'90vh' }}>
             <div className="p-5 pb-10">
-              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#ECEAE4' }} />
               <div className="flex justify-between items-center mb-5">
-                <div className="font-black text-[17px] text-white">{editingProspectoId ? 'Editar prospecto' : 'Nuevo prospecto'}</div>
-                <button onClick={() => setShowProspectoForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+                <div className="font-black text-[17px]" style={{ color:'#1A1A1A' }}>{editingProspectoId ? 'Editar prospecto' : 'Nuevo prospecto'}</div>
+                <button onClick={() => setShowProspectoForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#F0EEE9', color:'#1A1A1A' }}>✕</button>
               </div>
               <div className="flex flex-col gap-3">
                 <div>
@@ -1426,12 +1427,12 @@ export default function ProyectoDetalle() {
         <>
           <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowInteraccionForm(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] overflow-y-auto"
-            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto', maxHeight:'80vh' }}>
+            style={{ background:'#FFFFFF', border:'1px solid rgba(0,0,0,0.08)', maxWidth:480, margin:'0 auto', maxHeight:'80vh' }}>
             <div className="p-5 pb-10">
-              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#ECEAE4' }} />
               <div className="flex justify-between items-center mb-5">
-                <div className="font-black text-[17px] text-white">Registrar interacción</div>
-                <button onClick={() => setShowInteraccionForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+                <div className="font-black text-[17px]" style={{ color:'#1A1A1A' }}>Registrar interacción</div>
+                <button onClick={() => setShowInteraccionForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#F0EEE9', color:'#1A1A1A' }}>✕</button>
               </div>
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -1471,12 +1472,12 @@ export default function ProyectoDetalle() {
         <>
           <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowMovForm(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] overflow-y-auto"
-            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto', maxHeight:'90vh' }}>
+            style={{ background:'#FFFFFF', border:'1px solid rgba(0,0,0,0.08)', maxWidth:480, margin:'0 auto', maxHeight:'90vh' }}>
             <div className="p-5 pb-10">
-              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+              <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#ECEAE4' }} />
               <div className="flex justify-between items-center mb-5">
-                <div className="font-black text-[17px] text-white">{editingMovId ? 'Editar movimiento' : 'Nuevo movimiento'}</div>
-                <button onClick={() => setShowMovForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+                <div className="font-black text-[17px]" style={{ color:'#1A1A1A' }}>{editingMovId ? 'Editar movimiento' : 'Nuevo movimiento'}</div>
+                <button onClick={() => setShowMovForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#F0EEE9', color:'#1A1A1A' }}>✕</button>
               </div>
               <form onSubmit={saveMov}>
                 <div className="grid grid-cols-2 gap-3 mb-3">
@@ -1557,8 +1558,8 @@ export default function ProyectoDetalle() {
                     {savingMov ? 'Guardando...' : 'Guardar'}
                   </button>
                   <button type="button" onClick={() => setShowMovForm(false)}
-                    className="flex-1 py-4 rounded-xl text-base font-black text-white"
-                    style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)' }}>
+                    className="flex-1 py-4 rounded-xl text-base font-black"
+                    style={{ background:'rgba(0,0,0,0.06)', border:'1px solid rgba(0,0,0,0.10)', color:'#1A1A1A' }}>
                     Cancelar
                   </button>
                 </div>
@@ -1573,11 +1574,11 @@ export default function ProyectoDetalle() {
         <>
           <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowTareaForm(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10"
-            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto' }}>
-            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+            style={{ background:'#FFFFFF', border:'1px solid rgba(0,0,0,0.08)', maxWidth:480, margin:'0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#ECEAE4' }} />
             <div className="flex justify-between items-center mb-5">
-              <div className="font-black text-[17px] text-white">{editingTareaId ? 'Editar tarea' : 'Nueva tarea'}</div>
-              <button onClick={() => setShowTareaForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+              <div className="font-black text-[17px]" style={{ color:'#1A1A1A' }}>{editingTareaId ? 'Editar tarea' : 'Nueva tarea'}</div>
+              <button onClick={() => setShowTareaForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#F0EEE9', color:'#1A1A1A' }}>✕</button>
             </div>
             <div className="flex flex-col gap-3">
               <div>
@@ -1630,11 +1631,11 @@ export default function ProyectoDetalle() {
         <>
           <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowBitacoraForm(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10"
-            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto' }}>
-            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+            style={{ background:'#FFFFFF', border:'1px solid rgba(0,0,0,0.08)', maxWidth:480, margin:'0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#ECEAE4' }} />
             <div className="flex justify-between items-center mb-5">
-              <div className="font-black text-[17px] text-white">{editingBitacoraId ? 'Editar entrada' : 'Nueva entrada'}</div>
-              <button onClick={() => setShowBitacoraForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+              <div className="font-black text-[17px]" style={{ color:'#1A1A1A' }}>{editingBitacoraId ? 'Editar entrada' : 'Nueva entrada'}</div>
+              <button onClick={() => setShowBitacoraForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#F0EEE9', color:'#1A1A1A' }}>✕</button>
             </div>
             <div className="flex flex-col gap-3">
               <div>
@@ -1675,11 +1676,11 @@ export default function ProyectoDetalle() {
         <>
           <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowDocForm(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10"
-            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto' }}>
-            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+            style={{ background:'#FFFFFF', border:'1px solid rgba(0,0,0,0.08)', maxWidth:480, margin:'0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#ECEAE4' }} />
             <div className="flex justify-between items-center mb-5">
-              <div className="font-black text-[17px] text-white">Agregar documento</div>
-              <button onClick={() => setShowDocForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+              <div className="font-black text-[17px]" style={{ color:'#1A1A1A' }}>Agregar documento</div>
+              <button onClick={() => setShowDocForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#F0EEE9', color:'#1A1A1A' }}>✕</button>
             </div>
             <div className="flex flex-col gap-3">
               <div>
@@ -1722,11 +1723,11 @@ export default function ProyectoDetalle() {
         <>
           <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowPartidaForm(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10"
-            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto' }}>
-            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+            style={{ background:'#FFFFFF', border:'1px solid rgba(0,0,0,0.08)', maxWidth:480, margin:'0 auto' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#ECEAE4' }} />
             <div className="flex justify-between items-center mb-5">
-              <div className="font-black text-[17px] text-white">{editingPartidaId ? 'Editar partida' : 'Nueva partida'}</div>
-              <button onClick={() => setShowPartidaForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+              <div className="font-black text-[17px]" style={{ color:'#1A1A1A' }}>{editingPartidaId ? 'Editar partida' : 'Nueva partida'}</div>
+              <button onClick={() => setShowPartidaForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#F0EEE9', color:'#1A1A1A' }}>✕</button>
             </div>
             <div className="flex flex-col gap-3">
               <div>
@@ -1806,11 +1807,11 @@ export default function ProyectoDetalle() {
         <>
           <div className="fixed inset-0 z-50" style={{ background:'rgba(0,0,0,0.8)' }} onClick={() => setShowItemForm(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-[20px] p-5 pb-10 overflow-y-auto"
-            style={{ background:'#141414', border:'1px solid rgba(255,255,255,0.10)', maxWidth:480, margin:'0 auto', maxHeight:'85vh' }}>
-            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#333' }} />
+            style={{ background:'#FFFFFF', border:'1px solid rgba(0,0,0,0.08)', maxWidth:480, margin:'0 auto', maxHeight:'85vh' }}>
+            <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background:'#ECEAE4' }} />
             <div className="flex justify-between items-center mb-5">
-              <div className="font-black text-[17px] text-white">{editingItemId ? 'Editar ítem' : 'Nuevo ítem'}</div>
-              <button onClick={() => setShowItemForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#282828', color:'#fff' }}>✕</button>
+              <div className="font-black text-[17px]" style={{ color:'#1A1A1A' }}>{editingItemId ? 'Editar ítem' : 'Nuevo ítem'}</div>
+              <button onClick={() => setShowItemForm(false)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background:'#F0EEE9', color:'#1A1A1A' }}>✕</button>
             </div>
             <div className="flex flex-col gap-3">
               <div>
