@@ -39,30 +39,32 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
-**Última sesión — 29/05/2026**
+**Última sesión — 05-06/06/2026**
 
-Hecho hoy:
-- **Modal Agregar mercado (`/app/(app)/mercado/page.tsx`) — rediseño completo**
-  - Modal Agregar ahora es copia fiel del modal Editar: layout apaisado 2 columnas, mismos campos
-  - Fila de tipos (Tipo *) movida encima del grid → full-width, `flex-nowrap`, sin overflow ni segunda línea
-  - Botones Cancelar/Guardar al fondo de la columna derecha (`sm:flex sm:flex-col` + `mt-auto`)
-  - Para Edificio: panel completo de gestión de unidades con "🔗 Importar URL" + "+ Manual"
-  - Para no-Edificio (Piso, Casa, etc.): área de carga de imagen de portada (drag & drop o click)
-  - `saveNuevo`: sube imagen a Supabase Storage bucket `portadas` → guarda URL en `imagen_portada`
-  - `importarYGuardar`: guarda el edificio primero para obtener ID, luego llama `/api/unidades/import`
-  - Estado nuevo: `nuevoUnidades`, `addingNuevoUnidad`, `importandoNuevoUrl`, `nuevoImportUrl`, `nuevoPortada`, `nuevoPortadaPreview`
-  - Commits: ae41c23, d5d8579, 261c0cf (y otros intermedios)
-- **Mockup estático** `public/mockup-agregar.html` — creado para revisión de diseño antes de implementar (commit ee6a761)
-- **`/api/unidades/import`** — endpoint POST que scrape URL + extrae unidades vía Claude API e inserta en `inmueble_unidades`
+Hecho:
+- **Módulo Edificios (`/app/(app)/edificios/page.tsx`) — fixes críticos**
+  - Bug principal: early-return antes de los modales hacía que edit/unidades/calculadora no montaran → todos los botones rotos excepto eliminar. Fix: single return con ternario, modales siempre montados fuera del ternario (commit 879409f)
+  - Calculadora ROI desde detalle ya no cierra la vista (commit f4a5d4c)
+  - Botón 📷 en portada abre mini-sheet dedicado solo para imagen (no el formulario completo)
+  - Upload de imagen de portada desde dispositivo → Supabase Storage bucket `portadas` (público, 5MB, JPG/PNG/WEBP/HEIC)
+  - `imagen_portada` eliminado del formulario de alta/edición — solo se cambia desde botón 📷
+  - Registro Plaza Constitución limpiado en DB (imagen_portada tenía URL del anuncio)
+- **Dedup inserts edificios — bot Telegram** (`app/api/telegram/webhook/route.ts`): ventana 2 min por título (commit 9729f82)
+- **Dedup inserts edificios — chat WOS3** (`app/api/chat/route.ts`): ventana 5 min por título/dirección (commit 1ca7ce3)
+- **Chat WOS3 `insert_edificio_radar`**: `notas` copia texto literal sin resumir; `num_plantas` con ejemplos de parseo (PB+3=4, etc.) (commit af74c48)
+- **Limpieza DB**: eliminados 3 duplicados de Plaza Constitución y 2 duplicados Albox/Calle Nueva creados por bug de triplicado
+- **Mesa de Juntas** (`/Users/patofavora/Documents/W3/mesa-juntas/api/checkin.ts`) — check-in ya no se rechaza solo:
+  - Causa: IDENTITY dice "no check-ins automáticos" → Claude los rechazaba, guardaba el rechazo en DB, loop infinito
+  - Fix: override explícito en system prompt ("check-in configurado por Pato, ejecutar sin dudas")
+  - Historial limitado a últimas 24h (antes arrastraba 40 msgs con contexto viejo de JL/Pablo)
+  - Trigger `[Check-in apertura/cierre]` ahora se guarda en DB como mensaje `user` (roles alternados correctos)
+  - Deployado en producción Vercel (commit 11367ed)
 
-⚠️ Pendiente importante:
-- Bucket `portadas` en Supabase Storage todavía NO confirmado como creado con acceso público — upload de imagen fallará si no existe
-  - Crear en Supabase Dashboard: Storage → New bucket → nombre: `portadas`, Public: ON
+Bucket `portadas` en Supabase Storage: ✅ creado con acceso público (creado esta sesión vía SQL)
 
-Pendiente modal mercado (próxima sesión):
-- **Rediseño landscape completo**: el modal sigue siendo algo vertical en mobile y pisa el menú inferior de navegación
-  - El usuario quiere un modal más "apaisado" que no tape el bottom nav en mobile
-  - Deferred a próxima sesión de diseño
+Pendiente modal mercado (sigue abierto):
+- **Rediseño landscape mobile**: el modal pisa el bottom nav en mobile
+  - Deferred — pendiente de sesión de diseño específica
 
 ---
 
@@ -191,3 +193,6 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Modal Mercado — Agregar igual a Editar (2 col, tipos, imagen, unidades) | ✅ producción |
 | Desktop layout fix | ⏳ pendiente |
 | Modal Mercado — rediseño landscape mobile (no pisa bottom nav) | ⏳ pendiente |
+| Módulo edificios — detalle, botones, upload imagen portada | ✅ producción |
+| Dedup inserts edificios (bot Telegram + chat WOS3) | ✅ producción |
+| Mesa de Juntas — check-in sin rechazo, historial 24h | ✅ producción |
