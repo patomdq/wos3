@@ -39,7 +39,7 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
-**Última sesión — 05-06/06/2026**
+**Última sesión — 06/06/2026**
 
 Hecho:
 - **Módulo Edificios (`/app/(app)/edificios/page.tsx`) — fixes críticos**
@@ -59,6 +59,18 @@ Hecho:
   - Historial limitado a últimas 24h (antes arrastraba 40 msgs con contexto viejo de JL/Pablo)
   - Trigger `[Check-in apertura/cierre]` ahora se guarda en DB como mensaje `user` (roles alternados correctos)
   - Deployado en producción Vercel (commit 11367ed)
+- **Nuevo layout app (AppShell)** — sidebar colapsable desktop + bot como FAB + panel derecho
+  - `components/AppShell.tsx`: sidebar 240px colapsable (width→0), bot panel 380px derecho, mobile bottom nav preservado
+  - `components/BotChat.tsx`: extraído de bot/page.tsx, props `hideHeader`, `lightTheme`, `onClose`
+  - `lib/bot-context.tsx`: funciones `openBotPanel()` / `closeBotPanel()` via `window.dispatchEvent` (cross-boundary fiable)
+  - `app/(app)/layout.tsx`: usa AppShell en lugar de Nav
+  - Login redirige a `/proyectos` (antes `/bot`)
+  - Fondo global `#F2F1ED` en todos los `<main>`
+  - Icono Proyectos: `🏗️` (antes `⊞` que no renderizaba)
+- **Fix API invite `/api/invite`** — RLS bug: lookup de rol del caller ahora usa JWT del usuario (no anon key)
+- **Fix Objetivo 1M€** — Proyectos y HASU muestran el mismo número (filtra por `precio_venta_real > 0`)
+- **Pablo Benitez** — dado de alta en `user_roles` con role `viewer`, permisos restringidos a `proyectos` y `mercado`
+- **Modal Mercado — imagen portada en Edificios** — upload de portada ahora aparece en el modal de edición para TODOS los tipos incluyendo edificio (commit a8155f0)
 
 Bucket `portadas` en Supabase Storage: ✅ creado con acceso público (creado esta sesión vía SQL)
 
@@ -188,11 +200,15 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | @menciones en bitácora con alerta Telegram | ⏳ pendiente |
 | Evaluador cambio de uso 🔴🟡🟢 | ⏳ pendiente |
 | Evaluador tipología edificio | ⏳ pendiente |
-| Módulo edificios / multivivienda | ⏳ pendiente |
+| Módulo edificios / multivivienda | ✅ producción |
 | Portal inversor | ⏳ pendiente |
 | Modal Mercado — Agregar igual a Editar (2 col, tipos, imagen, unidades) | ✅ producción |
-| Desktop layout fix | ⏳ pendiente |
+| Modal Mercado — imagen portada en Edificios (edit modal) | ✅ producción |
+| AppShell — sidebar colapsable + bot FAB + panel derecho | ✅ producción |
+| Desktop layout fix | ✅ producción |
 | Modal Mercado — rediseño landscape mobile (no pisa bottom nav) | ⏳ pendiente |
 | Módulo edificios — detalle, botones, upload imagen portada | ✅ producción |
 | Dedup inserts edificios (bot Telegram + chat WOS3) | ✅ producción |
 | Mesa de Juntas — check-in sin rechazo, historial 24h | ✅ producción |
+| Fix API invite — RLS con JWT de caller | ✅ producción |
+| Fix Objetivo 1M€ — Proyectos = HASU | ✅ producción |
