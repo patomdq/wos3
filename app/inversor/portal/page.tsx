@@ -12,6 +12,7 @@ const ESTADO_STEP: Record<string, number> = {
   reforma: 2,
   venta: 3,
   cerrado: 4,
+  vendido: 5,
 }
 
 const CARD = {
@@ -242,7 +243,7 @@ export default function PortalInversorPage() {
                 l: 'Estado',
                 c: '#F59E0B',
               },
-              { v: `${proyecto?.avance_reforma || 0}%`, l: 'Avance', c: '#111' },
+              { v: vendido ? '✓ Listo' : `${proyecto?.avance_reforma || 0}%`, l: vendido ? 'Completado' : 'Avance', c: vendido ? '#16A34A' : '#111' },
               {
                 v: fmt(escenarios[0]?.benefInv || 0),
                 l: vendido ? 'Retorno real' : 'Retorno est.',
