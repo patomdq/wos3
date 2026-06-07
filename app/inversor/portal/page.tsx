@@ -202,12 +202,12 @@ export default function PortalInversorPage() {
     <div className="min-h-screen pb-10" style={{ background: '#F2F1ED' }}>
 
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3"
+      <div className="sticky top-0 z-10 flex items-center gap-3 px-6 py-3"
         style={{ background: '#fff', borderBottom: '1px solid #ECEAE4', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
         <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm text-white flex-shrink-0"
           style={{ background: '#F26E1F' }}>W</div>
         <div className="flex-1 min-w-0">
-          <div className="font-black text-[14px] leading-none" style={{ color: '#111' }}>Portal Inversores</div>
+          <div className="font-black text-[14px] leading-none" style={{ color: '#111' }}>Portal Inversores · Hasu Activos Inmobiliarios SL</div>
           <div className="text-[11px] font-medium mt-0.5 truncate" style={{ color: '#AAA' }}>{inversor?.nombre || 'Inversor'}</div>
         </div>
         <button onClick={handleLogout}
@@ -217,253 +217,249 @@ export default function PortalInversorPage() {
         </button>
       </div>
 
-      <div className="p-4 max-w-lg mx-auto">
+      <div className="p-4 md:p-8 max-w-5xl mx-auto">
+        <div className="md:grid md:grid-cols-[1fr_320px] md:gap-6 md:items-start">
 
-        {/* Hero card */}
-        <div className="rounded-2xl p-5 mb-3 relative overflow-hidden" style={CARD}>
-          <div className="absolute right-[-30px] top-[-30px] w-[140px] h-[140px] rounded-full"
-            style={{ background: 'rgba(242,110,31,0.06)' }} />
-          <span className="text-[10px] font-black px-3 py-1 rounded-full inline-block mb-3 relative"
-            style={{ background: 'rgba(242,110,31,0.12)', color: '#F26E1F' }}>
-            JV {participacion}%
-          </span>
-          <div className="font-black text-[24px] leading-none mb-1 relative" style={{ color: '#111', letterSpacing: -0.5 }}>
-            {proyecto?.nombre || 'Sin proyecto asignado'}
-          </div>
-          <div className="text-sm font-medium mb-5 relative" style={{ color: '#AAA' }}>
-            {proyecto?.ciudad || '—'} · Entrada {operacion?.fecha_entrada || '—'}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 relative">
-            {[
-              {
-                v: proyecto?.estado
-                  ? proyecto.estado.charAt(0).toUpperCase() + proyecto.estado.slice(1)
-                  : '—',
-                l: 'Estado',
-                c: '#F59E0B',
-              },
-              { v: vendido ? '✓ Listo' : `${proyecto?.avance_reforma || 0}%`, l: vendido ? 'Completado' : 'Avance', c: vendido ? '#16A34A' : '#111' },
-              {
-                v: fmt(escenarios[0]?.benefInv || 0),
-                l: vendido ? 'Retorno real' : 'Retorno est.',
-                c: '#16A34A',
-              },
-            ].map(k => (
-              <div key={k.l} className="rounded-xl p-3 text-center"
-                style={{ background: '#F2F1ED', border: '1px solid #ECEAE4' }}>
-                <div className="font-black text-[13px] leading-tight" style={{ color: k.c }}>{k.v}</div>
-                <div className="text-[9px] font-bold uppercase tracking-wide mt-1" style={{ color: '#AAA' }}>{k.l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Progreso */}
-        <div className="rounded-2xl p-4 mb-3" style={CARD}>
-          <div className="font-black text-[14px] mb-4" style={{ color: '#111' }}>Progreso de la operación</div>
-          <div className="flex justify-between relative mb-2">
-            <div className="absolute top-4 left-[5%] right-[5%] h-[1.5px]" style={{ background: '#ECEAE4' }} />
-            {STEPS.map((s, i) => {
-              const done   = i < currentStep
-              const active = i === currentStep
-              return (
-                <div key={s} className="flex flex-col items-center gap-1.5 z-10">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black"
-                    style={{
-                      background: done ? 'rgba(22,163,74,0.10)' : active ? 'rgba(242,110,31,0.12)' : '#F2F1ED',
-                      border: `1.5px solid ${done ? '#16A34A' : active ? '#F26E1F' : '#ECEAE4'}`,
-                      color: done ? '#16A34A' : active ? '#F26E1F' : '#CCC',
-                    }}>
-                    {done ? '✓' : active ? '⚡' : '○'}
-                  </div>
-                  <div className="text-[9px] font-bold uppercase text-center leading-tight"
-                    style={{ color: active ? '#F26E1F' : done ? '#16A34A' : '#CCC', maxWidth: 40 }}>{s}</div>
-                </div>
-              )
-            })}
-          </div>
-
-          {proyecto?.estado !== 'vendido' && (
-            <>
-              <div className="flex justify-between text-xs font-bold mt-3 mb-1.5" style={{ color: '#AAA' }}>
-                <span>Avance de obra</span>
-                <span style={{ color: '#F26E1F' }}>{proyecto?.avance_reforma || 0}%</span>
-              </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#ECEAE4' }}>
-                <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${proyecto?.avance_reforma || 0}%`, background: '#F26E1F' }} />
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Tabs */}
-        <div className="flex mb-3 overflow-x-auto"
-          style={{ borderBottom: '1.5px solid #ECEAE4' }}>
-          {TABS.map((t, i) => (
-            <button key={t} onClick={() => setTab(i)}
-              className="flex-shrink-0 px-5 py-2.5 text-sm font-bold whitespace-nowrap"
-              style={{
-                color: tab === i ? '#F26E1F' : '#AAA',
-                borderBottom: tab === i ? '2.5px solid #F26E1F' : '2.5px solid transparent',
-                marginBottom: -1.5,
-              }}>
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {/* ═══ Tab 0: RESUMEN ═══ */}
-        {tab === 0 && (
+          {/* ── Columna izquierda: Hero + Tabs ── */}
           <div>
-            <div className="grid grid-cols-2 gap-2.5 mb-3">
-              <div className="rounded-xl p-4" style={CARD}>
-                <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Tu aportación</div>
-                <div className="font-black text-[22px]" style={{ color: '#111' }}>{fmt(operacion?.capital_invertido || 0)}</div>
-                <div className="text-xs font-medium mt-1" style={{ color: '#AAA' }}>{participacion}% del capital</div>
+            {/* Hero card */}
+            <div className="rounded-2xl p-5 mb-3 relative overflow-hidden" style={CARD}>
+              <div className="absolute right-[-30px] top-[-30px] w-[140px] h-[140px] rounded-full"
+                style={{ background: 'rgba(242,110,31,0.06)' }} />
+              <span className="text-[10px] font-black px-3 py-1 rounded-full inline-block mb-3 relative"
+                style={{ background: 'rgba(242,110,31,0.12)', color: '#F26E1F' }}>
+                JV {participacion}%
+              </span>
+              <div className="font-black text-[24px] leading-none mb-1 relative" style={{ color: '#111', letterSpacing: -0.5 }}>
+                {proyecto?.nombre || 'Sin proyecto asignado'}
               </div>
-              <div className="rounded-xl p-4" style={CARD}>
-                <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>
-                  {vendido ? 'Retorno real' : 'Retorno est.'}
-                </div>
-                <div className="font-black text-[22px]" style={{ color: '#16A34A' }}>
-                  {fmt(escenarios[0]?.benefInv || 0)}
-                </div>
-                <div className="text-xs font-semibold mt-1" style={{ color: '#AAA' }}>
-                  ROI {escenarios[0]?.roi.toFixed(1) || 0}%
-                </div>
+              <div className="text-sm font-medium mb-5 relative" style={{ color: '#AAA' }}>
+                {proyecto?.ciudad || '—'} · Entrada {operacion?.fecha_entrada || '—'}
               </div>
-            </div>
-
-            {/* Escenarios / Resultado */}
-            <div className="rounded-2xl p-4 mb-3" style={CARD}>
-              <div className="font-black text-[14px] mb-0.5" style={{ color: '#111' }}>
-                {vendido ? 'Resultado final' : 'Escenarios de venta'}
-              </div>
-              <div className="text-xs font-medium mb-4" style={{ color: '#AAA' }}>
-                Tu parte ({participacion}%) sobre {fmt(operacion?.capital_invertido || 0)} aportados
-              </div>
-              <div className={`grid gap-2 ${vendido ? 'grid-cols-1' : 'grid-cols-3'}`}>
-                {escenarios.map(s => (
-                  <div key={s.label} className="rounded-xl p-3 text-center"
-                    style={{
-                      background: s.real ? 'rgba(242,110,31,0.07)' : '#F2F1ED',
-                      border: `1.5px solid ${s.real ? 'rgba(242,110,31,0.25)' : '#ECEAE4'}`,
-                    }}>
-                    <div className="text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: s.color }}>{s.label}</div>
-                    <div className="font-black text-[15px] leading-tight" style={{ color: '#111' }}>
-                      {fmt(s.venta)}
-                    </div>
-                    <div className="text-[12px] font-bold mt-0.5" style={{ color: s.benefInv >= 0 ? '#16A34A' : '#EF4444' }}>
-                      {s.benefInv >= 0 ? '+' : ''}{fmt(s.benefInv)}
-                    </div>
-                    <div className="text-[11px] font-black mt-0" style={{ color: s.color }}>
-                      {s.roi >= 0 ? '+' : ''}{s.roi.toFixed(1)}% ROI
-                    </div>
+              <div className="grid grid-cols-3 gap-2 relative">
+                {[
+                  {
+                    v: proyecto?.estado ? proyecto.estado.charAt(0).toUpperCase() + proyecto.estado.slice(1) : '—',
+                    l: 'Estado', c: '#F59E0B',
+                  },
+                  {
+                    v: vendido ? '✓ Listo' : `${proyecto?.avance_reforma || 0}%`,
+                    l: vendido ? 'Completado' : 'Avance',
+                    c: vendido ? '#16A34A' : '#111',
+                  },
+                  {
+                    v: fmt(escenarios[0]?.benefInv || 0),
+                    l: vendido ? 'Retorno real' : 'Retorno est.',
+                    c: '#16A34A',
+                  },
+                ].map(k => (
+                  <div key={k.l} className="rounded-xl p-3 text-center"
+                    style={{ background: '#F2F1ED', border: '1px solid #ECEAE4' }}>
+                    <div className="font-black text-[13px] leading-tight" style={{ color: k.c }}>{k.v}</div>
+                    <div className="text-[9px] font-bold uppercase tracking-wide mt-1" style={{ color: '#AAA' }}>{k.l}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="rounded-xl p-4 flex gap-3 items-start"
-              style={{ background: 'rgba(242,110,31,0.06)', border: '1.5px solid rgba(242,110,31,0.18)' }}>
-              <span className="text-xl flex-shrink-0">📧</span>
+            {/* Tabs */}
+            <div className="flex mb-3 overflow-x-auto" style={{ borderBottom: '1.5px solid #ECEAE4' }}>
+              {TABS.map((t, i) => (
+                <button key={t} onClick={() => setTab(i)}
+                  className="flex-shrink-0 px-5 py-2.5 text-sm font-bold whitespace-nowrap"
+                  style={{
+                    color: tab === i ? '#F26E1F' : '#AAA',
+                    borderBottom: tab === i ? '2.5px solid #F26E1F' : '2.5px solid transparent',
+                    marginBottom: -1.5,
+                  }}>
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab 0: RESUMEN */}
+            {tab === 0 && (
               <div>
-                <div className="text-sm font-black mb-0.5" style={{ color: '#111' }}>Informe semanal automático</div>
-                <div className="text-xs font-medium leading-relaxed" style={{ color: '#888' }}>
-                  Cada viernes recibís un resumen con el avance de la semana, gastos y próximos pasos.
+                <div className="grid grid-cols-2 gap-2.5 mb-3">
+                  <div className="rounded-xl p-4" style={CARD}>
+                    <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Tu aportación</div>
+                    <div className="font-black text-[22px]" style={{ color: '#111' }}>{fmt(operacion?.capital_invertido || 0)}</div>
+                    <div className="text-xs font-medium mt-1" style={{ color: '#AAA' }}>{participacion}% del capital</div>
+                  </div>
+                  <div className="rounded-xl p-4" style={CARD}>
+                    <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>
+                      {vendido ? 'Retorno real' : 'Retorno est.'}
+                    </div>
+                    <div className="font-black text-[22px]" style={{ color: '#16A34A' }}>
+                      {fmt(escenarios[0]?.benefInv || 0)}
+                    </div>
+                    <div className="text-xs font-semibold mt-1" style={{ color: '#AAA' }}>
+                      ROI {escenarios[0]?.roi.toFixed(1) || 0}%
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl p-4 mb-3" style={CARD}>
+                  <div className="font-black text-[14px] mb-0.5" style={{ color: '#111' }}>
+                    {vendido ? 'Resultado final' : 'Escenarios de venta'}
+                  </div>
+                  <div className="text-xs font-medium mb-4" style={{ color: '#AAA' }}>
+                    Tu parte ({participacion}%) sobre {fmt(operacion?.capital_invertido || 0)} aportados
+                  </div>
+                  <div className={`grid gap-2 ${vendido ? 'grid-cols-1' : 'grid-cols-3'}`}>
+                    {escenarios.map(s => (
+                      <div key={s.label} className="rounded-xl p-3 text-center"
+                        style={{
+                          background: s.real ? 'rgba(242,110,31,0.07)' : '#F2F1ED',
+                          border: `1.5px solid ${s.real ? 'rgba(242,110,31,0.25)' : '#ECEAE4'}`,
+                        }}>
+                        <div className="text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: s.color }}>{s.label}</div>
+                        <div className="font-black text-[15px] leading-tight" style={{ color: '#111' }}>{fmt(s.venta)}</div>
+                        <div className="text-[12px] font-bold mt-0.5" style={{ color: s.benefInv >= 0 ? '#16A34A' : '#EF4444' }}>
+                          {s.benefInv >= 0 ? '+' : ''}{fmt(s.benefInv)}
+                        </div>
+                        <div className="text-[11px] font-black" style={{ color: s.color }}>
+                          {s.roi >= 0 ? '+' : ''}{s.roi.toFixed(1)}% ROI
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl p-4 flex gap-3 items-start"
+                  style={{ background: 'rgba(242,110,31,0.06)', border: '1.5px solid rgba(242,110,31,0.18)' }}>
+                  <span className="text-xl flex-shrink-0">📧</span>
+                  <div>
+                    <div className="text-sm font-black mb-0.5" style={{ color: '#111' }}>Informe semanal automático</div>
+                    <div className="text-xs font-medium leading-relaxed" style={{ color: '#888' }}>
+                      Cada viernes recibís un resumen con el avance de la semana, gastos y próximos pasos.
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* ═══ Tab 1: MOVIMIENTOS ═══ */}
-        {tab === 1 && (
-          <div>
-            <div className="grid grid-cols-2 gap-2.5 mb-3">
-              <div className="rounded-xl p-4" style={CARD}>
-                <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Ingresos</div>
-                <div className="font-black text-[22px]" style={{ color: '#16A34A' }}>{fmt(ingresos)}</div>
-              </div>
-              <div className="rounded-xl p-4" style={CARD}>
-                <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Egresos</div>
-                <div className="font-black text-[22px]" style={{ color: '#EF4444' }}>{fmt(gastos)}</div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden" style={CARD}>
-              <div className="px-4 py-3.5 flex items-center justify-between" style={{ borderBottom: '1px solid #F2F1ED' }}>
-                <div className="font-black text-[14px]" style={{ color: '#111' }}>{proyecto?.nombre}</div>
-                <span className="text-xs font-bold" style={{ color: '#AAA' }}>
-                  Saldo: <span className="font-black" style={{ color: saldo >= 0 ? '#16A34A' : '#EF4444' }}>{fmt(saldo)}</span>
-                </span>
-              </div>
-              {movimientos.length === 0 ? (
-                <div className="p-6 text-sm text-center" style={{ color: '#CCC' }}>Sin movimientos registrados</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr style={{ background: '#F2F1ED' }}>
-                        {['Fecha', 'Concepto', 'Importe'].map(h => (
-                          <th key={h} className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide"
-                            style={{ color: '#AAA', borderBottom: '1px solid #ECEAE4' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {movimientos.map((m, i) => {
-                        const isIngreso = m.tipo === 'Ingreso' || m.monto > 0
-                        return (
-                          <tr key={m.id} style={{ borderBottom: i < movimientos.length - 1 ? '1px solid #F2F1ED' : 'none' }}>
-                            <td className="px-4 py-3 text-xs font-medium" style={{ color: '#AAA' }}>{m.fecha?.slice(5)}</td>
-                            <td className="px-4 py-3 text-sm font-medium" style={{ color: '#111' }}>{m.concepto}</td>
-                            <td className="px-4 py-3 text-xs font-black font-mono"
-                              style={{ color: isIngreso ? '#16A34A' : '#EF4444' }}>
-                              {isIngreso ? '+' : '-'}{fmt(Math.abs(m.monto))}
-                            </td>
+            {/* Tab 1: MOVIMIENTOS */}
+            {tab === 1 && (
+              <div>
+                <div className="grid grid-cols-2 gap-2.5 mb-3">
+                  <div className="rounded-xl p-4" style={CARD}>
+                    <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Ingresos</div>
+                    <div className="font-black text-[22px]" style={{ color: '#16A34A' }}>{fmt(ingresos)}</div>
+                  </div>
+                  <div className="rounded-xl p-4" style={CARD}>
+                    <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Egresos</div>
+                    <div className="font-black text-[22px]" style={{ color: '#EF4444' }}>{fmt(gastos)}</div>
+                  </div>
+                </div>
+                <div className="rounded-2xl overflow-hidden" style={CARD}>
+                  <div className="px-4 py-3.5 flex items-center justify-between" style={{ borderBottom: '1px solid #F2F1ED' }}>
+                    <div className="font-black text-[14px]" style={{ color: '#111' }}>{proyecto?.nombre}</div>
+                    <span className="text-xs font-bold" style={{ color: '#AAA' }}>
+                      Saldo: <span className="font-black" style={{ color: saldo >= 0 ? '#16A34A' : '#EF4444' }}>{fmt(saldo)}</span>
+                    </span>
+                  </div>
+                  {movimientos.length === 0 ? (
+                    <div className="p-6 text-sm text-center" style={{ color: '#CCC' }}>Sin movimientos registrados</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr style={{ background: '#F2F1ED' }}>
+                            {['Fecha', 'Concepto', 'Importe'].map(h => (
+                              <th key={h} className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide"
+                                style={{ color: '#AAA', borderBottom: '1px solid #ECEAE4' }}>{h}</th>
+                            ))}
                           </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {movimientos.map((m, i) => {
+                            const isIngreso = m.tipo === 'Ingreso' || m.monto > 0
+                            return (
+                              <tr key={m.id} style={{ borderBottom: i < movimientos.length - 1 ? '1px solid #F2F1ED' : 'none' }}>
+                                <td className="px-4 py-3 text-xs font-medium" style={{ color: '#AAA' }}>{m.fecha?.slice(5)}</td>
+                                <td className="px-4 py-3 text-sm font-medium" style={{ color: '#111' }}>{m.concepto}</td>
+                                <td className="px-4 py-3 text-xs font-black font-mono"
+                                  style={{ color: isIngreso ? '#16A34A' : '#EF4444' }}>
+                                  {isIngreso ? '+' : '-'}{fmt(Math.abs(m.monto))}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: BITÁCORA */}
+            {tab === 2 && (
+              <div className="rounded-2xl p-5" style={CARD}>
+                <div className="font-black text-[14px] mb-4" style={{ color: '#111' }}>Novedades del proyecto</div>
+                {bitacora.length === 0 ? (
+                  <div className="text-center py-8 text-sm" style={{ color: '#CCC' }}>Sin novedades publicadas todavía</div>
+                ) : (
+                  <div className="pl-5 relative">
+                    <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#ECEAE4' }} />
+                    {bitacora.map(b => (
+                      <div key={b.id} className="relative mb-5">
+                        <div className="absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-full"
+                          style={{ background: '#F26E1F', border: '2px solid #fff' }} />
+                        <div className="text-[10px] font-bold mb-1 uppercase tracking-wide" style={{ color: '#CCC' }}>
+                          {new Date(b.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
+                        </div>
+                        <div className="text-sm font-medium leading-relaxed" style={{ color: '#111' }}>{b.contenido}</div>
+                        {b.autor && <div className="text-xs font-bold mt-1" style={{ color: '#F26E1F' }}>{b.autor}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Columna derecha: Progreso (sticky en desktop) ── */}
+          <div className="mt-3 md:mt-0">
+            <div className="rounded-2xl p-5 md:sticky md:top-[60px]" style={CARD}>
+              <div className="font-black text-[14px] mb-5" style={{ color: '#111' }}>Progreso de la operación</div>
+              <div className="space-y-3">
+                {STEPS.map((s, i) => {
+                  const done   = i < currentStep
+                  const active = i === currentStep
+                  return (
+                    <div key={s} className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0"
+                        style={{
+                          background: done ? 'rgba(22,163,74,0.10)' : active ? 'rgba(242,110,31,0.12)' : '#F2F1ED',
+                          border: `1.5px solid ${done ? '#16A34A' : active ? '#F26E1F' : '#ECEAE4'}`,
+                          color: done ? '#16A34A' : active ? '#F26E1F' : '#CCC',
+                        }}>
+                        {done ? '✓' : active ? '⚡' : i + 1}
+                      </div>
+                      <div className="text-sm font-bold" style={{ color: active ? '#F26E1F' : done ? '#16A34A' : '#CCC' }}>{s}</div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {proyecto?.estado !== 'vendido' && (
+                <div className="mt-5 pt-4" style={{ borderTop: '1px solid #ECEAE4' }}>
+                  <div className="flex justify-between text-xs font-bold mb-1.5" style={{ color: '#AAA' }}>
+                    <span>Avance de obra</span>
+                    <span style={{ color: '#F26E1F' }}>{proyecto?.avance_reforma || 0}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#ECEAE4' }}>
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${proyecto?.avance_reforma || 0}%`, background: '#F26E1F' }} />
+                  </div>
                 </div>
               )}
             </div>
           </div>
-        )}
 
-        {/* ═══ Tab 2: BITÁCORA ═══ */}
-        {tab === 2 && (
-          <div className="rounded-2xl p-5" style={CARD}>
-            <div className="font-black text-[14px] mb-4" style={{ color: '#111' }}>Novedades del proyecto</div>
-            {bitacora.length === 0 ? (
-              <div className="text-center py-8 text-sm" style={{ color: '#CCC' }}>Sin novedades publicadas todavía</div>
-            ) : (
-              <div className="pl-5 relative">
-                <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#ECEAE4' }} />
-                {bitacora.map(b => (
-                  <div key={b.id} className="relative mb-5">
-                    <div className="absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-full"
-                      style={{ background: '#F26E1F', border: '2px solid #F2F1ED' }} />
-                    <div className="text-[10px] font-bold mb-1 uppercase tracking-wide"
-                      style={{ color: '#CCC' }}>
-                      {new Date(b.created_at).toLocaleDateString('es-ES', {
-                        day: '2-digit', month: 'short', year: 'numeric'
-                      }).toUpperCase()}
-                    </div>
-                    <div className="text-sm font-medium leading-relaxed" style={{ color: '#111' }}>{b.contenido}</div>
-                    {b.autor && (
-                      <div className="text-xs font-bold mt-1" style={{ color: '#F26E1F' }}>{b.autor}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )
