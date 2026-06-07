@@ -39,6 +39,78 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 07/06/2026 (continuación 2)**
+
+Hecho:
+- **Imagen de portada en proyectos**
+  - SQL: `ALTER TABLE proyectos ADD COLUMN imagen_portada TEXT` (ejecutado vía MCP)
+  - `proyectos/page.tsx`: botón 📷 en cards activos y vendidos → sube a bucket `portadas` (Supabase Storage, upsert), guarda URL en `proyectos.imagen_portada`
+  - Cuando hay imagen: franja 110px con degradado overlay + botón 📷 para cambiar
+  - Cuando no hay imagen: label sutil "📷 Agregar portada"
+  - `portal/page.tsx`: hero usa `imagen_portada` como fondo con overlay naranja translúcido para legibilidad; fallback a degradado naranja si no hay imagen
+  - Fix caché PostgREST: fetch separado de `imagen_portada` para evitar que el schema cache stale lo omita del join `proyectos(*)`
+  - Fix CSS: style object separado (ternario) para evitar conflicto entre `backgroundImage` y `background`
+  - Commits: `538080a`, `f01fc99`
+
+**Última sesión — 07/06/2026 (continuación)**
+
+Hecho:
+- **Portal inversor — layout desktop**
+  - Grid 2 columnas: contenido principal izquierda + sidebar sticky derecha
+  - `max-w-[1400px]` para aprovechar pantallas anchas
+  - Sidebar sticky corregido: `sticky` en el div contenedor del grid, no en el card interior
+  - Commit: `46cb542`
+- **Portal inversor — rediseño con gráficos (recharts)**
+  - Instalado `recharts`
+  - Tab Resumen: torta (composición capital: tu aportación vs socio HASU) + barras (inversión vs retorno)
+  - Tab Movimientos: barras por mes (flujo mensual en verde/rojo) + tabla detallada con 3 KPIs
+  - Hero con degradado naranja→arena, KPIs en 3 columnas divididas
+  - Resultado final vendido: precio venta izquierda / beneficio derecha en grande
+  - Sidebar: progreso con conectores + resumen financiero completo (6 líneas)
+  - Paleta: ORANGE `#E8621A`, GREEN `#2D7A4F`, SAND `#C9A96E`, BG `#F5F3EF`
+  - Commits: `d651886`, `085ad41`
+- **Portal inversor — sección gestor**
+  - Muestra "Hasu Activos Inmobiliarios SL" con email patricio@wallest.pro como link
+  - Etiqueta "Gestionado por" para que JL entienda que es el contacto, no su perfil
+  - Commits: `9409312`, `55b9038`
+
+**Stack gráficos portal inversor**
+- Librería: `recharts` (instalada en wos3)
+- PieChart con innerRadius (donut) para composición capital
+- BarChart con Cell por color para inversión/retorno y flujo mensual
+
+**Última sesión — 07/06/2026**
+
+Hecho:
+- **Portal inversor — fixes de acceso**
+  - Bug: lookup de rol y de inversor por `user_id` fallaba cuando el UUID en `inversores`/`user_roles` no coincidía con el auth session
+  - Fix: fallback por `email` cuando `user_id` no matchea (tanto en `user_roles` como en `inversores`)
+  - Commits: `2749a71`, `4949c86`
+- **Portal inversor — números correctos**
+  - Bug: mostraba `retorno_estimado` y `roi` guardados en `proyecto_inversores` (valores pre-venta)
+  - Fix: cuando `precio_venta_real > 0`, calcula retorno e ROI reales desde los datos del proyecto
+  - "19 de Octubre": ahora muestra 28.000€ retorno real y 80% ROI (antes 18k / 50%)
+  - Commit: `28c1faa`
+- **Portal inversor — tema visual WOS3**
+  - Reescritura completa de `/app/inversor/page.tsx` y `/app/inversor/portal/page.tsx`
+  - Fondo `#F2F1ED`, cards blancas, texto `#111`, bordes `#ECEAE4`, acento `#F26E1F`
+  - Mismo sistema de diseño que WOS3 (cards con sombra, tabs, inputs)
+  - Commit: `d1a26f6`
+- **Portal inversor — estado vendido**
+  - Bug: `vendido` no estaba en `ESTADO_STEP` → todos los pasos aparecían en gris
+  - Fix: `vendido: 5` → todos los pasos en verde ✓
+  - Card "Avance" reemplazada por "✓ Listo / Completado" en verde cuando vendido
+  - Barra de progreso oculta cuando vendido (ya estaba implementado)
+  - Commit: `403797d`
+
+**Portal inversor — arquitectura**
+- URL: `wos3.vercel.app/inversor` (login) y `wos3.vercel.app/inversor/portal` (dashboard)
+- NO es un proyecto Vercel separado — vive dentro del repo wos3
+- Para dar de alta un inversor: `/admin` → "+ Invitar" → email + rol Inversor → Supabase envía email de activación automáticamente (`inviteUserByEmail`)
+- El inversor crea su contraseña desde el email y entra con ella
+- Datos en tiempo real via Supabase Realtime (suscripciones a `proyectos`, `movimientos`, `bitacora`)
+- Cálculo: cuando `precio_venta_real > 0` usa datos reales; si no, usa escenarios estimados
+
 **Última sesión — 06/06/2026**
 
 Hecho:
@@ -201,7 +273,8 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Evaluador cambio de uso 🔴🟡🟢 | ⏳ pendiente |
 | Evaluador tipología edificio | ⏳ pendiente |
 | Módulo edificios / multivivienda | ✅ producción |
-| Portal inversor | ⏳ pendiente |
+| Portal inversor — acceso, números reales, tema WOS3, estado vendido | ✅ producción |
+| Imagen de portada en proyectos (upload WOS3 + hero portal inversor) | ✅ producción |
 | Modal Mercado — Agregar igual a Editar (2 col, tipos, imagen, unidades) | ✅ producción |
 | Modal Mercado — imagen portada en Edificios (edit modal) | ✅ producción |
 | AppShell — sidebar colapsable + bot FAB + panel derecho | ✅ producción |
