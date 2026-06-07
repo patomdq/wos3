@@ -501,12 +501,15 @@ export default function PortalInversorPage() {
               )}
 
               {/* Gestor */}
-              <div className="mt-4 pt-4 flex items-center gap-3" style={{ borderTop: `1px solid ${BG}` }}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-white flex-shrink-0"
-                  style={{ background: `linear-gradient(135deg,${ORANGE},${SAND})` }}>P</div>
-                <div>
-                  <div className="text-[11px] font-black" style={{ color: '#111' }}>Patricio Fávora</div>
-                  <div className="text-[10px]" style={{ color: '#AAA' }}>patricio@wallest.pro</div>
+              <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${BG}` }}>
+                <div className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: '#CCC' }}>Tu gestor de operación</div>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-white flex-shrink-0"
+                    style={{ background: `linear-gradient(135deg,${ORANGE},${SAND})` }}>P</div>
+                  <div>
+                    <div className="text-[12px] font-black" style={{ color: '#111' }}>Patricio Fávora</div>
+                    <a href="mailto:patricio@wallest.pro" className="text-[11px] font-medium" style={{ color: ORANGE }}>patricio@wallest.pro</a>
+                  </div>
                 </div>
               </div>
             </div>
