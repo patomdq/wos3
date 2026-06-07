@@ -64,10 +64,14 @@ export default function PortalInversorPage() {
         if (inversorData.id) {
           const { data: op } = await supabase.from('proyecto_inversores').select('*, proyectos(*)').eq('inversor_id', inversorData.id).single()
           if (op && !cancelled) {
-            // Fetch imagen_portada separately in case PostgREST schema cache is stale
-            const { data: imgRow } = await supabase.from('proyectos').select('imagen_portada').eq('id', op.proyecto_id).single()
             setOperacion(op)
-            setProyecto({ ...op.proyectos, imagen_portada: imgRow?.imagen_portada ?? null })
+            // Fetch imagen_portada separately (PostgREST schema cache may not include new column)
+            try {
+              const { data: imgRow } = await supabase.from('proyectos').select('imagen_portada').eq('id', op.proyecto_id).single()
+              setProyecto({ ...op.proyectos, imagen_portada: imgRow?.imagen_portada ?? null })
+            } catch {
+              setProyecto(op.proyectos)
+            }
             const [{ data: movs }, { data: bit }] = await Promise.all([
               supabase.from('movimientos').select('*').eq('proyecto_id', op.proyecto_id).order('fecha', { ascending: false }),
               supabase.from('bitacora').select('*').eq('proyecto_id', op.proyecto_id).order('created_at', { ascending: false }),
