@@ -178,18 +178,28 @@ export default function PortalInversorPage() {
   const participacion = operacion?.participacion || 50
   const inversion     = proyecto?.valor_total_operacion || proyecto?.precio_compra || 0
   const ventaEst      = proyecto?.precio_venta_estimado || 0
+  const vendido       = !!proyecto?.precio_venta_real && proyecto.precio_venta_real > 0
 
-  const escenarios = [
-    { label: 'Conserv.',  stored: proyecto?.precio_venta_conservador, mult: 0.90, color: '#888',    real: false },
-    { label: 'Realista',  stored: proyecto?.precio_venta_realista,    mult: 1.00, color: '#F26E1F', real: true  },
-    { label: 'Optimista', stored: proyecto?.precio_venta_optimista,   mult: 1.10, color: '#22C55E', real: false },
-  ].map(s => {
-    const venta        = s.stored ?? (ventaEst * s.mult)
-    const benefTotal   = venta - inversion
-    const roi          = inversion > 0 ? (benefTotal / inversion) * 100 : 0
-    const benefInv     = benefTotal * (participacion / 100)
-    return { label: s.label, color: s.color, real: s.real, venta, benefTotal, roi, benefInv }
-  })
+  // Si el proyecto está vendido, mostrar resultado real en lugar de escenarios
+  const escenarios = vendido
+    ? (() => {
+        const venta      = proyecto.precio_venta_real
+        const benefTotal = venta - inversion
+        const roi        = inversion > 0 ? (benefTotal / inversion) * 100 : 0
+        const benefInv   = benefTotal * (participacion / 100)
+        return [{ label: 'Real', color: '#22C55E', real: true, venta, benefTotal, roi, benefInv }]
+      })()
+    : [
+        { label: 'Conserv.',  stored: proyecto?.precio_venta_conservador, mult: 0.90, color: '#888',    real: false },
+        { label: 'Realista',  stored: proyecto?.precio_venta_realista,    mult: 1.00, color: '#F26E1F', real: true  },
+        { label: 'Optimista', stored: proyecto?.precio_venta_optimista,   mult: 1.10, color: '#22C55E', real: false },
+      ].map(s => {
+        const venta      = s.stored ?? (ventaEst * s.mult)
+        const benefTotal = venta - inversion
+        const roi        = inversion > 0 ? (benefTotal / inversion) * 100 : 0
+        const benefInv   = benefTotal * (participacion / 100)
+        return { label: s.label, color: s.color, real: s.real, venta, benefTotal, roi, benefInv }
+      })
 
   // Progreso basado en estado real
   const currentStep = ESTADO_STEP[proyecto?.estado] ?? 0
@@ -231,7 +241,7 @@ export default function PortalInversorPage() {
             {[
               { v: proyecto?.estado ? proyecto.estado.charAt(0).toUpperCase() + proyecto.estado.slice(1) : '—', l: 'Estado', c: '#F59E0B' },
               { v: `${proyecto?.avance_reforma || 0}%`, l: 'Avance', c: '#fff' },
-              { v: fmt(operacion?.retorno_estimado || escenarios[1]?.benefInv || 0), l: 'Retorno est.', c: '#22C55E' },
+              { v: fmt(escenarios[0]?.benefInv || 0), l: vendido ? 'Retorno real' : 'Retorno est.', c: '#22C55E' },
             ].map(k => (
               <div key={k.l} className="rounded-xl p-3 text-center"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -302,12 +312,12 @@ export default function PortalInversorPage() {
                 <div className="text-xs font-medium mt-1" style={{ color: '#888' }}>{participacion}% del capital</div>
               </div>
               <div className="rounded-xl p-3.5" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Retorno est.</div>
+                <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{vendido ? 'Retorno real' : 'Retorno est.'}</div>
                 <div className="font-black text-[22px]" style={{ color: '#22C55E' }}>
-                  {fmt(operacion?.retorno_estimado || escenarios[1]?.benefInv || 0)}
+                  {fmt(escenarios[0]?.benefInv || 0)}
                 </div>
                 <div className="text-xs font-semibold mt-1" style={{ color: '#888' }}>
-                  ROI {operacion?.roi || escenarios[1]?.roi.toFixed(1) || 0}%
+                  ROI {escenarios[0]?.roi.toFixed(1) || 0}%
                 </div>
               </div>
             </div>
