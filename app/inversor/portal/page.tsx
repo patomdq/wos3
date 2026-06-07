@@ -172,8 +172,8 @@ export default function PortalInversorPage() {
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6">
-        <div className="lg:grid lg:grid-cols-[1fr_280px] lg:gap-6 lg:items-start">
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-6">
+        <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-6" style={{ alignItems: 'start' }}>
 
           {/* ══ CONTENIDO PRINCIPAL ══ */}
           <div className="space-y-4">
@@ -456,10 +456,10 @@ export default function PortalInversorPage() {
           </div>
 
           {/* ══ SIDEBAR ══ */}
-          <div className="mt-4 lg:mt-0 space-y-4">
+          <div className="mt-4 lg:mt-0 space-y-4 lg:sticky lg:top-[58px]">
 
             {/* Progreso */}
-            <div className="rounded-2xl p-5 lg:sticky lg:top-[58px]"
+            <div className="rounded-2xl p-5"
               style={{ background: CARD, border: '1px solid #E8E4DC', boxShadow: '0 1px 6px rgba(0,0,0,0.04)' }}>
               <div className="font-black text-[13px] mb-4" style={{ color: '#111' }}>Estado de la operación</div>
               <div>
