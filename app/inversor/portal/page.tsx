@@ -64,7 +64,10 @@ export default function PortalInversorPage() {
         if (inversorData.id) {
           const { data: op } = await supabase.from('proyecto_inversores').select('*, proyectos(*)').eq('inversor_id', inversorData.id).single()
           if (op && !cancelled) {
-            setOperacion(op); setProyecto(op.proyectos)
+            // Fetch imagen_portada separately in case PostgREST schema cache is stale
+            const { data: imgRow } = await supabase.from('proyectos').select('imagen_portada').eq('id', op.proyecto_id).single()
+            setOperacion(op)
+            setProyecto({ ...op.proyectos, imagen_portada: imgRow?.imagen_portada ?? null })
             const [{ data: movs }, { data: bit }] = await Promise.all([
               supabase.from('movimientos').select('*').eq('proyecto_id', op.proyecto_id).order('fecha', { ascending: false }),
               supabase.from('bitacora').select('*').eq('proyecto_id', op.proyecto_id).order('created_at', { ascending: false }),
@@ -181,14 +184,18 @@ export default function PortalInversorPage() {
             {/* Hero card */}
             <div className="rounded-2xl overflow-hidden" style={{ background: CARD, border: '1px solid #E8E4DC', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
               {/* Franja superior con degradado / imagen */}
-              <div style={{
+              <div style={proyecto?.imagen_portada ? {
                 position: 'relative',
                 minHeight: 100,
                 padding: '20px 24px 20px',
-                backgroundImage: proyecto?.imagen_portada ? `url(${proyecto.imagen_portada})` : undefined,
+                backgroundImage: `url(${proyecto.imagen_portada})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                background: !proyecto?.imagen_portada ? `linear-gradient(135deg, ${ORANGE} 0%, #C9A96E 100%)` : undefined,
+              } : {
+                position: 'relative',
+                minHeight: 100,
+                padding: '20px 24px 20px',
+                background: `linear-gradient(135deg, ${ORANGE} 0%, #C9A96E 100%)`,
               }}>
                 {/* Overlay when image is present */}
                 {proyecto?.imagen_portada && (
