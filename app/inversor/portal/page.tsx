@@ -53,8 +53,12 @@ export default function PortalInversorPage() {
         const roleData = roleByUid || roleByEmail
         const isAdmin = roleData?.role === 'admin' || roleData?.role === 'pm'
 
-        const { data: inv } = await supabase
-          .from('inversores').select('*').eq('user_id', session.user.id).single()
+        const { data: invByUid } = await supabase
+          .from('inversores').select('*').eq('user_id', session.user.id).maybeSingle()
+        const { data: invByEmail } = !invByUid && session.user.email ? await supabase
+          .from('inversores').select('*').eq('email', session.user.email).maybeSingle()
+          : { data: null }
+        const inv = invByUid || invByEmail
 
         if (cancelled) return
         if (!inv && !isAdmin) {
