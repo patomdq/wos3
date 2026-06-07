@@ -33,6 +33,7 @@ type Proyecto = {
   precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null
   valor_total_operacion: number | null; inversion_hasu: number | null
   fecha_compra: string | null; fecha_salida_estimada: string | null
+  imagen_portada?: string | null
 }
 
 const getInv     = (p: Proyecto) => p.valor_total_operacion || p.precio_compra || 0
@@ -75,11 +76,12 @@ export default function ProyectosPage() {
   const [editPrecios, setEditPrecios]     = useState<Record<string, { c: string; r: string; o: string }>>({})
   const [editFinalizado, setEditFinalizado] = useState<Record<string, { venta: string; inv: string }>>({})
   const [saving, setSaving]               = useState<Record<string, boolean>>({})
+  const [uploadingImg, setUploadingImg]   = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     Promise.all([
       supabase.from('proyectos')
-        .select('id,nombre,direccion,ciudad,tipo,estado,porcentaje_hasu,socio_nombre,avance_reforma,precio_compra,precio_venta_estimado,precio_venta_real,precio_venta_conservador,precio_venta_realista,precio_venta_optimista,valor_total_operacion,inversion_hasu,fecha_compra,fecha_salida_estimada')
+        .select('id,nombre,direccion,ciudad,tipo,estado,porcentaje_hasu,socio_nombre,avance_reforma,precio_compra,precio_venta_estimado,precio_venta_real,precio_venta_conservador,precio_venta_realista,precio_venta_optimista,valor_total_operacion,inversion_hasu,fecha_compra,fecha_salida_estimada,imagen_portada')
         .order('created_at', { ascending: false }),
       supabase.from('movimientos').select('proyecto_id,monto,tipo'),
     ]).then(([p, m]) => {
@@ -176,6 +178,18 @@ export default function ProyectosPage() {
     e.stopPropagation()
     if (!confirm(`¿Marcar "${p.nombre}" como vendido?\nEl proyecto pasará a "Operaciones finalizadas".`)) return
     await cambiarEstado(p.id, 'vendido')
+  }
+
+  const uploadPortada = async (pid: string, file: File) => {
+    setUploadingImg(u => ({ ...u, [pid]: true }))
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const path = `proyecto_${pid}.${ext}`
+    const { error: upErr } = await supabase.storage.from('portadas').upload(path, file, { upsert: true, contentType: file.type })
+    if (upErr) { alert('Error al subir imagen: ' + upErr.message); setUploadingImg(u => ({ ...u, [pid]: false })); return }
+    const { data: { publicUrl } } = supabase.storage.from('portadas').getPublicUrl(path)
+    await supabase.from('proyectos').update({ imagen_portada: publicUrl }).eq('id', pid)
+    setProyectos(prev => prev.map(x => x.id === pid ? { ...x, imagen_portada: publicUrl } : x))
+    setUploadingImg(u => ({ ...u, [pid]: false }))
   }
 
   const visibles    = proyectos.filter(p => canAccessProject(user?.permisos ?? null, p.id))
@@ -333,6 +347,22 @@ export default function ProyectosPage() {
 
                 return (
                   <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    {/* Cover image */}
+                    {p.imagen_portada ? (
+                      <div style={{ position: 'relative', height: 110, overflow: 'hidden' }}>
+                        <img src={p.imagen_portada} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.3))' }} />
+                        <label style={{ position: 'absolute', bottom: 8, right: 8, width: 26, height: 26, borderRadius: 8, background: 'rgba(0,0,0,0.45)', color: '#fff', cursor: uploadingImg[p.id] ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }} title="Cambiar imagen">
+                          {uploadingImg[p.id] ? '…' : '📷'}
+                          <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(p.id, f) }} />
+                        </label>
+                      </div>
+                    ) : (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '10px 20px 0', cursor: uploadingImg[p.id] ? 'wait' : 'pointer', width: 'fit-content' }}>
+                        <span style={{ fontSize: 11, color: '#CCC', fontWeight: 700 }}>{uploadingImg[p.id] ? 'Subiendo…' : '📷 Agregar portada'}</span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(p.id, f) }} />
+                      </label>
+                    )}
                     {/* Card header */}
                     <div style={{ padding: '20px 20px 0' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -546,6 +576,22 @@ export default function ProyectosPage() {
 
                 return (
                   <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', overflow: 'hidden', opacity: 0.85 }}>
+                    {/* Cover image */}
+                    {p.imagen_portada ? (
+                      <div style={{ position: 'relative', height: 110, overflow: 'hidden' }}>
+                        <img src={p.imagen_portada} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.3))' }} />
+                        <label style={{ position: 'absolute', bottom: 8, right: 8, width: 26, height: 26, borderRadius: 8, background: 'rgba(0,0,0,0.45)', color: '#fff', cursor: uploadingImg[p.id] ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }} title="Cambiar imagen">
+                          {uploadingImg[p.id] ? '…' : '📷'}
+                          <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(p.id, f) }} />
+                        </label>
+                      </div>
+                    ) : (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '10px 20px 0', cursor: uploadingImg[p.id] ? 'wait' : 'pointer', width: 'fit-content' }}>
+                        <span style={{ fontSize: 11, color: '#CCC', fontWeight: 700 }}>{uploadingImg[p.id] ? 'Subiendo…' : '📷 Agregar portada'}</span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(p.id, f) }} />
+                      </label>
+                    )}
                     <div style={{ padding: 20 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                         <div onClick={() => router.push(`/proyectos/${p.id}`)} style={{ cursor: 'pointer', flex: 1, minWidth: 0, marginRight: 8 }}>

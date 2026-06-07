@@ -180,9 +180,21 @@ export default function PortalInversorPage() {
 
             {/* Hero card */}
             <div className="rounded-2xl overflow-hidden" style={{ background: CARD, border: '1px solid #E8E4DC', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-              {/* Franja superior con degradado */}
-              <div style={{ background: `linear-gradient(135deg, ${ORANGE} 0%, #C9A96E 100%)`, padding: '20px 24px 20px' }}>
-                <div className="flex items-start justify-between">
+              {/* Franja superior con degradado / imagen */}
+              <div style={{
+                position: 'relative',
+                minHeight: 100,
+                padding: '20px 24px 20px',
+                backgroundImage: proyecto?.imagen_portada ? `url(${proyecto.imagen_portada})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                background: !proyecto?.imagen_portada ? `linear-gradient(135deg, ${ORANGE} 0%, #C9A96E 100%)` : undefined,
+              }}>
+                {/* Overlay when image is present */}
+                {proyecto?.imagen_portada && (
+                  <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)` }} />
+                )}
+                <div style={{ position: 'relative', zIndex: 1 }} className="flex items-start justify-between">
                   <div>
                     <div className="text-[11px] font-bold uppercase tracking-widest mb-1 opacity-80 text-white">
                       Joint Venture · {participacion}% participación
