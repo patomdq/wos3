@@ -3,13 +3,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-const fmt  = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
-const fmtK = (n: number) => {
-  if (Math.abs(n) >= 1000) return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
-  return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
-}
+const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
 
-// Map project estado → step index (0-4)
 const STEPS = ['Compra', 'Plan.', 'Reforma', 'Comercial', 'Liquid.']
 const ESTADO_STEP: Record<string, number> = {
   captado: 0, analisis: 0, ofertado: 0,
@@ -19,18 +14,24 @@ const ESTADO_STEP: Record<string, number> = {
   cerrado: 4,
 }
 
+const CARD = {
+  background: '#fff',
+  borderRadius: 18,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04)',
+  border: '1px solid #ECEAE4',
+} as const
+
 export default function PortalInversorPage() {
   const router = useRouter()
   const [tab, setTab] = useState(0)
-  const [inversor, setInversor]     = useState<any>(null)
-  const [operacion, setOperacion]   = useState<any>(null)
-  const [proyecto, setProyecto]     = useState<any>(null)
+  const [inversor, setInversor]       = useState<any>(null)
+  const [operacion, setOperacion]     = useState<any>(null)
+  const [proyecto, setProyecto]       = useState<any>(null)
   const [movimientos, setMovimientos] = useState<any[]>([])
-  const [bitacora, setBitacora]     = useState<any[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [authError, setAuthError]   = useState<string | null>(null)
+  const [bitacora, setBitacora]       = useState<any[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [authError, setAuthError]     = useState<string | null>(null)
 
-  // ── Initial load ──────────────────────────────────────────
   useEffect(() => {
     let cancelled = false
     const init = async () => {
@@ -85,7 +86,6 @@ export default function PortalInversorPage() {
               supabase.from('movimientos').select('*')
                 .eq('proyecto_id', op.proyecto_id)
                 .order('fecha', { ascending: false }),
-              // Lee de la bitácora real del proyecto
               supabase.from('bitacora').select('*')
                 .eq('proyecto_id', op.proyecto_id)
                 .order('created_at', { ascending: false }),
@@ -106,14 +106,11 @@ export default function PortalInversorPage() {
     return () => { cancelled = true }
   }, [router])
 
-  // ── Real-time subscriptions ───────────────────────────────
   useEffect(() => {
     if (!operacion?.proyecto_id) return
     const pid = operacion.proyecto_id
-
     const channel = supabase
       .channel(`portal-${pid}`)
-      // Movimientos
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'movimientos', filter: `proyecto_id=eq.${pid}` },
         async () => {
@@ -122,7 +119,6 @@ export default function PortalInversorPage() {
           setMovimientos(data || [])
         }
       )
-      // Bitácora
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'bitacora', filter: `proyecto_id=eq.${pid}` },
         async () => {
@@ -131,13 +127,11 @@ export default function PortalInversorPage() {
           setBitacora(data || [])
         }
       )
-      // Proyecto (avance, estado, escenarios)
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'proyectos', filter: `id=eq.${pid}` },
         (payload) => setProyecto((prev: any) => ({ ...prev, ...payload.new }))
       )
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [operacion?.proyecto_id])
 
@@ -146,53 +140,53 @@ export default function PortalInversorPage() {
     router.replace('/inversor')
   }
 
-  // ── Loading / error screens ───────────────────────────────
+  // ── Loading ──────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A0A0A' }}>
-      <div className="text-sm font-semibold animate-pulse" style={{ color: '#888' }}>Cargando tu portal...</div>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#F2F1ED' }}>
+      <div className="text-sm font-semibold animate-pulse" style={{ color: '#AAA' }}>Cargando tu portal...</div>
     </div>
   )
+
+  // ── Error ────────────────────────────────────────────────────
   if (authError) return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: '#0A0A0A' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: '#F2F1ED' }}>
       <div className="w-full max-w-sm text-center">
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl mx-auto mb-5"
-          style={{ background: '#EF444420', border: '1px solid #EF444440' }}>✕</div>
-        <div className="font-black text-lg text-white mb-2">Sin acceso</div>
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl mx-auto mb-5"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>✕</div>
+        <div className="font-black text-lg mb-2" style={{ color: '#111' }}>Sin acceso</div>
         <div className="text-sm font-medium mb-6 leading-relaxed" style={{ color: '#888' }}>{authError}</div>
         <button onClick={() => { supabase.auth.signOut(); router.replace('/inversor') }}
           className="w-full py-3 rounded-xl text-sm font-black"
-          style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#888' }}>
+          style={{ background: '#fff', border: '1px solid #ECEAE4', color: '#888' }}>
           Volver al login
         </button>
       </div>
     </div>
   )
 
-  // ── Computed values ───────────────────────────────────────
+  // ── Computed ─────────────────────────────────────────────────
   const TABS = ['Resumen', 'Movimientos', 'Bitácora']
   const ingresos = movimientos.filter(m => m.monto > 0 || m.tipo === 'Ingreso').reduce((s, m) => s + Math.abs(m.monto || 0), 0)
   const gastos   = movimientos.filter(m => m.monto < 0 || m.tipo === 'Gasto').reduce((s, m) => s + Math.abs(m.monto || 0), 0)
   const saldo    = ingresos - gastos
 
-  // Escenarios desde datos reales del proyecto
   const participacion = operacion?.participacion || 50
   const inversion     = proyecto?.valor_total_operacion || proyecto?.precio_compra || 0
   const ventaEst      = proyecto?.precio_venta_estimado || 0
   const vendido       = !!proyecto?.precio_venta_real && proyecto.precio_venta_real > 0
 
-  // Si el proyecto está vendido, mostrar resultado real en lugar de escenarios
   const escenarios = vendido
     ? (() => {
         const venta      = proyecto.precio_venta_real
         const benefTotal = venta - inversion
         const roi        = inversion > 0 ? (benefTotal / inversion) * 100 : 0
         const benefInv   = benefTotal * (participacion / 100)
-        return [{ label: 'Real', color: '#22C55E', real: true, venta, benefTotal, roi, benefInv }]
+        return [{ label: 'Real', color: '#16A34A', real: true, venta, benefTotal, roi, benefInv }]
       })()
     : [
         { label: 'Conserv.',  stored: proyecto?.precio_venta_conservador, mult: 0.90, color: '#888',    real: false },
         { label: 'Realista',  stored: proyecto?.precio_venta_realista,    mult: 1.00, color: '#F26E1F', real: true  },
-        { label: 'Optimista', stored: proyecto?.precio_venta_optimista,   mult: 1.10, color: '#22C55E', real: false },
+        { label: 'Optimista', stored: proyecto?.precio_venta_optimista,   mult: 1.10, color: '#16A34A', real: false },
       ].map(s => {
         const venta      = s.stored ?? (ventaEst * s.mult)
         const benefTotal = venta - inversion
@@ -201,101 +195,118 @@ export default function PortalInversorPage() {
         return { label: s.label, color: s.color, real: s.real, venta, benefTotal, roi, benefInv }
       })
 
-  // Progreso basado en estado real
   const currentStep = ESTADO_STEP[proyecto?.estado] ?? 0
 
   return (
-    <div className="min-h-screen" style={{ background: '#0A0A0A' }}>
+    <div className="min-h-screen pb-10" style={{ background: '#F2F1ED' }}>
+
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3.5"
-        style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3"
+        style={{ background: '#fff', borderBottom: '1px solid #ECEAE4', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
         <div className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm text-white flex-shrink-0"
           style={{ background: '#F26E1F' }}>W</div>
-        <div className="flex-1">
-          <div className="font-black text-[15px] text-white">Portal Inversores</div>
-          <div className="text-xs font-medium" style={{ color: '#888' }}>{inversor?.nombre || 'Inversor'}</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-black text-[14px] leading-none" style={{ color: '#111' }}>Portal Inversores</div>
+          <div className="text-[11px] font-medium mt-0.5 truncate" style={{ color: '#AAA' }}>{inversor?.nombre || 'Inversor'}</div>
         </div>
-        <button onClick={handleLogout} className="text-xs font-bold px-3 py-1.5 rounded-xl"
-          style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', color: '#888' }}>
+        <button onClick={handleLogout}
+          className="text-xs font-black px-3 py-1.5 rounded-xl flex-shrink-0"
+          style={{ background: '#F2F1ED', border: '1px solid #ECEAE4', color: '#888' }}>
           Salir
         </button>
       </div>
 
-      <div className="p-4">
-        {/* Hero */}
-        <div className="rounded-2xl p-5 mb-4 relative overflow-hidden"
-          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="absolute right-[-40px] top-[-40px] w-[180px] h-[180px] rounded-full"
-            style={{ background: 'rgba(242,110,31,0.08)' }} />
-          <span className="text-[11px] font-black px-3 py-1 rounded-full inline-block mb-3 relative"
-            style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F' }}>
+      <div className="p-4 max-w-lg mx-auto">
+
+        {/* Hero card */}
+        <div className="rounded-2xl p-5 mb-3 relative overflow-hidden" style={CARD}>
+          <div className="absolute right-[-30px] top-[-30px] w-[140px] h-[140px] rounded-full"
+            style={{ background: 'rgba(242,110,31,0.06)' }} />
+          <span className="text-[10px] font-black px-3 py-1 rounded-full inline-block mb-3 relative"
+            style={{ background: 'rgba(242,110,31,0.12)', color: '#F26E1F' }}>
             JV {participacion}%
           </span>
-          <div className="font-black text-[26px] text-white leading-none mb-1 relative" style={{ letterSpacing: -1 }}>
-            {proyecto?.nombre || 'Sin proyecto'}
+          <div className="font-black text-[24px] leading-none mb-1 relative" style={{ color: '#111', letterSpacing: -0.5 }}>
+            {proyecto?.nombre || 'Sin proyecto asignado'}
           </div>
-          <div className="text-sm font-medium mb-5 relative" style={{ color: '#888' }}>
+          <div className="text-sm font-medium mb-5 relative" style={{ color: '#AAA' }}>
             {proyecto?.ciudad || '—'} · Entrada {operacion?.fecha_entrada || '—'}
           </div>
+
           <div className="grid grid-cols-3 gap-2 relative">
             {[
-              { v: proyecto?.estado ? proyecto.estado.charAt(0).toUpperCase() + proyecto.estado.slice(1) : '—', l: 'Estado', c: '#F59E0B' },
-              { v: `${proyecto?.avance_reforma || 0}%`, l: 'Avance', c: '#fff' },
-              { v: fmt(escenarios[0]?.benefInv || 0), l: vendido ? 'Retorno real' : 'Retorno est.', c: '#22C55E' },
+              {
+                v: proyecto?.estado
+                  ? proyecto.estado.charAt(0).toUpperCase() + proyecto.estado.slice(1)
+                  : '—',
+                l: 'Estado',
+                c: '#F59E0B',
+              },
+              { v: `${proyecto?.avance_reforma || 0}%`, l: 'Avance', c: '#111' },
+              {
+                v: fmt(escenarios[0]?.benefInv || 0),
+                l: vendido ? 'Retorno real' : 'Retorno est.',
+                c: '#16A34A',
+              },
             ].map(k => (
               <div key={k.l} className="rounded-xl p-3 text-center"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="font-black text-base" style={{ color: k.c }}>{k.v}</div>
-                <div className="text-[10px] font-bold uppercase tracking-wide mt-1" style={{ color: '#888' }}>{k.l}</div>
+                style={{ background: '#F2F1ED', border: '1px solid #ECEAE4' }}>
+                <div className="font-black text-[13px] leading-tight" style={{ color: k.c }}>{k.v}</div>
+                <div className="text-[9px] font-bold uppercase tracking-wide mt-1" style={{ color: '#AAA' }}>{k.l}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Progress — driven by proyecto.estado */}
-        <div className="rounded-2xl p-4 mb-4" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="font-black text-[15px] text-white mb-4">Progreso de la operación</div>
+        {/* Progreso */}
+        <div className="rounded-2xl p-4 mb-3" style={CARD}>
+          <div className="font-black text-[14px] mb-4" style={{ color: '#111' }}>Progreso de la operación</div>
           <div className="flex justify-between relative mb-2">
-            <div className="absolute top-4 left-[5%] right-[5%] h-[1.5px]" style={{ background: '#282828' }} />
+            <div className="absolute top-4 left-[5%] right-[5%] h-[1.5px]" style={{ background: '#ECEAE4' }} />
             {STEPS.map((s, i) => {
               const done   = i < currentStep
               const active = i === currentStep
               return (
                 <div key={s} className="flex flex-col items-center gap-1.5 z-10">
-                  <div className="w-[33px] h-[33px] rounded-full flex items-center justify-center text-xs font-black"
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black"
                     style={{
-                      background: done ? 'rgba(34,197,94,0.15)' : active ? 'rgba(242,110,31,0.18)' : '#1E1E1E',
-                      border: `1.5px solid ${done ? '#22C55E' : active ? '#F26E1F' : '#333'}`,
-                      color: done ? '#22C55E' : active ? '#F26E1F' : '#555',
+                      background: done ? 'rgba(22,163,74,0.10)' : active ? 'rgba(242,110,31,0.12)' : '#F2F1ED',
+                      border: `1.5px solid ${done ? '#16A34A' : active ? '#F26E1F' : '#ECEAE4'}`,
+                      color: done ? '#16A34A' : active ? '#F26E1F' : '#CCC',
                     }}>
                     {done ? '✓' : active ? '⚡' : '○'}
                   </div>
-                  <div className="text-[10px] font-bold uppercase text-center leading-tight"
-                    style={{ color: active ? '#F26E1F' : done ? '#22C55E' : '#555', maxWidth: 44 }}>{s}</div>
+                  <div className="text-[9px] font-bold uppercase text-center leading-tight"
+                    style={{ color: active ? '#F26E1F' : done ? '#16A34A' : '#CCC', maxWidth: 40 }}>{s}</div>
                 </div>
               )
             })}
           </div>
-          <div className="flex justify-between text-xs font-bold mt-3 mb-1.5" style={{ color: '#888' }}>
-            <span>Avance de obra</span>
-            <span style={{ color: '#F26E1F' }}>{proyecto?.avance_reforma || 0}%</span>
-          </div>
-          <div className="h-1 rounded-full overflow-hidden" style={{ background: '#282828' }}>
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${proyecto?.avance_reforma || 0}%`, background: '#F26E1F' }} />
-          </div>
+
+          {proyecto?.estado !== 'vendido' && (
+            <>
+              <div className="flex justify-between text-xs font-bold mt-3 mb-1.5" style={{ color: '#AAA' }}>
+                <span>Avance de obra</span>
+                <span style={{ color: '#F26E1F' }}>{proyecto?.avance_reforma || 0}%</span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#ECEAE4' }}>
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${proyecto?.avance_reforma || 0}%`, background: '#F26E1F' }} />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Tabs */}
-        <div className="flex -mx-4 px-4 mb-4 overflow-x-auto"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="flex mb-3 overflow-x-auto"
+          style={{ borderBottom: '1.5px solid #ECEAE4' }}>
           {TABS.map((t, i) => (
             <button key={t} onClick={() => setTab(i)}
               className="flex-shrink-0 px-5 py-2.5 text-sm font-bold whitespace-nowrap"
               style={{
-                color: tab === i ? '#F26E1F' : '#888',
+                color: tab === i ? '#F26E1F' : '#AAA',
                 borderBottom: tab === i ? '2.5px solid #F26E1F' : '2.5px solid transparent',
-                marginBottom: -1,
+                marginBottom: -1.5,
               }}>
               {t}
             </button>
@@ -305,41 +316,45 @@ export default function PortalInversorPage() {
         {/* ═══ Tab 0: RESUMEN ═══ */}
         {tab === 0 && (
           <div>
-            <div className="grid grid-cols-2 gap-2.5 mb-4">
-              <div className="rounded-xl p-3.5" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Tu aportación</div>
-                <div className="font-black text-[22px] text-white">{fmt(operacion?.capital_invertido || 0)}</div>
-                <div className="text-xs font-medium mt-1" style={{ color: '#888' }}>{participacion}% del capital</div>
+            <div className="grid grid-cols-2 gap-2.5 mb-3">
+              <div className="rounded-xl p-4" style={CARD}>
+                <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Tu aportación</div>
+                <div className="font-black text-[22px]" style={{ color: '#111' }}>{fmt(operacion?.capital_invertido || 0)}</div>
+                <div className="text-xs font-medium mt-1" style={{ color: '#AAA' }}>{participacion}% del capital</div>
               </div>
-              <div className="rounded-xl p-3.5" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>{vendido ? 'Retorno real' : 'Retorno est.'}</div>
-                <div className="font-black text-[22px]" style={{ color: '#22C55E' }}>
+              <div className="rounded-xl p-4" style={CARD}>
+                <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>
+                  {vendido ? 'Retorno real' : 'Retorno est.'}
+                </div>
+                <div className="font-black text-[22px]" style={{ color: '#16A34A' }}>
                   {fmt(escenarios[0]?.benefInv || 0)}
                 </div>
-                <div className="text-xs font-semibold mt-1" style={{ color: '#888' }}>
+                <div className="text-xs font-semibold mt-1" style={{ color: '#AAA' }}>
                   ROI {escenarios[0]?.roi.toFixed(1) || 0}%
                 </div>
               </div>
             </div>
 
-            {/* Escenarios desde datos reales */}
-            <div className="rounded-2xl p-4 mb-4" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="font-black text-[15px] text-white mb-0.5">Escenarios de venta</div>
-              <div className="text-sm font-medium mb-4" style={{ color: '#888' }}>
-                Tu parte ({participacion}%) sobre inversión de {fmt(operacion?.capital_invertido || 0)}
+            {/* Escenarios / Resultado */}
+            <div className="rounded-2xl p-4 mb-3" style={CARD}>
+              <div className="font-black text-[14px] mb-0.5" style={{ color: '#111' }}>
+                {vendido ? 'Resultado final' : 'Escenarios de venta'}
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="text-xs font-medium mb-4" style={{ color: '#AAA' }}>
+                Tu parte ({participacion}%) sobre {fmt(operacion?.capital_invertido || 0)} aportados
+              </div>
+              <div className={`grid gap-2 ${vendido ? 'grid-cols-1' : 'grid-cols-3'}`}>
                 {escenarios.map(s => (
                   <div key={s.label} className="rounded-xl p-3 text-center"
                     style={{
-                      background: s.real ? 'rgba(242,110,31,0.15)' : '#1E1E1E',
-                      border: `1px solid ${s.real ? 'rgba(242,110,31,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                      background: s.real ? 'rgba(242,110,31,0.07)' : '#F2F1ED',
+                      border: `1.5px solid ${s.real ? 'rgba(242,110,31,0.25)' : '#ECEAE4'}`,
                     }}>
                     <div className="text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: s.color }}>{s.label}</div>
-                    <div className="font-black text-[14px] leading-tight" style={{ color: s.real ? '#F26E1F' : '#fff' }}>
+                    <div className="font-black text-[15px] leading-tight" style={{ color: '#111' }}>
                       {fmt(s.venta)}
                     </div>
-                    <div className="text-[11px] font-semibold mt-0.5" style={{ color: '#aaa' }}>
+                    <div className="text-[12px] font-bold mt-0.5" style={{ color: s.benefInv >= 0 ? '#16A34A' : '#EF4444' }}>
                       {s.benefInv >= 0 ? '+' : ''}{fmt(s.benefInv)}
                     </div>
                     <div className="text-[11px] font-black mt-0" style={{ color: s.color }}>
@@ -351,11 +366,11 @@ export default function PortalInversorPage() {
             </div>
 
             <div className="rounded-xl p-4 flex gap-3 items-start"
-              style={{ background: 'rgba(242,110,31,0.08)', border: '1px solid rgba(242,110,31,0.2)' }}>
+              style={{ background: 'rgba(242,110,31,0.06)', border: '1.5px solid rgba(242,110,31,0.18)' }}>
               <span className="text-xl flex-shrink-0">📧</span>
               <div>
-                <div className="text-sm font-black text-white mb-1">Informe semanal automático</div>
-                <div className="text-sm font-medium leading-relaxed" style={{ color: '#888' }}>
+                <div className="text-sm font-black mb-0.5" style={{ color: '#111' }}>Informe semanal automático</div>
+                <div className="text-xs font-medium leading-relaxed" style={{ color: '#888' }}>
                   Cada viernes recibís un resumen con el avance de la semana, gastos y próximos pasos.
                 </div>
               </div>
@@ -366,33 +381,34 @@ export default function PortalInversorPage() {
         {/* ═══ Tab 1: MOVIMIENTOS ═══ */}
         {tab === 1 && (
           <div>
-            <div className="grid grid-cols-2 gap-2.5 mb-4">
-              <div className="rounded-xl p-3.5" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Ingresos</div>
-                <div className="font-black text-[22px]" style={{ color: '#22C55E' }}>{fmt(ingresos)}</div>
+            <div className="grid grid-cols-2 gap-2.5 mb-3">
+              <div className="rounded-xl p-4" style={CARD}>
+                <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Ingresos</div>
+                <div className="font-black text-[22px]" style={{ color: '#16A34A' }}>{fmt(ingresos)}</div>
               </div>
-              <div className="rounded-xl p-3.5" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Egresos</div>
+              <div className="rounded-xl p-4" style={CARD}>
+                <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Egresos</div>
                 <div className="font-black text-[22px]" style={{ color: '#EF4444' }}>{fmt(gastos)}</div>
               </div>
             </div>
-            <div className="rounded-2xl overflow-hidden" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="p-4 pb-0 flex items-center justify-between">
-                <div className="font-black text-[15px] text-white">Cuenta {proyecto?.nombre}</div>
-                <span className="text-xs font-bold" style={{ color: '#888' }}>
-                  Saldo: <span className="font-black" style={{ color: saldo >= 0 ? '#22C55E' : '#EF4444' }}>{fmt(saldo)}</span>
+
+            <div className="rounded-2xl overflow-hidden" style={CARD}>
+              <div className="px-4 py-3.5 flex items-center justify-between" style={{ borderBottom: '1px solid #F2F1ED' }}>
+                <div className="font-black text-[14px]" style={{ color: '#111' }}>{proyecto?.nombre}</div>
+                <span className="text-xs font-bold" style={{ color: '#AAA' }}>
+                  Saldo: <span className="font-black" style={{ color: saldo >= 0 ? '#16A34A' : '#EF4444' }}>{fmt(saldo)}</span>
                 </span>
               </div>
               {movimientos.length === 0 ? (
-                <div className="p-4 text-sm text-center" style={{ color: '#555' }}>Sin movimientos registrados</div>
+                <div className="p-6 text-sm text-center" style={{ color: '#CCC' }}>Sin movimientos registrados</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr style={{ background: '#1E1E1E' }}>
-                        {['Fecha','Concepto','Importe'].map(h => (
-                          <th key={h} className="text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wide"
-                            style={{ color: '#888', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{h}</th>
+                      <tr style={{ background: '#F2F1ED' }}>
+                        {['Fecha', 'Concepto', 'Importe'].map(h => (
+                          <th key={h} className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wide"
+                            style={{ color: '#AAA', borderBottom: '1px solid #ECEAE4' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -400,11 +416,11 @@ export default function PortalInversorPage() {
                       {movimientos.map((m, i) => {
                         const isIngreso = m.tipo === 'Ingreso' || m.monto > 0
                         return (
-                          <tr key={m.id} style={{ borderBottom: i < movimientos.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-                            <td className="px-3 py-3 text-xs font-medium" style={{ color: '#888' }}>{m.fecha?.slice(5)}</td>
-                            <td className="px-3 py-3 text-sm font-medium text-white">{m.concepto}</td>
-                            <td className="px-3 py-3 text-xs font-black font-mono"
-                              style={{ color: isIngreso ? '#22C55E' : '#EF4444' }}>
+                          <tr key={m.id} style={{ borderBottom: i < movimientos.length - 1 ? '1px solid #F2F1ED' : 'none' }}>
+                            <td className="px-4 py-3 text-xs font-medium" style={{ color: '#AAA' }}>{m.fecha?.slice(5)}</td>
+                            <td className="px-4 py-3 text-sm font-medium" style={{ color: '#111' }}>{m.concepto}</td>
+                            <td className="px-4 py-3 text-xs font-black font-mono"
+                              style={{ color: isIngreso ? '#16A34A' : '#EF4444' }}>
                               {isIngreso ? '+' : '-'}{fmt(Math.abs(m.monto))}
                             </td>
                           </tr>
@@ -420,22 +436,24 @@ export default function PortalInversorPage() {
 
         {/* ═══ Tab 2: BITÁCORA ═══ */}
         {tab === 2 && (
-          <div className="rounded-2xl p-4" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="font-black text-[15px] text-white mb-4">Novedades del proyecto</div>
+          <div className="rounded-2xl p-5" style={CARD}>
+            <div className="font-black text-[14px] mb-4" style={{ color: '#111' }}>Novedades del proyecto</div>
             {bitacora.length === 0 ? (
-              <div className="text-center py-8 text-sm" style={{ color: '#555' }}>Sin novedades publicadas todavía</div>
+              <div className="text-center py-8 text-sm" style={{ color: '#CCC' }}>Sin novedades publicadas todavía</div>
             ) : (
               <div className="pl-5 relative">
-                <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#282828' }} />
+                <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#ECEAE4' }} />
                 {bitacora.map(b => (
                   <div key={b.id} className="relative mb-5">
-                    <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full"
-                      style={{ background: '#F26E1F', border: '2px solid #0A0A0A' }} />
-                    <div className="text-[11px] font-bold mb-1 font-mono uppercase tracking-wide"
-                      style={{ color: 'rgba(255,255,255,0.4)' }}>
-                      {new Date(b.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}).toUpperCase()}
+                    <div className="absolute -left-[15px] top-1.5 w-2.5 h-2.5 rounded-full"
+                      style={{ background: '#F26E1F', border: '2px solid #F2F1ED' }} />
+                    <div className="text-[10px] font-bold mb-1 uppercase tracking-wide"
+                      style={{ color: '#CCC' }}>
+                      {new Date(b.created_at).toLocaleDateString('es-ES', {
+                        day: '2-digit', month: 'short', year: 'numeric'
+                      }).toUpperCase()}
                     </div>
-                    <div className="text-sm font-medium text-white leading-relaxed">{b.contenido}</div>
+                    <div className="text-sm font-medium leading-relaxed" style={{ color: '#111' }}>{b.contenido}</div>
                     {b.autor && (
                       <div className="text-xs font-bold mt-1" style={{ color: '#F26E1F' }}>{b.autor}</div>
                     )}
