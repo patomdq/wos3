@@ -45,8 +45,12 @@ export default function PortalInversorPage() {
         if (cancelled) return
         if (!session) { router.replace('/inversor'); return }
 
-        const { data: roleData } = await supabase
-          .from('user_roles').select('role').eq('user_id', session.user.id).single()
+        const { data: roleByUid } = await supabase
+          .from('user_roles').select('role').eq('user_id', session.user.id).maybeSingle()
+        const { data: roleByEmail } = !roleByUid ? await supabase
+          .from('user_roles').select('role').eq('email', session.user.email!).maybeSingle()
+          : { data: null }
+        const roleData = roleByUid || roleByEmail
         const isAdmin = roleData?.role === 'admin' || roleData?.role === 'pm'
 
         const { data: inv } = await supabase
