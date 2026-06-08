@@ -161,7 +161,7 @@ export default function HasuPage() {
           alt=""
           style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%' }}
         />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,10,10,0.1) 0%, rgba(10,10,10,0.55) 60%, rgba(242,241,237,1) 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }} />
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 20px 14px' }}>
           <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', textShadow: '0 1px 8px rgba(0,0,0,0.3)' }}>HASU</div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 3, fontWeight: 600 }}>Control de empresa · Track Record · Módulos</div>

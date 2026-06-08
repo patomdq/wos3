@@ -945,7 +945,7 @@ export default function MercadoPage() {
             alt="Mercado"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 70%, rgba(244,244,244,0) 100%)' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }} />
           <div className="absolute bottom-0 left-0 right-0 px-6 pb-6 flex items-end justify-between">
             <div>
               <h1 className="font-black text-[26px] text-white leading-tight" style={{ letterSpacing: '-0.5px' }}>Mercado</h1>
@@ -958,8 +958,6 @@ export default function MercadoPage() {
             </button>
           </div>
         </div>
-        {/* Difuminado de integración con la página */}
-        <div className="absolute left-0 right-0" style={{ bottom: -1, height: 60, background: 'linear-gradient(to bottom, transparent, #F4F4F4)', pointerEvents: 'none' }} />
       </div>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 40px' }}>
