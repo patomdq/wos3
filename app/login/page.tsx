@@ -52,7 +52,7 @@ export default function LoginPage() {
               flex: 1, padding: '9px', borderRadius: 9, border: 'none', cursor: 'pointer',
               fontSize: 12, fontWeight: 800,
               background: section === s ? '#F26E1F' : 'transparent',
-              color: section === s ? '#fff' : '#666',
+              color: section === s ? '#fff' : '#111',
               transition: 'all 0.15s',
             }}>
               {s === 'wos' ? 'WOS' : 'Portal Inversor'}
