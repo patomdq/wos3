@@ -42,6 +42,18 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 **Última sesión — 08/06/2026**
 
 Hecho:
+- **Proyectos — limpieza de secciones**
+  - Quitado "Objetivo 1.000.000 €" con barra de progreso
+  - Quitada sección "PROYECTOS VENDIDOS" con todas sus cards
+  - Commit: `36ebbed`
+- **HASU — KPIs rediseñados**
+  - Agregado "Resultado Operativo" (antes EBITDA): `Σ (precio_venta_real − valor_total_operacion)` todas las ops con venta real
+  - Quitado "Faltan para 1M€"
+  - Quitado "Inversores JV"
+  - Agregado "Duración Media" en meses (promedio de operaciones)
+  - Parcela MDQ fijada a 6 meses en el cálculo del promedio (tipo='Parcela' → 6m fijo)
+  - Grid final: 4 KPIs — Beneficio HASU · Resultado Operativo · ROI Medio · Duración Media
+  - Commits: `cc2214a`, `f460d64`, `d39be56`, `0f06796`, `12c5436`, `3bc4a69`
 - **Login unificado — fondo crema, sin logo W naranja**
   - Un solo `/login` con toggle "WOS" / "Portal Inversor" — fondo `#F2F1ED` unificado
   - WOS → redirige a `/proyectos`, Portal Inversor → redirige a `/inversor/portal`
