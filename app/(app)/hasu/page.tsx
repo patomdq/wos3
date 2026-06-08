@@ -155,16 +155,18 @@ export default function HasuPage() {
     <div style={{ background: '#F2F1ED', minHeight: '100vh', paddingBottom: 90 }}>
 
       {/* ── HERO ── */}
-      <div style={{ position: 'relative', height: 250, overflow: 'hidden' }}>
-        <img
-          src="https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=1400&q=80"
-          alt=""
-          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%' }}
-        />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }} />
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 20px 14px' }}>
-          <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', textShadow: '0 1px 8px rgba(0,0,0,0.3)' }}>HASU</div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 3, fontWeight: 600 }}>Control de empresa · Track Record · Módulos</div>
+      <div style={{ padding: '20px 20px 0' }}>
+        <div style={{ position: 'relative', height: 160, overflow: 'hidden', borderRadius: 20 }}>
+          <img
+            src="https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=1400&q=80"
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%' }}
+          />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}>HASU</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 4, fontWeight: 600 }}>Control de empresa · Track Record · Módulos</div>
+          </div>
         </div>
       </div>
 

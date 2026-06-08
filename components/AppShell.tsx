@@ -135,27 +135,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ══════════════════════════════════════════ */}
       <div className="hidden md:flex h-screen overflow-hidden flex-1">
 
-        {/* Toggle button — fixed, always visible */}
-        <button
-          onClick={() => setCollapsed(c => !c)}
-          style={{
-            position: 'fixed',
-            top: 18,
-            left: collapsed ? 30 : 248,
-            width: 26, height: 26,
-            background: '#fff',
-            borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
-            fontSize: 11, color: '#888',
-            boxShadow: '0 1px 6px rgba(0,0,0,0.12)',
-            zIndex: 30,
-            border: '1px solid #ECEAE4',
-            transition: 'left 0.25s cubic-bezier(0.4,0,0.2,1)',
-          }}
-        >
-          {collapsed ? '›' : '‹'}
-        </button>
 
         {/* Sidebar */}
         <div style={{
@@ -173,16 +152,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           zIndex: 20,
         }}>
 
-          {/* Logo */}
-          <div style={{ padding: collapsed ? '24px 0 18px' : '24px 20px 18px', borderBottom: '1px solid #ECEAE4', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: collapsed ? 'center' : 'flex-start' }}>
+          {/* Logo + toggle */}
+          <div style={{ padding: collapsed ? '16px 0' : '16px 20px', borderBottom: '1px solid #ECEAE4', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between' }}>
             {collapsed ? (
-              <div style={{ fontSize: 15, fontWeight: 900, color: '#F26E1F' }}>W</div>
+              <button onClick={() => setCollapsed(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div style={{ fontSize: 15, fontWeight: 900, color: '#F26E1F' }}>W</div>
+                <div style={{ fontSize: 9, color: '#CCC' }}>›</div>
+              </button>
             ) : (
               <>
-                <div style={{ fontSize: 17, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>WALLEST</div>
-                <div style={{ fontSize: 9, fontWeight: 700, color: '#BBB', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.4, marginTop: 2 }}>
-                  HASU ACTIVOS INMOBILIARIOS SL
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>WALLEST</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#BBB', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.4, marginTop: 2 }}>
+                    HASU ACTIVOS INMOBILIARIOS SL
+                  </div>
                 </div>
+                <button onClick={() => setCollapsed(true)} style={{ width: 24, height: 24, borderRadius: '50%', background: '#F2F1ED', border: '1px solid #ECEAE4', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 11, color: '#888', flexShrink: 0 }}>
+                  ‹
+                </button>
               </>
             )}
           </div>

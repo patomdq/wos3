@@ -938,22 +938,22 @@ export default function MercadoPage() {
   return (
     <div style={{ background: '#F4F4F4', minHeight: '100vh' }}>
       {/* ── Banner cabecera ── */}
-      <div className="relative w-full" style={{ height: 250, overflow: 'visible' }}>
-        <div style={{ height: 250, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ padding: '20px 20px 0' }}>
+        <div style={{ position: 'relative', height: 160, overflow: 'hidden', borderRadius: 20 }}>
           <img
             src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1400&h=500&fit=crop&q=80"
             alt="Mercado"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }} />
-          <div className="absolute bottom-0 left-0 right-0 px-6 pb-6 flex items-end justify-between">
+          <div className="absolute inset-0 flex items-end justify-between" style={{ padding: '20px 24px' }}>
             <div>
-              <h1 className="font-black text-[26px] text-white leading-tight" style={{ letterSpacing: '-0.5px' }}>Mercado</h1>
-              <p className="text-[13px] font-medium mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>Inmuebles en estudio</p>
+              <h1 className="font-black text-[28px] text-white leading-tight" style={{ letterSpacing: '-0.5px' }}>Mercado</h1>
+              <p className="text-[12px] font-semibold mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Inmuebles en estudio</p>
             </div>
             <button onClick={() => setNuevoOpen(true)}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
-              style={{ background: '#F26E1F' }}>
+              style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.3)' }}>
               + Agregar
             </button>
           </div>
