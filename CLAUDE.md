@@ -39,6 +39,24 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 08/06/2026**
+
+Hecho:
+- **Heroes de páginas — overlay naranja estilo portal inversor**
+  - Proyectos, HASU y Mercado: overlay cambió de degradado negro oscuro a `linear-gradient(135deg, rgba(232,98,26,0.82) → rgba(201,169,110,0.70))` — mismo que portal inversor
+  - Commit: `e26d8f0`
+- **Heroes — card redondeada estilo portal inversor**
+  - Los 3 heroes ahora son cards con `borderRadius: 20`, `height: 160px`, `padding: 20px` lateral — flotan sobre el fondo en lugar de sangrar al borde
+  - Botón "Nuevo/Agregar" con glass effect (`rgba(255,255,255,0.2)` + `backdropFilter: blur(8px)`) en lugar de naranja sólido
+  - Commit: `186aa5a`
+- **Sidebar rail mode — iconos visibles al contraer**
+  - Sidebar colapsada: 56px de ancho (antes 0) con los 3 iconos centrados a 22px
+  - Toggle integrado dentro del área del logo (no fixed superpuesto que pisaba la W)
+  - Expandido: botón `‹` a la derecha de "WALLEST"
+  - Contraído: monograma `W` naranja clickeable con flecha `›` debajo
+  - Avatar del usuario visible en rail, sin nombre/email
+  - Commits: `518ac53`, `186aa5a`
+
 **Última sesión — 07/06/2026 (continuación 2)**
 
 Hecho:
