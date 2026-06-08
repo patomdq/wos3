@@ -28,138 +28,98 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
-    if (section === 'inversor') {
-      router.replace('/inversor/portal')
-    } else {
-      router.replace('/proyectos')
-    }
+    router.replace(section === 'inversor' ? '/inversor/portal' : '/proyectos')
   }
 
   const isWos = section === 'wos'
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6"
-      style={{ background: isWos ? '#0A0A0A' : '#F2F1ED', transition: 'background 0.3s ease' }}>
-      <div className="w-full max-w-sm">
+    <div style={{ minHeight: '100vh', background: '#F2F1ED', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}>
+      <div style={{ width: '100%', maxWidth: 360 }}>
 
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-[52px] h-[52px] rounded-2xl flex items-center justify-center font-black text-[22px] text-white mx-auto mb-4"
-            style={{ background: '#F26E1F', boxShadow: '0 4px 16px rgba(242,110,31,0.3)' }}>W</div>
-          <div className="font-black text-[28px] leading-tight"
-            style={{ color: isWos ? '#fff' : '#111', letterSpacing: -1 }}>Wallest</div>
-          <div className="text-sm font-medium mt-1" style={{ color: isWos ? '#666' : '#AAA' }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 32, fontWeight: 900, color: '#111', letterSpacing: -2, lineHeight: 1 }}>WALLEST</div>
+          <div style={{ fontSize: 10, color: '#BBB', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginTop: 5 }}>
             Hasu Activos Inmobiliarios SL
           </div>
         </div>
 
-        {/* Selector de acceso */}
-        <div className="flex rounded-2xl p-1 mb-6"
-          style={{ background: isWos ? '#141414' : '#E8E6E0', border: isWos ? '1px solid rgba(255,255,255,0.08)' : '1px solid #DEDAD2' }}>
-          <button
-            onClick={() => { setSection('wos'); setError('') }}
-            className="flex-1 py-2.5 rounded-xl text-sm font-black transition-all"
-            style={{
-              background: isWos ? '#F26E1F' : 'transparent',
-              color: isWos ? '#fff' : '#888',
+        {/* Toggle */}
+        <div style={{ display: 'flex', background: '#E8E6E0', borderRadius: 12, padding: 4, gap: 4, marginBottom: 20 }}>
+          {(['wos', 'inversor'] as Section[]).map(s => (
+            <button key={s} onClick={() => { setSection(s); setError('') }} style={{
+              flex: 1, padding: '9px', borderRadius: 9, border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: 800,
+              background: section === s ? '#F26E1F' : 'transparent',
+              color: section === s ? '#fff' : '#666',
+              transition: 'all 0.15s',
             }}>
-            🏗️ WOS
-          </button>
-          <button
-            onClick={() => { setSection('inversor'); setError('') }}
-            className="flex-1 py-2.5 rounded-xl text-sm font-black transition-all"
-            style={{
-              background: !isWos ? '#F26E1F' : 'transparent',
-              color: !isWos ? '#fff' : '#888',
-            }}>
-            📊 Portal Inversor
-          </button>
+              {s === 'wos' ? 'WOS' : 'Portal Inversor'}
+            </button>
+          ))}
         </div>
 
-        {/* Card formulario */}
-        <div className="w-full rounded-2xl p-6 mb-4"
-          style={{
-            background: isWos ? '#141414' : '#fff',
-            border: isWos ? '1px solid rgba(255,255,255,0.08)' : '1px solid #ECEAE4',
-            boxShadow: isWos ? 'none' : '0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04)',
-          }}>
-
-          <div className="font-black text-[18px] mb-0.5"
-            style={{ color: isWos ? '#fff' : '#111' }}>
+        {/* Form card */}
+        <div style={{ background: '#fff', border: '1px solid #ECEAE4', borderRadius: 18, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04)' }}>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#111', marginBottom: 3 }}>
             {isWos ? 'Acceso operativo' : 'Acceso inversor'}
           </div>
-          <div className="text-sm font-medium mb-5"
-            style={{ color: isWos ? '#666' : '#AAA' }}>
+          <div style={{ fontSize: 11, color: '#BBB', marginBottom: 20 }}>
             {isWos ? 'Panel de gestión interno de HASU' : 'Consultá el estado de tu inversión en tiempo real'}
           </div>
 
           <form onSubmit={handleLogin}>
-            <div className="mb-3">
-              <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5"
-                style={{ color: isWos ? '#ccc' : '#AAA' }}>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#CCC', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                 Correo electrónico
-              </label>
+              </div>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder={isWos ? 'tu@wallest.pro' : 'tu@email.com'} required
-                className="w-full rounded-xl px-4 py-3 text-sm outline-none font-medium"
-                style={{
-                  background: isWos ? '#1E1E1E' : '#F2F1ED',
-                  border: `1.5px solid ${isWos ? 'rgba(255,255,255,0.08)' : '#ECEAE4'}`,
-                  color: isWos ? '#fff' : '#111',
-                }}
+                style={{ width: '100%', background: '#F2F1ED', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 14px', fontSize: 13, color: '#111', outline: 'none', fontFamily: 'inherit' }}
                 onFocus={e => e.target.style.borderColor = '#F26E1F'}
-                onBlur={e => e.target.style.borderColor = isWos ? 'rgba(255,255,255,0.08)' : '#ECEAE4'} />
-            </div>
-            <div className="mb-3">
-              <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5"
-                style={{ color: isWos ? '#ccc' : '#AAA' }}>
-                Contraseña
-              </label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" required
-                className="w-full rounded-xl px-4 py-3 text-sm outline-none font-medium"
-                style={{
-                  background: isWos ? '#1E1E1E' : '#F2F1ED',
-                  border: `1.5px solid ${isWos ? 'rgba(255,255,255,0.08)' : '#ECEAE4'}`,
-                  color: isWos ? '#fff' : '#111',
-                }}
-                onFocus={e => e.target.style.borderColor = '#F26E1F'}
-                onBlur={e => e.target.style.borderColor = isWos ? 'rgba(255,255,255,0.08)' : '#ECEAE4'} />
+                onBlur={e => e.target.style.borderColor = '#ECEAE4'} />
             </div>
 
-            <div className="flex justify-end mb-4">
-              <span className="text-sm font-bold cursor-pointer" style={{ color: '#F26E1F' }}>
-                ¿Olvidaste tu contraseña?
-              </span>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#CCC', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Contraseña
+              </div>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••" required
+                style={{ width: '100%', background: '#F2F1ED', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 14px', fontSize: 13, color: '#111', outline: 'none', fontFamily: 'inherit' }}
+                onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                onBlur={e => e.target.style.borderColor = '#ECEAE4'} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#F26E1F', cursor: 'pointer' }}>¿Olvidaste tu contraseña?</span>
             </div>
 
             {section === 'inversor' && (
-              <label className="flex items-start gap-2.5 cursor-pointer mb-5 p-3.5 rounded-xl"
-                style={{ background: '#F2F1ED', border: '1px solid #ECEAE4' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', background: '#F9F8F5', border: '1px solid #ECEAE4', borderRadius: 10, padding: '10px 12px', marginBottom: 16 }}>
                 <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)}
-                  className="mt-0.5 flex-shrink-0 w-[18px] h-[18px] cursor-pointer"
-                  style={{ accentColor: '#F26E1F' }} />
-                <span className="text-sm font-medium leading-snug" style={{ color: '#555' }}>
-                  Acepto los <span style={{ color: '#F26E1F' }} className="font-bold">términos y condiciones</span> de Wallest
+                  style={{ marginTop: 1, flexShrink: 0, width: 15, height: 15, accentColor: '#F26E1F', cursor: 'pointer' }} />
+                <span style={{ fontSize: 11, color: '#AAA', lineHeight: 1.4 }}>
+                  Acepto los <span style={{ color: '#F26E1F', fontWeight: 700 }}>términos y condiciones</span> de Wallest
                 </span>
               </label>
             )}
 
-            {error && (
-              <div className="text-sm font-medium mb-3" style={{ color: '#EF4444' }}>{error}</div>
-            )}
+            {error && <div style={{ fontSize: 12, color: '#EF4444', marginBottom: 12, fontWeight: 600 }}>{error}</div>}
 
-            <button type="submit" disabled={loading}
-              className="w-full py-4 text-white rounded-xl text-sm font-black disabled:opacity-50 transition-opacity"
-              style={{ background: '#F26E1F' }}>
+            <button type="submit" disabled={loading} style={{
+              width: '100%', background: '#F26E1F', color: '#fff', border: 'none',
+              borderRadius: 11, padding: '13px', fontSize: 13, fontWeight: 900,
+              cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
+            }}>
               {loading ? 'Verificando...' : isWos ? 'Iniciar sesión →' : 'Ver mi inversión →'}
             </button>
           </form>
         </div>
 
-        <div className="text-center text-xs" style={{ color: isWos ? '#555' : '#AAA' }}>
-          Portal seguro · <span style={{ color: '#F26E1F' }} className="font-bold">Berciamedia</span> para{' '}
-          <span style={{ color: '#F26E1F' }} className="font-bold">Hasu SL</span>
+        <div style={{ textAlign: 'center', fontSize: 10, color: '#CCC', marginTop: 16 }}>
+          Portal seguro · <span style={{ color: '#F26E1F', fontWeight: 700 }}>Berciamedia</span> para <span style={{ color: '#F26E1F', fontWeight: 700 }}>Hasu SL</span>
         </div>
       </div>
     </div>
