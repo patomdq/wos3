@@ -260,25 +260,7 @@ export default function ProyectosPage() {
         </div>
 
         {/* ── CHARTS ROW ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, marginBottom: 48 }}>
-
-          {/* Objetivo 1M€ */}
-          <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: 24 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>Objetivo 1.000.000 €</div>
-            <div style={{ fontSize: 11, color: '#BBB', marginBottom: 16 }}>Beneficio acumulado de operaciones vendidas</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#F26E1F', letterSpacing: '-0.03em' }}>{fmt(benefVendidos)}</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#F26E1F' }}>{pctObjetivo.toFixed(1)}%</div>
-            </div>
-            <div style={{ height: 8, background: '#F2F1ED', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
-              <div style={{ height: '100%', width: `${pctObjetivo}%`, background: 'linear-gradient(90deg, #F26E1F, #FBBF24)', borderRadius: 99, transition: 'width 0.8s ease' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#CCC', fontWeight: 700 }}>
-              <span>0€</span>
-              <span>{finalizados.length} vendidas</span>
-              <span>1M€</span>
-            </div>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 28, marginBottom: 48 }}>
 
           {/* ROI por operación */}
           <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: 24 }}>
@@ -563,106 +545,6 @@ export default function ProyectosPage() {
           </>
         )}
 
-        {/* ── PROYECTOS VENDIDOS ── */}
-        {finalizados.length > 0 && (
-          <>
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em', marginBottom: 20 }}>PROYECTOS VENDIDOS · {finalizados.length}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
-              {finalizados.map(p => {
-                const inversion = getInv(p)
-                const invH      = getInvHasu(p)
-                const benef     = getBenefHasu(p)
-                const roi       = invH > 0 ? (benef / invH) * 100 : null
-                const isExp     = expanded.has(p.id)
-                const ef        = editFinalizado[p.id]
-
-                return (
-                  <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', overflow: 'hidden', opacity: 0.85 }}>
-                    {/* Cover image */}
-                    {p.imagen_portada ? (
-                      <div style={{ position: 'relative', height: 110, overflow: 'hidden' }}>
-                        <img src={p.imagen_portada} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.3))' }} />
-                        <label style={{ position: 'absolute', bottom: 8, right: 8, width: 26, height: 26, borderRadius: 8, background: 'rgba(0,0,0,0.45)', color: '#fff', cursor: uploadingImg[p.id] ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }} title="Cambiar imagen">
-                          {uploadingImg[p.id] ? '…' : '📷'}
-                          <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(p.id, f) }} />
-                        </label>
-                      </div>
-                    ) : (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '10px 20px 0', cursor: uploadingImg[p.id] ? 'wait' : 'pointer', width: 'fit-content' }}>
-                        <span style={{ fontSize: 11, color: '#CCC', fontWeight: 700 }}>{uploadingImg[p.id] ? 'Subiendo…' : '📷 Agregar portada'}</span>
-                        <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(p.id, f) }} />
-                      </label>
-                    )}
-                    <div style={{ padding: 20 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                        <div onClick={() => router.push(`/proyectos/${p.id}`)} style={{ cursor: 'pointer', flex: 1, minWidth: 0, marginRight: 8 }}>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>{p.nombre}</div>
-                          <div style={{ fontSize: 11, color: '#999', marginTop: 3 }}>📍 {p.ciudad || '—'}</div>
-                        </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          {roi !== null && (
-                            <>
-                              <div style={{ fontSize: 18, fontWeight: 900, color: roi >= 0 ? '#22C55E' : '#EF4444' }}>{roi >= 0 ? '+' : ''}{roi.toFixed(1)}%</div>
-                              <div style={{ fontSize: 10, color: '#BBB', fontWeight: 700 }}>ROI real</div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, background: 'rgba(34,197,94,0.10)', color: '#22C55E' }}>Vendido</span>
-                        {benef > 0 && <span style={{ fontSize: 11, fontWeight: 900, color: '#22C55E' }}>+{fmt(benef)}</span>}
-                      </div>
-                    </div>
-
-                    {/* Expanded edit */}
-                    <div style={{ maxHeight: isExp ? 280 : 0, overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
-                      <div style={{ padding: '14px 20px 20px', borderTop: '1px solid #F2F1ED' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, color: '#999' }}>Editar datos reales</div>
-                          {!ef ? (
-                            <button onClick={() => setEditFinalizado(e => ({ ...e, [p.id]: { venta: p.precio_venta_real ? String(p.precio_venta_real) : '', inv: p.valor_total_operacion ? String(p.valor_total_operacion) : '' } }))}
-                              style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: 'rgba(242,110,31,0.1)', color: '#F26E1F', border: 'none', cursor: 'pointer' }}>Editar ✎</button>
-                          ) : (
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => setEditFinalizado(e => { const n2 = { ...e }; delete n2[p.id]; return n2 })}
-                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F2F1ED', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
-                              <button onClick={() => guardarFinalizado(p.id)} disabled={saving[p.id + '_fin']}
-                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F26E1F', color: '#fff', border: 'none', cursor: 'pointer' }}>Guardar</button>
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                          {[
-                            { label: 'Precio venta real', key: 'venta' as const, val: p.precio_venta_real },
-                            { label: 'Inversión total', key: 'inv' as const, val: p.valor_total_operacion },
-                          ].map(f => (
-                            <div key={f.key} style={{ borderRadius: 10, padding: '8px 10px', background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
-                              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 4 }}>{f.label}</div>
-                              {ef ? (
-                                <input type="number" value={ef[f.key]}
-                                  onChange={e => setEditFinalizado(prev => ({ ...prev, [p.id]: { ...prev[p.id], [f.key]: e.target.value } }))}
-                                  style={{ width: '100%', fontSize: 12, fontWeight: 900, border: '1px solid rgba(242,110,31,0.4)', borderRadius: 6, outline: 'none', background: '#fff', padding: '2px 4px' }}
-                                />
-                              ) : (
-                                <div style={{ fontSize: 12, fontWeight: 900, color: '#111' }}>{f.val ? fmt(f.val) : '—'}</div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button onClick={() => toggle(p.id)}
-                      style={{ width: '100%', padding: '10px', fontSize: 11, fontWeight: 900, background: 'none', border: 'none', borderTop: '1px solid #F2F1ED', color: isExp ? '#CCC' : '#F26E1F', cursor: 'pointer' } as React.CSSProperties}>
-                      {isExp ? 'Cerrar ↑' : 'Editar datos ✎'}
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </>
-        )}
 
         {/* Empty state */}
         {!loading && activos.length === 0 && pipeline.length === 0 && finalizados.length === 0 && (
