@@ -176,15 +176,16 @@ export default function HasuPage() {
 
         {/* ── KPI ROW ── */}
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 28 }}>
-            {[1,2,3].map(i => <div key={i} style={{ height: 130, borderRadius: 18, background: '#E8E6E0' }} />)}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
+            {[1,2,3,4].map(i => <div key={i} style={{ height: 130, borderRadius: 18, background: '#E8E6E0' }} />)}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
             {[
               { icon: '🏆', val: fmt(totalBenefReal), label: 'BENEFICIO HASU', sub: 'acumulado real', color: '#22C55E' },
               { icon: '📊', val: fmt(ebitda), label: 'RESULTADO OPERATIVO', sub: `${cerradosReal.length} operaciones`, color: ebitda >= 0 ? '#22C55E' : '#EF4444' },
               { icon: '📈', val: trWithVenta.length > 0 ? fmtPct(trRoiMedio) : '—', label: 'ROI MEDIO', sub: 'media operaciones', color: '#a78bfa' },
+              { icon: '⏱', val: trDurMedia !== null ? `${trDurMedia} meses` : '—', label: 'DURACIÓN MEDIA', sub: 'por operación', color: '#60A5FA' },
             ].map(k => (
               <div key={k.label} style={{ ...card, padding: '28px 24px' }}>
                 <div style={{ fontSize: 24, marginBottom: 12 }}>{k.icon}</div>
@@ -272,11 +273,11 @@ export default function HasuPage() {
 
         {/* Track KPIs 4 col */}
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
             {[1,2,3,4,5,6,7,8].map(i => <div key={i} style={{ height: 110, borderRadius: 18, background: '#E8E6E0' }} />)}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
             {[
               { icon: '📊', val: String(catFiltered.length), label: 'OPERACIONES', sub: `${catFiltered.filter(r => r.precio_venta_real && r.precio_venta_real > 0).length} con venta real`, color: '#111' },
               { icon: '⏱', val: trDurMedia !== null ? `${trDurMedia}m` : '—', label: 'DURACIÓN MEDIA', sub: 'por operación', color: '#111' },
@@ -422,7 +423,7 @@ export default function HasuPage() {
 
         {/* ── MÓDULOS EMPRESA ── */}
         <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em', marginBottom: 20 }}>MÓDULOS EMPRESA</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28 }}>
           {[FINANZAS_MOD, ...MODULOS].map(m => (
             <button key={m.nombre} onClick={() => router.push(m.href)}
               style={{ ...card, padding: 22, display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', textAlign: 'left', border: 'none', transition: 'box-shadow 0.15s' }}>
