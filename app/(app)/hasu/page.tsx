@@ -176,16 +176,15 @@ export default function HasuPage() {
 
         {/* ── KPI ROW ── */}
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
-            {[1,2,3,4].map(i => <div key={i} style={{ height: 130, borderRadius: 18, background: '#E8E6E0' }} />)}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 28 }}>
+            {[1,2,3].map(i => <div key={i} style={{ height: 130, borderRadius: 18, background: '#E8E6E0' }} />)}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 28 }}>
             {[
               { icon: '🏆', val: fmt(totalBenefReal), label: 'BENEFICIO HASU', sub: 'acumulado real', color: '#22C55E' },
               { icon: '📊', val: fmt(ebitda), label: 'RESULTADO OPERATIVO', sub: `${cerradosReal.length} operaciones`, color: ebitda >= 0 ? '#22C55E' : '#EF4444' },
               { icon: '📈', val: trWithVenta.length > 0 ? fmtPct(trRoiMedio) : '—', label: 'ROI MEDIO', sub: 'media operaciones', color: '#a78bfa' },
-              { icon: '🤝', val: String(inversores), label: 'INVERSORES JV', sub: 'activos', color: '#60A5FA' },
             ].map(k => (
               <div key={k.label} style={{ ...card, padding: '28px 24px' }}>
                 <div style={{ fontSize: 24, marginBottom: 12 }}>{k.icon}</div>
@@ -273,11 +272,11 @@ export default function HasuPage() {
 
         {/* Track KPIs 4 col */}
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 28 }}>
             {[1,2,3,4,5,6,7,8].map(i => <div key={i} style={{ height: 110, borderRadius: 18, background: '#E8E6E0' }} />)}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 28 }}>
             {[
               { icon: '📊', val: String(catFiltered.length), label: 'OPERACIONES', sub: `${catFiltered.filter(r => r.precio_venta_real && r.precio_venta_real > 0).length} con venta real`, color: '#111' },
               { icon: '⏱', val: trDurMedia !== null ? `${trDurMedia}m` : '—', label: 'DURACIÓN MEDIA', sub: 'por operación', color: '#111' },
