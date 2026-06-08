@@ -118,8 +118,9 @@ export default function HasuPage() {
   const trBenefTotal = trWithVenta.reduce((s, r) => s + getBenef(r), 0)
   const trBenefHasu  = trWithVenta.reduce((s, r) => s + getBenefHasu(r), 0)
   const trRoiMedio   = trWithVenta.length > 0 ? trWithVenta.reduce((s, r) => s + getRoi(r), 0) / trWithVenta.length : 0
+  const getDurAdj    = (r: TrackRow) => r.tipo?.toLowerCase() === 'parcela' ? 6 : getDur(r)
   const trDurMedia   = (() => {
-    const durs = catFiltered.map(getDur).filter(Boolean) as number[]
+    const durs = catFiltered.map(getDurAdj).filter(Boolean) as number[]
     return durs.length > 0 ? Math.round(durs.reduce((a, b) => a + b, 0) / durs.length) : null
   })()
   const trRoiAnual   = (() => {
