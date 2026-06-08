@@ -141,7 +141,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           style={{
             position: 'fixed',
             top: 18,
-            left: collapsed ? 12 : 248,
+            left: collapsed ? 30 : 248,
             width: 26, height: 26,
             background: '#fff',
             borderRadius: '50%',
@@ -159,8 +159,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Sidebar */}
         <div style={{
-          width: collapsed ? 0 : 240,
-          minWidth: collapsed ? 0 : 240,
+          width: collapsed ? 56 : 240,
+          minWidth: collapsed ? 56 : 240,
           height: '100vh',
           background: '#FAFAF8',
           borderRight: '1px solid #ECEAE4',
@@ -174,11 +174,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }}>
 
           {/* Logo */}
-          <div style={{ padding: '24px 20px 18px', borderBottom: '1px solid #ECEAE4', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-            <div style={{ fontSize: 17, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>WALLEST</div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: '#BBB', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.4, marginTop: 2 }}>
-              HASU ACTIVOS INMOBILIARIOS SL
-            </div>
+          <div style={{ padding: collapsed ? '24px 0 18px' : '24px 20px 18px', borderBottom: '1px solid #ECEAE4', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: collapsed ? 'center' : 'flex-start' }}>
+            {collapsed ? (
+              <div style={{ fontSize: 15, fontWeight: 900, color: '#F26E1F' }}>W</div>
+            ) : (
+              <>
+                <div style={{ fontSize: 17, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>WALLEST</div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#BBB', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.4, marginTop: 2 }}>
+                  HASU ACTIVOS INMOBILIARIOS SL
+                </div>
+              </>
+            )}
           </div>
 
           {/* Nav items */}
@@ -189,8 +195,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <button key={item.id}
                   onClick={() => router.push(item.href)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '12px 20px', width: '100%',
+                    display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 12,
+                    padding: collapsed ? '12px 0' : '12px 20px', width: '100%',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
                     cursor: 'pointer', background: isActive ? 'rgba(242,110,31,0.08)' : 'transparent',
                     border: 'none', textAlign: 'left',
                     whiteSpace: 'nowrap', overflow: 'hidden',
@@ -203,12 +210,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   {isActive && (
                     <div style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, background: '#F26E1F', borderRadius: '0 3px 3px 0' }} />
                   )}
-                  <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, color: isActive ? '#F26E1F' : undefined }}>
+                  <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: collapsed ? 22 : 16, flexShrink: 0, color: isActive ? '#F26E1F' : undefined }}>
                     {item.icon}
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: isActive ? 800 : 700, color: isActive ? '#111' : '#888' }}>
-                    {item.label}
-                  </div>
+                  {!collapsed && (
+                    <div style={{ fontSize: 13, fontWeight: isActive ? 800 : 700, color: isActive ? '#111' : '#888' }}>
+                      {item.label}
+                    </div>
+                  )}
                 </button>
               )
             })}
@@ -254,8 +263,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setDropdownOpen(o => !o)}
             style={{
-              padding: '16px 20px', borderTop: '1px solid #ECEAE4',
-              display: 'flex', alignItems: 'center', gap: 12,
+              padding: collapsed ? '16px 0' : '16px 20px', borderTop: '1px solid #ECEAE4',
+              display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 12,
               cursor: 'pointer', position: 'relative', flexShrink: 0,
               overflow: 'hidden', whiteSpace: 'nowrap', background: 'none', border: 'none', width: '100%', textAlign: 'left',
             }}
@@ -280,10 +289,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               )}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{user?.nombre || 'Usuario'}</div>
-              <div style={{ fontSize: 10, color: '#AAA', marginTop: 2 }}>{user?.email}</div>
-            </div>
+            {!collapsed && (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{user?.nombre || 'Usuario'}</div>
+                <div style={{ fontSize: 10, color: '#AAA', marginTop: 2 }}>{user?.email}</div>
+              </div>
+            )}
           </button>
         </div>
 
