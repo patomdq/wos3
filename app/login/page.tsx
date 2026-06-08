@@ -65,13 +65,13 @@ export default function LoginPage() {
           <div style={{ fontSize: 16, fontWeight: 900, color: '#111', marginBottom: 3 }}>
             {isWos ? 'Acceso operativo' : 'Acceso inversor'}
           </div>
-          <div style={{ fontSize: 11, color: '#BBB', marginBottom: 20 }}>
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 20 }}>
             {isWos ? 'Panel de gestión interno de HASU' : 'Consultá el estado de tu inversión en tiempo real'}
           </div>
 
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#CCC', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                 Correo electrónico
               </div>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
@@ -82,7 +82,7 @@ export default function LoginPage() {
             </div>
 
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#CCC', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                 Contraseña
               </div>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
@@ -118,9 +118,6 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <div style={{ textAlign: 'center', fontSize: 10, color: '#CCC', marginTop: 16 }}>
-          Portal seguro · <span style={{ color: '#F26E1F', fontWeight: 700 }}>Berciamedia</span> para <span style={{ color: '#F26E1F', fontWeight: 700 }}>Hasu SL</span>
-        </div>
       </div>
     </div>
   )
