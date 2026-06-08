@@ -42,6 +42,23 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 **Última sesión — 08/06/2026**
 
 Hecho:
+- **Login unificado — fondo crema, sin logo W naranja**
+  - Un solo `/login` con toggle "WOS" / "Portal Inversor" — fondo `#F2F1ED` unificado
+  - WOS → redirige a `/proyectos`, Portal Inversor → redirige a `/inversor/portal`
+  - Toggle: activo naranja `#F26E1F`, inactivo texto `#111` sobre `#E8E6E0` (legible)
+  - Sin íconos emoji en botones del toggle
+  - Labels de campos en `#888` sobre blanco (contraste correcto)
+  - Footer "Berciamedia" eliminado
+  - `/inversor` redirige automáticamente a `/login`
+  - Commits: `b0f1ca2`, `858d579`, `4c026b7`, `26caeee`
+- **Dominio wos.wallest.pro — en proceso**
+  - DNS de wallest.pro gestionado por Hostinger (`ns1/ns2.dns-parking.com` = infraestructura propia de Hostinger)
+  - CNAME `wos` → `c1507012a5757589.vercel-dns-017.com` configurado en Hostinger con TTL 300
+  - Pendiente: propagación DNS (soporte Hostinger dice es tema de caché)
+  - Vercel: dominio agregado al proyecto wos3, estado "Invalid Configuration" hasta que propague
+- **Limpieza Vercel — proyectos eliminados**
+  - Eliminados: `wallest-operating-system`, `aurea-scanner`, `hardcore-ardinghelli-04354c`
+  - Quedan: `wos3`, `mesa-juntas`, `planificador-diario` (Silvia)
 - **Heroes de páginas — overlay naranja estilo portal inversor**
   - Proyectos, HASU y Mercado: overlay cambió de degradado negro oscuro a `linear-gradient(135deg, rgba(232,98,26,0.82) → rgba(201,169,110,0.70))` — mismo que portal inversor
   - Commit: `e26d8f0`
