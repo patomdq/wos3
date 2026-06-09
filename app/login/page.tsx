@@ -87,7 +87,7 @@ export default function LoginPage() {
               </div>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••" required
-                style={{ width: '100%', background: '#F2F1ED', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 14px', fontSize: 13, color: '#111', outline: 'none', fontFamily: 'inherit' }}
+                style={{ width: '100%', background: '#fff', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 14px', fontSize: 13, color: '#111', outline: 'none', fontFamily: 'inherit' }}
                 onFocus={e => e.target.style.borderColor = '#F26E1F'}
                 onBlur={e => e.target.style.borderColor = '#ECEAE4'} />
             </div>
