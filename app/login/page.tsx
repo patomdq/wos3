@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [terms, setTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,11 +86,17 @@ export default function LoginPage() {
               <div style={{ fontSize: 9, fontWeight: 700, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                 Contraseña
               </div>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" required
-                style={{ width: '100%', background: '#fff', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 14px', fontSize: 13, color: '#111', outline: 'none', fontFamily: 'inherit' }}
-                onFocus={e => e.target.style.borderColor = '#F26E1F'}
-                onBlur={e => e.target.style.borderColor = '#ECEAE4'} />
+              <div style={{ position: 'relative' }}>
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••" required
+                  style={{ width: '100%', background: '#fff', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 40px 11px 14px', fontSize: 13, color: '#111', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                  onBlur={e => e.target.style.borderColor = '#ECEAE4'} />
+                <button type="button" onClick={() => setShowPassword(v => !v)}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 16, lineHeight: 1, padding: 0 }}>
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
