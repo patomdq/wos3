@@ -295,18 +295,18 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
-    name: 'insert_radar',
-    description: 'Agrega un inmueble al Mercado/Radar para seguimiento.',
+    name: 'insert_mercado',
+    description: 'Agrega un inmueble al módulo Mercado de WOS3 para seguimiento. Usalo cuando el usuario pegue una URL, describa un piso, o pida guardar/agregar un inmueble.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        titulo: { type: 'string' },
+        titulo: { type: 'string', description: 'Título o nombre corto del inmueble' },
         direccion: { type: 'string' },
         ciudad: { type: 'string' },
-        precio: { type: 'number' },
+        precio: { type: 'number', description: 'Precio pedido en euros' },
         habitaciones: { type: 'number' },
-        superficie: { type: 'number' },
-        url: { type: 'string' },
+        superficie: { type: 'number', description: 'Superficie en m²' },
+        url: { type: 'string', description: 'URL del anuncio' },
         notas: { type: 'string' },
       },
       required: ['direccion', 'precio'],
@@ -567,7 +567,7 @@ async function executeTool(
         }).join('\n')
       }
 
-      case 'insert_radar': {
+      case 'insert_mercado': {
         const { data, error } = await supabase.from('inmuebles').insert({
           titulo: toolInput.titulo || toolInput.direccion,
           direccion: toolInput.direccion,
@@ -581,8 +581,8 @@ async function executeTool(
           estado: 'activo',
         }).select('id').single()
 
-        if (error) return `Error al agregar al Radar: ${error.message}`
-        return `✅ Inmueble "${toolInput.titulo || toolInput.direccion}" agregado al Radar (ID: ${data?.id})`
+        if (error) return `Error al agregar a Mercado: ${error.message}`
+        return `✅ Inmueble "${toolInput.titulo || toolInput.direccion}" agregado a Mercado (ID: ${data?.id})`
       }
 
       case 'analizar_inversion': {
@@ -698,11 +698,11 @@ export async function POST(req: NextRequest) {
   if (text === '/start') {
     const existing = await getOrCreateUser(chatId, from.first_name, from.last_name, from.username)
     if (existing) {
-      await sendMessage(chatId, `👋 Hola ${existing.nombre}, ya estás registrado como <b>${existing.rol}</b>.\n\n• 🏠 Cargar inmuebles al Radar (URL o descripción)\n• 📊 Analizar rentabilidad\n• 📝 Bitácora · ✅ Partidas · 💸 Gastos · 📅 Calendario`)
+      await sendMessage(chatId, `👋 Hola ${existing.nombre}, ya estás registrado como <b>${existing.rol}</b>.\n\n• 🏠 Cargar inmuebles a Mercado (URL o descripción)\n• 📊 Analizar rentabilidad\n• 📝 Bitácora · ✅ Partidas · 💸 Gastos · 📅 Calendario`)
     } else {
       await registerUser(chatId, from.first_name, from.last_name, from.username)
       const nombre = [from.first_name, from.last_name].filter(Boolean).join(' ')
-      await sendMessage(chatId, `✅ ¡Bienvenido ${nombre}!\n\nEstás registrado en WallestBot. Puedes:\n• 🏠 Cargar inmuebles al Radar (URL o descripción)\n• 📊 Analizar rentabilidad de una operación\n• 📝 Anotar en bitácora de proyectos\n• ✅ Marcar partidas de obra como finalizadas\n• 💸 Registrar gastos e ingresos\n• 📅 Ver y crear eventos en el calendario\n\nEscribe en lenguaje natural — entiendo español.`)
+      await sendMessage(chatId, `✅ ¡Bienvenido ${nombre}!\n\nEstás registrado en WallestBot. Puedes:\n• 🏠 Cargar inmuebles a Mercado (URL o descripción)\n• 📊 Analizar rentabilidad de una operación\n• 📝 Anotar en bitácora de proyectos\n• ✅ Marcar partidas de obra como finalizadas\n• 💸 Registrar gastos e ingresos\n• 📅 Ver y crear eventos en el calendario\n\nEscribe en lenguaje natural — entiendo español.`)
     }
     return NextResponse.json({ ok: true })
   }
