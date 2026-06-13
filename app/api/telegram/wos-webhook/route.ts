@@ -698,11 +698,11 @@ export async function POST(req: NextRequest) {
   if (text === '/start') {
     const existing = await getOrCreateUser(chatId, from.first_name, from.last_name, from.username)
     if (existing) {
-      await sendMessage(chatId, `👋 Hola ${existing.nombre}, ya estás registrado como <b>${existing.rol}</b>.\n\nPuedes preguntarme sobre proyectos, partidas de obra, movimientos, calendario y más.`)
+      await sendMessage(chatId, `👋 Hola ${existing.nombre}, ya estás registrado como <b>${existing.rol}</b>.\n\n• 🏠 Cargar inmuebles al Radar (URL o descripción)\n• 📊 Analizar rentabilidad\n• 📝 Bitácora · ✅ Partidas · 💸 Gastos · 📅 Calendario`)
     } else {
       await registerUser(chatId, from.first_name, from.last_name, from.username)
       const nombre = [from.first_name, from.last_name].filter(Boolean).join(' ')
-      await sendMessage(chatId, `✅ ¡Bienvenido ${nombre}!\n\nEstás registrado en WallestBot. Puedes:\n• Consultar proyectos\n• Marcar partidas de obra\n• Registrar gastos\n• Anotar en bitácora\n• Ver y crear eventos`)
+      await sendMessage(chatId, `✅ ¡Bienvenido ${nombre}!\n\nEstás registrado en WallestBot. Puedes:\n• 🏠 Cargar inmuebles al Radar (URL o descripción)\n• 📊 Analizar rentabilidad de una operación\n• 📝 Anotar en bitácora de proyectos\n• ✅ Marcar partidas de obra como finalizadas\n• 💸 Registrar gastos e ingresos\n• 📅 Ver y crear eventos en el calendario\n\nEscribe en lenguaje natural — entiendo español.`)
     }
     return NextResponse.json({ ok: true })
   }
