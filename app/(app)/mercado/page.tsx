@@ -276,8 +276,8 @@ export default function MercadoPage() {
           reforma_estimada: typeof u.reforma_estimada === 'number' ? u.reforma_estimada : null,
           notas: u.notas || null,
         }))
-        await supabase.from('inmueble_unidades').insert(rows)
-        setUnidades(prev => ({ ...prev, [data.id]: rows.map((r: any, i: number) => ({ ...r, id: `temp-${i}` })) }))
+        const { data: insertedUnidades } = await supabase.from('inmueble_unidades').insert(rows).select()
+        if (insertedUnidades) setUnidades(prev => ({ ...prev, [data.id]: insertedUnidades }))
       }
       setInmuebles(prev => [data, ...prev])
       setNuevoOpen(false)
@@ -358,7 +358,7 @@ export default function MercadoPage() {
     setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
     setEditPortada(null)
     setEditPortadaPreview(null)
-    if (item.tipologia === 'edificio' && !unidades[item.id]) fetchUnidades(item.id)
+    if (item.tipologia === 'edificio') fetchUnidades(item.id)
   }
   const saveEdit = async () => {
     if (!editInmueble) return
