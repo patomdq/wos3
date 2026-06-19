@@ -1448,7 +1448,7 @@ export default function MercadoPage() {
                               <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Tipo</label>
                               <select value={nuevaUnidad.tipo} onChange={e => setNuevaUnidad(f => ({ ...f, tipo: e.target.value }))}
                                 className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
-                                {['Piso','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
+                                {['Piso','Dúplex','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
                               </select>
                             </div>
                             <div>
@@ -1774,7 +1774,7 @@ export default function MercadoPage() {
                               <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Tipo</label>
                               <select value={nuevaUnidad.tipo} onChange={e => setNuevaUnidad(f => ({ ...f, tipo: e.target.value }))}
                                 className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
-                                {['Piso','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
+                                {['Piso','Dúplex','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
                               </select>
                             </div>
                             <div>
