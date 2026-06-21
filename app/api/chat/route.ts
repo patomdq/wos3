@@ -825,7 +825,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'analizar_inversion',
-    description: 'Analiza si una operación inmobiliaria es viable. Busca comparables en web para validar el precio de venta, calcula el precio máximo de compra y el ROI para 3 escenarios (Conservador 30%, Realista 50%, Optimista 70%). Usalo cuando el usuario pida analizar una inversión, calcular ROI, o saber cuánto puede pagar por un inmueble.',
+    description: 'Análisis completo de inversión inmobiliaria: comparables de mercado, desglose de costes, escenarios de venta a finalista e inversor, precio máximo de compra y sensibilidad reforma. Usalo cuando el usuario pida analizar una inversión, calcular ROI, saber cuánto puede pagar, o preguntar a qué precio venderle a un inversor vs finalista.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -835,6 +835,8 @@ const TOOLS: Anthropic.Tool[] = [
         precio_ofertado: { type: 'number', description: 'Precio al que está ofertado / precio pedido por el vendedor en euros' },
         coste_reforma: { type: 'number', description: 'Coste estimado de reforma en euros' },
         precio_venta_orientativo: { type: 'number', description: 'Precio de venta objetivo estimado por el usuario (opcional). Si no se indica, se busca via web.' },
+        renta_mensual_est: { type: 'number', description: 'Renta mensual estimada en alquiler (€/mes). Necesaria para calcular el escenario de venta a inversor por yield.' },
+        yield_inversor_obj: { type: 'number', description: 'Yield bruto que busca el inversor comprador (0-1, ej: 0.06 para 6%). Default 0.06.' },
         tipo: { type: 'string', enum: ['HASU', 'JV'], description: 'Tipo de operación: HASU (100% propio) o JV (joint venture con socio)' },
         porcentaje_hasu: { type: 'number', description: 'Porcentaje de HASU en la operación (0-100). Default 100 para HASU, el acordado para JV.' },
         socio: { type: 'string', description: 'Nombre del socio JV si aplica' },
@@ -2139,103 +2141,177 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }
     }
     if (name === 'analizar_inversion') {
-      const { zona, superficie, habitaciones, precio_ofertado, coste_reforma, precio_venta_orientativo, tipo = 'HASU', porcentaje_hasu = 100, socio } = input
+      const {
+        zona, superficie, habitaciones,
+        precio_ofertado, coste_reforma,
+        precio_venta_orientativo,
+        renta_mensual_est,
+        yield_inversor_obj = 0.06,
+        tipo = 'HASU', porcentaje_hasu = 100, socio,
+      } = input
 
-      // 1. Buscar comparables en web para validar/ajustar precio de venta
+      // 1. Comparables web
       const busqueda = await buscarComparables(zona, superficie, habitaciones)
 
-      // 2. Determinar precio de venta final
+      // 2. Precio de venta finalista
       let precioVenta: number
       let fuenteVenta: string
       if (precio_venta_orientativo) {
         if (busqueda.precioSugerido) {
           const diff = Math.abs(precio_venta_orientativo - busqueda.precioSugerido) / busqueda.precioSugerido
-          if (diff > 0.15) {
-            // diferencia >15% → alertar y usar el del usuario igual
-            fuenteVenta = `orientativo del usuario (${precio_venta_orientativo.toLocaleString('es-ES')}€) — web sugiere ${busqueda.precioSugerido.toLocaleString('es-ES')}€ (diferencia ${Math.round(diff * 100)}%)`
-          } else {
-            fuenteVenta = `orientativo del usuario, validado con comparables web (±${Math.round(diff * 100)}%)`
-          }
+          fuenteVenta = diff > 0.15
+            ? `usuario ${precio_venta_orientativo.toLocaleString('es-ES')}€ ⚠️ web sugiere ${busqueda.precioSugerido.toLocaleString('es-ES')}€ (dif. ${Math.round(diff * 100)}%)`
+            : `usuario, validado vs web (±${Math.round(diff * 100)}%)`
         } else {
-          fuenteVenta = 'orientativo del usuario ⚠️ sin comparables verificables en portales'
+          fuenteVenta = 'usuario ⚠️ sin comparables web'
         }
         precioVenta = precio_venta_orientativo
       } else if (busqueda.precioSugerido) {
         precioVenta = busqueda.precioSugerido
-        fuenteVenta = `estimado por comparables web — ${busqueda.precioMedioM2}€/m² × ${superficie}m²`
+        fuenteVenta = `comparables web — ${busqueda.precioMedioM2}€/m² × ${superficie}m²`
       } else {
         return { result: 'No se pudo determinar el precio de venta. Por favor indicá un precio de venta orientativo.' }
       }
 
-      // 3. Calcular escenarios
-      const escenarios = calcEscenarios(precioVenta, coste_reforma)
-      const gastos = calcGastosFijos(precio_ofertado)
-      const costoOfertado = calcCostoTotal(precio_ofertado, coste_reforma)
-      const beneficioOfertado = precioVenta - costoOfertado
-      const roiOfertado = beneficioOfertado / costoOfertado
-
       const fmt = (n: number) => n.toLocaleString('es-ES') + '€'
       const fmtPct = (n: number) => (n * 100).toFixed(1) + '%'
 
-      // 4. Evaluación del precio ofertado
-      const roiLabel = roiOfertado >= 0.70 ? '🟢 excelente' : roiOfertado >= 0.50 ? '🟢 sólido' : roiOfertado >= 0.30 ? '🟡 aceptable' : '🔴 por debajo del mínimo'
-      const evaluacion = `**Precio ofertado: ${fmt(precio_ofertado)}** → ROI ${fmtPct(roiOfertado)} (${roiLabel})`
+      // 3. Desglose de costes con precio ofertado
+      const itp = Math.floor(precio_ofertado * 0.02)
+      const notaria = 500
+      const registro = 500
+      const gastosFijos = itp + notaria + registro
+      const costoTotal = precio_ofertado + coste_reforma + gastosFijos
 
-      // 5. Tabla de escenarios con precio/m² como referencia base
-      const pm2Header = busqueda.precioMedioM2
-        ? `_Base: ${busqueda.precioMedioM2}€/m² × ${superficie}m² = ${fmt(precioVenta)} precio de venta estimado_`
-        : `_Base: precio de venta ${fmt(precioVenta)}_`
+      // 4. Evaluación precio ofertado → finalista
+      const beneficioFinalista = precioVenta - costoTotal
+      const roiFinalista = beneficioFinalista / costoTotal
+      const roiLabel = roiFinalista >= 0.70 ? '🟢 Excelente' : roiFinalista >= 0.50 ? '🟢 Sólido' : roiFinalista >= 0.30 ? '🟡 Aceptable' : '🔴 Bajo mínimo'
+      const parteHasuFinalista = Math.floor(beneficioFinalista * (porcentaje_hasu / 100))
 
-      const tablaEscenarios = [
-        '| Escenario | ROI | Compra máxima | Beneficio neto' + (porcentaje_hasu < 100 ? ` | HASU (${porcentaje_hasu}%)` : '') + ' |',
-        '|-----------|-----|--------------|---------------' + (porcentaje_hasu < 100 ? '|----------' : '') + '|',
-        ...escenarios.map(e => {
-          const parteHasu = Math.floor(e.beneficioNeto * (porcentaje_hasu / 100))
-          const hasuCol = porcentaje_hasu < 100 ? ` | ${fmt(parteHasu)}` : ''
-          return `| ${e.label} | ${Math.round(e.roiTarget * 100)}% | **${fmt(e.precioMaxCompra)}** | ${fmt(e.beneficioNeto)}${hasuCol} |`
-        }),
-      ].join('\n')
+      // 5. Escenarios finalista — precio máximo de compra
+      const escenarios = calcEscenarios(precioVenta, coste_reforma)
 
-      // 6. Tabla de comparables Fotocasa
+      // 6. Escenario venta a inversor (por yield de alquiler)
+      let seccionInversor = ''
+      if (renta_mensual_est && renta_mensual_est > 0) {
+        const rentaAnual = renta_mensual_est * 12
+        // Precio al que compraría el inversor para obtener su yield objetivo
+        const precioInversor = Math.floor(rentaAnual / yield_inversor_obj)
+        const beneficioInversor = precioInversor - costoTotal
+        const roiInversor = beneficioInversor / costoTotal
+        const parteHasuInversor = Math.floor(beneficioInversor * (porcentaje_hasu / 100))
+        const roiInvLabel = roiInversor >= 0.30 ? '🟢 Entra' : roiInversor >= 0.15 ? '🟡 Ajustado' : '🔴 No entra'
+        // También: si queremos ROI 30% nosotros, ¿a qué precio mínimo le vendemos?
+        const precioMinParaRoi30 = Math.ceil(costoTotal * 1.30)
+        const yieldConPrecioMin = rentaAnual / precioMinParaRoi30
+        seccionInversor = [
+          '',
+          '### 🏦 Escenario B — Venta a inversor (alquiler)',
+          `_Renta estimada: ${fmt(renta_mensual_est)}/mes = ${fmt(rentaAnual)}/año_`,
+          `_Yield objetivo del inversor: ${(yield_inversor_obj * 100).toFixed(0)}%_`,
+          '',
+          `| Concepto | Valor |`,
+          `|----------|-------|`,
+          `| Precio que pagaría el inversor | **${fmt(precioInversor)}** |`,
+          `| Nuestro coste total | ${fmt(costoTotal)} |`,
+          `| Beneficio neto para Wallest | **${fmt(beneficioInversor)}** |`,
+          `| ROI Wallest | ${fmtPct(roiInversor)} ${roiInvLabel} |`,
+          porcentaje_hasu < 100 ? `| Parte HASU (${porcentaje_hasu}%) | ${fmt(parteHasuInversor)} |` : null,
+          '',
+          `> Si queremos ROI ≥30% vendiendo a inversor → precio mínimo **${fmt(precioMinParaRoi30)}** (yield inversor: ${(yieldConPrecioMin * 100).toFixed(1)}%)`,
+        ].filter(Boolean).join('\n')
+      } else {
+        seccionInversor = [
+          '',
+          '### 🏦 Escenario B — Venta a inversor',
+          '_Sin renta mensual estimada. Indicá la renta esperada para calcular a qué precio venderle al inversor y qué yield le queda._',
+        ].join('\n')
+      }
+
+      // 7. Sensibilidad reforma ±20%
+      const reformaMenos20 = coste_reforma * 0.80
+      const reformaMas20 = coste_reforma * 1.20
+      const roiReformaMenos = (precioVenta - calcCostoTotal(precio_ofertado, reformaMenos20)) / calcCostoTotal(precio_ofertado, reformaMenos20)
+      const roiReformaMas = (precioVenta - calcCostoTotal(precio_ofertado, reformaMas20)) / calcCostoTotal(precio_ofertado, reformaMas20)
+
+      // 8. Tabla comparables
       let tablaComp: string
       if (busqueda.comparables.length === 0) {
-        tablaComp = '⚠️ Sin comparables verificables en Fotocasa para esta búsqueda. Validá el precio de venta manualmente antes de tomar decisiones.'
+        tablaComp = '⚠️ Sin comparables en Fotocasa. Validá el precio de venta manualmente.'
       } else {
-        const conM2 = busqueda.comparables.filter(c => c.precioM2).length
+        const conM2 = busqueda.comparables.filter((c: { precioM2?: number }) => c.precioM2).length
         const resumen = busqueda.precioMedioM2
           ? `**Precio medio mercado: ${busqueda.precioMedioM2}€/m²** _(${conM2} comparable${conM2 !== 1 ? 's' : ''} con superficie)_`
           : ''
         const filas = [
-          '| Inmueble | m² | Hab | Precio total | €/m² |',
-          '|----------|-----|-----|-------------|------|',
-          ...busqueda.comparables.map(c => {
-            const label = `[${(c.direccion || c.titulo || 'Ver anuncio').slice(0, 45)}](${c.url})`
-            const sup = c.superficie ? `${c.superficie}` : '—'
-            const hab = c.habitaciones ? `${c.habitaciones}` : '—'
-            const pm2 = c.precioM2 ? `${c.precioM2}` : '—'
-            return `| ${label} | ${sup} | ${hab} | **${fmt(c.precio)}** | ${pm2} |`
+          '| Inmueble | m² | Hab | Precio | €/m² |',
+          '|----------|-----|-----|--------|------|',
+          ...busqueda.comparables.map((c: { direccion?: string; titulo?: string; url: string; superficie?: number; habitaciones?: number; precio: number; precioM2?: number }) => {
+            const label = `[${(c.direccion || c.titulo || 'Ver anuncio').slice(0, 40)}](${c.url})`
+            return `| ${label} | ${c.superficie ?? '—'} | ${c.habitaciones ?? '—'} | **${fmt(c.precio)}** | ${c.precioM2 ?? '—'} |`
           }),
         ].join('\n')
         tablaComp = resumen ? resumen + '\n\n' + filas : filas
       }
 
-      // 7. Componer output final
-      const tipoLabel = tipo === 'JV' ? `JV ${porcentaje_hasu}% HASU${socio ? ' / ' + (100 - porcentaje_hasu) + '% ' + socio : ''}` : 'HASU 100%'
+      const tipoLabel = tipo === 'JV'
+        ? `JV ${porcentaje_hasu}% HASU${socio ? ' / ' + (100 - porcentaje_hasu) + '% ' + socio : ''}`
+        : 'HASU 100%'
+
+      const pm2Header = busqueda.precioMedioM2
+        ? `_Precio de venta base: ${busqueda.precioMedioM2}€/m² × ${superficie}m² = **${fmt(precioVenta)}** (${fuenteVenta})_`
+        : `_Precio de venta base: **${fmt(precioVenta)}** (${fuenteVenta})_`
 
       const result = [
-        `## Análisis de inversión — ${zona} (${superficie}m²${habitaciones ? ', ' + habitaciones + 'hab' : ''})`,
-        `**Tipo:** ${tipoLabel} · **Gastos fijos (ITP + notaría + registro):** ${fmt(gastos)}`,
+        `## 📊 Análisis de inversión — ${zona} (${superficie}m²${habitaciones ? ', ' + habitaciones + ' hab' : ''})`,
+        `**Tipo:** ${tipoLabel}`,
         '',
-        `### Comparables Fotocasa`,
+        '### 📋 Comparables de mercado',
         tablaComp,
         '',
-        `### Precio máximo de compra por escenario`,
         pm2Header,
-        tablaEscenarios,
         '',
-        `### Evaluación del precio ofertado`,
-        evaluacion,
-      ].join('\n')
+        '---',
+        '',
+        '### 💰 Desglose de costes (precio ofertado)',
+        `| Concepto | Importe |`,
+        `|----------|---------|`,
+        `| Precio compra | ${fmt(precio_ofertado)} |`,
+        `| ITP (2%) | ${fmt(itp)} |`,
+        `| Notaría | ${fmt(notaria)} |`,
+        `| Registro | ${fmt(registro)} |`,
+        `| Reforma estimada | ${fmt(coste_reforma)} |`,
+        `| **TOTAL INVERSIÓN** | **${fmt(costoTotal)}** |`,
+        '',
+        '---',
+        '',
+        '### 🏠 Escenario A — Venta a finalista',
+        `| Concepto | Valor |`,
+        `|----------|-------|`,
+        `| Precio venta mercado | **${fmt(precioVenta)}** |`,
+        `| Beneficio neto | **${fmt(beneficioFinalista)}** |`,
+        `| ROI sobre inversión | ${fmtPct(roiFinalista)} ${roiLabel} |`,
+        porcentaje_hasu < 100 ? `| Parte HASU (${porcentaje_hasu}%) | ${fmt(parteHasuFinalista)} |` : null,
+        '',
+        '#### Precio máximo de compra para ROI objetivo (venta finalista)',
+        `| Escenario | ROI objetivo | Compra máx. | Beneficio | ${porcentaje_hasu < 100 ? `HASU (${porcentaje_hasu}%) | ` : ''}`,
+        `|-----------|-------------|-------------|-----------|${porcentaje_hasu < 100 ? '----------|' : ''}`,
+        ...escenarios.map((e: Escenario) => {
+          const hasu = porcentaje_hasu < 100 ? ` ${fmt(Math.floor(e.beneficioNeto * porcentaje_hasu / 100))} |` : ''
+          return `| ${e.label} | ${Math.round(e.roiTarget * 100)}% | **${fmt(e.precioMaxCompra)}** | ${fmt(e.beneficioNeto)} |${hasu}`
+        }),
+        seccionInversor,
+        '',
+        '---',
+        '',
+        '### 🔧 Sensibilidad reforma',
+        `| Escenario reforma | Coste | ROI finalista |`,
+        `|-------------------|-------|--------------|`,
+        `| −20% reforma | ${fmt(reformaMenos20)} | ${fmtPct(roiReformaMenos)} |`,
+        `| Base | ${fmt(coste_reforma)} | ${fmtPct(roiFinalista)} |`,
+        `| +20% reforma | ${fmt(reformaMas20)} | ${fmtPct(roiReformaMas)} |`,
+      ].filter((l): l is string => l !== null && l !== undefined).join('\n')
 
       return { result }
     }

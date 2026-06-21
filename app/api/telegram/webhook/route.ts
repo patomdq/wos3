@@ -378,45 +378,39 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     `💰 Precio pedido: ${precio_pedido ? fmt(precio_pedido) + '€' : 'No informado'}`,
   ].join('\n')
 
-  // Build market reference lines — shown regardless of whether ROI can be calculated
+  // Referencias de mercado
   let comparablesNote = ''
   if (ventaDesdeComparables) {
     const lines: string[] = []
     const { fuente, precioM2, precioNotariadoM2, fuenteNotariado } = ventaDesdeComparables
-
     if (fuente === 'fotocasa' && precioM2) {
-      const surfLabel = data.metros ? ` pisos ~${data.metros}m²` : ''
+      const surfLabel = data.metros ? ` ~${data.metros}m²` : ''
       lines.push(`📊 Fotocasa${surfLabel}: ${precioM2}€/m² ⚠️ precio oferta`)
     }
-
     if (precioNotariadoM2 && fuenteNotariado) {
       const notLabel =
-        fuenteNotariado === 'notariado_municipio' ? 'Notariado municipio — cierres reales (mar25-feb26)' :
-        fuenteNotariado === 'notariado_provincia' ? 'Notariado provincia — cierres reales (mar25-feb26)' :
-        fuenteNotariado === 'tabla_referencia_municipio' ? 'MITMA municipio' :
-        'MITMA provincia'
+        fuenteNotariado === 'notariado_municipio' ? 'Notariado municipio (cierres reales)' :
+        fuenteNotariado === 'notariado_provincia' ? 'Notariado provincia (cierres reales)' :
+        fuenteNotariado === 'tabla_referencia_municipio' ? 'MITMA municipio' : 'MITMA provincia'
       lines.push(`📊 ${notLabel}: ${precioNotariadoM2}€/m²`)
     }
-
     if (fuente !== 'fotocasa' && !precioNotariadoM2 && precioM2) {
       const fuenteLabel =
-        fuente === 'notariado_municipio' ? 'Notariado — cierres reales (mar25-feb26)' :
-        fuente === 'notariado_provincia' ? 'Notariado provincia — cierres reales (mar25-feb26)' :
+        fuente === 'notariado_municipio' ? 'Notariado (cierres reales)' :
+        fuente === 'notariado_provincia' ? 'Notariado provincia (cierres reales)' :
         fuente === 'tabla_referencia_municipio' ? 'MITMA municipio' :
-        fuente === 'tabla_referencia_provincia' ? 'MITMA provincia' :
-        'Fotocasa ⚠️ precio oferta'
+        fuente === 'tabla_referencia_provincia' ? 'MITMA provincia' : 'Fotocasa ⚠️ precio oferta'
       lines.push(`📊 ${fuenteLabel}: ${precioM2}€/m²`)
     }
-
     if (lines.length > 0) comparablesNote = '\n' + lines.join('\n')
   }
 
   const missing: string[] = []
-  if (!precio_venta_est) missing.push('Precio de venta estimado no proporcionado')
-  if (reforma_estimada == null) missing.push('Reforma estimada no proporcionada')
+  if (!precio_venta_est) missing.push('Precio de venta estimado')
+  if (reforma_estimada == null) missing.push('Reforma estimada')
 
   if (missing.length > 0 || !precio_pedido || !precio_venta_est) {
-    return header + comparablesNote + `\n\n⚠️ Faltan datos para el ROI:\n${missing.map(m => `- ${m}`).join('\n')}`
+    return header + comparablesNote + `\n\n⚠️ Faltan datos para el análisis:\n${missing.map(m => `• ${m}`).join('\n')}`
   }
 
   const compra = precio_pedido
@@ -424,7 +418,9 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
   const venta = precio_venta_est
 
   const itp = Math.floor(compra * 0.02)
-  const notariaRegistro = 1000
+  const notaria = 500
+  const registro = 500
+  const gastosFijos = itp + notaria + registro
   const costoTotal = calcCostoTotal(compra, reforma)
   const beneficio = venta - costoTotal
   const roi = calcROI(venta, compra, reforma) * 100
@@ -435,37 +431,76 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     : null
 
   let semaforo: string
-  if (roi < 30) semaforo = '🔴 ROI < 30% — No entra según criterios Wallest'
-  else if (roi <= 50) semaforo = '🟡 ROI 30-50% — Analizar bien antes de avanzar'
+  if (roi < 30) semaforo = '🔴 ROI < 30% — No entra'
+  else if (roi <= 50) semaforo = '🟡 ROI 30-50% — Analizar bien'
   else semaforo = '🟢 ROI > 50% — Operación fuerte'
 
   const max30 = calcPrecioMaxCompra(venta, reforma, 0.30)
   const max50 = calcPrecioMaxCompra(venta, reforma, 0.50)
   const max70 = calcPrecioMaxCompra(venta, reforma, 0.70)
 
+  // Sensibilidad reforma
+  const roiRef20menos = calcROI(venta, compra, reforma * 0.80) * 100
+  const roiRef20mas = calcROI(venta, compra, reforma * 1.20) * 100
+
+  // Escenario venta a inversor (si hay renta en data)
+  const renta = (data as ExtractedData & { renta_mensual?: number }).renta_mensual ?? null
+  let seccionInversor = ''
+  if (renta && renta > 0) {
+    const rentaAnual = renta * 12
+    const yieldObj = 0.06
+    const precioInversor = Math.floor(rentaAnual / yieldObj)
+    const benefInversor = precioInversor - costoTotal
+    const roiInv = (benefInversor / costoTotal) * 100
+    const roiInvLabel = roiInv >= 30 ? '🟢' : roiInv >= 15 ? '🟡' : '🔴'
+    const precioMinRoi30 = Math.ceil(costoTotal * 1.30)
+    const yieldConMin = (rentaAnual / precioMinRoi30 * 100).toFixed(1)
+    seccionInversor = [
+      '',
+      '🏦 VENTA A INVERSOR (yield 6%)',
+      '──────────────────────────────',
+      `Renta estimada: ${fmt(renta)}€/mes (${fmt(rentaAnual)}€/año)`,
+      `Precio que pagaría inversor: ${fmt(precioInversor)}€`,
+      `Beneficio neto Wallest: ${fmt(benefInversor)}€`,
+      `ROI Wallest: ${roiInv.toFixed(1)}% ${roiInvLabel}`,
+      ``,
+      `Para ROI 30% Wallest → venta mín. ${fmt(precioMinRoi30)}€`,
+      `  └ Yield inversor con ese precio: ${yieldConMin}%`,
+    ].join('\n')
+  }
+
   return [
     header,
     comparablesNote,
     '',
-    '📊 ANÁLISIS RÁPIDO',
-    '──────────────────',
-    `Coste total estimado: ${fmt(costoTotal)}€`,
-    `  └ Compra: ${fmt(compra)}€`,
-    `  └ Reforma: ${fmt(reforma)}€`,
-    `  └ Notaría + Registro: ${fmt(notariaRegistro)}€`,
-    `  └ ITP (2%): ${fmt(itp)}€`,
+    '💰 DESGLOSE DE COSTES',
+    '─────────────────────',
+    `Compra:          ${fmt(compra)}€`,
+    `ITP (2%):        ${fmt(itp)}€`,
+    `Notaría:         ${fmt(notaria)}€`,
+    `Registro:        ${fmt(registro)}€`,
+    `Reforma:         ${fmt(reforma)}€`,
+    `──────────────────────`,
+    `TOTAL INVERSIÓN: ${fmt(costoTotal)}€`,
     '',
-    `Precio venta estimado: ${fmt(venta)}€`,
-    `Beneficio neto: ${fmt(beneficio)}€`,
-    `ROI total: ${roi.toFixed(1)}%`,
+    '🏠 VENTA A FINALISTA',
+    '─────────────────────',
+    `Precio venta:    ${fmt(venta)}€`,
+    `Beneficio neto:  ${fmt(beneficio)}€`,
+    `ROI total:       ${roi.toFixed(1)}%`,
     roiAnualizado !== null ? `ROI anualizado (${duracion}m): ${roiAnualizado.toFixed(1)}%` : null,
-    '',
     semaforo,
+    seccionInversor || null,
     '',
-    '💡 PRECIO MÁXIMO DE COMPRA',
-    `Para ROI 30%: ${fmt(max30)}€`,
-    `Para ROI 50%: ${fmt(max50)}€`,
-    `Para ROI 70%: ${fmt(max70)}€`,
+    '💡 COMPRA MÁXIMA (venta finalista)',
+    `ROI 30%: ${fmt(max30)}€`,
+    `ROI 50%: ${fmt(max50)}€`,
+    `ROI 70%: ${fmt(max70)}€`,
+    '',
+    '🔧 SENSIBILIDAD REFORMA',
+    `Reforma −20% (${fmt(reforma * 0.80)}€): ROI ${roiRef20menos.toFixed(1)}%`,
+    `Reforma base  (${fmt(reforma)}€): ROI ${roi.toFixed(1)}%`,
+    `Reforma +20% (${fmt(reforma * 1.20)}€): ROI ${roiRef20mas.toFixed(1)}%`,
   ].filter((l): l is string => l !== null && l !== undefined).join('\n')
 }
 
