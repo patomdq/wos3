@@ -314,7 +314,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'analizar_inversion',
-    description: 'Analiza si una operación inmobiliaria es viable, calcula ROI y precio máximo de compra.',
+    description: 'Analiza si una operación inmobiliaria es viable, calcula ROI y precio máximo de compra. Si el usuario menciona que el comprador va a alquilar (ej: "lo alquila en 450"), extrae alquiler_mensual_min/max. Si menciona hipoteca o entrada, extrae porcentaje_entrada (default 30).',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -324,6 +324,11 @@ const TOOLS: Anthropic.Tool[] = [
         precio_ofertado: { type: 'number' },
         coste_reforma: { type: 'number' },
         precio_venta_orientativo: { type: 'number' },
+        alquiler_mensual_min: { type: 'number', description: 'Alquiler mensual mínimo estimado por el comprador (€/mes)' },
+        alquiler_mensual_max: { type: 'number', description: 'Alquiler mensual máximo estimado. Si el usuario da un solo valor, igualar a min.' },
+        porcentaje_entrada: { type: 'number', description: 'Porcentaje de entrada del comprador si compra con hipoteca. Ej: 30 significa 30% entrada + 70% hipoteca. Default: 30.' },
+        tipo_interes_hipoteca: { type: 'number', description: 'Tipo de interés anual hipoteca en %. Default: 3.5' },
+        plazo_hipoteca_anos: { type: 'number', description: 'Plazo hipoteca en años. Default: 20' },
       },
       required: ['zona', 'superficie', 'precio_ofertado', 'coste_reforma'],
     },
@@ -610,8 +615,9 @@ async function executeTool(
         const escenarios = calcEscenarios(ventaOrientativa, compra, reforma)
 
         const fmt = (n: number) => n >= 1000 ? `${Math.round(n / 1000)}k` : `${Math.round(n)}`
+        const fmtDec = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${Math.round(n)}`
 
-        return [
+        const lines = [
           `📍 ${toolInput.zona} | ${toolInput.superficie}m²`,
           `💰 Precio pedido: ${fmt(compra)}€`,
           `🔨 Reforma: ${fmt(reforma)}€`,
@@ -628,7 +634,66 @@ async function executeTool(
           compra <= escenarios.conservador.precioMaxCompra
             ? '✅ ENTRA en criterios Wallest (ROI ≥ 30%)'
             : '❌ NO entra en criterios Wallest (ROI < 30%)',
-        ].join('\n')
+        ]
+
+        // ── Sección rentabilidad del comprador (yield) ──
+        const alqMin = toolInput.alquiler_mensual_min as number | undefined
+        const alqMax = toolInput.alquiler_mensual_max as number | undefined
+
+        if (alqMin) {
+          const alqMaxVal = alqMax || alqMin
+          const precioVenta = ventaOrientativa
+
+          // Yield bruto
+          const yieldMin = (alqMin * 12 / precioVenta) * 100
+          const yieldMax = (alqMaxVal * 12 / precioVenta) * 100
+          const alqLabel = alqMin === alqMaxVal ? `${alqMin}€/mes` : `${alqMin}-${alqMaxVal}€/mes`
+          const yieldLabel = alqMin === alqMaxVal
+            ? `${yieldMin.toFixed(1)}%`
+            : `${yieldMin.toFixed(1)}% - ${yieldMax.toFixed(1)}%`
+
+          lines.push(``, `─────────────────────`)
+          lines.push(`🏠 RENTABILIDAD COMPRADOR`)
+          lines.push(`Alquiler: ${alqLabel}`)
+          lines.push(`Yield bruto: ${yieldLabel}`)
+          lines.push(`Ingreso anual: ${fmtDec(alqMin * 12)}€ - ${fmtDec(alqMaxVal * 12)}€`)
+
+          // Escenario con hipoteca
+          const pctEntrada = (toolInput.porcentaje_entrada as number | undefined) ?? 30
+          const tasaAnual = (toolInput.tipo_interes_hipoteca as number | undefined) ?? 3.5
+          const plazoAnos = (toolInput.plazo_hipoteca_anos as number | undefined) ?? 20
+
+          const entrada = precioVenta * (pctEntrada / 100)
+          const principal = precioVenta - entrada
+          const r = tasaAnual / 100 / 12
+          const n = plazoAnos * 12
+          const cuota = principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+
+          const flujoNetoMin = alqMin - cuota
+          const flujoNetoMax = alqMaxVal - cuota
+          const cashOnCashMin = (flujoNetoMin * 12 / entrada) * 100
+          const cashOnCashMax = (flujoNetoMax * 12 / entrada) * 100
+
+          lines.push(``)
+          lines.push(`🏦 CON HIPOTECA (${pctEntrada}% entrada)`)
+          lines.push(`Entrada: ${fmtDec(entrada)}€ | Financiado: ${fmtDec(principal)}€`)
+          lines.push(`Cuota est.: ${Math.round(cuota)}€/mes (${tasaAnual}%, ${plazoAnos} años)`)
+
+          if (flujoNetoMin >= 0) {
+            const flujoLabel = alqMin === alqMaxVal
+              ? `+${Math.round(flujoNetoMin)}€/mes`
+              : `+${Math.round(flujoNetoMin)} a +${Math.round(flujoNetoMax)}€/mes`
+            const cocLabel = alqMin === alqMaxVal
+              ? `${cashOnCashMin.toFixed(1)}%`
+              : `${cashOnCashMin.toFixed(1)}% - ${cashOnCashMax.toFixed(1)}%`
+            lines.push(`Flujo neto: ${flujoLabel}`)
+            lines.push(`Cash-on-cash: ${cocLabel} sobre ${fmtDec(entrada)}€ aportados`)
+          } else {
+            lines.push(`⚠️ Flujo negativo: ${Math.round(flujoNetoMin)}€/mes (cuota > alquiler)`)
+          }
+        }
+
+        return lines.join('\n')
       }
 
       default:
