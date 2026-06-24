@@ -71,6 +71,9 @@ interface ExtractedData {
   ciudad?: string | null
   descripcion?: string | null
   duracion_meses?: number | null
+  alquiler_comprador_min?: number | null
+  alquiler_comprador_max?: number | null
+  porcentaje_entrada_hipoteca?: number | null
 }
 
 interface EdificioData {
@@ -191,7 +194,10 @@ Formato:
   "metros": número o null,
   "ciudad": string o null,
   "descripcion": string o null,
-  "duracion_meses": número entero o null
+  "duracion_meses": número entero o null,
+  "alquiler_comprador_min": número en euros o null,
+  "alquiler_comprador_max": número en euros o null,
+  "porcentaje_entrada_hipoteca": número (0-100) o null
 }
 
 Reglas:
@@ -200,6 +206,8 @@ Reglas:
 - "75k" = 75000, "120k" = 120000, "1.2M" = 1200000
 - "piden 85" en contexto inmobiliario = 85000
 - duracion_meses = duración estimada de la operación ("6 meses" → 6, "1 año" → 12, "2 años" → 24)
+- alquiler_comprador_min/max = alquiler mensual que va a cobrar el comprador final ("lo alquila en 450" → min:450 max:450, "450/500" → min:450 max:500)
+- porcentaje_entrada_hipoteca = porcentaje que aporta el comprador de entrada ("entra con 30%" → 30, "solo pone el 20%" → 20, si menciona hipoteca sin porcentaje → 30)
 - Si no hay info, pon null`
 
 function parseJsonFromClaude(raw: string): ExtractedData {
@@ -469,6 +477,61 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     ].join('\n')
   }
 
+  // Sección rentabilidad del comprador (yield + hipoteca)
+  const alqMin = data.alquiler_comprador_min ?? null
+  const alqMax = data.alquiler_comprador_max ?? alqMin
+  let seccionComprador = ''
+  if (alqMin && alqMin > 0) {
+    const alqMaxVal = alqMax || alqMin
+    const yieldMin = (alqMin * 12 / venta) * 100
+    const yieldMax = (alqMaxVal * 12 / venta) * 100
+    const alqLabel = alqMin === alqMaxVal ? `${fmt(alqMin)}€/mes` : `${fmt(alqMin)}-${fmt(alqMaxVal)}€/mes`
+    const yieldLabel = alqMin === alqMaxVal ? `${yieldMin.toFixed(1)}%` : `${yieldMin.toFixed(1)}% - ${yieldMax.toFixed(1)}%`
+
+    const lines: string[] = [
+      '',
+      '🏘 RENTABILIDAD DEL COMPRADOR',
+      '──────────────────────────────',
+      `Alquiler:    ${alqLabel}`,
+      `Yield bruto: ${yieldLabel}`,
+      `Ingreso/año: ${fmt(alqMin * 12)}€ - ${fmt(alqMaxVal * 12)}€`,
+    ]
+
+    const pctEntrada = data.porcentaje_entrada_hipoteca ?? null
+    if (pctEntrada !== null && pctEntrada > 0 && pctEntrada < 100) {
+      const tasaAnual = 3.5
+      const plazoAnos = 20
+      const entrada = venta * (pctEntrada / 100)
+      const principal = venta - entrada
+      const r = tasaAnual / 100 / 12
+      const n = plazoAnos * 12
+      const cuota = principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+      const flujoNetoMin = alqMin - cuota
+      const flujoNetoMax = alqMaxVal - cuota
+      const cashOnCashMin = (flujoNetoMin * 12 / entrada) * 100
+      const cashOnCashMax = (flujoNetoMax * 12 / entrada) * 100
+
+      lines.push('')
+      lines.push(`🏦 Con hipoteca (${pctEntrada}% entrada)`)
+      lines.push(`Entrada: ${fmt(entrada)}€ | Financiado: ${fmt(principal)}€`)
+      lines.push(`Cuota est.: ${Math.round(cuota)}€/mes (${tasaAnual}%, ${plazoAnos}a)`)
+      if (flujoNetoMin >= 0) {
+        const flujoLabel = alqMin === alqMaxVal
+          ? `+${Math.round(flujoNetoMin)}€/mes`
+          : `+${Math.round(flujoNetoMin)} a +${Math.round(flujoNetoMax)}€/mes`
+        const cocLabel = alqMin === alqMaxVal
+          ? `${cashOnCashMin.toFixed(1)}%`
+          : `${cashOnCashMin.toFixed(1)}% - ${cashOnCashMax.toFixed(1)}%`
+        lines.push(`Flujo neto: ${flujoLabel}`)
+        lines.push(`Cash-on-cash: ${cocLabel} sobre ${fmt(entrada)}€`)
+      } else {
+        lines.push(`⚠️ Flujo negativo: ${Math.round(flujoNetoMin)}€/mes`)
+      }
+    }
+
+    seccionComprador = lines.join('\n')
+  }
+
   return [
     header,
     comparablesNote,
@@ -491,6 +554,7 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     roiAnualizado !== null ? `ROI anualizado (${duracion}m): ${roiAnualizado.toFixed(1)}%` : null,
     semaforo,
     seccionInversor || null,
+    seccionComprador || null,
     '',
     '💡 COMPRA MÁXIMA (venta finalista)',
     `ROI 30%: ${fmt(max30)}€`,
