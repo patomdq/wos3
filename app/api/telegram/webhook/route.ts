@@ -1100,22 +1100,46 @@ async function handleCallbackQuery(cb: TgCallbackQuery) {
   const [action, id] = cb.data.split(':')
 
   if (action === 'confirm') {
-    const { error } = await supabase
+    // Fetch the pending record from inmuebles_radar
+    const { data: rec, error: fetchErr } = await supabase
       .from('inmuebles_radar')
-      .update({ estado: 'activo' })
+      .select('*')
       .eq('id', id)
       .eq('estado', 'pendiente_tg')
+      .single()
 
-    if (error) {
+    if (fetchErr || !rec) {
       await answerCallbackQuery(cb.id, '❌ Error al confirmar')
-    } else {
-      await answerCallbackQuery(cb.id, '✅ Subido al Radar')
-      const informeUrl = `https://wos3.vercel.app/informe/radar/${id}`
-      await editMessage(
-        chatId, messageId,
-        (cb.message?.text || '') + `\n\n✅ Subido a Radar en WOS3\n\n📄 Informe para socio:\n${informeUrl}`
-      )
+      return
     }
+
+    // Insert into inmuebles (Mercado)
+    const { error: insertErr } = await supabase.from('inmuebles').insert({
+      titulo: rec.titulo,
+      direccion: rec.direccion,
+      ciudad: rec.ciudad,
+      precio: rec.precio,
+      habitaciones: rec.habitaciones,
+      superficie: rec.superficie,
+      url: rec.url,
+      notas: rec.notas,
+      fuente: rec.fuente || 'WallestBot',
+      estado: 'activo',
+    })
+
+    if (insertErr) {
+      await answerCallbackQuery(cb.id, '❌ Error al guardar en Mercado')
+      return
+    }
+
+    // Delete temp record from inmuebles_radar
+    await supabase.from('inmuebles_radar').delete().eq('id', id)
+
+    await answerCallbackQuery(cb.id, '📦 Guardado en Mercado')
+    await editMessage(
+      chatId, messageId,
+      (cb.message?.text || '') + '\n\n📦 Guardado en Mercado — podés completar la info desde WOS3'
+    )
   } else if (action === 'discard') {
     const { error } = await supabase
       .from('inmuebles_radar')
@@ -1127,7 +1151,7 @@ async function handleCallbackQuery(cb: TgCallbackQuery) {
       await answerCallbackQuery(cb.id, '❌ Error al descartar')
     } else {
       await answerCallbackQuery(cb.id, '🗑️ Descartado')
-      await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n🗑️ Descartado — no subido al Radar')
+      await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n🗑️ Descartado')
     }
   } else if (action === 'edificio_confirm') {
     const { error } = await supabase
@@ -1392,7 +1416,7 @@ export async function POST(req: NextRequest) {
     const analysisText = buildAnalysis(data, ventaDesdeComparables)
     const replyMarkup = {
       inline_keyboard: [[
-        { text: '✅ Subir al Radar', callback_data: `confirm:${recordId}` },
+        { text: '📦 Guardar en Mercado', callback_data: `confirm:${recordId}` },
         { text: '🗑️ Descartar', callback_data: `discard:${recordId}` },
       ]],
     }
