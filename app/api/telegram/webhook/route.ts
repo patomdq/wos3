@@ -499,8 +499,8 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
 
     const pctEntrada = data.porcentaje_entrada_hipoteca ?? null
     if (pctEntrada !== null && pctEntrada > 0 && pctEntrada < 100) {
-      const tasaAnual = 3.5
-      const plazoAnos = 20
+      const tasaAnual = 3.0
+      const plazoAnos = 25
       const entrada = venta * (pctEntrada / 100)
       const principal = venta - entrada
       const r = tasaAnual / 100 / 12
