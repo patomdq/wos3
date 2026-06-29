@@ -120,7 +120,7 @@ export default function HasuPage() {
   const trRoiMedio   = trWithVenta.length > 0 ? trWithVenta.reduce((s, r) => s + getRoi(r), 0) / trWithVenta.length : 0
   const getDurAdj    = (r: TrackRow) => r.tipo?.toLowerCase() === 'parcela' ? 6 : getDur(r)
   const trDurMedia   = (() => {
-    const durs = catFiltered.map(getDurAdj).filter(Boolean) as number[]
+    const durs = catFiltered.filter(r => r.tipo?.toLowerCase() !== 'cava').map(getDurAdj).filter(Boolean) as number[]
     return durs.length > 0 ? Math.round(durs.reduce((a, b) => a + b, 0) / durs.length) : null
   })()
   const trRoiAnual   = (() => {
