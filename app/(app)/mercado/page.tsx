@@ -1036,8 +1036,8 @@ export default function MercadoPage() {
                     </div>
                   )}
 
-                  {/* Para no-edificios: tabla de resultados si analizado */}
-                  {item.tipologia !== 'edificio' && isAnalizado && (() => {
+                  {/* Tabla de resultados si analizado (todos los tipos) */}
+                  {isAnalizado && (() => {
                     const g = item.gastos_json as Gastos | undefined
                     const totalInv = g
                       ? CONCEPTOS_GASTOS.reduce((sum, c) => {
