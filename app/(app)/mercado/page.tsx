@@ -89,6 +89,13 @@ const TIPOLOGIA_LABELS: Record<string, string> = {
   piso: 'Piso', casa: 'Casa', duplex: 'Dúplex', edificio: 'Edificio', suelo: 'Suelo', nave: 'Nave',
 }
 
+const UNIDAD_TIPO_MAP: Record<string, string> = {
+  'piso': 'piso', 'dúplex': 'duplex', 'duplex': 'duplex', 'local': 'local',
+  'ático': 'atico', 'atico': 'atico', 'garaje': 'garaje', 'parking': 'parking',
+  'trastero': 'trastero', 'estudio': 'estudio', 'oficina': 'oficina',
+}
+const normalizeUnidadTipo = (t: string) => UNIDAD_TIPO_MAP[t.toLowerCase()] ?? 'otro'
+
 function emptyGastos(): Gastos {
   const g: Gastos = {}
   CONCEPTOS_GASTOS.forEach(c => { g[c.id] = { estimado: 0, real: 0 } })
@@ -266,7 +273,7 @@ export default function MercadoPage() {
       if (nuevoForm.tipologia === 'edificio' && nuevoUnidades.length > 0) {
         const rows = nuevoUnidades.map((u: any) => ({
           inmueble_id: data.id,
-          tipo: (u.tipo || 'piso').toLowerCase(),
+          tipo: normalizeUnidadTipo(u.tipo || 'piso'),
           planta: u.planta || null,
           superficie: typeof u.superficie === 'number' ? u.superficie : null,
           ocupacion: u.ocupacion === 'ocupado' ? 'ocupado' : 'libre',
@@ -534,7 +541,7 @@ export default function MercadoPage() {
     setSavingUnidad(true)
     const payload: Record<string, unknown> = {
       inmueble_id: inmuebleId,
-      tipo: nuevaUnidad.tipo.toLowerCase(),
+      tipo: normalizeUnidadTipo(nuevaUnidad.tipo),
       planta: nuevaUnidad.planta || null,
       superficie: nuevaUnidad.superficie ? parseFloat(nuevaUnidad.superficie) : null,
       ocupacion: nuevaUnidad.ocupacion,
@@ -1493,7 +1500,7 @@ export default function MercadoPage() {
                           <button
                             onClick={() => {
                               setNuevoUnidades(prev => [...prev, {
-                                tipo: nuevaUnidad.tipo.toLowerCase(),
+                                tipo: normalizeUnidadTipo(nuevaUnidad.tipo),
                                 planta: nuevaUnidad.planta || null,
                                 superficie: nuevaUnidad.superficie ? parseInt(nuevaUnidad.superficie) : null,
                                 ocupacion: nuevaUnidad.ocupacion,
