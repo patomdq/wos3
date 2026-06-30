@@ -57,6 +57,16 @@ type Inmueble = {
   imagen_portada?: string
   notas?: string
   created_at: string
+  // Multi-estrategia
+  unidades_estimadas?: number
+  costo_reforma_por_unidad?: number
+  precio_venta_por_unidad?: number
+  alquiler_estimado_unidad?: number
+  reforma_minima_estimada?: number
+  alquiler_mensual_estimado?: number
+  precio_venta_rentando?: number
+  fee_inbruto_estimado?: number
+  fee_gestion_obra_estimado?: number
 }
 
 type Unidad = {
@@ -189,6 +199,16 @@ export default function MercadoPage() {
   const [pvOpt, setPvOpt] = useState(0)
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState<string | null>(null)
+  // Multi-estrategia
+  const [unidadesEst, setUnidadesEst] = useState(1)
+  const [costoRefUnidad, setCostoRefUnidad] = useState(0)
+  const [pvPorUnidad, setPvPorUnidad] = useState(0)
+  const [alqUnidad, setAlqUnidad] = useState(0)
+  const [reformaMin, setReformaMin] = useState(0)
+  const [alqMensual, setAlqMensual] = useState(0)
+  const [pvRentando, setPvRentando] = useState(0)
+  const [feeInbruto, setFeeInbruto] = useState(0)
+  const [feeGestionObra, setFeeGestionObra] = useState(0)
 
   // Unidades (para edificios en calculadora)
   const [unidadesCalc, setUnidadesCalc] = useState<Unidad[]>([])
@@ -427,6 +447,15 @@ export default function MercadoPage() {
     setCalcInmuebleId(item?.id || null)
     setCalcTipologia(item?.tipologia || 'piso')
     setSavedId(null)
+    setUnidadesEst(item?.unidades_estimadas ?? 1)
+    setCostoRefUnidad(item?.costo_reforma_por_unidad ?? 0)
+    setPvPorUnidad(item?.precio_venta_por_unidad ?? 0)
+    setAlqUnidad(item?.alquiler_estimado_unidad ?? 0)
+    setReformaMin(item?.reforma_minima_estimada ?? 0)
+    setAlqMensual(item?.alquiler_mensual_estimado ?? 0)
+    setPvRentando(item?.precio_venta_rentando ?? 0)
+    setFeeInbruto(item?.fee_inbruto_estimado ?? 0)
+    setFeeGestionObra(item?.fee_gestion_obra_estimado ?? 0)
     setUnidadesCalc([])
     setUnidadesOpen(false)
     // Cargar unidades si es edificio
@@ -459,6 +488,15 @@ export default function MercadoPage() {
       duracion_meses: duracionMeses || null,
       gastos_json: gastos,
       analizado_en: today(),
+      unidades_estimadas: unidadesEst || 1,
+      costo_reforma_por_unidad: costoRefUnidad || null,
+      precio_venta_por_unidad: pvPorUnidad || null,
+      alquiler_estimado_unidad: alqUnidad || null,
+      reforma_minima_estimada: reformaMin || null,
+      alquiler_mensual_estimado: alqMensual || null,
+      precio_venta_rentando: pvRentando || null,
+      fee_inbruto_estimado: feeInbruto || null,
+      fee_gestion_obra_estimado: feeGestionObra || null,
     }
     let data: Inmueble | null = null, error: unknown = null
     if (calcInmuebleId) {
@@ -756,6 +794,51 @@ export default function MercadoPage() {
     : inmuebles.filter(x => x.tipologia === filtroTipologia)
 
   const res = calcResultados(gastos, pvPes, pvReal, pvOpt, duracionMeses)
+
+  // ── Multi-estrategia ──────────────────────────────────────
+  const precioCompraVal = toNum(gastos.precio_compra.real) || toNum(gastos.precio_compra.estimado)
+  const gastosSimples = precioCompraVal * 0.02 + 1000
+
+  // CAAV: usa totalReal y pvReal del calculador existente
+  const caavBen = res ? pvReal - res.totalReal : null
+  const caavRoi = (res && res.totalReal > 0) ? (caavBen! / res.totalReal) * 100 : null
+
+  // PatrimonioIN
+  const patReformaTotal = unidadesEst * costoRefUnidad
+  const patPvTotal = unidadesEst * pvPorUnidad
+  const patCost = precioCompraVal + patReformaTotal + gastosSimples
+  const patBen = (pvPorUnidad > 0 && precioCompraVal > 0) ? patPvTotal - patCost : null
+  const patRoi = (patBen !== null && patCost > 0) ? (patBen / patCost) * 100 : null
+  const roiBrutoInversor = (alqUnidad > 0 && pvPorUnidad > 0) ? (alqUnidad * 12 / pvPorUnidad) * 100 : null
+
+  // Alquiler directo
+  const alqCost = precioCompraVal + reformaMin + gastosSimples
+  const roiAlqAnual = (alqMensual > 0 && alqCost > 0) ? (alqMensual * 12 / alqCost) * 100 : null
+  const benVentaRentando = (pvRentando > 0 && precioCompraVal > 0) ? pvRentando - alqCost : null
+  const roiVentaRentando = (benVentaRentando !== null && alqCost > 0) ? (benVentaRentando / alqCost) * 100 : null
+
+  // INbruto
+  const inbrutoBen = (feeInbruto > 0 || feeGestionObra > 0) ? feeInbruto + feeGestionObra : null
+
+  const semaforoColor = (roi: number | null) => {
+    if (roi === null) return '#CCC'
+    if (roi >= 50) return '#22C55E'
+    if (roi >= 30) return '#F59E0B'
+    return '#EF4444'
+  }
+  const semaforoEmoji = (roi: number | null) => roi === null ? '⬜' : roi >= 50 ? '🟢' : roi >= 30 ? '🟡' : '🔴'
+
+  const escenarios = [
+    { id: 'caav', nombre: 'CAAV', subtitulo: 'Compra → Reforma → Venta', ben: caavBen, roi: caavRoi, extras: null },
+    { id: 'patrimonio', nombre: 'PatrimonioIN', subtitulo: 'Fraccionamiento', ben: patBen, roi: patRoi, extras: roiBrutoInversor !== null ? `ROI bruto inversor: ${roiBrutoInversor.toFixed(1)}%` : null },
+    { id: 'alquiler', nombre: 'Alquiler', subtitulo: 'Activo rentando', ben: benVentaRentando, roi: roiVentaRentando ?? roiAlqAnual, extras: roiAlqAnual !== null ? `Yield bruto: ${roiAlqAnual.toFixed(1)}%/año` : null },
+    { id: 'inbruto', nombre: 'INbruto', subtitulo: 'Venta del deal', ben: inbrutoBen, roi: null, extras: null },
+  ]
+  const mejorEscenario = escenarios.reduce((best, esc) => {
+    if (esc.ben === null) return best
+    if (best === null || esc.ben > (best.ben ?? -Infinity)) return esc
+    return best
+  }, null as typeof escenarios[0] | null)
 
   const CARD  = { background: '#ffffff', border: '1px solid #EAEAE8', boxShadow: '0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.03)' }
   const INP   = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', color: '#fff' }
@@ -2117,6 +2200,113 @@ export default function MercadoPage() {
                 </div>
               </>
             )}
+
+            {/* ═══ MULTI-ESTRATEGIA INPUTS ═══ */}
+            <div className="mb-2 mt-2">
+              <div className="text-[11px] font-bold uppercase tracking-[1px] mb-3" style={{ color: '#888' }}>Análisis multi-estrategia</div>
+
+              {/* PatrimonioIN */}
+              <div className="rounded-xl p-4 mb-3" style={{ background: '#fff', border: '1px solid #ECEAE4' }}>
+                <div className="text-[11px] font-black uppercase tracking-wide mb-3" style={{ color: '#6366F1' }}>PatrimonioIN — Fraccionamiento</div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Unidades estimadas</label>
+                    <input type="number" min="1" value={unidadesEst || ''} onChange={e => { setUnidadesEst(parseInt(e.target.value) || 1); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono text-center" style={INP_L} onFocus={e => e.target.style.borderColor='#6366F1'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Reforma por unidad (€)</label>
+                    <input type="number" value={costoRefUnidad || ''} onChange={e => { setCostoRefUnidad(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#6366F1'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>P. venta por unidad (€)</label>
+                    <input type="number" value={pvPorUnidad || ''} onChange={e => { setPvPorUnidad(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#6366F1'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Alquiler por unidad/mes (€)</label>
+                    <input type="number" value={alqUnidad || ''} onChange={e => { setAlqUnidad(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#6366F1'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€ (para ROI inversor)" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Alquiler directo */}
+              <div className="rounded-xl p-4 mb-3" style={{ background: '#fff', border: '1px solid #ECEAE4' }}>
+                <div className="text-[11px] font-black uppercase tracking-wide mb-3" style={{ color: '#0EA5E9' }}>Alquiler directo</div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Reforma mínima (€)</label>
+                    <input type="number" value={reformaMin || ''} onChange={e => { setReformaMin(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#0EA5E9'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Alquiler mensual (€)</label>
+                    <input type="number" value={alqMensual || ''} onChange={e => { setAlqMensual(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#0EA5E9'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€/mes" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>P. venta ya rentando (€) — opcional</label>
+                    <input type="number" value={pvRentando || ''} onChange={e => { setPvRentando(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#0EA5E9'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€ si se vende con inquilino" />
+                  </div>
+                </div>
+              </div>
+
+              {/* INbruto */}
+              <div className="rounded-xl p-4 mb-4" style={{ background: '#fff', border: '1px solid #ECEAE4' }}>
+                <div className="text-[11px] font-black uppercase tracking-wide mb-3" style={{ color: '#F59E0B' }}>INbruto — Venta del deal</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Fee INbruto (€)</label>
+                    <input type="number" value={feeInbruto || ''} onChange={e => { setFeeInbruto(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#F59E0B'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="ref: 4.000–6.000€" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Fee gestión obra (€)</label>
+                    <input type="number" value={feeGestionObra || ''} onChange={e => { setFeeGestionObra(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#F59E0B'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="ref: 2.000€+" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Vista comparativa 4 escenarios */}
+              {escenarios.some(e => e.ben !== null || e.roi !== null) && (
+                <div className="mb-5">
+                  <div className="text-[11px] font-bold uppercase tracking-[1px] mb-3" style={{ color: '#888' }}>Comparativa de escenarios</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {escenarios.map(esc => {
+                      const esMejor = mejorEscenario?.id === esc.id
+                      const sinDatos = esc.ben === null && esc.roi === null
+                      return (
+                        <div key={esc.id} className="rounded-xl p-3" style={{
+                          background: esMejor ? '#FFF7ED' : '#fff',
+                          border: `1.5px solid ${esMejor ? '#F26E1F' : '#ECEAE4'}`,
+                        }}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-[11px] font-black" style={{ color: esMejor ? '#F26E1F' : '#555' }}>{esc.nombre}</div>
+                            {esMejor && <div className="text-[9px] font-black px-1.5 py-0.5 rounded-full" style={{ background: '#F26E1F', color: '#fff' }}>MEJOR</div>}
+                          </div>
+                          <div className="text-[10px] mb-2" style={{ color: '#aaa' }}>{esc.subtitulo}</div>
+                          {sinDatos ? (
+                            <div className="text-[11px]" style={{ color: '#CCC' }}>— Faltan datos</div>
+                          ) : (
+                            <>
+                              <div className="text-[16px] font-black font-mono" style={{ color: esc.ben !== null ? (esc.ben >= 0 ? '#22C55E' : '#EF4444') : '#CCC' }}>
+                                {esc.ben !== null ? (esc.ben >= 0 ? '+' : '') + fmt(esc.ben) : '—'}
+                              </div>
+                              {esc.id !== 'inbruto' && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <span className="text-[10px]">{semaforoEmoji(esc.roi)}</span>
+                                  <span className="text-[12px] font-black font-mono" style={{ color: semaforoColor(esc.roi) }}>
+                                    {esc.roi !== null ? fmtPct(esc.roi) : '—'}
+                                  </span>
+                                </div>
+                              )}
+                              {esc.extras && (
+                                <div className="text-[10px] mt-1" style={{ color: '#888' }}>{esc.extras}</div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex gap-2">
               <button onClick={guardar} disabled={saving || !res || !!savedId}
