@@ -105,6 +105,8 @@ const UNIDAD_TIPO_MAP: Record<string, string> = {
   'trastero': 'trastero', 'estudio': 'estudio', 'oficina': 'oficina',
 }
 const normalizeUnidadTipo = (t: string) => UNIDAD_TIPO_MAP[t.toLowerCase()] ?? 'otro'
+const UNIDAD_TIPO_OPTIONS = ['Piso','Dúplex','Local','Ático','Garaje','Trastero','Estudio','Oficina']
+const unidadTipoLabel = (t: string) => UNIDAD_TIPO_OPTIONS.find(o => normalizeUnidadTipo(o) === t) ?? t
 
 function emptyGastos(): Gastos {
   const g: Gastos = {}
@@ -156,6 +158,9 @@ export default function MercadoPage() {
   const [addingUnidadId, setAddingUnidadId] = useState<string | null>(null)
   const [nuevaUnidad, setNuevaUnidad] = useState({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
   const [savingUnidad, setSavingUnidad] = useState(false)
+  const [editingUnidadId, setEditingUnidadId] = useState<string | null>(null)
+  const [editUnidad, setEditUnidad] = useState({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
+  const [savingEditUnidad, setSavingEditUnidad] = useState(false)
   const [importandoUrl, setImportandoUrl] = useState<string | null>(null)
   const [importUrl, setImportUrl] = useState('')
   const [importLoading, setImportLoading] = useState(false)
@@ -600,6 +605,40 @@ export default function MercadoPage() {
     if (!confirm('¿Eliminar esta unidad?')) return
     await supabase.from('inmueble_unidades').delete().eq('id', unidadId)
     setUnidades(prev => ({ ...prev, [inmuebleId]: (prev[inmuebleId] || []).filter(u => u.id !== unidadId) }))
+  }
+  const startEditUnidad = (u: Unidad) => {
+    setEditingUnidadId(u.id)
+    setEditUnidad({
+      tipo: unidadTipoLabel(u.tipo),
+      planta: u.planta || '',
+      superficie: u.superficie != null ? String(u.superficie) : '',
+      ocupacion: u.ocupacion || 'libre',
+      renta_mensual: u.renta_mensual != null ? String(u.renta_mensual) : '',
+      precio_venta_est: u.precio_venta_est != null ? String(u.precio_venta_est) : '',
+      reforma_estimada: u.reforma_estimada != null ? String(u.reforma_estimada) : '',
+      notas: u.notas || '',
+    })
+    setAddingUnidadId(null)
+    setImportandoUrl(null)
+  }
+  const saveEditUnidad = async (inmuebleId: string) => {
+    if (!editingUnidadId) return
+    setSavingEditUnidad(true)
+    const payload: Record<string, unknown> = {
+      tipo: normalizeUnidadTipo(editUnidad.tipo),
+      planta: editUnidad.planta || null,
+      superficie: editUnidad.superficie ? parseFloat(editUnidad.superficie) : null,
+      ocupacion: editUnidad.ocupacion,
+      renta_mensual: editUnidad.renta_mensual ? parseFloat(editUnidad.renta_mensual) : null,
+      precio_venta_est: editUnidad.precio_venta_est ? parseFloat(editUnidad.precio_venta_est) : null,
+      reforma_estimada: editUnidad.reforma_estimada ? parseFloat(editUnidad.reforma_estimada) : null,
+      notas: editUnidad.notas || null,
+    }
+    const { data, error } = await supabase.from('inmueble_unidades').update(payload).eq('id', editingUnidadId).select().single()
+    setSavingEditUnidad(false)
+    if (error) { alert(error.message); return }
+    setUnidades(prev => ({ ...prev, [inmuebleId]: (prev[inmuebleId] || []).map(u => u.id === editingUnidadId ? data : u) }))
+    setEditingUnidadId(null)
   }
 
   const importarUnidades = async (inmuebleId: string) => {
@@ -1538,7 +1577,7 @@ export default function MercadoPage() {
                               <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Tipo</label>
                               <select value={nuevaUnidad.tipo} onChange={e => setNuevaUnidad(f => ({ ...f, tipo: e.target.value }))}
                                 className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
-                                {['Piso','Dúplex','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
+                                {UNIDAD_TIPO_OPTIONS.map(t => <option key={t}>{t}</option>)}
                               </select>
                             </div>
                             <div>
@@ -1816,13 +1855,13 @@ export default function MercadoPage() {
                         </div>
                         <div className="flex gap-1.5">
                           <button
-                            onClick={() => { setImportandoUrl(importandoUrl === editInmueble.id ? null : editInmueble.id); setImportUrl(''); setAddingUnidadId(null) }}
+                            onClick={() => { setImportandoUrl(importandoUrl === editInmueble.id ? null : editInmueble.id); setImportUrl(''); setAddingUnidadId(null); setEditingUnidadId(null) }}
                             className="text-[11px] font-black px-2.5 py-1 rounded-lg"
                             style={{ background: importandoUrl === editInmueble.id ? 'rgba(59,130,246,0.09)' : '#ECEAE4', color: importandoUrl === editInmueble.id ? '#3B82F6' : '#888', border: `1.5px solid ${importandoUrl === editInmueble.id ? 'rgba(59,130,246,0.3)' : '#DDDBD5'}` }}>
                             {importandoUrl === editInmueble.id ? '✕' : '🔗 Importar URL'}
                           </button>
                           <button
-                            onClick={() => { setAddingUnidadId(addingUnidadId === editInmueble.id ? null : editInmueble.id); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }); setImportandoUrl(null) }}
+                            onClick={() => { setAddingUnidadId(addingUnidadId === editInmueble.id ? null : editInmueble.id); setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' }); setImportandoUrl(null); setEditingUnidadId(null) }}
                             className="text-[11px] font-black px-2.5 py-1 rounded-lg"
                             style={{ background: addingUnidadId === editInmueble.id ? 'rgba(242,110,31,0.09)' : '#ECEAE4', color: addingUnidadId === editInmueble.id ? '#F26E1F' : '#888', border: `1.5px solid ${addingUnidadId === editInmueble.id ? 'rgba(242,110,31,0.3)' : '#DDDBD5'}` }}>
                             {addingUnidadId === editInmueble.id ? '✕' : '+ Manual'}
@@ -1864,7 +1903,7 @@ export default function MercadoPage() {
                               <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Tipo</label>
                               <select value={nuevaUnidad.tipo} onChange={e => setNuevaUnidad(f => ({ ...f, tipo: e.target.value }))}
                                 className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
-                                {['Piso','Dúplex','Local','Ático','Garaje','Trastero','Estudio','Oficina'].map(t => <option key={t}>{t}</option>)}
+                                {UNIDAD_TIPO_OPTIONS.map(t => <option key={t}>{t}</option>)}
                               </select>
                             </div>
                             <div>
@@ -1923,15 +1962,76 @@ export default function MercadoPage() {
                       )}
                       {!loadingUnidades[editInmueble.id] && unidades[editInmueble.id] && unidades[editInmueble.id].length > 0 && (
                         <>
-                          <div className="grid px-4 py-2" style={{ gridTemplateColumns: '1fr 40px 62px 72px 28px', background: '#F9F8F5', borderBottom: '1px solid #F0EEE8' }}>
-                            {['Unidad','m²','Estado','Venta est.',''].map((h,i) => (
+                          <div className="grid px-4 py-2" style={{ gridTemplateColumns: '1fr 40px 62px 72px 28px 28px', background: '#F9F8F5', borderBottom: '1px solid #F0EEE8' }}>
+                            {['Unidad','m²','Estado','Venta est.','',''].map((h,i) => (
                               <div key={i} className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</div>
                             ))}
                           </div>
                           {unidades[editInmueble.id].map((u, ui) => {
                             const isLibre = !u.ocupacion || u.ocupacion === 'libre' || u.ocupacion === 'Libre'
+                            if (editingUnidadId === u.id) {
+                              return (
+                                <div key={u.id} className="p-4" style={{ background: '#FAFAF8', borderTop: ui > 0 ? '1px solid #F0EEE8' : 'none' }}>
+                                  <div className="grid grid-cols-2 gap-2 mb-3">
+                                    <div>
+                                      <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Tipo</label>
+                                      <select value={editUnidad.tipo} onChange={e => setEditUnidad(f => ({ ...f, tipo: e.target.value }))}
+                                        className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
+                                        {UNIDAD_TIPO_OPTIONS.map(t => <option key={t}>{t}</option>)}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Planta</label>
+                                      <input type="text" value={editUnidad.planta} onChange={e => setEditUnidad(f => ({ ...f, planta: e.target.value }))} placeholder="1ª, PB, Ático..."
+                                        className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>m²</label>
+                                      <input type="number" value={editUnidad.superficie} onChange={e => setEditUnidad(f => ({ ...f, superficie: e.target.value }))} placeholder="60"
+                                        className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Ocupación</label>
+                                      <select value={editUnidad.ocupacion} onChange={e => setEditUnidad(f => ({ ...f, ocupacion: e.target.value }))}
+                                        className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }}>
+                                        <option value="libre">Libre</option>
+                                        <option value="ocupado">Ocupado</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Renta/mes (€)</label>
+                                      <input type="number" value={editUnidad.renta_mensual} onChange={e => setEditUnidad(f => ({ ...f, renta_mensual: e.target.value }))} placeholder="450"
+                                        className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>P. Venta est. (€)</label>
+                                      <input type="number" value={editUnidad.precio_venta_est} onChange={e => setEditUnidad(f => ({ ...f, precio_venta_est: e.target.value }))} placeholder="55000"
+                                        className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Reforma est. (€)</label>
+                                      <input type="number" value={editUnidad.reforma_estimada} onChange={e => setEditUnidad(f => ({ ...f, reforma_estimada: e.target.value }))} placeholder="8000"
+                                        className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] font-black uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>Notas</label>
+                                      <input type="text" value={editUnidad.notas} onChange={e => setEditUnidad(f => ({ ...f, notas: e.target.value }))} placeholder="Opcional..."
+                                        className="w-full rounded-lg px-2 py-2 text-xs font-bold outline-none" style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }} />
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button onClick={() => setEditingUnidadId(null)}
+                                      className="flex-1 py-2.5 rounded-xl text-xs font-black" style={{ background: '#ECEAE4', color: '#888' }}>Cancelar</button>
+                                    <button onClick={() => saveEditUnidad(editInmueble.id)} disabled={savingEditUnidad}
+                                      className="flex-1 py-2.5 rounded-xl text-xs font-black text-white disabled:opacity-50" style={{ background: '#F26E1F' }}>
+                                      {savingEditUnidad ? 'Guardando...' : 'Guardar unidad'}
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            }
                             return (
-                              <div key={u.id} className="grid px-4 py-2.5 items-center" style={{ gridTemplateColumns: '1fr 40px 62px 72px 28px', borderTop: ui > 0 ? '1px solid #F0EEE8' : 'none' }}>
+                              <div key={u.id} className="grid px-4 py-2.5 items-center" style={{ gridTemplateColumns: '1fr 40px 62px 72px 28px 28px', borderTop: ui > 0 ? '1px solid #F0EEE8' : 'none' }}>
                                 <div>
                                   <div className="text-[12px] font-bold" style={{ color: '#222' }}>{u.tipo}{u.planta ? ` · ${u.planta}` : ''}</div>
                                   {u.renta_mensual ? <div className="text-[10px]" style={{ color: '#AAA' }}>{fmt(u.renta_mensual)}/mes</div> : null}
@@ -1947,8 +2047,11 @@ export default function MercadoPage() {
                                 <div className="text-[11px] font-bold text-right" style={{ color: u.precio_venta_est ? '#22C55E' : '#CCC' }}>
                                   {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
                                 </div>
+                                <button onClick={() => startEditUnidad(u)}
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] mx-auto"
+                                  style={{ background: 'rgba(59,130,246,0.08)', color: '#3B82F6' }}>✏️</button>
                                 <button onClick={() => deleteUnidad(u.id, editInmueble.id)}
-                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] ml-auto"
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] mx-auto"
                                   style={{ background: 'rgba(239,68,68,0.07)', color: '#EF4444' }}>✕</button>
                               </div>
                             )
