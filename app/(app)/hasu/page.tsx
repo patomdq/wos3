@@ -40,9 +40,10 @@ type TrackRow = {
 }
 
 type SortKey = 'roi' | 'fecha' | 'duracion'
-type FilterKey = 'todos' | 'en_curso' | 'finalizado'
+type FilterKey = 'todos' | 'en_curso' | 'patrimonio' | 'finalizado'
 
 const EN_CURSO = ['comprado','reforma','venta','reservado','con_oferta','en_arras']
+const PATRIMONIO = ['patrimonial']
 const VENDIDOS = ['vendido','cerrado']
 
 const card: React.CSSProperties = {
@@ -132,6 +133,7 @@ export default function HasuPage() {
   const filtered = catFiltered
     .filter(r => {
       if (filter === 'en_curso')   return EN_CURSO.includes(r.estado)
+      if (filter === 'patrimonio') return PATRIMONIO.includes(r.estado)
       if (filter === 'finalizado') return VENDIDOS.includes(r.estado)
       return true
     })
@@ -311,7 +313,7 @@ export default function HasuPage() {
             {/* Filtros dentro de la card */}
             <div style={{ padding: '16px 20px 12px', display: 'flex', gap: 8, alignItems: 'center', borderBottom: '1px solid #F2F1ED', flexWrap: 'wrap' as const }}>
               <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid #ECEAE4' }}>
-                {([['todos','Todos'],['en_curso','En curso'],['finalizado','Finalizados']] as [FilterKey,string][]).map(([k,l]) => (
+                {([['todos','Todos'],['en_curso','En curso'],['patrimonio','Patrimonio'],['finalizado','Finalizados']] as [FilterKey,string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setFilter(k)}
                     style={{ padding: '6px 14px', fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', background: filter === k ? '#F26E1F' : 'transparent', color: filter === k ? '#fff' : '#999' }}>
                     {l}
