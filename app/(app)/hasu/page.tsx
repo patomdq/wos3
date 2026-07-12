@@ -61,6 +61,7 @@ type TrackRow = {
   inversion_hasu: number | null
   renta_mensual: number | null
   renta_neta_mensual: number | null
+  fecha_inicio_alquiler: string | null
   categoria: string
   codigo: string | null
   movimientos?: { tipo: string; monto: number }[]
@@ -95,7 +96,7 @@ export default function HasuPage() {
       supabase.from('cuentas_bancarias').select('*').eq('activa', true).order('created_at'),
       supabase.from('proyectos').select('id,nombre,estado,precio_compra,precio_venta_estimado'),
       supabase.from('inversores').select('id', { count: 'exact' }),
-      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,inversion_hasu,renta_mensual,renta_neta_mensual,fecha_compra,fecha_salida_estimada,categoria,codigo,movimientos(tipo,monto)').order('created_at',{ascending:false}),
+      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,inversion_hasu,renta_mensual,renta_neta_mensual,fecha_compra,fecha_inicio_alquiler,fecha_salida_estimada,categoria,codigo,movimientos(tipo,monto)').order('created_at',{ascending:false}),
       supabase.from('proyecto_inversores').select('proyecto_id,inversores(nombre)'),
     ]).then(([c, p, inv, tr, pi]) => {
       setCuentas(c.data || [])
@@ -371,8 +372,9 @@ export default function HasuPage() {
                 <tbody>
                   {filtered.map((r, i) => {
                     const estColor  = ESTADO_COLOR[r.estado] || '#888'
+                    const inicioAlquiler = r.fecha_inicio_alquiler || r.fecha_compra
                     const rentAnual = rentabilidadAnual(r.renta_neta_mensual, r.precio_compra)
-                    const acumulado = acumuladoNeto(r.renta_neta_mensual, r.fecha_compra)
+                    const acumulado = acumuladoNeto(r.renta_neta_mensual, inicioAlquiler)
                     const compraDate = r.fecha_compra ? new Date(r.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) : '—'
                     return (
                       <tr key={r.id} style={{ borderBottom: i < filtered.length-1 ? '1px solid #F2F1ED' : 'none' }}>
@@ -385,7 +387,7 @@ export default function HasuPage() {
                         </td>
                         <td style={{ padding: '11px 14px', fontWeight: 700, color: r.renta_neta_mensual ? '#111' : '#DDD', whiteSpace: 'nowrap' as const }}>{r.renta_neta_mensual ? fmt(r.renta_neta_mensual) : '—'}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 900, color: rentAnual !== null ? '#22C55E' : '#DDD', whiteSpace: 'nowrap' as const }}>{rentAnual !== null ? fmtPct(rentAnual) : '—'}</td>
-                        <td style={{ padding: '11px 14px', fontWeight: 700, color: '#888', whiteSpace: 'nowrap' as const }}>{antiguedad(r.fecha_compra)}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 700, color: '#888', whiteSpace: 'nowrap' as const }}>{antiguedad(inicioAlquiler)}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 800, color: acumulado !== null ? '#111' : '#DDD', whiteSpace: 'nowrap' as const }}>{acumulado !== null ? fmt(acumulado) : '—'}</td>
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
                           <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: `${estColor}18`, color: estColor }}>{ESTADO_LABEL[r.estado] || r.estado}</span>
@@ -398,7 +400,7 @@ export default function HasuPage() {
                   const totalRenta = filtered.reduce((s, r) => s + (r.renta_neta_mensual || 0), 0)
                   const withRent   = filtered.filter(r => rentabilidadAnual(r.renta_neta_mensual, r.precio_compra) !== null)
                   const rentMedia  = withRent.length > 0 ? withRent.reduce((s, r) => s + (rentabilidadAnual(r.renta_neta_mensual, r.precio_compra) ?? 0), 0) / withRent.length : null
-                  const totalAcum  = filtered.reduce((s, r) => s + (acumuladoNeto(r.renta_neta_mensual, r.fecha_compra) ?? 0), 0)
+                  const totalAcum  = filtered.reduce((s, r) => s + (acumuladoNeto(r.renta_neta_mensual, r.fecha_inicio_alquiler || r.fecha_compra) ?? 0), 0)
                   return (
                     <tfoot>
                       <tr style={{ borderTop: '2px solid #ECEAE4', background: '#FAFAF8' }}>
