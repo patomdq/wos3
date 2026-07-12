@@ -24,9 +24,13 @@ function roiAnualizado(roi: number, meses: number | null): number | null {
   return ((Math.pow(1 + roi / 100, 12 / meses)) - 1) * 100
 }
 
+function mesesAntiguedad(inicio: string | null): number | null {
+  if (!inicio) return null
+  return duracionMeses(inicio, new Date().toISOString())
+}
+
 function antiguedad(inicio: string | null): string {
-  if (!inicio) return '—'
-  const meses = duracionMeses(inicio, new Date().toISOString())
+  const meses = mesesAntiguedad(inicio)
   if (!meses) return '—'
   if (meses < 12) return `${meses}m`
   const anos = Math.floor(meses / 12)
@@ -34,9 +38,15 @@ function antiguedad(inicio: string | null): string {
   return resto > 0 ? `${anos}a ${resto}m` : `${anos}a`
 }
 
-function rentabilidadAnual(rentaMensual: number | null, precioCompra: number | null): number | null {
-  if (!rentaMensual || !precioCompra || precioCompra <= 0) return null
-  return (rentaMensual * 12 / precioCompra) * 100
+function rentabilidadAnual(rentaNeta: number | null, precioCompra: number | null): number | null {
+  if (!rentaNeta || !precioCompra || precioCompra <= 0) return null
+  return (rentaNeta * 12 / precioCompra) * 100
+}
+
+function acumuladoNeto(rentaNeta: number | null, inicio: string | null): number | null {
+  const meses = mesesAntiguedad(inicio)
+  if (!rentaNeta || !meses) return null
+  return rentaNeta * meses
 }
 
 type CatTab = 'todos' | 'inmuebles_varios' | 'edificios' | 'extranjero'
@@ -50,6 +60,7 @@ type TrackRow = {
   porcentaje_hasu: number
   inversion_hasu: number | null
   renta_mensual: number | null
+  renta_neta_mensual: number | null
   categoria: string
   codigo: string | null
   movimientos?: { tipo: string; monto: number }[]
@@ -84,7 +95,7 @@ export default function HasuPage() {
       supabase.from('cuentas_bancarias').select('*').eq('activa', true).order('created_at'),
       supabase.from('proyectos').select('id,nombre,estado,precio_compra,precio_venta_estimado'),
       supabase.from('inversores').select('id', { count: 'exact' }),
-      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,inversion_hasu,renta_mensual,fecha_compra,fecha_salida_estimada,categoria,codigo,movimientos(tipo,monto)').order('created_at',{ascending:false}),
+      supabase.from('proyectos').select('id,nombre,tipo,estado,porcentaje_hasu,precio_compra,precio_venta_estimado,precio_venta_real,valor_total_operacion,inversion_hasu,renta_mensual,renta_neta_mensual,fecha_compra,fecha_salida_estimada,categoria,codigo,movimientos(tipo,monto)').order('created_at',{ascending:false}),
       supabase.from('proyecto_inversores').select('proyecto_id,inversores(nombre)'),
     ]).then(([c, p, inv, tr, pi]) => {
       setCuentas(c.data || [])
@@ -349,10 +360,10 @@ export default function HasuPage() {
 
             <div style={{ overflowX: 'auto' }}>
               {filter === 'patrimonio' ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720, fontSize: 12 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820, fontSize: 12 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #ECEAE4' }}>
-                    {['#','Proyecto','Tipo','P. Compra','Renta Mensual','Rentabilidad Anual','Antigüedad','Estado'].map(h => (
+                    {['#','Proyecto','Tipo','P. Compra','Renta Neta','Rentabilidad Anual','Antigüedad','Acumulado','Estado'].map(h => (
                       <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#BBB', whiteSpace: 'nowrap' as const }}>{h}</th>
                     ))}
                   </tr>
@@ -360,7 +371,8 @@ export default function HasuPage() {
                 <tbody>
                   {filtered.map((r, i) => {
                     const estColor  = ESTADO_COLOR[r.estado] || '#888'
-                    const rentAnual = rentabilidadAnual(r.renta_mensual, r.precio_compra)
+                    const rentAnual = rentabilidadAnual(r.renta_neta_mensual, r.precio_compra)
+                    const acumulado = acumuladoNeto(r.renta_neta_mensual, r.fecha_compra)
                     const compraDate = r.fecha_compra ? new Date(r.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) : '—'
                     return (
                       <tr key={r.id} style={{ borderBottom: i < filtered.length-1 ? '1px solid #F2F1ED' : 'none' }}>
@@ -371,9 +383,10 @@ export default function HasuPage() {
                           <div style={{ fontWeight: 700, color: '#111' }}>{r.precio_compra ? fmtK(r.precio_compra) : '—'}</div>
                           {compraDate !== '—' && <div style={{ fontSize: 10, color: '#CCC', marginTop: 1 }}>{compraDate}</div>}
                         </td>
-                        <td style={{ padding: '11px 14px', fontWeight: 700, color: r.renta_mensual ? '#111' : '#DDD', whiteSpace: 'nowrap' as const }}>{r.renta_mensual ? fmt(r.renta_mensual) : '—'}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 700, color: r.renta_neta_mensual ? '#111' : '#DDD', whiteSpace: 'nowrap' as const }}>{r.renta_neta_mensual ? fmt(r.renta_neta_mensual) : '—'}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 900, color: rentAnual !== null ? '#22C55E' : '#DDD', whiteSpace: 'nowrap' as const }}>{rentAnual !== null ? fmtPct(rentAnual) : '—'}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 700, color: '#888', whiteSpace: 'nowrap' as const }}>{antiguedad(r.fecha_compra)}</td>
+                        <td style={{ padding: '11px 14px', fontWeight: 800, color: acumulado !== null ? '#111' : '#DDD', whiteSpace: 'nowrap' as const }}>{acumulado !== null ? fmt(acumulado) : '—'}</td>
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
                           <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: `${estColor}18`, color: estColor }}>{ESTADO_LABEL[r.estado] || r.estado}</span>
                         </td>
@@ -382,9 +395,10 @@ export default function HasuPage() {
                   })}
                 </tbody>
                 {(() => {
-                  const totalRenta = filtered.reduce((s, r) => s + (r.renta_mensual || 0), 0)
-                  const withRent   = filtered.filter(r => rentabilidadAnual(r.renta_mensual, r.precio_compra) !== null)
-                  const rentMedia  = withRent.length > 0 ? withRent.reduce((s, r) => s + (rentabilidadAnual(r.renta_mensual, r.precio_compra) ?? 0), 0) / withRent.length : null
+                  const totalRenta = filtered.reduce((s, r) => s + (r.renta_neta_mensual || 0), 0)
+                  const withRent   = filtered.filter(r => rentabilidadAnual(r.renta_neta_mensual, r.precio_compra) !== null)
+                  const rentMedia  = withRent.length > 0 ? withRent.reduce((s, r) => s + (rentabilidadAnual(r.renta_neta_mensual, r.precio_compra) ?? 0), 0) / withRent.length : null
+                  const totalAcum  = filtered.reduce((s, r) => s + (acumuladoNeto(r.renta_neta_mensual, r.fecha_compra) ?? 0), 0)
                   return (
                     <tfoot>
                       <tr style={{ borderTop: '2px solid #ECEAE4', background: '#FAFAF8' }}>
@@ -393,7 +407,9 @@ export default function HasuPage() {
                         <td colSpan={2} />
                         <td style={{ padding: '10px 14px', fontWeight: 900, color: '#111' }}>{totalRenta > 0 ? fmt(totalRenta) : '—'}</td>
                         <td style={{ padding: '10px 14px', fontWeight: 900, color: rentMedia !== null ? '#22C55E' : '#DDD' }}>{rentMedia !== null ? fmtPct(rentMedia) : '—'}</td>
-                        <td colSpan={2} />
+                        <td style={{ padding: '10px 14px' }} />
+                        <td style={{ padding: '10px 14px', fontWeight: 900, color: '#111' }}>{totalAcum > 0 ? fmt(totalAcum) : '—'}</td>
+                        <td />
                       </tr>
                     </tfoot>
                   )
