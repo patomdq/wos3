@@ -1357,13 +1357,27 @@ export default function MercadoPage() {
                         {/* Reparto JV */}
                         {item.jv_jugadores && item.jv_jugadores.length > 0 && (() => {
                           const jvRes = calcJvReparto(item.jv_jugadores, bens[1], item.duracion_meses || 0)
+                          const rolLabel = (r: JvJugador['rol']) => r === 'gestor' ? 'Gestor' : r === 'inversor' ? 'Inversor' : 'Mixto'
+                          const rolColor = (r: JvJugador['rol']) => r === 'gestor' ? '#F59E0B' : r === 'inversor' ? '#3B82F6' : '#A855F7'
                           return (
-                            <div className="px-2.5 py-2 flex flex-wrap gap-x-3 gap-y-1" style={{ background: 'rgba(168,85,247,0.06)', borderTop: '1px solid rgba(168,85,247,0.15)' }}>
+                            <div className="px-2.5 py-2" style={{ background: 'rgba(168,85,247,0.06)', borderTop: '1px solid rgba(168,85,247,0.15)' }}>
+                              <div className="text-[9px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#A855F7' }}>Reparto JV (escenario Realista)</div>
+                              <div className="grid grid-cols-[1fr_64px_64px] gap-x-2 pb-1 mb-1" style={{ borderBottom: '1px solid rgba(168,85,247,0.15)' }}>
+                                <div className="text-[8px] font-black uppercase" style={{ color: '#BBB' }}>Jugador</div>
+                                <div className="text-[8px] font-black uppercase text-right" style={{ color: '#BBB' }}>Capital</div>
+                                <div className="text-[8px] font-black uppercase text-right" style={{ color: '#BBB' }}>Beneficio</div>
+                              </div>
                               {jvRes.map(j => (
-                                <div key={j.id} className="text-[10px] font-bold whitespace-nowrap">
-                                  <span style={{ color: '#7C3AED' }}>{j.nombre || (j.rol === 'gestor' ? 'Gestor' : j.rol === 'inversor' ? 'Inversor' : 'Mixto')}</span>{' '}
-                                  <span style={{ color: '#A855F7' }}>{j.pctBeneficio.toFixed(0)}%</span>
-                                  {j.beneficio !== null && <span style={{ color: '#999', fontWeight: 500 }}> · {fmt(j.beneficio)}</span>}
+                                <div key={j.id} className="grid grid-cols-[1fr_64px_64px] gap-x-2 items-center py-1">
+                                  <div className="min-w-0">
+                                    <div className="text-[11px] font-bold truncate" style={{ color: '#333' }}>{j.nombre || '—'}</div>
+                                    <div className="text-[8px] font-black uppercase tracking-wide" style={{ color: rolColor(j.rol) }}>{rolLabel(j.rol)}{j.rol === 'mixto' ? ` ${(j.gestorPct ?? 50)}%` : ''}</div>
+                                  </div>
+                                  <div className="text-[10px] font-mono text-right" style={{ color: '#888' }}>{fmt(j.capital)}</div>
+                                  <div className="text-right">
+                                    <div className="text-[11px] font-mono font-black" style={{ color: '#7C3AED' }}>{j.beneficio !== null ? fmt(j.beneficio) : '—'}</div>
+                                    <div className="text-[8px] font-bold" style={{ color: '#A855F7' }}>{j.pctBeneficio.toFixed(0)}%</div>
+                                  </div>
                                 </div>
                               ))}
                             </div>
