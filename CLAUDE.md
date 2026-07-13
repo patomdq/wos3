@@ -39,6 +39,51 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 13/07/2026 (continuación — reforma por unidad + JV/Gestor)**
+
+Hecho:
+- **Fix: reforma por unidad no llegaba al total CAAV** (`app/(app)/mercado/page.tsx`)
+  - Bug: cada unidad de un edificio ya tenía su propio `reforma_estimada` (tabla `inmueble_unidades`), pero el gasto global "Reforma" de CAAV era un campo único manual — forzaba a promediar costos de reforma distintos entre unidades (ej. Calle Alhóndiga: 15k vs 45k)
+  - Fix: la sección "Unidades del edificio" del calculador ahora muestra la reforma de cada unidad + el total sumado, con botón "Aplicar suma al gasto de Reforma" que carga ese total directo al gasto de CAAV (sin overwrite silencioso — acción explícita)
+  - Commit `28bc73a`, pusheado a `origin master` — ✅ deployado, build verificado antes del push
+
+- **Calculadora JV / Gestor — nueva card en análisis multi-estrategia** (`app/(app)/mercado/page.tsx`)
+  - Migración Supabase: columna `jv_jugadores` (jsonb, default `[]`) en tabla `inmuebles`
+  - Toggle "Solo HASU" / "Joint Venture" dentro de la misma card
+  - Modo JV: lista dinámica de jugadores (agregar/quitar, N sin límite fijo), cada uno con: nombre, rol (Gestor/Inversor), capital aportado (€), % del beneficio asignado — **el % de beneficio es independiente del % de capital** (permite que el gestor se lleve más beneficio del proporcional a su aporte por el trabajo de gestión, sin fee fijo)
+  - Reparte el beneficio ya calculado por CAAV (escenario Realista) entre los jugadores según su % asignado — no recalcula el negocio, solo el reparto
+  - Por jugador se calcula: % de capital sobre el total (informativo), beneficio en €, ROI% y ROI anualizado (misma fórmula que CAAV), con el mismo semáforo de la app (🔴<30% / 🟡30-50% / 🟢>50%)
+  - Validaciones visuales: alerta si el % de beneficio de todos los jugadores no suma 100%, y si el capital aportado no cuadra con la inversión total de CAAV
+  - Modelo confirmado con Pato: NO es 50/50 fijo, NO hay fee de gestión para HASU — todo se define jugador por jugador (ver ejemplo real: Zurgena = HASU 50%/José Luis 50% capital y beneficio; Alhóndiga = 3 jugadores posibles con roles a definir — HASU siempre gestor, José Luis puede ser gestor o inversor, Pablo Benítez inversor con objetivo de ROI 25-30%)
+  - Persistencia completa en Supabase al guardar (solo si `jvModo === 'jv'`, si no persiste `[]`)
+  - Commit `1338701`, pusheado a `origin master` — ✅ deployado, build verificado antes del push
+
+Pendiente:
+- Fase 2 catálogo de reforma (ver entrada de sesión anterior) — sigue pendiente
+- Probar la calculadora JV/Gestor con un caso real (ej. Alhóndiga) una vez Pato defina el rol de José Luis
+
+**Última sesión — 13/07/2026 (continuación — calculadora multi-estrategia)**
+
+Hecho:
+- **Calculadora multi-estrategia — Fase 1** (`app/(app)/mercado/page.tsx`)
+  - Migración Supabase: 9 columnas nuevas en tabla `inmuebles`:
+    `unidades_estimadas` (int, default 1), `costo_reforma_por_unidad`, `precio_venta_por_unidad`, `alquiler_estimado_unidad`, `reforma_minima_estimada`, `alquiler_mensual_estimado`, `precio_venta_rentando`, `fee_inbruto_estimado`, `fee_gestion_obra_estimado`
+  - En la calculadora full-screen, debajo de los resultados CAAV, se agregan:
+    - Inputs PatrimonioIN: unidades estimadas, reforma/unidad, precio venta/unidad, alquiler/unidad (para ROI bruto inversor)
+    - Inputs Alquiler directo: reforma mínima, alquiler mensual, precio venta ya rentando (opcional)
+    - Inputs INbruto: fee INbruto + fee gestión obra (ambos libres, sin fórmula ni default forzado)
+  - Vista comparativa: 4 cards 2×2 con beneficio neto en €, semáforo ROI (🔴<30% / 🟡30-50% / 🟢>50%), mejor escenario destacado en naranja
+  - CAAV usa el escenario "Realista" del calculador existente (sin cambios en la lógica preexistente)
+  - INbruto muestra solo beneficio en €, sin ROI% (no hay capital inmovilizado)
+  - `fee_gestion_obra_estimado` y `fee_inbruto_estimado` son 100% manuales — los placeholders muestran referencias (4-6k / 2k+) pero no imponen valor por defecto
+  - Persistencia completa en Supabase al guardar
+  - Commit `aabe986`, pusheado a `origin master` — ✅ deployado, build verificado antes del push
+
+- **Catálogo de reforma (Fase 2) — pendiente**: tabla `catalogo_reforma` + pantalla admin + conexión al calculador. Bloqueada hasta que Pato confirme los €/m² para adecuación 2★/3★/4★ con el reformista. Las 2 partidas fijas (cocina 2.000€, baño 4.000€) están listas para cargar cuando se construya la pantalla.
+
+Pendiente:
+- Fase 2: catálogo de reforma (`catalogo_reforma`) + pantalla admin + conexión automática a escenarios CAAV y PatrimonioIN
+
 **Última sesión — 13/07/2026**
 
 Hecho:
@@ -437,3 +482,7 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | HASU — pestaña Patrimonio + Renta Neta/Rentabilidad Anual/Acumulado | ✅ producción |
 | Unificación pipeline análisis inmuebles (Radar/Mercado) sobre tabla `inmuebles` | ✅ producción |
 | Fragua (IA scraping Idealista) — punto de enchufe listo, NO contratado | ⏳ pendiente |
+| Calculadora multi-estrategia Fase 1 (4 escenarios: CAAV, PatrimonioIN, Alquiler, INbruto) | ✅ producción |
+| Reforma por unidad aplicable al total CAAV (edificios) | ✅ producción |
+| Calculadora JV/Gestor (reparto flexible entre jugadores, % beneficio ≠ % capital) | ✅ producción |
+| Catálogo reforma Fase 2 (tabla catalogo_reforma + admin + conexión calculadora) | ⏳ pendiente |
