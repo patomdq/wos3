@@ -78,6 +78,32 @@ Pendiente:
 - Drop de las 3 tablas legacy (`inmuebles_radar`, `inmuebles_estudio`, `edificios_estudio`) — sigue pendiente de la sesión anterior
 - Contratar Fragua y conectar comparables — sigue pendiente
 
+**Última sesión — 12/07/2026**
+
+Hecho:
+- **Cierre operación Olula (Proyecto San José, OP-007)** — vendida en 69.000€, firma exitosa el 1/7/2026. PATCH directo en Supabase: `estado='vendido'`, `precio_venta_real=69000`, `fecha_salida_estimada='2026-07-01'`
+- **Mercado — fix edición de unidades en edificios** (`app/(app)/mercado/page.tsx`)
+  - Bug: dentro del modal "Editar inmueble", las unidades de un edificio solo se podían eliminar, no editar
+  - Fix: botón ✏️ por unidad abre formulario inline (tipo, planta, m², ocupación, renta, precio venta est., reforma est., notas) con Guardar/Cancelar, además del ✕ de eliminar que ya existía
+  - Commit `27c2336`
+- **Nuevo estado `patrimonial`** — para activos en alquiler, fuera del funnel de venta (Radar→...→Vendida)
+  - Chalet Las Dalias (OP-002) reclasificado de `reforma` a `patrimonial` (no está a la venta, se renta)
+  - Agregado a `proyectos/page.tsx` (nueva sección "Patrimonio" en el pipeline visual), `proyectos/[id]/page.tsx` y `hasu/page.tsx` (`ESTADO_LABEL`/`ESTADO_COLOR`)
+  - `ESTADOS_ACTIVOS`/`EN_CURSO` y `ESTADOS_VENDIDOS`/`VENDIDOS` excluyen `patrimonial` a propósito — no cuenta como operación activa de venta ni sube al objetivo 1M€
+  - Commit `57db773`
+- **HASU — pestaña y sub-planilla "Patrimonio"** (`app/(app)/hasu/page.tsx`)
+  - Nueva pestaña en la tabla OPERACIONES (`Todos · En curso · Patrimonio · Finalizados`) que filtra por `estado='patrimonial'`
+  - Al seleccionar "Patrimonio" la tabla cambia de columnas: en vez de P.Venta/Benef/ROI (no aplican a un activo que no se vende) muestra **P. Compra · Renta Neta · Rentabilidad Anual · Antigüedad · Acumulado · Estado**
+  - `Rentabilidad Anual` = renta neta mensual × 12 / precio de compra
+  - `Acumulado` = renta neta mensual × meses desde `fecha_inicio_alquiler` (no desde `fecha_compra` — son fechas distintas, ej. Chalet Las Dalias se compró en 2010 pero se alquila hace 36 meses)
+  - Columnas nuevas en Supabase `proyectos`: `renta_mensual` (bruta), `renta_neta_mensual`, `fecha_inicio_alquiler`
+  - Datos cargados: Chalet Las Dalias — renta neta 350€/mes, alquilado desde hace 36 meses. Dúplex La Alfoquia (alta nueva, OP-009) — 70.000€, renta neta 650€/mes, alquilado desde hace 24 meses
+  - Commits `19043b2`, `41f7d27`, `facda77`, `a0afb30`
+- **Regla de trabajo fijada**: nunca correr servidor local ni auto-loguearse para probar la UI — Pato siempre prueba en el deploy de Vercel. Flujo: editar → `next build` → commit → push. Ver `feedback_coding.md`
+
+Pendiente:
+- Ninguno abierto de esta sesión
+
 **Última sesión — 23/06/2026**
 
 Hecho:
@@ -406,3 +432,8 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Fix Objetivo 1M€ — Proyectos = HASU | ✅ producción |
 | Mercado — solapas por estado (pipeline) + buscador título/dirección/ciudad | ✅ producción |
 | Limpieza DB — 56 filas `borrador` huérfanas eliminadas de `inmuebles` | ✅ hecho 13/07/2026 |
+| Mercado — edición inline de unidades en edificios (antes solo se podían borrar) | ✅ producción |
+| Estado `patrimonial` — activos en alquiler fuera del funnel de venta | ✅ producción |
+| HASU — pestaña Patrimonio + Renta Neta/Rentabilidad Anual/Acumulado | ✅ producción |
+| Unificación pipeline análisis inmuebles (Radar/Mercado) sobre tabla `inmuebles` | ✅ producción |
+| Fragua (IA scraping Idealista) — punto de enchufe listo, NO contratado | ⏳ pendiente |
