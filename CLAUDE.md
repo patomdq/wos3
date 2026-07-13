@@ -39,6 +39,19 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 13/07/2026 (continuación — generador de Dossier)**
+
+Hecho:
+- **Generador de Dossier multi-inmueble para inversores** — feature nueva, dos vías:
+  - `app/dossier/page.tsx` — formulario (título + nombre inversor opcional) sobre una cartera de prueba (`CARTERA_PRUEBA`, 5 inmuebles Huércal-Overa/Garrucha/Olula), genera PDF client-side vía jsPDF llamando a `lib/generateDossierPDF.ts`
+  - `app/dossier/print/page.tsx` — presentación tipo slides (portada + 1 slide por inmueble + cierre) pensada para imprimir a PDF con `window.print()` (autolanza el diálogo de impresión al cargar)
+  - Dependencias agregadas a `package.json`: `docx` y `puppeteer` — **quedaron sin usar**, ambas vías finales usan jsPDF (cliente) o `window.print()` (navegador), no generación server-side. Pendiente decidir si se eliminan o si hay un plan de usarlas después
+  - Commit `42779cd`, pusheado a `origin master` — ✅ build verificado antes del push (este código ya estaba escrito de una sesión anterior sin commitear; se commiteó y documentó recién ahora)
+
+Pendiente:
+- Decidir si `docx`/`puppeteer` se usan para algo (ej. exportar a Word, o generar el PDF en servidor) o se eliminan del `package.json` por no usarse
+- Conectar `/dossier` a datos reales de `inmuebles` en vez de la cartera de prueba hardcodeada, si se decide usar en producción con inversores reales
+
 **Última sesión — 13/07/2026 (continuación — reforma por unidad + JV/Gestor)**
 
 Hecho:
@@ -487,5 +500,7 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Fragua (IA scraping Idealista) — punto de enchufe listo, NO contratado | ⏳ pendiente |
 | Calculadora multi-estrategia Fase 1 (4 escenarios: CAAV, PatrimonioIN, Alquiler, INbruto) | ✅ producción |
 | Reforma por unidad aplicable al total CAAV (edificios) | ✅ producción |
-| Calculadora JV/Gestor (reparto flexible entre jugadores, % beneficio ≠ % capital) | ✅ producción |
+| Calculadora JV/Gestor (regla fija 50% gestores / 50% inversores + rol Mixto) | ✅ producción |
+| Reparto JV visible en card principal de Mercado (badge + tabla Jugador/Capital/Beneficio) | ✅ producción |
+| Generador de Dossier multi-inmueble para inversores (`/dossier`, `/dossier/print`) | ✅ producción (con cartera de prueba, no datos reales todavía) |
 | Catálogo reforma Fase 2 (tabla catalogo_reforma + admin + conexión calculadora) | ⏳ pendiente |
