@@ -88,7 +88,7 @@ type Proveedor = { id: string; nombre: string }
 type Visita = { id: string; inmueble_id: string; fecha: string; hora: string; responsable: string; notas_previas?: string; estado_post?: string; notas_post?: string; fotos_url?: string; gcal_event_id?: string; created_at: string }
 
 const SUBESTADO_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  sin_analizar: { label: 'Sin analizar', color: '#888',    bg: 'rgba(136,136,136,0.12)' },
+  sin_analizar: { label: 'Radar',        color: '#888',    bg: 'rgba(136,136,136,0.12)' },
   en_estudio:   { label: 'En estudio',   color: '#60A5FA', bg: 'rgba(96,165,250,0.15)'  },
   ofertado:     { label: 'Ofertado',     color: '#F59E0B', bg: 'rgba(245,158,11,0.15)'  },
   en_arras:     { label: 'En arras',     color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
@@ -242,7 +242,7 @@ export default function MercadoPage() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('inmuebles').select('*').or('fuente.is.null,fuente.not.ilike.telegram%').order('created_at', { ascending: false }),
+      supabase.from('inmuebles').select('*').neq('estado', 'borrador').order('created_at', { ascending: false }),
       supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre'),
     ]).then(([i, p]) => {
       setInmuebles(i.data || [])

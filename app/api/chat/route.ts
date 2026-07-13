@@ -6,8 +6,9 @@ import { getOrgAccessToken } from '@/lib/gcalToken'
 import { gcalCreateEvent } from '@/lib/googleCalendar'
 import { verifyAuth } from '@/lib/api-auth'
 import { scrapeIdealista } from '@/lib/scrape-idealista'
-import { calcEscenarios, calcCostoTotal, calcGastosFijos } from '@/lib/formulas'
+import { calcEscenarios, calcCostoTotal, calcGastosFijos, type Escenario } from '@/lib/formulas'
 import { buscarComparables } from '@/lib/search-comparables'
+import { analizarInmueble, calcularSemaforo, type AnalisisInput } from '@/lib/analizarInmueble'
 import { checkAndSendMentions } from '@/lib/notifications'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -174,7 +175,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'analizar_inmueble',
-    description: 'Analiza un inmueble en profundidad y genera el PDF completo de rentabilidad listo para enviar al socio. Usalo cuando el usuario pida "analiza este piso", "hazme el análisis completo de X", "calcula la rentabilidad de X", o quiera el informe completo con los 3 escenarios. Aplica automáticamente los costes fijos de Wallest (ITP 2%, notaría 1.200€, agencia 4.500€, cert. energético 100€, seguros 250€, suministros 1.000€) más la reforma que indique el usuario.',
+    description: 'Analiza un inmueble en profundidad (comparables de mercado, escenarios de venta, ROI y precio máximo de compra) y lo guarda como BORRADOR en Mercado — todavía no queda visible hasta que el usuario confirme. Usalo cuando el usuario pida "analiza este piso", "hazme el análisis completo de X", "calcula la rentabilidad de X". Después de mostrarle el resultado, preguntale si lo da de alta en Mercado o lo descarta, y usá confirmar_alta_mercado o descartar_analisis según responda.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -182,9 +183,10 @@ const TOOLS: Anthropic.Tool[] = [
         ciudad:       { type: 'string', description: 'Ciudad o municipio' },
         precio_compra: { type: 'number', description: 'Precio de compra en euros' },
         reforma:      { type: 'number', description: 'Coste de reforma en euros. Preguntar si no se indica.' },
-        metros:       { type: 'number', description: 'Superficie en m². Opcional pero ayuda a estimar el precio de venta.' },
+        metros:       { type: 'number', description: 'Superficie en m². Necesaria para estimar el precio de venta si no se indica precio_venta_realista.' },
         habitaciones: { type: 'number', description: 'Número de habitaciones. Opcional.' },
-        precio_venta_realista: { type: 'number', description: 'Precio de venta objetivo en escenario realista. Si no se indica, se estima por €/m² del municipio.' },
+        precio_venta_realista: { type: 'number', description: 'Precio de venta objetivo en escenario realista. Si no se indica, se estima por comparables de mercado usando metros y habitaciones.' },
+        alquiler_mensual: { type: 'number', description: 'Alquiler mensual estimado en euros, si aplica. Opcional.' },
         duracion_meses: { type: 'number', description: 'Duración estimada de la operación en meses. Opcional.' },
         url: { type: 'string', description: 'URL del anuncio. Opcional.' },
       },
@@ -192,12 +194,36 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
-    name: 'generar_informe_estudio',
-    description: 'Genera el PDF de un inmueble que YA está guardado en inmuebles_estudio. Usalo solo cuando el usuario pida el informe de un estudio ya existente por nombre.',
+    name: 'confirmar_alta_mercado',
+    description: 'Confirma un análisis en borrador y lo da de alta en Mercado (pasa de estado borrador a sin_analizar, queda visible en la UI). Usalo cuando el usuario responda que sí quiere guardarlo, después de analizar_inmueble.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        estudio_id: { type: 'string', description: 'UUID del inmueble en inmuebles_estudio. Si no lo sabes búscalo por nombre.' },
+        id: { type: 'string', description: 'UUID del inmueble en borrador (del contexto, devuelto por analizar_inmueble). Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Nombre o dirección parcial del borrador a confirmar, si no tenés el ID.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'descartar_analisis',
+    description: 'Descarta (elimina) un análisis guardado como borrador. Usalo cuando el usuario responda que no quiere guardar el análisis, después de analizar_inmueble.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'UUID del inmueble en borrador (del contexto, devuelto por analizar_inmueble). Opcional si se usa busqueda.' },
+        busqueda: { type: 'string', description: 'Nombre o dirección parcial del borrador a descartar, si no tenés el ID.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'generar_informe_estudio',
+    description: 'Genera el PDF de un inmueble que YA está guardado en Mercado. Usalo solo cuando el usuario pida el informe de un inmueble ya existente por nombre.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        estudio_id: { type: 'string', description: 'UUID del inmueble en la tabla inmuebles. Si no lo sabes búscalo por nombre.' },
       },
       required: ['estudio_id'],
     },
@@ -297,7 +323,7 @@ const TOOLS: Anthropic.Tool[] = [
         direccion: { type: 'string' }, ciudad: { type: 'string' },
         precio: { type: 'number' }, habitaciones: { type: 'number' }, superficie: { type: 'number' },
         url: { type: 'string' }, drive_url: { type: 'string', description: 'Link a carpeta Google Drive' }, fuente: { type: 'string' }, notas: { type: 'string' },
-        estado: { type: 'string', enum: ['activo', 'descartado', 'convertido'] },
+        estado: { type: 'string', enum: ['sin_analizar', 'en_estudio', 'ofertado', 'en_arras', 'comprado'] },
       },
       required: [],
     },
@@ -335,7 +361,7 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         id: { type: 'string', description: 'UUID del inmueble en estudio (del contexto). Opcional si se usa busqueda.' },
         busqueda: { type: 'string', description: 'Dirección o nombre parcial para encontrar el inmueble. Ej: "Rulador 30"' },
-        estado: { type: 'string', enum: ['en_estudio', 'ofertado', 'en_arras', 'descartado'], description: 'Nuevo estado' },
+        estado: { type: 'string', enum: ['sin_analizar', 'en_estudio', 'ofertado', 'en_arras', 'comprado'], description: 'Nuevo estado' },
         titulo: { type: 'string', description: 'Título o nombre corto del inmueble' },
         notas: { type: 'string' },
         nombre: { type: 'string', description: 'Nuevo nombre o alias del inmueble' },
@@ -349,29 +375,6 @@ const TOOLS: Anthropic.Tool[] = [
         habitaciones: { type: 'number', description: 'Número de habitaciones' },
       },
       required: [],
-    },
-  },
-  {
-    name: 'insert_estudio',
-    description: 'Agrega un inmueble directamente a En Estudio sin pasar por el Radar. Usalo cuando el usuario quiera analizar un inmueble nuevo directamente.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        titulo: { type: 'string', description: 'Título o nombre corto del inmueble (ej: "Piso Vera", "Oportunidad Zurgena")' },
-        nombre: { type: 'string', description: 'Nombre o alias del inmueble' },
-        direccion: { type: 'string', description: 'Dirección completa' },
-        ciudad: { type: 'string', description: 'Ciudad o municipio' },
-        precio_compra: { type: 'number', description: 'Precio de compra estimado en euros' },
-        precio_venta_conservador: { type: 'number', description: 'Precio de venta escenario conservador en euros' },
-        precio_venta_realista:    { type: 'number', description: 'Precio de venta escenario realista en euros' },
-        precio_venta_optimista:   { type: 'number', description: 'Precio de venta escenario optimista en euros' },
-        roi_estimado: { type: 'number', description: 'ROI estimado en % (opcional, default 0)' },
-        superficie: { type: 'number', description: 'Superficie en m²' },
-        habitaciones: { type: 'number', description: 'Número de habitaciones' },
-        duracion_meses: { type: 'number', description: 'Duración estimada de la operación en meses' },
-        notas: { type: 'string', description: 'Notas u observaciones' },
-      },
-      required: ['direccion'],
     },
   },
   {
@@ -925,7 +928,7 @@ const TOOLS: Anthropic.Tool[] = [
         titulo: { type: 'string' }, direccion: { type: 'string' }, ciudad: { type: 'string' },
         precio_compra: { type: 'number' }, superficie_total: { type: 'number' }, num_plantas: { type: 'number' },
         tipo_finca: { type: 'string', enum: ['finca_unica', 'bloque_independiente'] },
-        estado: { type: 'string', enum: ['radar', 'en_estudio', 'ofertado', 'en_arras', 'comprado', 'descartado'] },
+        estado: { type: 'string', enum: ['sin_analizar', 'en_estudio', 'ofertado', 'en_arras', 'comprado'] },
         notas: { type: 'string' }, url: { type: 'string' }, drive_url: { type: 'string', description: 'Link a carpeta Google Drive' },
       },
       required: [],
@@ -961,18 +964,18 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: 'object' as const,
       properties: {
-        estado: { type: 'string', enum: ['radar', 'en_estudio', 'ofertado', 'en_arras', 'comprado', 'descartado', 'todos'], description: 'Filtrar por estado. Default: todos (excepto descartados y pendiente_tg).' },
+        estado: { type: 'string', enum: ['sin_analizar', 'en_estudio', 'ofertado', 'en_arras', 'comprado', 'todos'], description: 'Filtrar por estado. Default: todos (excepto borradores).' },
       },
       required: [],
     },
   },
   {
     name: 'insert_edificio_unidades',
-    description: 'Agrega una o varias unidades (pisos, locales, parking) a un edificio en edificio_unidades. Usalo SIEMPRE que el usuario mencione pisos, unidades, inquilinos, alquileres o cualquier detalle por planta. Llamar también justo después de insert_edificio_radar si el usuario ya pasó esa información en el mismo mensaje.',
+    description: 'Agrega una o varias unidades (pisos, locales, parking) a un edificio en inmueble_unidades. Usalo SIEMPRE que el usuario mencione pisos, unidades, inquilinos, alquileres o cualquier detalle por planta. Llamar también justo después de insert_edificio_radar si el usuario ya pasó esa información en el mismo mensaje.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        edificio_id: { type: 'string', description: 'UUID del edificio. Opcional si se usa busqueda.' },
+        edificio_id: { type: 'string', description: 'UUID del edificio (fila en inmuebles con tipologia=edificio). Opcional si se usa busqueda.' },
         busqueda: { type: 'string', description: 'Nombre o dirección parcial del edificio.' },
         unidades: {
           type: 'array',
@@ -1000,51 +1003,36 @@ const TOOLS: Anthropic.Tool[] = [
 
 type ToolResult = { id: string; result: string; table?: string; recordId?: string; label?: string }
 
-async function resolveInmueble(table: 'inmuebles_radar' | 'inmuebles_estudio', busqueda?: string, id?: string): Promise<{ resolved: { id: string; direccion: string; [k: string]: any } } | { error: string }> {
+// Resolver unificado — busca en la tabla `inmuebles` (pisos y edificios, distinguidos por `tipologia`).
+// Por defecto excluye estado='borrador' (aún no confirmados por el usuario) salvo que opts.incluirBorradores lo pida.
+async function resolveInmueble(
+  busqueda?: string,
+  id?: string,
+  opts?: { tipologia?: 'piso' | 'edificio'; incluirBorradores?: boolean }
+): Promise<{ resolved: { id: string; titulo?: string; direccion: string; [k: string]: any } } | { error: string }> {
   if (id) {
-    const { data, error } = await supabaseAdmin.from(table).select('*').eq('id', id).single()
+    let q = supabaseAdmin.from('inmuebles').select('*').eq('id', id)
+    if (opts?.tipologia) q = q.eq('tipologia', opts.tipologia)
+    const { data, error } = await q.single()
     if (error || !data) return { error: `No encontré el inmueble con ID ${id}.` }
     return { resolved: data }
   }
-  if (!busqueda) return { error: 'Necesitás indicar el inmueble por ID o dirección.' }
+  if (!busqueda) return { error: 'Necesitás indicar el inmueble por ID, dirección o nombre.' }
 
-  // inmuebles_radar no tiene columna 'nombre' — solo buscar por direccion
-  // inmuebles_estudio tiene ambas columnas
-  let query = supabaseAdmin.from(table).select('*')
-  if (table === 'inmuebles_estudio') {
-    query = (query as any).or(`direccion.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%,titulo.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`)
-  } else {
-    query = (query as any).ilike('direccion', `%${busqueda}%`)
-  }
+  let query = supabaseAdmin.from('inmuebles').select('*')
+    .or(`titulo.ilike.%${busqueda}%,direccion.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`)
+  if (opts?.tipologia) query = query.eq('tipologia', opts.tipologia)
+  if (!opts?.incluirBorradores) query = query.neq('estado', 'borrador')
 
   const { data, error } = await query
-  if (error) return { error: `Error al buscar en ${table}: ${error.message}` }
+  if (error) return { error: `Error al buscar inmueble: ${error.message}` }
   if (!data || data.length === 0) return { error: `No encontré ningún inmueble que coincida con "${busqueda}". Verificá la dirección exacta.` }
   if (data.length > 1) {
     const lista = data.map((r: any) => {
-      const precio = r.precio || r.precio_compra
-      return `· ${r.nombre || r.direccion}${r.ciudad ? ', ' + r.ciudad : ''}${precio ? ' — ' + precio + '€' : ''}`
+      const precio = r.precio_compra
+      return `· ${r.titulo || r.direccion}${r.ciudad ? ', ' + r.ciudad : ''}${precio ? ' — ' + precio + '€' : ''} [${r.estado}]`
     }).join('\n')
     return { error: `Encontré ${data.length} inmuebles que coinciden con "${busqueda}":\n${lista}\n\n¿Cuál querés? Indicá ciudad o precio para ser más específico.` }
-  }
-  return { resolved: data[0] }
-}
-
-async function resolveEdificio(busqueda?: string, id?: string): Promise<{ resolved: { id: string; titulo?: string; direccion: string; [k: string]: any } } | { error: string }> {
-  if (id) {
-    const { data, error } = await supabaseAdmin.from('edificios_estudio').select('*').eq('id', id).single()
-    if (error || !data) return { error: `No encontré el edificio con ID ${id}.` }
-    return { resolved: data }
-  }
-  if (!busqueda) return { error: 'Necesitás indicar el edificio por ID o nombre/dirección.' }
-  const { data, error } = await supabaseAdmin.from('edificios_estudio').select('*')
-    .or(`titulo.ilike.%${busqueda}%,direccion.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`)
-    .neq('estado', 'pendiente_tg')
-  if (error) return { error: `Error al buscar edificio: ${error.message}` }
-  if (!data || data.length === 0) return { error: `No encontré ningún edificio que coincida con "${busqueda}".` }
-  if (data.length > 1) {
-    const lista = data.map((r: any) => `· ${r.titulo || r.direccion}${r.ciudad ? ', ' + r.ciudad : ''} — ${r.precio_compra}€ [${r.estado}]`).join('\n')
-    return { error: `Encontré ${data.length} edificios:\n${lista}\n\n¿Cuál querés?` }
   }
   return { resolved: data[0] }
 }
@@ -1225,166 +1213,112 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }
     }
     if (name === 'analizar_inmueble') {
-      const compra  = input.precio_compra
-      const reforma = input.reforma ?? 0
-      const metros  = input.metros ?? null
-      const ciudad  = input.ciudad ?? ''
-
-      // ── Costes fijos Wallest ──────────────────────────────────────────────
-      const itp                    = Math.round(compra * 0.02)
-      const gastos_compraventa     = 1200
-      const certificado_energetico = 100
-      const comisiones_inmobiliarias = 4500
-      const seguros                = 250
-      const suministros_basura     = 1000
-
-      const totalGastosFijos = itp + gastos_compraventa + certificado_energetico + comisiones_inmobiliarias + seguros + suministros_basura
-      const inversionTotal   = compra + reforma + totalGastosFijos
-
-      // ── Precio de venta: usuario o estimación por m² ─────────────────────
-      let ventaRealista = input.precio_venta_realista ?? 0
-      if (!ventaRealista && metros && ciudad) {
-        const { buscarPrecioMunicipio } = await import('@/lib/precios-municipio')
-        const ref = buscarPrecioMunicipio(ciudad)
-        if (ref) ventaRealista = Math.round(ref.precioM2 * metros)
+      const analisisInput: AnalisisInput = {
+        direccion: input.nombre,
+        ciudad: input.ciudad ?? '',
+        precioCompra: input.precio_compra,
+        reforma: input.reforma ?? 0,
+        superficie: input.metros ?? undefined,
+        habitaciones: input.habitaciones ?? undefined,
+        precioVentaManual: input.precio_venta_realista ?? undefined,
+        alquilerMensual: input.alquiler_mensual ?? undefined,
+        duracionMeses: input.duracion_meses ?? undefined,
       }
 
-      const ventaConservador = ventaRealista ? Math.round(ventaRealista * 0.90) : 0
-      const ventaOptimista   = ventaRealista ? Math.round(ventaRealista * 1.10) : 0
-
-      // ── gastos_json para el informe ───────────────────────────────────────
-      const gastos_json = {
-        precio_compra:              { estimado: compra,                   real: 0 },
-        gastos_compraventa:         { estimado: gastos_compraventa,       real: 0 },
-        itp:                        { estimado: itp,                      real: 0 },
-        certificado_energetico:     { estimado: certificado_energetico,   real: 0 },
-        comisiones_inmobiliarias:   { estimado: comisiones_inmobiliarias, real: 0 },
-        reforma:                    { estimado: reforma,                   real: 0 },
-        seguros:                    { estimado: seguros,                  real: 0 },
-        suministros_basura:         { estimado: suministros_basura,       real: 0 },
-        deuda_ibi:                  { estimado: 0, real: 0 },
-        deuda_comunidad:            { estimado: 0, real: 0 },
-        cuotas_comunidad:           { estimado: 0, real: 0 },
-        gastos_cancelacion:         { estimado: 0, real: 0 },
-        honorarios_profesionales:   { estimado: 0, real: 0 },
-        honorarios_complementaria:  { estimado: 0, real: 0 },
+      let resultado, textoReporte
+      try {
+        ;({ resultado, textoReporte } = await analizarInmueble(analisisInput))
+      } catch (e: any) {
+        return { result: `No pude completar el análisis: ${e.message}` }
       }
 
-      // ── Guardar en inmuebles_estudio ──────────────────────────────────────
-      const { data: est, error } = await supabaseAdmin
-        .from('inmuebles_estudio')
+      // ── Guardar como borrador en Mercado — espera confirmación explícita ──
+      const { data: inserted, error } = await supabaseAdmin
+        .from('inmuebles')
         .insert({
-          nombre:                   input.nombre,
-          titulo:                   input.nombre,
-          ciudad:                   ciudad || null,
-          precio_compra:            compra,
-          reforma_estimada:         reforma,
-          inversion_total:          inversionTotal,
-          precio_venta_conservador: ventaConservador || null,
-          precio_venta_realista:    ventaRealista    || null,
-          precio_venta_optimista:   ventaOptimista   || null,
-          duracion_meses:           input.duracion_meses ?? null,
-          habitaciones:             input.habitaciones   ?? null,
-          superficie:               metros,
-          url:                      input.url ?? null,
-          estado:                   'en_estudio',
-          gastos_json,
+          tipologia: 'piso',
+          titulo: input.nombre,
+          direccion: input.nombre,
+          ciudad: input.ciudad || null,
+          precio_compra: input.precio_compra,
+          reforma_estimada: input.reforma ?? 0,
+          precio_venta_realista: resultado.precioVenta,
+          roi_calculado: resultado.roi * 100,
+          precio_max_30: resultado.precioMax30,
+          precio_max_50: resultado.precioMax50,
+          precio_max_70: resultado.precioMax70,
+          semaforo: resultado.semaforo.color,
+          superficie: input.metros ?? null,
+          habitaciones: input.habitaciones ?? null,
+          duracion_meses: input.duracion_meses ?? null,
+          url: input.url ?? null,
+          fuente: 'chat',
+          estado: 'borrador',
         })
         .select('id')
         .single()
 
-      if (error || !est) return { result: `Error al guardar el análisis: ${error?.message}` }
-
-      // ── Mover radar a convertido automáticamente ──────────────────────────
-      // Busca por ciudad + nombre/dirección; si hay match único lo marca convertido
-      if (ciudad) {
-        let radarQuery = supabaseAdmin
-          .from('inmuebles_radar')
-          .select('id')
-          .eq('estado', 'activo')
-          .ilike('ciudad', `%${ciudad}%`)
-        const nombreSlug = input.nombre?.split(/[\s,]+/)[0] // primera palabra como señal
-        if (nombreSlug) radarQuery = radarQuery.or(`direccion.ilike.%${nombreSlug}%,titulo.ilike.%${nombreSlug}%`)
-        const { data: radarMatches } = await radarQuery
-        if (radarMatches?.length === 1) {
-          await supabaseAdmin.from('inmuebles_radar').delete().eq('id', radarMatches[0].id)
-        }
+      if (error || !inserted) {
+        return { result: `${textoReporte}\n\n⚠️ El análisis se calculó pero no se pudo guardar como borrador: ${error?.message}` }
       }
 
-
-      const url = `https://wos3.vercel.app/informe/estudio/${est.id}?pdf=1`
-      const fmtE = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
-      const meses = input.duracion_meses ?? 0
-      const roiRealN = ventaRealista > 0 ? ((ventaRealista - inversionTotal) / inversionTotal) * 100 : null
-      const roiR = roiRealN !== null ? roiRealN.toFixed(1) : null
-
-      // ROI anualizado compuesto: (1 + ROI)^(12/meses) - 1
-      const anualizar = (roiTotal: number) => meses > 0 ? ((Math.pow(1 + roiTotal / 100, 12 / meses) - 1) * 100).toFixed(1) : null
-      const roiAnualR = roiRealN !== null ? anualizar(roiRealN) : null
-
-      // ── Costes fijos sin compra ni ITP (para calcular precio máximo de compra) ─
-      const otrosCostes = reforma + gastos_compraventa + certificado_energetico + comisiones_inmobiliarias + seguros + suministros_basura
-      // compra_max = (venta / (1 + roi_target) - otrosCostes) / 1.02  (ITP escala con compra)
-      const compraMax = (targetRoi: number, venta: number) =>
-        Math.round((venta / (1 + targetRoi) - otrosCostes) / 1.02)
-
-      // Referencia de venta para precios máximos
-      const ventaRef = ventaRealista > 0 ? ventaRealista : (ventaConservador > 0 ? Math.round((ventaConservador + ventaOptimista) / 2) : 0)
-
-      // Semáforo basado en ROI total de la operación (criterio Wallest)
-      // 🟢 ≥30% | 🟡 15-30% analizar caso a caso | 🔴 <15% no entra
-      const roiEmoji = roiRealN === null ? '' : roiRealN >= 30 ? '🟢' : roiRealN >= 15 ? '🟡' : '🔴'
-      const roiAlertaValor = roiAnualR !== null ? `${roiR}% (${roiAnualR}% anualizado)` : `${roiR}%`
-      const roiAlerta = roiRealN === null ? '' :
-        roiRealN >= 30 ? `${roiEmoji} ROI ${roiAlertaValor} — Entra según criterios Wallest` :
-        roiRealN >= 15 ? `${roiEmoji} ROI ${roiAlertaValor} — Analizar caso por caso` :
-        `${roiEmoji} ROI ${roiAlertaValor} — No entra según criterios Wallest`
-
-      const fmtRoi = (venta: number) => {
-        const roi = ((venta - inversionTotal) / inversionTotal) * 100
-        const anual = meses > 0 ? ` (${((Math.pow(1 + roi / 100, 12 / meses) - 1) * 100).toFixed(1)}% anual)` : ''
-        return `${roi.toFixed(1)}%${anual}`
+      return {
+        result: `${textoReporte}\n\n¿Lo doy de alta en Mercado o lo descarto?`,
+        table: 'inmuebles',
+        recordId: inserted.id,
+        label: input.nombre,
       }
-
-      let resumen = `✅ **${input.nombre}**${meses > 0 ? ` · ${meses} meses` : ''}\n\n`
-      resumen += `💰 Inversión total: ${fmtE(inversionTotal)}\n`
-      resumen += `  └ Compra: ${fmtE(compra)}\n`
-      resumen += `  └ Reforma: ${fmtE(reforma)}\n`
-      resumen += `  └ ITP (2%): ${fmtE(itp)}\n`
-      resumen += `  └ Notaría + Registro: ${fmtE(gastos_compraventa)}\n`
-      resumen += `  └ Agencia: ${fmtE(comisiones_inmobiliarias)}\n`
-      resumen += `  └ Otros (cert., seguros, sum.): ${fmtE(certificado_energetico + seguros + suministros_basura)}\n\n`
-      if (ventaRealista > 0) {
-        resumen += `📊 Escenarios${meses > 0 ? ` (ROI total / anualizado a ${meses}m)` : ''}:\n`
-        resumen += `  └ 🔴 Conservador: ${fmtE(ventaConservador)} → ROI ${fmtRoi(ventaConservador)}\n`
-        resumen += `  └ 🟡 Realista:    ${fmtE(ventaRealista)}    → ROI ${fmtRoi(ventaRealista)}\n`
-        resumen += `  └ 🟢 Optimista:   ${fmtE(ventaOptimista)}   → ROI ${fmtRoi(ventaOptimista)}\n\n`
-        if (roiAlerta) resumen += `${roiAlerta}\n\n`
+    }
+    if (name === 'confirmar_alta_mercado') {
+      const resolved = await resolveInmueble(input.busqueda, input.id, { incluirBorradores: true })
+      if ('error' in resolved) return { result: resolved.error }
+      if (resolved.resolved.estado !== 'borrador') {
+        return { result: `"${resolved.resolved.titulo || resolved.resolved.direccion}" ya está dado de alta en Mercado (estado: ${resolved.resolved.estado}).` }
       }
-      if (ventaRef > 0) {
-        resumen += `💡 Precio máximo de compra (venta ref. ${fmtE(ventaRef)}):\n`
-        resumen += `  └ Para ROI 30%: ${fmtE(Math.max(0, compraMax(0.30, ventaRef)))}\n`
-        resumen += `  └ Para ROI 50%: ${fmtE(Math.max(0, compraMax(0.50, ventaRef)))}\n`
-        resumen += `  └ Para ROI 70%: ${fmtE(Math.max(0, compraMax(0.70, ventaRef)))}\n\n`
+      const { data, error } = await supabaseAdmin
+        .from('inmuebles')
+        .update({ estado: 'sin_analizar' })
+        .eq('id', resolved.resolved.id)
+        .eq('estado', 'borrador')
+        .select()
+        .single()
+      if (error || !data) return { result: `Error al confirmar el alta: ${error?.message}` }
+      const nombre = data.titulo || data.direccion
+      return {
+        result: `📦 "${nombre}" dado de alta en Mercado.`,
+        table: 'inmuebles',
+        recordId: data.id,
+        label: nombre,
       }
-      resumen += `PDF guardado ↓`
-
-      return { result: resumen, action: 'pdf', url, table: 'inmuebles_estudio', recordId: est.id, label: input.nombre }
+    }
+    if (name === 'descartar_analisis') {
+      const resolved = await resolveInmueble(input.busqueda, input.id, { incluirBorradores: true })
+      if ('error' in resolved) return { result: resolved.error }
+      if (resolved.resolved.estado !== 'borrador') {
+        return { result: `"${resolved.resolved.titulo || resolved.resolved.direccion}" no es un borrador (estado: ${resolved.resolved.estado}), no se puede descartar así.` }
+      }
+      const { error } = await supabaseAdmin
+        .from('inmuebles')
+        .delete()
+        .eq('id', resolved.resolved.id)
+        .eq('estado', 'borrador')
+      if (error) return { result: `Error al descartar: ${error.message}` }
+      return { result: `🗑️ Análisis descartado: "${resolved.resolved.titulo || resolved.resolved.direccion}".` }
     }
     if (name === 'generar_informe_estudio') {
       const { data: est, error } = await supabaseAdmin
-        .from('inmuebles_estudio')
-        .select('id, titulo, nombre, ciudad, precio_compra, inversion_total, precio_venta_realista, precio_venta_conservador, precio_venta_optimista, duracion_meses')
+        .from('inmuebles')
+        .select('id, titulo, direccion, ciudad, precio_compra, reforma_estimada, precio_venta_realista, precio_venta_conservador, precio_venta_optimista, duracion_meses')
         .eq('id', input.estudio_id)
         .single()
       if (error || !est) return { result: 'No encontré ese estudio. ¿Podés confirmar el nombre del inmueble?' }
-      const url = `https://wos3.vercel.app/informe/estudio/${est.id}?pdf=1`
+      const url = `https://wos3.vercel.app/informe/inmueble/${est.id}?pdf=1`
       const fmtK = (n: number) => `${Math.round(n / 1000)}k€`
-      const inv  = est.inversion_total || est.precio_compra || 0
+      const inv  = calcCostoTotal(est.precio_compra ?? 0, est.reforma_estimada ?? 0)
       const ventaR = est.precio_venta_realista || 0
       const benefR = ventaR - inv
       const roiR   = inv > 0 ? ((benefR / inv) * 100).toFixed(1) : '—'
-      const titulo = est.titulo || est.nombre || est.ciudad || 'Inmueble'
+      const titulo = est.titulo || est.direccion || est.ciudad || 'Inmueble'
       return {
         result: `📄 **${titulo}** — Inversión ${fmtK(inv)} · Venta realista ${fmtK(ventaR)} · Beneficio ${fmtK(benefR)} · ROI ${roiR}%${est.duracion_meses ? ` (${est.duracion_meses} meses)` : ''}`,
         action: 'pdf',
@@ -1485,68 +1419,55 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       return { result: `Cuenta bancaria eliminada: "${input.nombre || input.id}".` }
     }
     if (name === 'update_radar') {
-      const resolved = await resolveInmueble('inmuebles_radar', input.busqueda, input.id)
+      const resolved = await resolveInmueble(input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const fields = ['titulo','direccion','ciudad','precio','habitaciones','superficie','url','drive_url','fuente','notas','estado']
-      const updates: Record<string,any> = {}
-      for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
-      const { data, error } = await supabaseAdmin.from('inmuebles_radar').update(updates).eq('id', resolved.resolved.id).select().single()
+      const updates: Record<string, any> = {}
+      if (input.titulo !== undefined) updates.titulo = input.titulo
+      if (input.direccion !== undefined) updates.direccion = input.direccion
+      if (input.ciudad !== undefined) updates.ciudad = input.ciudad
+      if (input.precio !== undefined) updates.precio_compra = input.precio
+      if (input.habitaciones !== undefined) updates.habitaciones = input.habitaciones
+      if (input.superficie !== undefined) updates.superficie = input.superficie
+      if (input.url !== undefined) updates.url = input.url
+      if (input.drive_url !== undefined) updates.drive_url = input.drive_url
+      if (input.fuente !== undefined) updates.fuente = input.fuente
+      if (input.notas !== undefined) updates.notas = input.notas
+      if (input.estado !== undefined) updates.estado = input.estado
+      if (Object.keys(updates).length === 0) return { result: 'No se indicaron campos a actualizar.' }
+      const { data, error } = await supabaseAdmin.from('inmuebles').update(updates).eq('id', resolved.resolved.id).select().single()
       if (error) return { result: `Error al editar inmueble: ${error.message}` }
-      return { result: `Inmueble actualizado. Dirección: "${data.direccion}", Precio: ${data.precio}€.`, table: 'inmuebles_radar', recordId: data.id, label: `${data.direccion} · ${data.precio}€` }
+      return { result: `Inmueble actualizado. Dirección: "${data.direccion}", Precio: ${data.precio_compra}€.`, table: 'inmuebles', recordId: data.id, label: `${data.direccion} · ${data.precio_compra}€` }
     }
     if (name === 'delete_radar') {
-      const resolved = await resolveInmueble('inmuebles_radar', input.busqueda, input.id)
+      const resolved = await resolveInmueble(input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const { error } = await supabaseAdmin.from('inmuebles_radar').delete().eq('id', resolved.resolved.id)
+      const { error } = await supabaseAdmin.from('inmuebles').delete().eq('id', resolved.resolved.id)
       if (error) return { result: `Error al eliminar: ${error.message}` }
       return { result: `Inmueble eliminado del radar. Dirección: "${resolved.resolved.direccion}".` }
     }
     if (name === 'delete_estudio') {
-      const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
+      const resolved = await resolveInmueble(input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const nombreElim = resolved.resolved.nombre || resolved.resolved.direccion
-      const { error } = await supabaseAdmin.from('inmuebles_estudio').delete().eq('id', resolved.resolved.id)
+      const nombreElim = resolved.resolved.titulo || resolved.resolved.direccion
+      const { error } = await supabaseAdmin.from('inmuebles').delete().eq('id', resolved.resolved.id)
       if (error) return { result: `Error al eliminar: ${error.message}` }
       return { result: `Inmueble eliminado de En Estudio: "${nombreElim}".` }
     }
     if (name === 'update_estudio') {
-      const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
+      const resolved = await resolveInmueble(input.busqueda, input.id)
       if ('error' in resolved) return { result: resolved.error }
-      const fields = ['titulo', 'estado', 'notas', 'nombre', 'precio_compra', 'precio_venta_conservador', 'precio_venta_realista', 'precio_venta_optimista', 'roi_estimado', 'ciudad', 'superficie', 'habitaciones', 'duracion_meses']
+      const fields = ['titulo', 'estado', 'notas', 'precio_compra', 'precio_venta_conservador', 'precio_venta_realista', 'precio_venta_optimista', 'ciudad', 'superficie', 'habitaciones', 'duracion_meses']
       const updates: Record<string,any> = {}
       for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
-      const { data, error } = await supabaseAdmin.from('inmuebles_estudio').update(updates).eq('id', resolved.resolved.id).select().single()
+      // Alias legacy fields que no tienen columna propia en `inmuebles`
+      if (input.nombre !== undefined && updates.titulo === undefined) updates.titulo = input.nombre
+      if (input.roi_estimado !== undefined) updates.roi_calculado = input.roi_estimado
+      if (Object.keys(updates).length === 0) return { result: 'No se indicaron campos a actualizar.' }
+      const { data, error } = await supabaseAdmin.from('inmuebles').update(updates).eq('id', resolved.resolved.id).select().single()
       if (error) return { result: `Error al actualizar: ${error.message}` }
-      const nombre = data.nombre || data.direccion
+      const nombre = data.titulo || data.direccion
       const cambios = Object.keys(updates).join(', ')
-      return { result: `Inmueble "${nombre}" actualizado. Campos: ${cambios}.`, table: 'inmuebles_estudio', recordId: data.id, label: `${nombre} · ${data.estado}` }
-    }
-    if (name === 'insert_estudio') {
-      const hoy = new Date().toISOString().split('T')[0]
-      const { data, error } = await supabaseAdmin.from('inmuebles_estudio').insert([{
-        titulo: input.titulo || null,
-        nombre: input.nombre || input.direccion,
-        direccion: input.direccion,
-        ciudad: input.ciudad || null,
-        precio_compra: input.precio_compra || null,
-        precio_venta_conservador: input.precio_venta_conservador || null,
-        precio_venta_realista:    input.precio_venta_realista    || null,
-        precio_venta_optimista:   input.precio_venta_optimista   || null,
-        roi_estimado: input.roi_estimado || 0,
-        superficie: input.superficie || null,
-        habitaciones: input.habitaciones || null,
-        duracion_meses: input.duracion_meses || null,
-        notas: input.notas || null,
-        estado: 'en_estudio',
-        analizado_en: hoy,
-      }]).select().single()
-      if (error) return { result: `Error al crear inmueble en estudio: ${error.message}` }
-      return {
-        result: `✅ Inmueble registrado en En Estudio — ${data.titulo || data.nombre || data.direccion}`,
-        table: 'inmuebles_estudio',
-        recordId: data.id,
-        label: `${data.nombre || data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''}`,
-      }
+      return { result: `Inmueble "${nombre}" actualizado. Campos: ${cambios}.`, table: 'inmuebles', recordId: data.id, label: `${nombre} · ${data.estado}` }
     }
     if (name === 'insert_inversor') {
       const { data: inv, error: invErr } = await supabaseAdmin.from('inversores').insert([{
@@ -1650,68 +1571,61 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       return { result: `Entrada de bitácora eliminada.` }
     }
     if (name === 'mover_radar_a_estudio') {
-      const hoy = new Date().toISOString().split('T')[0]
       let radarItems: any[]
       if (input.todos) {
-        const { data, error } = await supabaseAdmin.from('inmuebles_radar').select('*').ilike('direccion', `%${input.busqueda}%`).neq('estado', 'convertido')
+        const { data, error } = await supabaseAdmin.from('inmuebles').select('*')
+          .or(`titulo.ilike.%${input.busqueda}%,direccion.ilike.%${input.busqueda}%,ciudad.ilike.%${input.busqueda}%`)
+          .eq('estado', 'sin_analizar')
         if (error) return { result: `Error al buscar: ${error.message}` }
         if (!data || data.length === 0) return { result: `No encontré inmuebles en radar que coincidan con "${input.busqueda}".` }
         radarItems = data
       } else {
-        const resolved = await resolveInmueble('inmuebles_radar', input.busqueda, input.id)
+        const resolved = await resolveInmueble(input.busqueda, input.id)
         if ('error' in resolved) return { result: resolved.error }
         radarItems = [resolved.resolved]
       }
       const movidos: string[] = []
       for (const r of radarItems) {
-        const { data, error } = await supabaseAdmin.from('inmuebles_estudio').insert([{
-          radar_id: r.id,
-          nombre: r.direccion,
-          direccion: r.direccion,
-          ciudad: r.ciudad || null,
-          precio_compra: input.precio_compra || r.precio || null,
-          estado: 'en_estudio',
-          analizado_en: hoy,
-          notas: input.notas || null,
-          roi_estimado: 0,
-        }]).select().single()
-        if (!error && data) {
-          await supabaseAdmin.from('inmuebles_radar').update({ estado: 'convertido' }).eq('id', r.id)
-          movidos.push(`"${r.direccion}"${r.precio ? ' (' + r.precio + '€)' : ''}`)
-        }
+        const updates: Record<string, any> = { estado: 'en_estudio' }
+        if (input.precio_compra) updates.precio_compra = input.precio_compra
+        if (input.notas) updates.notas = input.notas
+        const { data, error } = await supabaseAdmin.from('inmuebles').update(updates).eq('id', r.id).select().single()
+        if (!error && data) movidos.push(`"${r.direccion}"${data.precio_compra ? ' (' + data.precio_compra + '€)' : ''}`)
       }
       if (movidos.length === 0) return { result: 'No se pudo mover ningún inmueble.' }
       const nombresMovidos = movidos.map(m => m.replace(/^"|".*$/g, '').trim()).join(', ')
       return {
         result: movidos.length === 1
-          ? `✅ Inmueble registrado en En Estudio — ${nombresMovidos}`
-          : `✅ Inmuebles registrados en En Estudio — ${nombresMovidos}`,
-        table: 'inmuebles_estudio',
+          ? `✅ Inmueble movido a En Estudio — ${nombresMovidos}`
+          : `✅ Inmuebles movidos a En Estudio — ${nombresMovidos}`,
+        table: 'inmuebles',
         label: movidos.join(', '),
       }
     }
     if (name === 'insert_bitacora_estudio') {
       let estudios: any[]
       if (input.todos) {
-        const { data, error } = await supabaseAdmin.from('inmuebles_estudio').select('id, nombre, direccion, titulo, ciudad').or(`direccion.ilike.%${input.busqueda}%,nombre.ilike.%${input.busqueda}%,titulo.ilike.%${input.busqueda}%,ciudad.ilike.%${input.busqueda}%`)
+        const { data, error } = await supabaseAdmin.from('inmuebles').select('id, titulo, direccion, ciudad')
+          .or(`direccion.ilike.%${input.busqueda}%,titulo.ilike.%${input.busqueda}%,ciudad.ilike.%${input.busqueda}%`)
+          .neq('estado', 'borrador')
         if (error) return { result: `Error al buscar: ${error.message}` }
         if (!data || data.length === 0) return { result: `No encontré inmuebles en estudio que coincidan con "${input.busqueda}".` }
         estudios = data
       } else {
-        const resolved = await resolveInmueble('inmuebles_estudio', input.busqueda, input.id)
+        const resolved = await resolveInmueble(input.busqueda, input.id)
         if ('error' in resolved) return { result: resolved.error }
         estudios = [resolved.resolved]
       }
       const insertados: string[] = []
       for (const estudio of estudios) {
         const { error } = await supabaseAdmin.from('bitacora_estudio').insert([{
-          estudio_id: estudio.id,
+          inmueble_id: estudio.id,
           contenido: input.contenido,
           tipo: input.tipo || 'nota',
           autor: input.autor || 'Patricio',
           url: input.url || null,
         }])
-        if (!error) insertados.push(estudio.nombre || estudio.direccion)
+        if (!error) insertados.push(estudio.titulo || estudio.direccion)
       }
       if (insertados.length === 0) return { result: 'No se pudo guardar ninguna entrada.' }
 
@@ -1963,12 +1877,13 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       return { result: `Proyecto eliminado: "${input.nombre || input.id}".` }
     }
     if (name === 'convertir_estudio_a_proyecto') {
-      // Buscar en inmuebles_estudio por dirección o nombre
+      // Buscar en inmuebles por dirección o título
       const { data: estudios, error: busqErr } = await supabaseAdmin
-        .from('inmuebles_estudio')
+        .from('inmuebles')
         .select('*')
-        .or(`direccion.ilike.%${input.busqueda}%,nombre.ilike.%${input.busqueda}%`)
+        .or(`direccion.ilike.%${input.busqueda}%,titulo.ilike.%${input.busqueda}%`)
         .neq('estado', 'comprado')
+        .neq('estado', 'borrador')
         .order('created_at', { ascending: false })
         .limit(1)
       if (busqErr) return { result: `Error al buscar: ${busqErr.message}` }
@@ -1978,7 +1893,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const estudio = estudios[0]
       const hoy = new Date().toISOString().split('T')[0]
       const { data: proyecto, error: proyErr } = await supabaseAdmin.from('proyectos').insert([{
-        nombre: estudio.nombre || estudio.direccion,
+        nombre: estudio.titulo || estudio.direccion,
         direccion: estudio.direccion || null,
         ciudad: estudio.ciudad || null,
         tipo: 'piso',
@@ -2016,10 +1931,10 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         }
         if (itemsRows.length > 0) await supabaseAdmin.from('items_partida').insert(itemsRows)
       }
-      // Marcar estudio como comprado
-      await supabaseAdmin.from('inmuebles_estudio').update({ estado: 'comprado' }).eq('id', estudio.id)
+      // Marcar inmueble como comprado
+      await supabaseAdmin.from('inmuebles').update({ estado: 'comprado' }).eq('id', estudio.id)
       return {
-        result: `Proyecto creado desde "${estudio.direccion || estudio.nombre}". Nombre: "${proyecto.nombre}", Estado: Comprado, Precio: ${proyecto.precio_compra || 'sin especificar'}€. Se cargaron las partidas de reforma por defecto.`,
+        result: `Proyecto creado desde "${estudio.direccion || estudio.titulo}". Nombre: "${proyecto.nombre}", Estado: Comprado, Precio: ${proyecto.precio_compra || 'sin especificar'}€. Se cargaron las partidas de reforma por defecto.`,
         table: 'proyectos',
         recordId: proyecto.id,
         label: proyecto.nombre,
@@ -2357,21 +2272,21 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }
     }
     if (name === 'agendar_visita_radar') {
-      const res = await resolveInmueble('inmuebles_radar', input.busqueda)
+      const res = await resolveInmueble(input.busqueda)
       if ('error' in res) return { result: res.error }
       const inmueble = res.resolved
       const direccion = `${inmueble.direccion}${inmueble.ciudad ? ', '+inmueble.ciudad : ''}`
 
       const { data: visita, error: dbErr } = await supabaseAdmin
         .from('visitas_radar')
-        .insert([{ radar_id: inmueble.id, fecha: input.fecha, hora: input.hora, responsable: input.responsable, notas_previas: input.notas_previas || null }])
+        .insert([{ inmueble_id: inmueble.id, fecha: input.fecha, hora: input.hora, responsable: input.responsable, notas_previas: input.notas_previas || null }])
         .select().single()
       if (dbErr) return { result: `Error al agendar: ${dbErr.message}` }
 
       // Check for other visits same fecha+hora to group in GCal
       const { data: mismaHora } = await supabaseAdmin
         .from('visitas_radar')
-        .select('id, gcal_event_id, radar_id')
+        .select('id, gcal_event_id, inmueble_id')
         .eq('fecha', input.fecha)
         .eq('hora', input.hora)
         .not('id', 'eq', visita.id)
@@ -2385,9 +2300,9 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         const horaFin = addHour(input.hora)
         let title: string
         if (mismaHora && mismaHora.length > 0) {
-          const { data: todasVisitas } = await supabaseAdmin.from('visitas_radar').select('radar_id').eq('fecha', input.fecha).eq('hora', input.hora)
-          const radarIds = (todasVisitas || []).map((v: any) => v.radar_id)
-          const { data: inmuebles } = await supabaseAdmin.from('inmuebles_radar').select('id,direccion,ciudad').in('id', radarIds)
+          const { data: todasVisitas } = await supabaseAdmin.from('visitas_radar').select('inmueble_id').eq('fecha', input.fecha).eq('hora', input.hora)
+          const inmuebleIds = (todasVisitas || []).map((v: any) => v.inmueble_id)
+          const { data: inmuebles } = await supabaseAdmin.from('inmuebles').select('id,direccion,ciudad').in('id', inmuebleIds)
           const titulos = (inmuebles || []).map((r: any) => `${r.direccion}${r.ciudad ? ', '+r.ciudad : ''}`).join(' · ')
           title = `🏠 Visitas — ${titulos}`
         } else {
@@ -2410,22 +2325,22 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const hoy = new Date().toISOString().split('T')[0]
       let query = supabaseAdmin
         .from('visitas_radar')
-        .select('*, inmuebles_radar(direccion, ciudad)')
+        .select('*, inmuebles(direccion, ciudad)')
         .gte('fecha', input.fecha_desde || hoy)
         .order('fecha').order('hora')
       if (input.fecha_hasta) query = (query as any).lte('fecha', input.fecha_hasta)
       if (input.busqueda) {
-        // Filter by radar_id matching address
-        const { data: found } = await supabaseAdmin.from('inmuebles_radar').select('id').ilike('direccion', `%${input.busqueda}%`)
+        // Filter by inmueble_id matching address
+        const { data: found } = await supabaseAdmin.from('inmuebles').select('id').ilike('direccion', `%${input.busqueda}%`)
         const ids = (found || []).map((x: any) => x.id)
-        if (ids.length > 0) query = (query as any).in('radar_id', ids)
+        if (ids.length > 0) query = (query as any).in('inmueble_id', ids)
       }
       const { data, error } = await query.limit(20)
       if (error) return { result: `Error: ${error.message}` }
       if (!data || data.length === 0) return { result: 'No hay visitas agendadas en ese período.' }
       const lista = data.map((v: any) => {
-        const dir = v.inmuebles_radar?.direccion || 'Inmueble'
-        const ciudad = v.inmuebles_radar?.ciudad ? `, ${v.inmuebles_radar.ciudad}` : ''
+        const dir = v.inmuebles?.direccion || 'Inmueble'
+        const ciudad = v.inmuebles?.ciudad ? `, ${v.inmuebles.ciudad}` : ''
         const estado = v.estado_post ? ` · ${v.estado_post === 'pasa_a_estudio' ? '→ En Estudio' : v.estado_post === 'descartado' ? 'Descartado' : 'Sigue en Radar'}` : ''
         return `· ${v.fecha} ${v.hora} — ${dir}${ciudad} — ${v.responsable}${estado}`
       }).join('\n')
@@ -2434,14 +2349,14 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
     if (name === 'registrar_resultado_visita') {
       // Find latest pending visit for this inmueble
-      const resInm = await resolveInmueble('inmuebles_radar', input.busqueda)
+      const resInm = await resolveInmueble(input.busqueda)
       if ('error' in resInm) return { result: resInm.error }
       const inmueble = resInm.resolved
 
       const { data: visitas, error: fetchErr } = await supabaseAdmin
         .from('visitas_radar')
         .select('*')
-        .eq('radar_id', inmueble.id)
+        .eq('inmueble_id', inmueble.id)
         .is('estado_post', null)
         .order('fecha', { ascending: false })
         .limit(1)
@@ -2458,13 +2373,9 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
       let extraMsg = ''
       if (input.estado_post === 'pasa_a_estudio') {
-        const { data: estudio, error: estErr } = await supabaseAdmin.from('inmuebles_estudio').insert([{
-          direccion: inmueble.direccion, ciudad: inmueble.ciudad || null,
-          precio_compra: inmueble.precio || 0,
-          roi_estimado: 0, estado: 'en_estudio', analizado_en: new Date().toISOString().split('T')[0],
-        }]).select().single()
-        if (!estErr && estudio) extraMsg = ` "${inmueble.direccion}" movido a En Estudio (ID: ${estudio.id}).`
-        else if (estErr) extraMsg = ` (Aviso: error al mover a En Estudio: ${estErr.message})`
+        const { error: estErr } = await supabaseAdmin.from('inmuebles').update({ estado: 'en_estudio' }).eq('id', inmueble.id)
+        if (!estErr) extraMsg = ` "${inmueble.direccion}" movido a En Estudio.`
+        else extraMsg = ` (Aviso: error al mover a En Estudio: ${estErr.message})`
       }
 
       const estadoLabel = input.estado_post === 'pasa_a_estudio' ? 'Pasa a En Estudio' : input.estado_post === 'descartado' ? 'Descartado' : 'Sigue en Radar'
@@ -2491,14 +2402,15 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       }
     }
 
-    // ── Edificios ────────────────────────────────────────────────────────────
+    // ── Edificios (inmuebles con tipologia='edificio') ─────────────────────────
     if (name === 'insert_edificio_radar') {
       // Dedup: evita dobles inserts si Claude llama la herramienta más de una vez
       const tituloDedup = input.titulo || input.direccion || ''
       const since5m = new Date(Date.now() - 5 * 60 * 1000).toISOString()
       const { data: existing } = await supabaseAdmin
-        .from('edificios_estudio')
+        .from('inmuebles')
         .select('id, titulo, direccion, ciudad, precio_compra')
+        .eq('tipologia', 'edificio')
         .or(`titulo.eq.${tituloDedup},direccion.eq.${input.direccion || tituloDedup}`)
         .gte('created_at', since5m)
         .limit(1)
@@ -2507,65 +2419,67 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         const nombre = existing.titulo || existing.direccion
         return {
           result: `✅ Edificio ya en radar — ${nombre}${existing.ciudad ? ', ' + existing.ciudad : ''} (${existing.precio_compra?.toLocaleString('es-ES')}€). No se creó duplicado.`,
-          table: 'edificios_estudio',
+          table: 'inmuebles',
           recordId: existing.id,
           label: `${nombre}${existing.ciudad ? ' · ' + existing.ciudad : ''}`,
         }
       }
 
-      const { data, error } = await supabaseAdmin.from('edificios_estudio').insert([{
+      const { data, error } = await supabaseAdmin.from('inmuebles').insert([{
+        tipologia: 'edificio',
         titulo: input.titulo || null,
         direccion: input.direccion,
         ciudad: input.ciudad || null,
         precio_compra: input.precio_compra,
-        superficie_total: input.superficie_total || null,
+        superficie: input.superficie_total || null,
         num_plantas: input.num_plantas || null,
         tipo_finca: input.tipo_finca || 'finca_unica',
         url: input.url || null,
         drive_url: input.drive_url || null,
         notas: input.notas || null,
-        estado: 'radar',
+        estado: 'borrador',
       }]).select().single()
       if (error) return { result: `Error al guardar edificio: ${error.message}` }
       const nombre = data.titulo || data.direccion
       return {
-        result: `✅ Edificio agregado al radar — ${nombre}${data.ciudad ? ', ' + data.ciudad : ''} (${data.precio_compra?.toLocaleString('es-ES')}€)`,
-        table: 'edificios_estudio',
+        result: `✅ Edificio agregado al radar — ${nombre}${data.ciudad ? ', ' + data.ciudad : ''} (${data.precio_compra?.toLocaleString('es-ES')}€). ¿Lo doy de alta en Mercado o lo descarto?`,
+        table: 'inmuebles',
         recordId: data.id,
         label: `${nombre}${data.ciudad ? ' · ' + data.ciudad : ''}`,
       }
     }
     if (name === 'update_edificio') {
-      const resolved = await resolveEdificio(input.busqueda, input.id)
+      const resolved = await resolveInmueble(input.busqueda, input.id, { tipologia: 'edificio', incluirBorradores: true })
       if ('error' in resolved) return { result: resolved.error }
-      const fields = ['titulo', 'direccion', 'ciudad', 'precio_compra', 'superficie_total', 'num_plantas', 'tipo_finca', 'estado', 'notas', 'url', 'drive_url']
+      const fields = ['titulo', 'direccion', 'ciudad', 'precio_compra', 'num_plantas', 'tipo_finca', 'estado', 'notas', 'url', 'drive_url']
       const updates: Record<string, any> = {}
       for (const f of fields) if (input[f] !== undefined) updates[f] = input[f]
+      if (input.superficie_total !== undefined) updates.superficie = input.superficie_total
       if (Object.keys(updates).length === 0) return { result: 'No se indicaron campos a actualizar.' }
-      const { data, error } = await supabaseAdmin.from('edificios_estudio').update(updates).eq('id', resolved.resolved.id).select().single()
+      const { data, error } = await supabaseAdmin.from('inmuebles').update(updates).eq('id', resolved.resolved.id).select().single()
       if (error) return { result: `Error al actualizar edificio: ${error.message}` }
       const nombre = data.titulo || data.direccion
       const cambios = Object.keys(updates).join(', ')
-      return { result: `Edificio "${nombre}" actualizado. Campos: ${cambios}.`, table: 'edificios_estudio', recordId: data.id, label: `${nombre} · ${data.estado}` }
+      return { result: `Edificio "${nombre}" actualizado. Campos: ${cambios}.`, table: 'inmuebles', recordId: data.id, label: `${nombre} · ${data.estado}` }
     }
     if (name === 'delete_edificio') {
-      const resolved = await resolveEdificio(input.busqueda, input.id)
+      const resolved = await resolveInmueble(input.busqueda, input.id, { tipologia: 'edificio', incluirBorradores: true })
       if ('error' in resolved) return { result: resolved.error }
       const nombre = resolved.resolved.titulo || resolved.resolved.direccion
-      const { error } = await supabaseAdmin.from('edificios_estudio').delete().eq('id', resolved.resolved.id)
+      const { error } = await supabaseAdmin.from('inmuebles').delete().eq('id', resolved.resolved.id)
       if (error) return { result: `Error al eliminar edificio: ${error.message}` }
       return { result: `Edificio eliminado: "${nombre}".` }
     }
     if (name === 'mover_edificio_a_estudio') {
-      const resolved = await resolveEdificio(input.busqueda, input.id)
+      const resolved = await resolveInmueble(input.busqueda, input.id, { tipologia: 'edificio' })
       if ('error' in resolved) return { result: resolved.error }
-      if (resolved.resolved.estado !== 'radar') return { result: `El edificio "${resolved.resolved.titulo || resolved.resolved.direccion}" ya está en estado "${resolved.resolved.estado}", no está en radar.` }
-      const { data, error } = await supabaseAdmin.from('edificios_estudio').update({ estado: 'en_estudio' }).eq('id', resolved.resolved.id).select().single()
+      if (resolved.resolved.estado !== 'sin_analizar') return { result: `El edificio "${resolved.resolved.titulo || resolved.resolved.direccion}" ya está en estado "${resolved.resolved.estado}", no está en Radar.` }
+      const { data, error } = await supabaseAdmin.from('inmuebles').update({ estado: 'en_estudio' }).eq('id', resolved.resolved.id).select().single()
       if (error) return { result: `Error al mover edificio: ${error.message}` }
       const nombre = data.titulo || data.direccion
       return {
         result: `✅ Edificio movido a En Estudio — ${nombre}${data.ciudad ? ', ' + data.ciudad : ''}`,
-        table: 'edificios_estudio',
+        table: 'inmuebles',
         recordId: data.id,
         label: `${nombre} · en_estudio`,
       }
@@ -2573,14 +2487,14 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
     if (name === 'insert_edificio_unidades') {
       let edificioId = input.edificio_id
       if (!edificioId) {
-        const resolved = await resolveEdificio(input.busqueda)
+        const resolved = await resolveInmueble(input.busqueda, undefined, { tipologia: 'edificio', incluirBorradores: true })
         if ('error' in resolved) return { result: resolved.error }
         edificioId = resolved.resolved.id
       }
       const unidades: any[] = input.unidades || []
       if (unidades.length === 0) return { result: 'No se indicaron unidades a agregar.' }
       const rows = unidades.map((u: any) => ({
-        edificio_id: edificioId,
+        inmueble_id: edificioId,
         tipo: u.tipo || 'piso',
         planta: u.planta,
         superficie: u.superficie || null,
@@ -2592,31 +2506,31 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         referencia_catastral: u.referencia_catastral || null,
         notas: u.notas || null,
       }))
-      const { data, error } = await supabaseAdmin.from('edificio_unidades').insert(rows).select()
+      const { data, error } = await supabaseAdmin.from('inmueble_unidades').insert(rows).select()
       if (error) return { result: `Error al guardar unidades: ${error.message}` }
-      const lista = (data as any[]).map(u => `· ${u.planta} (${u.tipo})${u.ocupacion === 'Alquilado' ? ' — Alquilado ' + (u.renta_mensual ? u.renta_mensual + '€/mes' : '') : ' — Libre'}`).join('\n')
+      const lista = (data as any[]).map(u => `· ${u.planta} (${u.tipo})${u.ocupacion === 'alquilado' ? ' — Alquilado ' + (u.renta_mensual ? u.renta_mensual + '€/mes' : '') : ' — Libre'}`).join('\n')
       return {
         result: `${data.length} unidad${data.length !== 1 ? 'es' : ''} agregada${data.length !== 1 ? 's' : ''} al edificio:\n${lista}`,
-        table: 'edificio_unidades',
+        table: 'inmueble_unidades',
       }
     }
     if (name === 'listar_edificios') {
-      let q = supabaseAdmin.from('edificios_estudio').select('id, titulo, direccion, ciudad, precio_compra, superficie_total, num_plantas, tipo_finca, estado, notas').order('created_at', { ascending: false })
+      let q = supabaseAdmin.from('inmuebles').select('id, titulo, direccion, ciudad, precio_compra, superficie, num_plantas, tipo_finca, estado, notas').eq('tipologia', 'edificio').order('created_at', { ascending: false })
       const estado = input.estado
       if (!estado || estado === 'todos') {
-        q = q.not('estado', 'in', '(descartado,pendiente_tg)')
+        q = q.neq('estado', 'borrador')
       } else {
         q = q.eq('estado', estado)
       }
       const { data, error } = await q.limit(30)
       if (error) return { result: `Error al listar edificios: ${error.message}` }
       if (!data || data.length === 0) return { result: 'No hay edificios registrados.' }
-      const ESTADO_ICON: Record<string, string> = { radar: '📡', en_estudio: '🔍', ofertado: '📝', en_arras: '🤝', comprado: '🏢', descartado: '❌' }
+      const ESTADO_ICON: Record<string, string> = { sin_analizar: '📡', en_estudio: '🔍', ofertado: '📝', en_arras: '🤝', comprado: '🏢' }
       const lista = data.map((e: any) => {
         const icon = ESTADO_ICON[e.estado] || '🏢'
         const nombre = e.titulo || e.direccion
         const precio = e.precio_compra ? ` — ${e.precio_compra.toLocaleString('es-ES')}€` : ''
-        const sup = e.superficie_total ? ` · ${e.superficie_total}m²` : ''
+        const sup = e.superficie ? ` · ${e.superficie}m²` : ''
         const plantas = e.num_plantas ? ` · ${e.num_plantas} plantas` : ''
         return `${icon} ${nombre}${e.ciudad ? ', ' + e.ciudad : ''}${precio}${sup}${plantas} [${e.estado}]`
       }).join('\n')
@@ -2704,7 +2618,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
 - INMUEBLES MERCADO: para agregar un inmueble nuevo a seguimiento usá insert_radar (guarda en Mercado con estado sin_analizar). Para editar, eliminar o mover un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para pasar a análisis profundo usá insert_estudio o mover_radar_a_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR usá delete_radar (Mercado) o delete_estudio (En Estudio).
-- EDIFICIOS (fincas completas, bloques de pisos): área SEPARADA de los inmuebles individuales. Para agregar un edificio al radar usá insert_edificio_radar (escribe en edificios_estudio con estado=radar). Para editar usá update_edificio. Para eliminar usá delete_edificio. Para mover de radar a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — son tablas distintas. UNIDADES: cuando el usuario mencione pisos, unidades, inquilinos o información por planta, llamá insert_edificio_unidades (en la tabla edificio_unidades). Si ya hay info de unidades en el mismo mensaje donde se crea el edificio, llamá insert_edificio_radar e insert_edificio_unidades juntos en el mismo turno. Campos clave: planta (ej: "1ª DCHA"), ocupacion ("Libre" o "Alquilado"), renta_mensual, notas (inquilino + fechas de contrato). IMPORTANTE al cargar edificios: (1) num_plantas: extraélo siempre del texto — "PB+3"=4 plantas, "3 alturas"=3, "planta baja y dos pisos"=3, etc. (2) notas: copiá el texto completo literal del usuario sin resumir ni acortar — ni una palabra menos.
+- EDIFICIOS (fincas completas, bloques de pisos): viven en la MISMA tabla inmuebles que los pisos individuales, distinguidos por tipologia='edificio'. Para agregar un edificio usá insert_edificio_radar (inserta en inmuebles con tipologia='edificio', estado='borrador' — pendiente de confirmación, igual que analizar_inmueble). Para editar usá update_edificio. Para eliminar/descartar usá delete_edificio. Para mover de Radar (sin_analizar) a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — usá siempre las herramientas específicas de edificio para que queden marcados con tipologia='edificio'. UNIDADES: cuando el usuario mencione pisos, unidades, inquilinos o información por planta, llamá insert_edificio_unidades (en la tabla inmueble_unidades). Si ya hay info de unidades en el mismo mensaje donde se crea el edificio, llamá insert_edificio_radar e insert_edificio_unidades juntos en el mismo turno. Campos clave: planta (ej: "1ª DCHA"), ocupacion ("libre" o "alquilado"), renta_mensual, notas (inquilino + fechas de contrato). IMPORTANTE al cargar edificios: (1) num_plantas: extraélo siempre del texto — "PB+3"=4 plantas, "3 alturas"=3, "planta baja y dos pisos"=3, etc. (2) notas: copiá el texto completo literal del usuario sin resumir ni acortar — ni una palabra menos.
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { calcCostoTotal, calcROI, calcPrecioMaxCompra } from '@/lib/formulas'
+import { calcularSemaforo } from '@/lib/analizarInmueble'
 import { scrapeIdealista } from '@/lib/scrape-idealista'
 import { buscarComparables } from '@/lib/search-comparables'
 import { gcalCreateEvent, gcalDeleteEvent, gcalListEvents } from '@/lib/googleCalendar'
@@ -438,10 +439,8 @@ function buildAnalysis(data: ExtractedData, ventaDesdeComparables?: VentaCompara
     ? (Math.pow(1 + roi / 100, 12 / duracion) - 1) * 100
     : null
 
-  let semaforo: string
-  if (roi < 30) semaforo = '🔴 ROI < 30% — No entra'
-  else if (roi <= 50) semaforo = '🟡 ROI 30-50% — Analizar bien'
-  else semaforo = '🟢 ROI > 50% — Operación fuerte'
+  const semaforoUnificado = calcularSemaforo(roi / 100)
+  const semaforo = `${semaforoUnificado.emoji} ROI ${roi.toFixed(1)}% — ${semaforoUnificado.label}`
 
   const max30 = calcPrecioMaxCompra(venta, reforma, 0.30)
   const max50 = calcPrecioMaxCompra(venta, reforma, 0.50)
@@ -648,13 +647,14 @@ async function handleEdificioFlow(
 
   const data = await extractEdificioData(text)
 
-  // Deduplicar: si ya hay un pendiente_tg del mismo texto en los últimos 2 min, no insertar de nuevo
+  // Deduplicar: si ya hay un borrador del mismo texto en los últimos 2 min, no insertar de nuevo
   const since = new Date(Date.now() - 2 * 60 * 1000).toISOString()
   const titulo = data.titulo || data.direccion || text.slice(0, 80) || 'Telegram — sin título'
   const { data: existing } = await supabase
-    .from('edificios_estudio')
+    .from('inmuebles')
     .select('id')
-    .eq('estado', 'pendiente_tg')
+    .eq('tipologia', 'edificio')
+    .eq('estado', 'borrador')
     .eq('titulo', titulo)
     .gte('created_at', since)
     .limit(1)
@@ -665,19 +665,20 @@ async function handleEdificioFlow(
   const notasTelegram = notasBase ? `${notasBase}\n[Telegram: ${telegramUser}]` : `[Telegram: ${telegramUser}]`
 
   const { data: inserted, error } = await supabase
-    .from('edificios_estudio')
+    .from('inmuebles')
     .insert({
+      tipologia: 'edificio',
       titulo: data.titulo || data.direccion || text.slice(0, 80) || 'Telegram — sin título',
       direccion: data.direccion || 'Sin dirección',
       ciudad: data.ciudad || null,
       precio_compra: data.precio_compra || 0,
-      superficie_total: data.superficie_total || null,
+      superficie: data.superficie_total || null,
       num_plantas: data.num_plantas || null,
       tipo_finca: data.tipo_finca || 'finca_unica',
       notas: notasTelegram,
       url: urlMatch?.[0] ?? null,
       fuente: 'telegram',
-      estado: 'pendiente_tg',
+      estado: 'borrador',
     })
     .select('id')
     .single()
@@ -702,9 +703,10 @@ async function handleEdificioCRUD(chatId: number, text: string): Promise<boolean
   // List edificios
   if (/(?:qué|cuáles?|lista|muestra|ver)\s+edificios?\b/i.test(text) || /edificios?\s+(?:en\s+|del?\s+)(?:radar|estudio)/i.test(text)) {
     const { data } = await supabase
-      .from('edificios_estudio')
+      .from('inmuebles')
       .select('titulo, direccion, ciudad, precio_compra, estado')
-      .neq('estado', 'pendiente_tg')
+      .eq('tipologia', 'edificio')
+      .neq('estado', 'borrador')
       .order('created_at', { ascending: false })
       .limit(10)
 
@@ -713,8 +715,8 @@ async function handleEdificioCRUD(chatId: number, text: string): Promise<boolean
       return true
     }
 
-    const radarItems = data.filter(e => e.estado === 'radar')
-    const estudioItems = data.filter(e => e.estado !== 'radar')
+    const radarItems = data.filter(e => e.estado === 'sin_analizar')
+    const estudioItems = data.filter(e => e.estado !== 'sin_analizar')
     const lines: string[] = ['🏢 Edificios en WOS3']
 
     if (radarItems.length > 0) {
@@ -748,10 +750,11 @@ async function handleEdificioCRUD(chatId: number, text: string): Promise<boolean
     }
 
     const { data } = await supabase
-      .from('edificios_estudio')
+      .from('inmuebles')
       .select('id, titulo, direccion, ciudad')
+      .eq('tipologia', 'edificio')
       .or(`titulo.ilike.%${searchTerm}%,direccion.ilike.%${searchTerm}%,ciudad.ilike.%${searchTerm}%`)
-      .neq('estado', 'pendiente_tg')
+      .neq('estado', 'borrador')
       .limit(1)
       .single()
 
@@ -760,7 +763,7 @@ async function handleEdificioCRUD(chatId: number, text: string): Promise<boolean
       return true
     }
 
-    await supabase.from('edificios_estudio').delete().eq('id', data.id)
+    await supabase.from('inmuebles').delete().eq('id', data.id)
     await sendMessage(chatId, `🗑️ Edificio "${data.titulo || data.direccion || data.ciudad}" eliminado.`)
     return true
   }
@@ -776,10 +779,11 @@ async function handleEdificioCRUD(chatId: number, text: string): Promise<boolean
     }
 
     const { data } = await supabase
-      .from('edificios_estudio')
+      .from('inmuebles')
       .select('id, titulo, direccion, ciudad')
+      .eq('tipologia', 'edificio')
       .or(`titulo.ilike.%${searchTerm}%,direccion.ilike.%${searchTerm}%,ciudad.ilike.%${searchTerm}%`)
-      .eq('estado', 'radar')
+      .eq('estado', 'sin_analizar')
       .limit(1)
       .single()
 
@@ -788,7 +792,7 @@ async function handleEdificioCRUD(chatId: number, text: string): Promise<boolean
       return true
     }
 
-    await supabase.from('edificios_estudio').update({ estado: 'en_estudio' }).eq('id', data.id)
+    await supabase.from('inmuebles').update({ estado: 'en_estudio' }).eq('id', data.id)
     await sendMessage(chatId, `✅ Edificio "${data.titulo || data.direccion || data.ciudad}" movido a En Estudio.`)
     return true
   }
@@ -1031,37 +1035,26 @@ Mensaje: "${text}"`,
 
   if (!extracted.contenido) return false
 
-  // Search inmuebles_estudio first, then inmuebles_radar
+  // Search inmuebles (Radar + Estudio + siguientes estados, excluye borradores sin confirmar)
   const terms = extracted.inmueble?.split(/\s+/).filter(w => w.length > 2) ?? []
   const likeFilters = terms.map(t => `titulo.ilike.%${t}%,ciudad.ilike.%${t}%`).join(',')
 
-  let estudioId: string | null = null
-  let radarId: string | null = null
+  let inmuebleId: string | null = null
   let nombreInmueble = extracted.inmueble ?? 'inmueble'
 
   if (likeFilters) {
-    const { data: estudio } = await supabase
-      .from('inmuebles_estudio')
+    const { data: inmueble } = await supabase
+      .from('inmuebles')
       .select('id, titulo, ciudad')
       .or(likeFilters)
+      .neq('estado', 'borrador')
       .limit(1)
       .single()
-    if (estudio) { estudioId = estudio.id; nombreInmueble = estudio.titulo ?? estudio.ciudad ?? nombreInmueble }
+    if (inmueble) { inmuebleId = inmueble.id; nombreInmueble = inmueble.titulo ?? inmueble.ciudad ?? nombreInmueble }
   }
 
-  if (!estudioId && likeFilters) {
-    const { data: radar } = await supabase
-      .from('inmuebles_radar')
-      .select('id, titulo, ciudad')
-      .or(likeFilters)
-      .neq('estado', 'pendiente_tg')
-      .limit(1)
-      .single()
-    if (radar) { radarId = radar.id; nombreInmueble = radar.titulo ?? radar.ciudad ?? nombreInmueble }
-  }
-
-  if (!estudioId && !radarId) {
-    await sendMessage(chatId, `❌ No encontré "${extracted.inmueble}" en el Radar ni en Estudio. Verificá el nombre.`)
+  if (!inmuebleId) {
+    await sendMessage(chatId, `❌ No encontré "${extracted.inmueble}" en Mercado. Verificá el nombre.`)
     return true
   }
 
@@ -1069,21 +1062,13 @@ Mensaje: "${text}"`,
   const tipo = extracted.tipo ?? 'nota'
   const contenido = extracted.contenido
 
-  if (estudioId) {
-    const { error } = await supabase.from('bitacora_estudio').insert({
-      estudio_id: estudioId, fecha, tipo, contenido, autor,
-    })
-    if (error) {
-      console.error('bitacora_estudio insert error:', JSON.stringify(error))
-      await sendMessage(chatId, `❌ Error al guardar en bitácora: ${error.message}`)
-      return true
-    }
-  } else if (radarId) {
-    // Radar no tiene tabla bitácora — appenda a notas
-    const { data: r } = await supabase.from('inmuebles_radar').select('notas').eq('id', radarId).single()
-    const notasActuales = r?.notas ?? ''
-    const nuevaNota = `[${new Date().toLocaleDateString('es-ES')}] ${contenido}`
-    await supabase.from('inmuebles_radar').update({ notas: notasActuales ? `${notasActuales}\n${nuevaNota}` : nuevaNota }).eq('id', radarId)
+  const { error } = await supabase.from('bitacora_estudio').insert({
+    inmueble_id: inmuebleId, fecha, tipo, contenido, autor,
+  })
+  if (error) {
+    console.error('bitacora_estudio insert error:', JSON.stringify(error))
+    await sendMessage(chatId, `❌ Error al guardar en bitácora: ${error.message}`)
+    return true
   }
 
   await sendMessage(chatId, `✅ Anotado en bitácora de "${nombreInmueble}"\n\n📝 ${contenido}`)
@@ -1099,88 +1084,34 @@ async function handleCallbackQuery(cb: TgCallbackQuery) {
 
   const [action, id] = cb.data.split(':')
 
-  if (action === 'confirm') {
-    // Fetch the pending record from inmuebles_radar
-    const { data: rec, error: fetchErr } = await supabase
-      .from('inmuebles_radar')
-      .select('*')
-      .eq('id', id)
-      .eq('estado', 'pendiente_tg')
-      .single()
-
-    if (fetchErr || !rec) {
-      await answerCallbackQuery(cb.id, '❌ Error al confirmar')
-      return
-    }
-
-    // Insert into inmuebles (Mercado)
-    const { error: insertErr } = await supabase.from('inmuebles').insert({
-      titulo: rec.titulo,
-      direccion: rec.direccion,
-      ciudad: rec.ciudad,
-      precio: rec.precio,
-      habitaciones: rec.habitaciones,
-      superficie: rec.superficie,
-      url: rec.url,
-      notas: rec.notas,
-      fuente: rec.fuente || 'WallestBot',
-      estado: 'activo',
-    })
-
-    if (insertErr) {
-      await answerCallbackQuery(cb.id, '❌ Error al guardar en Mercado')
-      return
-    }
-
-    // Delete temp record from inmuebles_radar
-    await supabase.from('inmuebles_radar').delete().eq('id', id)
-
-    await answerCallbackQuery(cb.id, '📦 Guardado en Mercado')
-    await editMessage(
-      chatId, messageId,
-      (cb.message?.text || '') + '\n\n📦 Guardado en Mercado — podés completar la info desde WOS3'
-    )
-  } else if (action === 'discard') {
+  if (action === 'confirm' || action === 'edificio_confirm') {
     const { error } = await supabase
-      .from('inmuebles_radar')
+      .from('inmuebles')
+      .update({ estado: 'sin_analizar' })
+      .eq('id', id)
+      .eq('estado', 'borrador')
+
+    if (error) {
+      await answerCallbackQuery(cb.id, '❌ Error al confirmar')
+    } else {
+      await answerCallbackQuery(cb.id, '📦 Guardado en Mercado')
+      await editMessage(
+        chatId, messageId,
+        (cb.message?.text || '') + '\n\n📦 Guardado en Mercado — podés completar la info desde WOS3'
+      )
+    }
+  } else if (action === 'discard' || action === 'edificio_discard') {
+    const { error } = await supabase
+      .from('inmuebles')
       .delete()
       .eq('id', id)
-      .eq('estado', 'pendiente_tg')
+      .eq('estado', 'borrador')
 
     if (error) {
       await answerCallbackQuery(cb.id, '❌ Error al descartar')
     } else {
       await answerCallbackQuery(cb.id, '🗑️ Descartado')
       await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n🗑️ Descartado')
-    }
-  } else if (action === 'edificio_confirm') {
-    const { error } = await supabase
-      .from('edificios_estudio')
-      .update({ estado: 'radar' })
-      .eq('id', id)
-      .eq('estado', 'pendiente_tg')
-
-    if (error) {
-      await answerCallbackQuery(cb.id, '❌ Error al confirmar')
-    } else {
-      await answerCallbackQuery(cb.id, '✅ Subido al Radar de Edificios')
-      await editMessage(
-        chatId, messageId,
-        (cb.message?.text || '') + '\n\n✅ Subido al Radar de Edificios en WOS3',
-      )
-    }
-  } else if (action === 'edificio_discard') {
-    const { error } = await supabase
-      .from('edificios_estudio')
-      .delete()
-      .eq('id', id)
-      .eq('estado', 'pendiente_tg')
-
-    if (error) {
-      await answerCallbackQuery(cb.id, '❌ Error al descartar')
-    } else {
-      await answerCallbackQuery(cb.id, '🗑️ Descartado')
-      await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n🗑️ Descartado — no subido al Radar')
     }
   }
 }
@@ -1256,7 +1187,7 @@ export async function POST(req: NextRequest) {
     console.error('handleEdificioCRUD error:', e)
   }
 
-  // Edificio creation — route to edificios_estudio instead of inmuebles_radar
+  // Edificio creation — inserta en inmuebles con tipologia='edificio'
   try {
     const handled = await handleEdificioFlow(chatId, text, telegramUser, urlMatch)
     if (handled) return NextResponse.json({ ok: true })
@@ -1371,19 +1302,18 @@ export async function POST(req: NextRequest) {
       precio_max_30 = calcPrecioMaxCompra(venta, reforma, 0.30)
       precio_max_50 = calcPrecioMaxCompra(venta, reforma, 0.50)
       precio_max_70 = calcPrecioMaxCompra(venta, reforma, 0.70)
-      if (roi_calculado < 30) semaforo = 'rojo'
-      else if (roi_calculado <= 50) semaforo = 'amarillo'
-      else semaforo = 'verde'
+      semaforo = calcularSemaforo(roi_calculado / 100).color
     }
 
-    // Save as pending — waits for user confirmation before appearing in Radar
+    // Save as borrador — waits for user confirmation before appearing in Mercado
     const { data: inserted, error } = await supabase
-      .from('inmuebles_radar')
+      .from('inmuebles')
       .insert({
+        tipologia: 'piso',
         titulo: data.direccion || text.slice(0, 80) || 'Telegram — sin título',
         direccion: data.direccion,
         ciudad: data.ciudad,
-        precio: data.precio_pedido,
+        precio_compra: data.precio_pedido,
         habitaciones: data.habitaciones,
         superficie: data.metros,
         banos: data.banos,
@@ -1391,7 +1321,7 @@ export async function POST(req: NextRequest) {
         url: urlMatch?.[0] ?? null,
         fuente: origen,
         reforma_estimada: data.reforma_estimada,
-        precio_venta_est: data.precio_venta_est,
+        precio_venta_realista: data.precio_venta_est,
         duracion_meses: data.duracion_meses ?? null,
         fotos: fotoIds.length > 0 ? fotoIds : null,
         roi_calculado,
@@ -1400,7 +1330,7 @@ export async function POST(req: NextRequest) {
         precio_max_70,
         semaforo,
         telegram_user: telegramUser,
-        estado: 'pendiente_tg',
+        estado: 'borrador',
         fecha_recibido: new Date().toISOString().split('T')[0],
       })
       .select('id')
