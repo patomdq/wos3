@@ -70,7 +70,7 @@ type Inmueble = {
   jv_jugadores?: JvJugador[]
 }
 
-type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor'; capital: number; pctBeneficio: number }
+type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor'; capital: number; pctBeneficio: number; pctManual?: boolean }
 
 type Unidad = {
   id: string
@@ -486,13 +486,25 @@ export default function MercadoPage() {
     setGastos(prev => ({ ...prev, [id]: { ...prev[id], [tipo]: parseFloat(val) || 0 } }))
   }
 
+  const recalcPctAuto = (jugadores: JvJugador[]) => {
+    const total = jugadores.reduce((s, j) => s + j.capital, 0)
+    return jugadores.map(j => j.pctManual ? j : { ...j, pctBeneficio: total > 0 ? Math.round((j.capital / total) * 100) : 0 })
+  }
   const addJugador = () => {
-    setJvJugadores(prev => [...prev, { id: `${Date.now()}-${prev.length}`, nombre: '', rol: prev.length === 0 ? 'gestor' : 'inversor', capital: 0, pctBeneficio: 0 }])
+    setJvJugadores(prev => recalcPctAuto([...prev, { id: `${Date.now()}-${prev.length}`, nombre: '', rol: prev.length === 0 ? 'gestor' : 'inversor', capital: 0, pctBeneficio: 0 }]))
     setSavedId(null)
   }
-  const removeJugador = (id: string) => { setJvJugadores(prev => prev.filter(j => j.id !== id)); setSavedId(null) }
+  const removeJugador = (id: string) => { setJvJugadores(prev => recalcPctAuto(prev.filter(j => j.id !== id))); setSavedId(null) }
   const updateJugador = (id: string, campo: keyof JvJugador, val: string) => {
-    setJvJugadores(prev => prev.map(j => j.id === id ? { ...j, [campo]: campo === 'nombre' || campo === 'rol' ? val : (parseFloat(val) || 0) } : j))
+    setJvJugadores(prev => {
+      const updated = prev.map(j => {
+        if (j.id !== id) return j
+        if (campo === 'nombre' || campo === 'rol') return { ...j, [campo]: val }
+        if (campo === 'pctBeneficio') return { ...j, pctBeneficio: parseFloat(val) || 0, pctManual: true }
+        return { ...j, capital: parseFloat(val) || 0 }
+      })
+      return recalcPctAuto(updated)
+    })
     setSavedId(null)
   }
 
