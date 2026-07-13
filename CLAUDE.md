@@ -57,6 +57,7 @@ Hecho:
   - Persistencia completa en Supabase al guardar (solo si `jvModo === 'jv'`, si no persiste `[]`)
   - Commit `1338701`, pusheado a `origin master` — ✅ deployado, build verificado antes del push
   - **Corrección del modelo (mismo día, probado con caso real Zurgena/Alhóndiga)**: el % de beneficio NO es libre — es una **regla fija**: 50% del beneficio para los jugadores con rol Gestor (partes iguales entre ellos, sin importar cuánto capital pusieron — HASU aporta 10-50% del capital según la operación pero eso no cambia su parte del beneficio), 50% para los jugadores con rol Inversor a prorrata de su capital aportado. Si hay más de un gestor (ej. José Luis con rol ambiguo en Alhóndiga) se divide en partes iguales entre los gestores. `% capital` y `% beneficio` pasaron de inputs a valores 100% computados. Commit `edd9439`
+  - **Campos de conveniencia** (mismo día): agregados "Inversión total (€)" y "Tiempo (meses)" editables directo dentro de la card JV/Gestor, para no tener que scrollear arriba a buscarlos. "Tiempo" edita `duracionMeses` directo (mismo estado que usa toda la calculadora). "Inversión total" ajusta el gasto `precio_compra` (estimado o real, el que esté activo) manteniendo fijos el resto de conceptos de Gastos, para no romper el desglose existente. Commit `53af3e2`
 
 Pendiente:
 - Fase 2 catálogo de reforma (ver entrada de sesión anterior) — sigue pendiente
