@@ -39,6 +39,62 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 13/07/2026**
+
+Hecho:
+- **Unificación del pipeline de análisis de inmuebles (Radar/Mercado)** — bot Telegram + chat WOS3 ahora comparten un único flujo sobre la tabla `inmuebles`, en vez de escribir en paralelo a las tablas legacy `inmuebles_radar` / `inmuebles_estudio` / `edificios_estudio`
+  - Pipeline nuevo: `borrador → sin_analizar → en_estudio → ofertado → en_arras → comprado`
+  - `lib/analizarInmueble.ts` (nuevo) — módulo único de análisis: comparables + semáforo unificado (verde ≥30%, amarillo 15-30%, rojo <15%)
+  - `app/api/telegram/webhook/route.ts` y `app/api/chat/route.ts` — reescritos para analizar → insertar en `borrador` → confirmar (a `sin_analizar`) o descartar. Tools de radar/estudio/edificio consolidados sobre `inmuebles` (columna `tipologia`)
+  - `/informe/radar/[id]` y `/informe/estudio/[id]` fusionados en `/informe/inmueble/[id]` (URLs viejas quedan como redirect)
+  - `app/(app)/mercado/page.tsx` — pestaña "Sin analizar" renombrada a "Radar", sacado el filtro obsoleto que ocultaba resultados con `fuente ilike telegram%`, excluye estado `borrador`
+  - **Punto de enchufe Fragua**: dejado listo en `lib/analizarInmueble.ts` pero **NO conectado — Fragua todavía NO está contratado**, Pato lo está evaluando/pidiendo demo (IA que scrapea Idealista, $40/mes). Cuando se contrate, se swapea la fuente de comparables ahí adentro
+  - Commit `bf3eda6`, pusheado a `origin master` — ✅ deployado
+- **Incidente de datos post-migración (resuelto)**: la migración inicial de las tablas legacy a `inmuebles` generó filas duplicadas exactas, porque el bot históricamente escribía en paralelo a `inmuebles` Y a las tablas legacy para el mismo evento. Se detectaron y limpiaron 61 duplicados exactos (dedup por `titulo`+`created_at`) + 6 registros adicionales ya descartados por Pato previamente (confirmados uno por uno). Estado final verificado: **3 inmuebles en Mercado fuera de `borrador`, todos en `en_estudio`** (tenían análisis completo con `gastos_json` y escenarios de venta):
+  1. Castillo 3 - Cuevas del Almanzora — 44.000€
+  2. Deuda Jacarandá – Los Gallardos — 73.000€
+  3. Calle Alhóndiga - HO — 120.000€
+  - Las tablas legacy (`inmuebles_radar`, `inmuebles_estudio`, `edificios_estudio`) NO se borraron todavía — quedan de respaldo hasta confirmar 2-3 ciclos estables en producción
+
+Pendiente:
+- Drop de las 3 tablas legacy una vez confirmado el flujo nuevo en producción por unas semanas
+- Contratar Fragua (si Pato decide avanzar) y conectar la fuente de comparables en `lib/analizarInmueble.ts`
+
+**Última sesión — 23/06/2026**
+
+Hecho:
+- **Bot Nichiren SGI — creado desde cero** (`/Users/patofavora/Documents/W3/nichiren-bot`)
+  - Repo separado de WOS3, deployado en `nichiren-bot.vercel.app`
+  - Bot Telegram: `@Nichiren_sgi_bot` (token: `8514936097:AAF-KNYJ4xFC68cpjXXWxjNeS2ZyxhOtRAo`)
+  - Webhook: `https://nichiren-bot.vercel.app/api/webhook?secret=nichiren-secret-2026`
+  - Commit inicial: `6a38c19`, RAG commit: `3f53fe0`
+
+- **Stack del bot Nichiren**
+  - Runtime: Vercel Functions (`@vercel/node`) + TypeScript
+  - LLM: Claude Sonnet (`claude-sonnet-4-5`) via Anthropic SDK
+  - Embeddings: Voyage AI (`voyage-3`, 1024 dims) — key en Vercel env
+  - DB: Supabase `mxdesbiyjvdnpehklwcb` — tablas `nichiren_gosho` + `nichiren_conversaciones`
+  - Búsqueda: pgvector semántica (función `buscar_gosho_semantico`) + fallback full-text
+
+- **Base de conocimiento cargada (1.776 fragmentos)**
+  - Gosho WND vol.1 de Nichiren: 419 fragmentos (122 con embedding)
+  - Ikeda — "La sabiduría para crear la felicidad y la paz" (sokaglobal.org): 479 fragmentos
+  - Ikeda — "Develando los misterios del nacimiento y la muerte" (PDF): 102 fragmentos
+  - 537 fragmentos con búsqueda semántica real, 1.239 con fallback texto
+
+- **Personalidad del bot**
+  - Voz de Daisaku Ikeda: serena, profunda, formal, nunca informal
+  - Estructura: refleja situación → cita Gosho real → explica → pregunta reflexiva
+  - Solo usa citas verificadas del Gosho (nunca inventa)
+  - Comandos: `/start`, `/reset`, `/nam`
+  - Solo responde a Pato (TELEGRAM_CHAT_ID_PATO = 5816771550)
+
+- **Pendiente bot Nichiren**
+  - Gosho WND vol.2 no scrapeado todavía
+  - 297 fragmentos del Gosho sin embedding (rate limit Voyage sin tarjeta)
+  - Solución: agregar tarjeta en dashboard.voyageai.com (gratuito igual) → rate limit sube de 3 RPM a 300+ RPM → rerun scrapers en ~15 min
+  - Scripts listos: `scrape-gosho.ts`, `ingest-ikeda.ts`, `scrape-soka-wisdom.ts`
+
 **Última sesión — 08/06/2026**
 
 Hecho:
@@ -63,11 +119,9 @@ Hecho:
   - Footer "Berciamedia" eliminado
   - `/inversor` redirige automáticamente a `/login`
   - Commits: `b0f1ca2`, `858d579`, `4c026b7`, `26caeee`
-- **Dominio wos.wallest.pro — en proceso**
-  - DNS de wallest.pro gestionado por Hostinger (`ns1/ns2.dns-parking.com` = infraestructura propia de Hostinger)
-  - CNAME `wos` → `c1507012a5757589.vercel-dns-017.com` configurado en Hostinger con TTL 300
-  - Pendiente: propagación DNS (soporte Hostinger dice es tema de caché)
-  - Vercel: dominio agregado al proyecto wos3, estado "Invalid Configuration" hasta que propague
+- **Dominio wos.wallest.pro — ✅ activo** (09/06/2026)
+  - CNAME `wos` → `c1507012a5757589.vercel-dns-017.com` en Hostinger, TTL 300
+  - Vercel: tilde azul, SSL activo, sirviendo WOS3 en producción
 - **Limpieza Vercel — proyectos eliminados**
   - Eliminados: `wallest-operating-system`, `aurea-scanner`, `hardcore-ardinghelli-04354c`
   - Quedan: `wos3`, `mesa-juntas`, `planificador-diario` (Silvia)
