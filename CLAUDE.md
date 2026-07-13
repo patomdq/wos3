@@ -54,9 +54,9 @@ Hecho:
   - Reparte el beneficio ya calculado por CAAV (escenario Realista) entre los jugadores según su % asignado — no recalcula el negocio, solo el reparto
   - Por jugador se calcula: % de capital sobre el total (informativo), beneficio en €, ROI% y ROI anualizado (misma fórmula que CAAV), con el mismo semáforo de la app (🔴<30% / 🟡30-50% / 🟢>50%)
   - Validaciones visuales: alerta si el % de beneficio de todos los jugadores no suma 100%, y si el capital aportado no cuadra con la inversión total de CAAV
-  - Modelo confirmado con Pato: NO es 50/50 fijo, NO hay fee de gestión para HASU — todo se define jugador por jugador (ver ejemplo real: Zurgena = HASU 50%/José Luis 50% capital y beneficio; Alhóndiga = 3 jugadores posibles con roles a definir — HASU siempre gestor, José Luis puede ser gestor o inversor, Pablo Benítez inversor con objetivo de ROI 25-30%)
   - Persistencia completa en Supabase al guardar (solo si `jvModo === 'jv'`, si no persiste `[]`)
   - Commit `1338701`, pusheado a `origin master` — ✅ deployado, build verificado antes del push
+  - **Corrección del modelo (mismo día, probado con caso real Zurgena/Alhóndiga)**: el % de beneficio NO es libre — es una **regla fija**: 50% del beneficio para los jugadores con rol Gestor (partes iguales entre ellos, sin importar cuánto capital pusieron — HASU aporta 10-50% del capital según la operación pero eso no cambia su parte del beneficio), 50% para los jugadores con rol Inversor a prorrata de su capital aportado. Si hay más de un gestor (ej. José Luis con rol ambiguo en Alhóndiga) se divide en partes iguales entre los gestores. `% capital` y `% beneficio` pasaron de inputs a valores 100% computados. Commit `edd9439`
 
 Pendiente:
 - Fase 2 catálogo de reforma (ver entrada de sesión anterior) — sigue pendiente
