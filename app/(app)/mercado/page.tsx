@@ -2657,21 +2657,21 @@ export default function MercadoPage() {
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
                           <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>% Gestor (bonus)</label>
-                          <input type="number" value={jvBonoPctGestor || ''} onChange={e => setBonoPctGestor(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="60" />
+                          <input type="number" value={jvBonoPctGestor || ''} onChange={e => setBonoPctGestor(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A', color: '#333' }} placeholder="60" />
                         </div>
                         <div>
                           <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>% Inversor (bonus)</label>
-                          <input type="number" value={jvBonoPctInversor || ''} onChange={e => setBonoPctInversor(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="40" />
+                          <input type="number" value={jvBonoPctInversor || ''} onChange={e => setBonoPctInversor(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A', color: '#333' }} placeholder="40" />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
                           <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>Beneficio acordado en el CCP (€)</label>
-                          <input type="number" value={jvBonoBeneficioCcp || ''} onChange={e => { setJvBonoBeneficioCcp(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="€" />
+                          <input type="number" value={jvBonoBeneficioCcp || ''} onChange={e => { setJvBonoBeneficioCcp(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A', color: '#333' }} placeholder="€" />
                         </div>
                         <div>
                           <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>Beneficio final (€)</label>
-                          <input type="number" value={jvBonoBeneficioFinal || ''} onChange={e => { setJvBonoBeneficioFinal(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="€ (al cerrar la operación)" />
+                          <input type="number" value={jvBonoBeneficioFinal || ''} onChange={e => { setJvBonoBeneficioFinal(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A', color: '#333' }} placeholder="€ (al cerrar la operación)" />
                         </div>
                       </div>
 
@@ -2710,7 +2710,7 @@ export default function MercadoPage() {
                       <div className="text-[10px] font-medium mb-2" style={{ color: '#999', lineHeight: 1.4 }}>
                         Completar cuando la operación se cierre y se liquide el reparto real (bonus incluido, si aplica).
                       </div>
-                      <textarea value={jvBonoLiquidacion} onChange={e => { setJvBonoLiquidacion(e.target.value); setSavedId(null) }} rows={3} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-medium" style={{ background: '#fff', border: '1px solid #ECEAE4' }} placeholder="Ej: Beneficio real 140.000€. Excedente sobre CCP: 40.000€. Bonus gestor 24.000€ (HASU), bonus inversor 16.000€ (José Luis). Liquidado el .../.../..." />
+                      <textarea value={jvBonoLiquidacion} onChange={e => { setJvBonoLiquidacion(e.target.value); setSavedId(null) }} rows={3} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-medium" style={{ background: '#fff', border: '1px solid #ECEAE4', color: '#333' }} placeholder="Ej: Beneficio real 140.000€. Excedente sobre CCP: 40.000€. Bonus gestor 24.000€ (HASU), bonus inversor 16.000€ (José Luis). Liquidado el .../.../..." />
                     </div>
                   </>
                 )}
