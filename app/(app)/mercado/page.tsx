@@ -142,6 +142,28 @@ function calcResultados(gastos: Gastos, pvPes: number, pvReal: number, pvOpt: nu
   return { totalEst, totalReal, ben, rent, anual }
 }
 
+// JV / Gestor — regla fija: 50% del beneficio para gestores (partes iguales entre ellos),
+// 50% para inversores (a prorrata de su capital dentro del pool de inversores).
+// Rol 'mixto': el jugador participa de ambos pools según su % gestor/inversor (ej. 50/50)
+function calcJvReparto(jugadores: JvJugador[], beneficio: number | null, meses: number) {
+  const fracGestor = (j: JvJugador) => j.rol === 'gestor' ? 1 : j.rol === 'inversor' ? 0 : (j.gestorPct ?? 50) / 100
+  const fracInversor = (j: JvJugador) => 1 - fracGestor(j)
+  const capitalTotal = jugadores.reduce((s, j) => s + j.capital, 0)
+  const totalFracGestor = jugadores.reduce((s, j) => s + fracGestor(j), 0)
+  const capitalInversores = jugadores.reduce((s, j) => s + j.capital * fracInversor(j), 0)
+  return jugadores.map(j => {
+    const poolPctGestor = totalFracGestor > 0 ? 0.5 * (fracGestor(j) / totalFracGestor) : 0
+    const poolPctInversor = capitalInversores > 0 ? 0.5 * ((j.capital * fracInversor(j)) / capitalInversores) : 0
+    const poolPct = poolPctGestor + poolPctInversor
+    const jBeneficio = beneficio !== null ? poolPct * beneficio : null
+    const roi = (jBeneficio !== null && j.capital > 0) ? (jBeneficio / j.capital) * 100 : null
+    const roiAnual = (roi !== null && meses > 0) ? (Math.pow(1 + roi / 100, 12 / meses) - 1) * 100 : null
+    const pctCapital = capitalTotal > 0 ? (j.capital / capitalTotal) * 100 : null
+    const pctBeneficio = poolPct * 100
+    return { ...j, beneficio: jBeneficio, roi, roiAnual, pctCapital, pctBeneficio }
+  })
+}
+
 const emptyNuevoForm = () => ({
   titulo: '', tipologia: 'piso', direccion: '', ciudad: '',
   precio: '', habitaciones: '', superficie: '',
@@ -900,27 +922,14 @@ export default function MercadoPage() {
   // INbruto
   const inbrutoBen = (feeInbruto > 0 || feeGestionObra > 0) ? feeInbruto + feeGestionObra : null
 
-  // JV / Gestor — regla fija: 50% del beneficio para gestores (partes iguales entre ellos),
-  // 50% para inversores (a prorrata de su capital dentro del pool de inversores).
-  // Rol 'mixto': el jugador participa de ambos pools según su % gestor/inversor (ej. 50/50)
+  // JV / Gestor — reparto de caavBen entre jugadores (ver calcJvReparto)
   const jvFracGestor = (j: JvJugador) => j.rol === 'gestor' ? 1 : j.rol === 'inversor' ? 0 : (j.gestorPct ?? 50) / 100
   const jvFracInversor = (j: JvJugador) => 1 - jvFracGestor(j)
   const jvCapitalTotal = jvJugadores.reduce((s, j) => s + j.capital, 0)
   const jvGestores = jvJugadores.filter(j => jvFracGestor(j) > 0)
   const jvInversores = jvJugadores.filter(j => jvFracInversor(j) > 0)
-  const jvTotalFracGestor = jvJugadores.reduce((s, j) => s + jvFracGestor(j), 0)
   const jvCapitalInversores = jvJugadores.reduce((s, j) => s + j.capital * jvFracInversor(j), 0)
-  const jvResultados = jvJugadores.map(j => {
-    const poolPctGestor = jvTotalFracGestor > 0 ? 0.5 * (jvFracGestor(j) / jvTotalFracGestor) : 0
-    const poolPctInversor = jvCapitalInversores > 0 ? 0.5 * ((j.capital * jvFracInversor(j)) / jvCapitalInversores) : 0
-    const poolPct = poolPctGestor + poolPctInversor
-    const beneficio = caavBen !== null ? poolPct * caavBen : null
-    const roi = (beneficio !== null && j.capital > 0) ? (beneficio / j.capital) * 100 : null
-    const roiAnual = (roi !== null && duracionMeses > 0) ? (Math.pow(1 + roi / 100, 12 / duracionMeses) - 1) * 100 : null
-    const pctCapital = jvCapitalTotal > 0 ? (j.capital / jvCapitalTotal) * 100 : null
-    const pctBeneficio = poolPct * 100
-    return { ...j, beneficio, roi, roiAnual, pctCapital, pctBeneficio }
-  })
+  const jvResultados = calcJvReparto(jvJugadores, caavBen, duracionMeses)
 
   const semaforoColor = (roi: number | null) => {
     if (roi === null) return '#CCC'
@@ -1219,6 +1228,9 @@ export default function MercadoPage() {
                   <div className="absolute top-2.5 left-2.5 flex gap-1.5">
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(4px)' }}>{tipLabel}</span>
                     {item.fuente && <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.55)', color: '#ddd', backdropFilter: 'blur(4px)' }}>{item.fuente}</span>}
+                    {item.jv_jugadores && item.jv_jugadores.length > 0 && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(168,85,247,0.85)', color: '#fff', backdropFilter: 'blur(4px)' }}>JV · {item.jv_jugadores.length}</span>
+                    )}
                   </div>
                   <div className="absolute top-2.5 right-2.5">
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
@@ -1342,6 +1354,21 @@ export default function MercadoPage() {
                             {item.analizado_en}
                           </div>
                         )}
+                        {/* Reparto JV */}
+                        {item.jv_jugadores && item.jv_jugadores.length > 0 && (() => {
+                          const jvRes = calcJvReparto(item.jv_jugadores, bens[1], item.duracion_meses || 0)
+                          return (
+                            <div className="px-2.5 py-2 flex flex-wrap gap-x-3 gap-y-1" style={{ background: 'rgba(168,85,247,0.06)', borderTop: '1px solid rgba(168,85,247,0.15)' }}>
+                              {jvRes.map(j => (
+                                <div key={j.id} className="text-[10px] font-bold whitespace-nowrap">
+                                  <span style={{ color: '#7C3AED' }}>{j.nombre || (j.rol === 'gestor' ? 'Gestor' : j.rol === 'inversor' ? 'Inversor' : 'Mixto')}</span>{' '}
+                                  <span style={{ color: '#A855F7' }}>{j.pctBeneficio.toFixed(0)}%</span>
+                                  {j.beneficio !== null && <span style={{ color: '#999', fontWeight: 500 }}> · {fmt(j.beneficio)}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
                       </div>
                     )
                   })()}
