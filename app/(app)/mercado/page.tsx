@@ -486,6 +486,17 @@ export default function MercadoPage() {
     setGastos(prev => ({ ...prev, [id]: { ...prev[id], [tipo]: parseFloat(val) || 0 } }))
   }
 
+  const jvSetInversionTotal = (val: string) => {
+    const nuevoTotal = parseFloat(val) || 0
+    const otrosGastos = CONCEPTOS_GASTOS.filter(c => c.id !== 'precio_compra').reduce((s, c) => {
+      const r = toNum(gastos[c.id].real); const e = toNum(gastos[c.id].estimado)
+      return s + (r > 0 ? r : e)
+    }, 0)
+    const pcReal = toNum(gastos['precio_compra'].real)
+    const tipo: 'estimado' | 'real' = pcReal > 0 ? 'real' : 'estimado'
+    updateGasto('precio_compra', tipo, String(Math.max(0, nuevoTotal - otrosGastos)))
+  }
+
   const addJugador = () => {
     setJvJugadores(prev => [...prev, { id: `${Date.now()}-${prev.length}`, nombre: '', rol: prev.length === 0 ? 'gestor' : 'inversor', capital: 0 }])
     setSavedId(null)
@@ -2467,6 +2478,16 @@ export default function MercadoPage() {
 
                 {jvModo === 'jv' && (
                   <>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div>
+                        <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Inversión total (€)</label>
+                        <input type="number" value={res ? Math.round(res.totalReal) : ''} onChange={e => jvSetInversionTotal(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#A855F7'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€" />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Tiempo (meses)</label>
+                        <input type="number" value={duracionMeses || ''} onChange={e => { setDuracionMeses(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#A855F7'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="ej: 6" />
+                      </div>
+                    </div>
                     <div className="text-[10px] font-medium mb-3" style={{ color: '#888', lineHeight: 1.4 }}>
                       Regla fija: <b style={{ color: '#A855F7' }}>50% del beneficio</b> para gestores (en partes iguales entre ellos, sin importar su capital) · <b style={{ color: '#A855F7' }}>50%</b> para inversores (a prorrata de su capital aportado)
                     </div>
