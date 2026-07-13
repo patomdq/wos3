@@ -2280,23 +2280,37 @@ export default function MercadoPage() {
                       <div className="px-4 py-6 text-center text-xs" style={{ color: '#aaa' }}>Sin unidades. Agregalas desde el chat WOS3.</div>
                     ) : (
                       <>
-                        <div className="grid grid-cols-[1fr_70px_80px] px-3 py-2" style={{ background: '#ECEAE4', borderBottom: '1px solid #E2E0D8' }}>
+                        <div className="grid grid-cols-[1fr_60px_70px_70px] px-3 py-2" style={{ background: '#ECEAE4', borderBottom: '1px solid #E2E0D8' }}>
                           <div className="text-[10px] font-black uppercase tracking-wide" style={{ color: '#888' }}>Unidad</div>
                           <div className="text-[10px] font-black uppercase tracking-wide text-center" style={{ color: '#888' }}>m²</div>
+                          <div className="text-[10px] font-black uppercase tracking-wide text-right" style={{ color: '#F26E1F' }}>Reforma</div>
                           <div className="text-[10px] font-black uppercase tracking-wide text-right" style={{ color: '#22C55E' }}>P. Venta Est.</div>
                         </div>
                         {unidadesCalc.map((u, i) => (
-                          <div key={u.id} className="grid grid-cols-[1fr_70px_80px] px-3 py-2 items-center" style={{ borderTop: i > 0 ? '1px solid #F0EEE8' : undefined, background: '#fff' }}>
+                          <div key={u.id} className="grid grid-cols-[1fr_60px_70px_70px] px-3 py-2 items-center" style={{ borderTop: i > 0 ? '1px solid #F0EEE8' : undefined, background: '#fff' }}>
                             <div className="text-xs font-medium" style={{ color: '#444' }}>{u.tipo}{u.planta ? ` P${u.planta}` : ''}</div>
                             <div className="text-xs font-mono text-center" style={{ color: '#888' }}>{u.superficie || '—'}</div>
+                            <div className="text-xs font-mono text-right" style={{ color: '#F26E1F' }}>{u.reforma_estimada ? fmt(u.reforma_estimada) : '—'}</div>
                             <div className="text-xs font-black font-mono text-right" style={{ color: '#22C55E' }}>{u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}</div>
                           </div>
                         ))}
-                        <div className="grid grid-cols-[1fr_70px_80px] px-3 py-2" style={{ background: '#ECEAE4', borderTop: '1px solid #E2E0D8' }}>
+                        <div className="grid grid-cols-[1fr_60px_70px_70px] px-3 py-2" style={{ background: '#ECEAE4', borderTop: '1px solid #E2E0D8' }}>
                           <div className="text-xs font-black uppercase" style={{ color: '#F26E1F' }}>TOTAL</div>
                           <div />
+                          <div className="text-xs font-black font-mono text-right" style={{ color: '#F26E1F' }}>{fmt(unidadesCalc.reduce((s, u) => s + (u.reforma_estimada || 0), 0))}</div>
                           <div className="text-xs font-black font-mono text-right" style={{ color: '#22C55E' }}>{fmt(unidadesCalc.reduce((s, u) => s + (u.precio_venta_est || 0), 0))}</div>
                         </div>
+                        {unidadesCalc.some(u => u.reforma_estimada) && (
+                          <div className="px-3 py-2.5" style={{ borderTop: '1px solid #E2E0D8', background: '#fff' }}>
+                            <button
+                              onClick={() => updateGasto('reforma', 'estimado', String(unidadesCalc.reduce((s, u) => s + (u.reforma_estimada || 0), 0)))}
+                              className="w-full text-xs font-black py-2 rounded-lg"
+                              style={{ background: 'rgba(242,110,31,0.1)', color: '#F26E1F', border: '1px solid rgba(242,110,31,0.3)' }}
+                            >
+                              Aplicar suma ({fmt(unidadesCalc.reduce((s, u) => s + (u.reforma_estimada || 0), 0))}) al gasto de Reforma
+                            </button>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
