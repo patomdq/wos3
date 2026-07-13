@@ -67,7 +67,10 @@ type Inmueble = {
   precio_venta_rentando?: number
   fee_inbruto_estimado?: number
   fee_gestion_obra_estimado?: number
+  jv_jugadores?: JvJugador[]
 }
+
+type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor'; capital: number; pctBeneficio: number }
 
 type Unidad = {
   id: string
@@ -216,6 +219,8 @@ export default function MercadoPage() {
   const [pvRentando, setPvRentando] = useState(0)
   const [feeInbruto, setFeeInbruto] = useState(0)
   const [feeGestionObra, setFeeGestionObra] = useState(0)
+  const [jvModo, setJvModo] = useState<'solo' | 'jv'>('solo')
+  const [jvJugadores, setJvJugadores] = useState<JvJugador[]>([])
 
   // Unidades (para edificios en calculadora)
   const [unidadesCalc, setUnidadesCalc] = useState<Unidad[]>([])
@@ -463,6 +468,9 @@ export default function MercadoPage() {
     setPvRentando(item?.precio_venta_rentando ?? 0)
     setFeeInbruto(item?.fee_inbruto_estimado ?? 0)
     setFeeGestionObra(item?.fee_gestion_obra_estimado ?? 0)
+    const jugadoresIniciales = item?.jv_jugadores && item.jv_jugadores.length > 0 ? item.jv_jugadores : []
+    setJvJugadores(jugadoresIniciales)
+    setJvModo(jugadoresIniciales.length > 0 ? 'jv' : 'solo')
     setUnidadesCalc([])
     setUnidadesOpen(false)
     // Cargar unidades si es edificio
@@ -476,6 +484,16 @@ export default function MercadoPage() {
 
   const updateGasto = (id: string, tipo: 'estimado' | 'real', val: string) => {
     setGastos(prev => ({ ...prev, [id]: { ...prev[id], [tipo]: parseFloat(val) || 0 } }))
+  }
+
+  const addJugador = () => {
+    setJvJugadores(prev => [...prev, { id: `${Date.now()}-${prev.length}`, nombre: '', rol: prev.length === 0 ? 'gestor' : 'inversor', capital: 0, pctBeneficio: 0 }])
+    setSavedId(null)
+  }
+  const removeJugador = (id: string) => { setJvJugadores(prev => prev.filter(j => j.id !== id)); setSavedId(null) }
+  const updateJugador = (id: string, campo: keyof JvJugador, val: string) => {
+    setJvJugadores(prev => prev.map(j => j.id === id ? { ...j, [campo]: campo === 'nombre' || campo === 'rol' ? val : (parseFloat(val) || 0) } : j))
+    setSavedId(null)
   }
 
   const guardar = async () => {
@@ -504,6 +522,7 @@ export default function MercadoPage() {
       precio_venta_rentando: pvRentando || null,
       fee_inbruto_estimado: feeInbruto || null,
       fee_gestion_obra_estimado: feeGestionObra || null,
+      jv_jugadores: jvModo === 'jv' ? jvJugadores : [],
     }
     let data: Inmueble | null = null, error: unknown = null
     if (calcInmuebleId) {
@@ -863,6 +882,17 @@ export default function MercadoPage() {
 
   // INbruto
   const inbrutoBen = (feeInbruto > 0 || feeGestionObra > 0) ? feeInbruto + feeGestionObra : null
+
+  // JV / Gestor — reparte el beneficio CAAV entre jugadores según % de beneficio asignado (no necesariamente igual al % de capital)
+  const jvCapitalTotal = jvJugadores.reduce((s, j) => s + j.capital, 0)
+  const jvPctBeneficioTotal = jvJugadores.reduce((s, j) => s + j.pctBeneficio, 0)
+  const jvResultados = jvJugadores.map(j => {
+    const beneficio = caavBen !== null ? (j.pctBeneficio / 100) * caavBen : null
+    const roi = (beneficio !== null && j.capital > 0) ? (beneficio / j.capital) * 100 : null
+    const roiAnual = (roi !== null && duracionMeses > 0) ? (Math.pow(1 + roi / 100, 12 / duracionMeses) - 1) * 100 : null
+    const pctCapital = jvCapitalTotal > 0 ? (j.capital / jvCapitalTotal) * 100 : null
+    return { ...j, beneficio, roi, roiAnual, pctCapital }
+  })
 
   const semaforoColor = (roi: number | null) => {
     if (roi === null) return '#CCC'
@@ -2412,6 +2442,80 @@ export default function MercadoPage() {
                     <input type="number" value={feeGestionObra || ''} onChange={e => { setFeeGestionObra(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-2 text-sm outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#F59E0B'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="ref: 2.000€+" />
                   </div>
                 </div>
+              </div>
+
+              {/* JV / Gestor */}
+              <div className="rounded-xl p-4 mb-4" style={{ background: '#fff', border: '1px solid #ECEAE4' }}>
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#A855F7' }}>JV / Gestor — Reparto entre partes</div>
+                  <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #ECEAE4' }}>
+                    <button onClick={() => { setJvModo('solo'); setSavedId(null) }} className="text-[10px] font-black uppercase px-2.5 py-1.5" style={{ background: jvModo === 'solo' ? '#A855F7' : '#fff', color: jvModo === 'solo' ? '#fff' : '#888' }}>Solo HASU</button>
+                    <button onClick={() => { setJvModo('jv'); setSavedId(null) }} className="text-[10px] font-black uppercase px-2.5 py-1.5" style={{ background: jvModo === 'jv' ? '#A855F7' : '#fff', color: jvModo === 'jv' ? '#fff' : '#888' }}>Joint Venture</button>
+                  </div>
+                </div>
+
+                {jvModo === 'jv' && (
+                  <>
+                    {jvJugadores.length === 0 ? (
+                      <div className="text-center py-4 text-xs" style={{ color: '#aaa' }}>Sin jugadores. Agregá HASU y los inversores.</div>
+                    ) : (
+                      <div className="flex flex-col gap-2 mb-3">
+                        {jvResultados.map(j => (
+                          <div key={j.id} className="rounded-lg p-3" style={{ background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
+                            <div className="grid grid-cols-[1fr_90px_20px] gap-2 mb-2 items-center">
+                              <input type="text" value={j.nombre} onChange={e => updateJugador(j.id, 'nombre', e.target.value)} placeholder="Nombre" className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#A855F7'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                              <select value={j.rol} onChange={e => updateJugador(j.id, 'rol', e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-bold uppercase" style={INP_L}>
+                                <option value="gestor">Gestor</option>
+                                <option value="inversor">Inversor</option>
+                              </select>
+                              <button onClick={() => removeJugador(j.id)} className="text-sm font-black" style={{ color: '#EF4444' }}>✕</button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              <div>
+                                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Capital aportado (€)</label>
+                                <input type="number" value={j.capital || ''} onChange={e => updateJugador(j.id, 'capital', e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#A855F7'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€" />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>% del beneficio</label>
+                                <input type="number" value={j.pctBeneficio || ''} onChange={e => updateJugador(j.id, 'pctBeneficio', e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#A855F7'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="%" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1 pt-2" style={{ borderTop: '1px solid #ECEAE4' }}>
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold uppercase" style={{ color: '#aaa' }}>% capital</div>
+                                <div className="text-[11px] font-mono font-bold" style={{ color: '#666' }}>{j.pctCapital !== null ? `${j.pctCapital.toFixed(0)}%` : '—'}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold uppercase" style={{ color: '#aaa' }}>Beneficio</div>
+                                <div className="text-[11px] font-mono font-bold" style={{ color: j.beneficio !== null && j.beneficio >= 0 ? '#22C55E' : '#EF4444' }}>{j.beneficio !== null ? fmt(j.beneficio) : '—'}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold uppercase" style={{ color: '#aaa' }}>ROI</div>
+                                <div className="text-[11px] font-mono font-bold" style={{ color: semaforoColor(j.roi) }}>{j.roi !== null ? `${semaforoEmoji(j.roi)} ${j.roi.toFixed(1)}%` : '—'}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold uppercase" style={{ color: '#aaa' }}>ROI anual</div>
+                                <div className="text-[11px] font-mono font-bold" style={{ color: j.roiAnual !== null ? semaforoColor(j.roiAnual) : '#ccc' }}>{j.roiAnual !== null ? `${j.roiAnual.toFixed(1)}%` : '—'}</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button onClick={addJugador} className="w-full text-xs font-black py-2 rounded-lg mb-2" style={{ background: 'rgba(168,85,247,0.1)', color: '#A855F7', border: '1px solid rgba(168,85,247,0.3)' }}>+ Agregar jugador</button>
+
+                    {jvJugadores.length > 0 && (
+                      <div className="flex flex-col gap-1">
+                        {Math.round(jvPctBeneficioTotal) !== 100 && (
+                          <div className="text-[10px] font-bold" style={{ color: '#EF4444' }}>⚠ El % de beneficio suma {jvPctBeneficioTotal.toFixed(0)}% (debería sumar 100%)</div>
+                        )}
+                        {res && Math.abs(jvCapitalTotal - res.totalReal) > 1 && (
+                          <div className="text-[10px] font-bold" style={{ color: '#EF4444' }}>⚠ El capital aportado suma {fmt(jvCapitalTotal)}, la inversión total es {fmt(res.totalReal)}</div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Vista comparativa 4 escenarios */}
