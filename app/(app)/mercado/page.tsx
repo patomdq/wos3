@@ -68,6 +68,10 @@ type Inmueble = {
   fee_inbruto_estimado?: number
   fee_gestion_obra_estimado?: number
   jv_jugadores?: JvJugador[]
+  jv_bono_pct_gestor?: number
+  jv_bono_pct_inversor?: number
+  jv_bono_beneficio_ccp?: number
+  jv_bono_liquidacion?: string
 }
 
 type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor' | 'mixto'; gestorPct?: number; capital: number }
@@ -243,6 +247,11 @@ export default function MercadoPage() {
   const [feeGestionObra, setFeeGestionObra] = useState(0)
   const [jvModo, setJvModo] = useState<'solo' | 'jv'>('solo')
   const [jvJugadores, setJvJugadores] = useState<JvJugador[]>([])
+  // BONUS (CCP) — solo referencia/persistencia, no se calcula en esta fase
+  const [jvBonoPctGestor, setJvBonoPctGestor] = useState(60)
+  const [jvBonoPctInversor, setJvBonoPctInversor] = useState(40)
+  const [jvBonoBeneficioCcp, setJvBonoBeneficioCcp] = useState(0)
+  const [jvBonoLiquidacion, setJvBonoLiquidacion] = useState('')
 
   // Unidades (para edificios en calculadora)
   const [unidadesCalc, setUnidadesCalc] = useState<Unidad[]>([])
@@ -493,6 +502,10 @@ export default function MercadoPage() {
     const jugadoresIniciales = item?.jv_jugadores && item.jv_jugadores.length > 0 ? item.jv_jugadores : []
     setJvJugadores(jugadoresIniciales)
     setJvModo(jugadoresIniciales.length > 0 ? 'jv' : 'solo')
+    setJvBonoPctGestor(item?.jv_bono_pct_gestor ?? 60)
+    setJvBonoPctInversor(item?.jv_bono_pct_inversor ?? 40)
+    setJvBonoBeneficioCcp(item?.jv_bono_beneficio_ccp ?? 0)
+    setJvBonoLiquidacion(item?.jv_bono_liquidacion || '')
     setUnidadesCalc([])
     setUnidadesOpen(false)
     // Cargar unidades si es edificio
@@ -524,6 +537,8 @@ export default function MercadoPage() {
     setSavedId(null)
   }
   const removeJugador = (id: string) => { setJvJugadores(prev => prev.filter(j => j.id !== id)); setSavedId(null) }
+  const setBonoPctGestor = (val: string) => { const n = Math.max(0, Math.min(100, parseFloat(val) || 0)); setJvBonoPctGestor(n); setJvBonoPctInversor(100 - n); setSavedId(null) }
+  const setBonoPctInversor = (val: string) => { const n = Math.max(0, Math.min(100, parseFloat(val) || 0)); setJvBonoPctInversor(n); setJvBonoPctGestor(100 - n); setSavedId(null) }
   const updateJugador = (id: string, campo: keyof JvJugador, val: string) => {
     setJvJugadores(prev => prev.map(j => {
       if (j.id !== id) return j
@@ -562,6 +577,10 @@ export default function MercadoPage() {
       fee_inbruto_estimado: feeInbruto || null,
       fee_gestion_obra_estimado: feeGestionObra || null,
       jv_jugadores: jvModo === 'jv' ? jvJugadores : [],
+      jv_bono_pct_gestor: jvModo === 'jv' ? jvBonoPctGestor : null,
+      jv_bono_pct_inversor: jvModo === 'jv' ? jvBonoPctInversor : null,
+      jv_bono_beneficio_ccp: jvModo === 'jv' ? (jvBonoBeneficioCcp || null) : null,
+      jv_bono_liquidacion: jvModo === 'jv' ? (jvBonoLiquidacion || null) : null,
     }
     let data: Inmueble | null = null, error: unknown = null
     if (calcInmuebleId) {
@@ -2607,6 +2626,38 @@ export default function MercadoPage() {
                         )}
                       </div>
                     )}
+
+                    {/* BONUS — CCP (contrato de cuentas de participación): solo referencia, NO se calcula en esta fase */}
+                    <div className="rounded-xl p-3 mt-4" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                      <div className="text-[11px] font-black uppercase tracking-wide mb-1" style={{ color: '#B45309' }}>BONUS — reparto del excedente sobre el CCP</div>
+                      <div className="text-[10px] font-medium mb-3" style={{ color: '#92400E', lineHeight: 1.4 }}>
+                        Solo referencia — <b>no se calcula todavía</b> (la operación no se cerró). Si el beneficio final supera al acordado en el CCP, el excedente se reparte en el % indicado: gestor(es) en partes iguales, inversor(es) a prorrata de capital.
+                        <br />Ej: CCP = 100.000€ acordado, resultado real = 140.000€ → excedente 40.000€ → 60% (24.000€) gestor, 40% (16.000€) inversor(es).
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                          <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>% Gestor (bonus)</label>
+                          <input type="number" value={jvBonoPctGestor || ''} onChange={e => setBonoPctGestor(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="60" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>% Inversor (bonus)</label>
+                          <input type="number" value={jvBonoPctInversor || ''} onChange={e => setBonoPctInversor(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="40" />
+                        </div>
+                      </div>
+                      <div className="mb-1">
+                        <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>Beneficio acordado en el CCP (€)</label>
+                        <input type="number" value={jvBonoBeneficioCcp || ''} onChange={e => { setJvBonoBeneficioCcp(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="€" />
+                      </div>
+                    </div>
+
+                    {/* Liquidación — a completar cuando se cierre la operación */}
+                    <div className="rounded-xl p-3 mt-3" style={{ background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
+                      <div className="text-[11px] font-black uppercase tracking-wide mb-1" style={{ color: '#666' }}>Liquidación final</div>
+                      <div className="text-[10px] font-medium mb-2" style={{ color: '#999', lineHeight: 1.4 }}>
+                        Completar cuando la operación se cierre y se liquide el reparto real (bonus incluido, si aplica).
+                      </div>
+                      <textarea value={jvBonoLiquidacion} onChange={e => { setJvBonoLiquidacion(e.target.value); setSavedId(null) }} rows={3} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-medium" style={{ background: '#fff', border: '1px solid #ECEAE4' }} placeholder="Ej: Beneficio real 140.000€. Excedente sobre CCP: 40.000€. Bonus gestor 24.000€ (HASU), bonus inversor 16.000€ (José Luis). Liquidado el .../.../..." />
+                    </div>
                   </>
                 )}
               </div>
