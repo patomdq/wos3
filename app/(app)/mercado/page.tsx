@@ -71,6 +71,7 @@ type Inmueble = {
   jv_bono_pct_gestor?: number
   jv_bono_pct_inversor?: number
   jv_bono_beneficio_ccp?: number
+  jv_bono_beneficio_final?: number
   jv_bono_liquidacion?: string
 }
 
@@ -168,6 +169,21 @@ function calcJvReparto(jugadores: JvJugador[], beneficio: number | null, meses: 
   })
 }
 
+// BONUS CCP — reparte el excedente (beneficio final - beneficio acordado en el CCP)
+// entre gestores/inversores según el % de bonus (ej. 60/40), no el 50/50 fijo del reparto base
+function calcJvBono(jugadores: JvJugador[], excedente: number, pctGestor: number, pctInversor: number) {
+  const fracGestor = (j: JvJugador) => j.rol === 'gestor' ? 1 : j.rol === 'inversor' ? 0 : (j.gestorPct ?? 50) / 100
+  const fracInversor = (j: JvJugador) => 1 - fracGestor(j)
+  const totalFracGestor = jugadores.reduce((s, j) => s + fracGestor(j), 0)
+  const capitalInversores = jugadores.reduce((s, j) => s + j.capital * fracInversor(j), 0)
+  return jugadores.map(j => {
+    const poolPctGestor = totalFracGestor > 0 ? (pctGestor / 100) * (fracGestor(j) / totalFracGestor) : 0
+    const poolPctInversor = capitalInversores > 0 ? (pctInversor / 100) * ((j.capital * fracInversor(j)) / capitalInversores) : 0
+    const poolPct = poolPctGestor + poolPctInversor
+    return { ...j, bono: poolPct * excedente, pctBono: poolPct * 100 }
+  })
+}
+
 const emptyNuevoForm = () => ({
   titulo: '', tipologia: 'piso', direccion: '', ciudad: '',
   precio: '', habitaciones: '', superficie: '',
@@ -251,6 +267,7 @@ export default function MercadoPage() {
   const [jvBonoPctGestor, setJvBonoPctGestor] = useState(60)
   const [jvBonoPctInversor, setJvBonoPctInversor] = useState(40)
   const [jvBonoBeneficioCcp, setJvBonoBeneficioCcp] = useState(0)
+  const [jvBonoBeneficioFinal, setJvBonoBeneficioFinal] = useState(0)
   const [jvBonoLiquidacion, setJvBonoLiquidacion] = useState('')
 
   // Unidades (para edificios en calculadora)
@@ -505,6 +522,7 @@ export default function MercadoPage() {
     setJvBonoPctGestor(item?.jv_bono_pct_gestor ?? 60)
     setJvBonoPctInversor(item?.jv_bono_pct_inversor ?? 40)
     setJvBonoBeneficioCcp(item?.jv_bono_beneficio_ccp ?? 0)
+    setJvBonoBeneficioFinal(item?.jv_bono_beneficio_final ?? 0)
     setJvBonoLiquidacion(item?.jv_bono_liquidacion || '')
     setUnidadesCalc([])
     setUnidadesOpen(false)
@@ -580,6 +598,7 @@ export default function MercadoPage() {
       jv_bono_pct_gestor: jvModo === 'jv' ? jvBonoPctGestor : null,
       jv_bono_pct_inversor: jvModo === 'jv' ? jvBonoPctInversor : null,
       jv_bono_beneficio_ccp: jvModo === 'jv' ? (jvBonoBeneficioCcp || null) : null,
+      jv_bono_beneficio_final: jvModo === 'jv' ? (jvBonoBeneficioFinal || null) : null,
       jv_bono_liquidacion: jvModo === 'jv' ? (jvBonoLiquidacion || null) : null,
     }
     let data: Inmueble | null = null, error: unknown = null
@@ -2627,12 +2646,13 @@ export default function MercadoPage() {
                       </div>
                     )}
 
-                    {/* BONUS — CCP (contrato de cuentas de participación): solo referencia, NO se calcula en esta fase */}
+                    {/* BONUS — CCP (contrato de cuentas de participación) */}
                     <div className="rounded-xl p-3 mt-4" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
                       <div className="text-[11px] font-black uppercase tracking-wide mb-1" style={{ color: '#B45309' }}>BONUS — reparto del excedente sobre el CCP</div>
                       <div className="text-[10px] font-medium mb-3" style={{ color: '#92400E', lineHeight: 1.4 }}>
-                        Solo referencia — <b>no se calcula todavía</b> (la operación no se cerró). Si el beneficio final supera al acordado en el CCP, el excedente se reparte en el % indicado: gestor(es) en partes iguales, inversor(es) a prorrata de capital.
+                        Si el beneficio final supera al acordado en el CCP, el excedente se reparte en el % indicado: gestor(es) en partes iguales, inversor(es) a prorrata de capital.
                         <br />Ej: CCP = 100.000€ acordado, resultado real = 140.000€ → excedente 40.000€ → 60% (24.000€) gestor, 40% (16.000€) inversor(es).
+                        <br />Mientras no se cargue el <b>Beneficio final</b> (la operación aún no cerró), no se calcula nada.
                       </div>
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
@@ -2644,10 +2664,44 @@ export default function MercadoPage() {
                           <input type="number" value={jvBonoPctInversor || ''} onChange={e => setBonoPctInversor(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="40" />
                         </div>
                       </div>
-                      <div className="mb-1">
-                        <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>Beneficio acordado en el CCP (€)</label>
-                        <input type="number" value={jvBonoBeneficioCcp || ''} onChange={e => { setJvBonoBeneficioCcp(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="€" />
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                          <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>Beneficio acordado en el CCP (€)</label>
+                          <input type="number" value={jvBonoBeneficioCcp || ''} onChange={e => { setJvBonoBeneficioCcp(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="€" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#92400E' }}>Beneficio final (€)</label>
+                          <input type="number" value={jvBonoBeneficioFinal || ''} onChange={e => { setJvBonoBeneficioFinal(parseFloat(e.target.value) || 0); setSavedId(null) }} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={{ background: '#fff', border: '1px solid #FDE68A' }} placeholder="€ (al cerrar la operación)" />
+                        </div>
                       </div>
+
+                      {jvBonoBeneficioFinal > 0 && (() => {
+                        const excedente = jvBonoBeneficioFinal - jvBonoBeneficioCcp
+                        if (excedente <= 0) {
+                          return <div className="text-[10px] font-bold mt-1" style={{ color: '#92400E' }}>El beneficio final no supera al acordado en el CCP — no hay excedente, no aplica bonus.</div>
+                        }
+                        const bonoRes = calcJvBono(jvJugadores, excedente, jvBonoPctGestor, jvBonoPctInversor)
+                        return (
+                          <div className="rounded-lg p-2 mt-1" style={{ background: '#fff', border: '1px solid #FDE68A' }}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="text-[9px] font-black uppercase tracking-wide" style={{ color: '#92400E' }}>Excedente</div>
+                              <div className="text-[12px] font-mono font-black" style={{ color: '#B45309' }}>{fmt(excedente)}</div>
+                            </div>
+                            <div className="grid grid-cols-[1fr_64px_64px] gap-x-2 pb-1 mb-1" style={{ borderBottom: '1px solid #FDE68A' }}>
+                              <div className="text-[8px] font-black uppercase" style={{ color: '#C99' }}>Jugador</div>
+                              <div className="text-[8px] font-black uppercase text-right" style={{ color: '#C99' }}>% bonus</div>
+                              <div className="text-[8px] font-black uppercase text-right" style={{ color: '#C99' }}>Bonus (€)</div>
+                            </div>
+                            {bonoRes.map(j => (
+                              <div key={j.id} className="grid grid-cols-[1fr_64px_64px] items-center py-1">
+                                <div className="text-[11px] font-bold truncate" style={{ color: '#333' }}>{j.nombre || '—'}</div>
+                                <div className="text-[10px] font-mono text-right" style={{ color: '#92400E' }}>{j.pctBono.toFixed(0)}%</div>
+                                <div className="text-[11px] font-mono font-black text-right" style={{ color: '#B45309' }}>{fmt(j.bono)}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()}
                     </div>
 
                     {/* Liquidación — a completar cuando se cierre la operación */}
