@@ -152,6 +152,8 @@ export default function MercadoPage() {
 
   const [inmuebles, setInmuebles] = useState<Inmueble[]>([])
   const [filtroTipologia, setFiltroTipologia] = useState('todos')
+  const [filtroEstado, setFiltroEstado] = useState('todos')
+  const [buscar, setBuscar] = useState('')
   const [loading, setLoading] = useState(true)
   const [unidades, setUnidades] = useState<Record<string, Unidad[]>>({})
   const [loadingUnidades, setLoadingUnidades] = useState<Record<string, boolean>>({})
@@ -828,9 +830,12 @@ export default function MercadoPage() {
   }
 
   // ── Derived ─────────────────────────────────────────────
-  const inmueblesFiltrados = filtroTipologia === 'todos'
-    ? inmuebles
-    : inmuebles.filter(x => x.tipologia === filtroTipologia)
+  const buscarNorm = buscar.trim().toLowerCase()
+  const inmueblesFiltrados = inmuebles.filter(x =>
+    (filtroTipologia === 'todos' || x.tipologia === filtroTipologia) &&
+    (filtroEstado === 'todos' || x.estado === filtroEstado) &&
+    (buscarNorm === '' || [x.titulo, x.direccion, x.ciudad].filter(Boolean).some(v => (v as string).toLowerCase().includes(buscarNorm)))
+  )
 
   const res = calcResultados(gastos, pvPes, pvReal, pvOpt, duracionMeses)
 
@@ -889,6 +894,7 @@ export default function MercadoPage() {
   ]
   const FILTROS = ['todos', 'piso', 'casa', 'duplex', 'edificio', 'suelo', 'nave']
   const FILTRO_LABELS: Record<string, string> = { todos: 'Todos', piso: 'Piso', casa: 'Casa', duplex: 'Dúplex', edificio: 'Edificio', suelo: 'Suelo', nave: 'Nave' }
+  const ESTADO_TABS = ['todos', 'sin_analizar', 'en_estudio', 'ofertado', 'en_arras', 'comprado']
   const TIPO_ICON: Record<string, string> = { nota: '📝', llamada: '📞', email: '✉️', visita: '🏠', documento: '📄', api: '🤝' }
 
   // JSX helpers
@@ -1090,7 +1096,36 @@ export default function MercadoPage() {
       </div>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 40px' }}>
-      {/* Filtros */}
+      {/* Solapas por estado (pipeline) */}
+      <div className="flex gap-2 mb-3 overflow-x-auto -mx-5 px-5">
+        {ESTADO_TABS.map(e => {
+          const cfg = e === 'todos' ? null : SUBESTADO_CFG[e]
+          const active = filtroEstado === e
+          const count = e === 'todos' ? inmuebles.length : inmuebles.filter(x => x.estado === e).length
+          return (
+            <button key={e} onClick={() => setFiltroEstado(e)}
+              className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap"
+              style={{
+                background: active ? (cfg ? cfg.color : '#111') : '#fff',
+                color: active ? '#fff' : (cfg ? cfg.color : '#555'),
+                border: `1.5px solid ${active ? (cfg ? cfg.color : '#111') : '#E2E0D8'}`,
+              }}>
+              {e === 'todos' ? 'Todos' : cfg!.label} ({count})
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Buscador */}
+      <div className="mb-4">
+        <input value={buscar} onChange={ev => setBuscar(ev.target.value)}
+          placeholder="Buscar por título, dirección o ciudad..."
+          className="w-full rounded-xl px-4 py-2.5 text-sm outline-none font-medium"
+          style={{ background: '#fff', border: '1.5px solid #ECEAE4', color: '#333' }}
+          onFocus={ev => ev.target.style.borderColor='#F26E1F'} onBlur={ev => ev.target.style.borderColor='#ECEAE4'} />
+      </div>
+
+      {/* Filtros por tipología */}
       <div className="flex gap-2 mb-8 overflow-x-auto -mx-5 px-5">
         {FILTROS.map(f => (
           <button key={f} onClick={() => setFiltroTipologia(f)}
