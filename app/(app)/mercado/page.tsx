@@ -70,7 +70,7 @@ type Inmueble = {
   jv_jugadores?: JvJugador[]
 }
 
-type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor'; capital: number; pctBeneficio: number; pctManual?: boolean }
+type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor'; capital: number }
 
 type Unidad = {
   id: string
@@ -486,25 +486,17 @@ export default function MercadoPage() {
     setGastos(prev => ({ ...prev, [id]: { ...prev[id], [tipo]: parseFloat(val) || 0 } }))
   }
 
-  const recalcPctAuto = (jugadores: JvJugador[]) => {
-    const total = jugadores.reduce((s, j) => s + j.capital, 0)
-    return jugadores.map(j => j.pctManual ? j : { ...j, pctBeneficio: total > 0 ? Math.round((j.capital / total) * 100) : 0 })
-  }
   const addJugador = () => {
-    setJvJugadores(prev => recalcPctAuto([...prev, { id: `${Date.now()}-${prev.length}`, nombre: '', rol: prev.length === 0 ? 'gestor' : 'inversor', capital: 0, pctBeneficio: 0 }]))
+    setJvJugadores(prev => [...prev, { id: `${Date.now()}-${prev.length}`, nombre: '', rol: prev.length === 0 ? 'gestor' : 'inversor', capital: 0 }])
     setSavedId(null)
   }
-  const removeJugador = (id: string) => { setJvJugadores(prev => recalcPctAuto(prev.filter(j => j.id !== id))); setSavedId(null) }
+  const removeJugador = (id: string) => { setJvJugadores(prev => prev.filter(j => j.id !== id)); setSavedId(null) }
   const updateJugador = (id: string, campo: keyof JvJugador, val: string) => {
-    setJvJugadores(prev => {
-      const updated = prev.map(j => {
-        if (j.id !== id) return j
-        if (campo === 'nombre' || campo === 'rol') return { ...j, [campo]: val }
-        if (campo === 'pctBeneficio') return { ...j, pctBeneficio: parseFloat(val) || 0, pctManual: true }
-        return { ...j, capital: parseFloat(val) || 0 }
-      })
-      return recalcPctAuto(updated)
-    })
+    setJvJugadores(prev => prev.map(j => {
+      if (j.id !== id) return j
+      if (campo === 'nombre' || campo === 'rol') return { ...j, [campo]: val }
+      return { ...j, capital: parseFloat(val) || 0 }
+    }))
     setSavedId(null)
   }
 
@@ -895,15 +887,22 @@ export default function MercadoPage() {
   // INbruto
   const inbrutoBen = (feeInbruto > 0 || feeGestionObra > 0) ? feeInbruto + feeGestionObra : null
 
-  // JV / Gestor — reparte el beneficio CAAV entre jugadores según % de beneficio asignado (no necesariamente igual al % de capital)
+  // JV / Gestor — regla fija: 50% del beneficio para gestores (partes iguales entre ellos),
+  // 50% para inversores (a prorrata de su capital dentro del pool de inversores)
   const jvCapitalTotal = jvJugadores.reduce((s, j) => s + j.capital, 0)
-  const jvPctBeneficioTotal = jvJugadores.reduce((s, j) => s + j.pctBeneficio, 0)
+  const jvGestores = jvJugadores.filter(j => j.rol === 'gestor')
+  const jvInversores = jvJugadores.filter(j => j.rol === 'inversor')
+  const jvCapitalInversores = jvInversores.reduce((s, j) => s + j.capital, 0)
   const jvResultados = jvJugadores.map(j => {
-    const beneficio = caavBen !== null ? (j.pctBeneficio / 100) * caavBen : null
+    const poolPct = j.rol === 'gestor'
+      ? (jvGestores.length > 0 ? 0.5 / jvGestores.length : 0)
+      : (jvCapitalInversores > 0 ? 0.5 * (j.capital / jvCapitalInversores) : 0)
+    const beneficio = caavBen !== null ? poolPct * caavBen : null
     const roi = (beneficio !== null && j.capital > 0) ? (beneficio / j.capital) * 100 : null
     const roiAnual = (roi !== null && duracionMeses > 0) ? (Math.pow(1 + roi / 100, 12 / duracionMeses) - 1) * 100 : null
     const pctCapital = jvCapitalTotal > 0 ? (j.capital / jvCapitalTotal) * 100 : null
-    return { ...j, beneficio, roi, roiAnual, pctCapital }
+    const pctBeneficio = poolPct * 100
+    return { ...j, beneficio, roi, roiAnual, pctCapital, pctBeneficio }
   })
 
   const semaforoColor = (roi: number | null) => {
@@ -2468,6 +2467,9 @@ export default function MercadoPage() {
 
                 {jvModo === 'jv' && (
                   <>
+                    <div className="text-[10px] font-medium mb-3" style={{ color: '#888', lineHeight: 1.4 }}>
+                      Regla fija: <b style={{ color: '#A855F7' }}>50% del beneficio</b> para gestores (en partes iguales entre ellos, sin importar su capital) · <b style={{ color: '#A855F7' }}>50%</b> para inversores (a prorrata de su capital aportado)
+                    </div>
                     {jvJugadores.length === 0 ? (
                       <div className="text-center py-4 text-xs" style={{ color: '#aaa' }}>Sin jugadores. Agregá HASU y los inversores.</div>
                     ) : (
@@ -2482,20 +2484,18 @@ export default function MercadoPage() {
                               </select>
                               <button onClick={() => removeJugador(j.id)} className="text-sm font-black" style={{ color: '#EF4444' }}>✕</button>
                             </div>
-                            <div className="grid grid-cols-2 gap-2 mb-2">
-                              <div>
-                                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Capital aportado (€)</label>
-                                <input type="number" value={j.capital || ''} onChange={e => updateJugador(j.id, 'capital', e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#A855F7'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€" />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>% del beneficio</label>
-                                <input type="number" value={j.pctBeneficio || ''} onChange={e => updateJugador(j.id, 'pctBeneficio', e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#A855F7'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="%" />
-                              </div>
+                            <div className="mb-2">
+                              <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Capital aportado (€)</label>
+                              <input type="number" value={j.capital || ''} onChange={e => updateJugador(j.id, 'capital', e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#A855F7'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€" />
                             </div>
-                            <div className="grid grid-cols-4 gap-1 pt-2" style={{ borderTop: '1px solid #ECEAE4' }}>
+                            <div className="grid grid-cols-5 gap-1 pt-2" style={{ borderTop: '1px solid #ECEAE4' }}>
                               <div className="text-center">
                                 <div className="text-[8px] font-bold uppercase" style={{ color: '#aaa' }}>% capital</div>
                                 <div className="text-[11px] font-mono font-bold" style={{ color: '#666' }}>{j.pctCapital !== null ? `${j.pctCapital.toFixed(0)}%` : '—'}</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold uppercase" style={{ color: '#aaa' }}>% beneficio</div>
+                                <div className="text-[11px] font-mono font-bold" style={{ color: '#A855F7' }}>{j.pctBeneficio.toFixed(0)}%</div>
                               </div>
                               <div className="text-center">
                                 <div className="text-[8px] font-bold uppercase" style={{ color: '#aaa' }}>Beneficio</div>
@@ -2518,8 +2518,11 @@ export default function MercadoPage() {
 
                     {jvJugadores.length > 0 && (
                       <div className="flex flex-col gap-1">
-                        {Math.round(jvPctBeneficioTotal) !== 100 && (
-                          <div className="text-[10px] font-bold" style={{ color: '#EF4444' }}>⚠ El % de beneficio suma {jvPctBeneficioTotal.toFixed(0)}% (debería sumar 100%)</div>
+                        {jvGestores.length === 0 && (
+                          <div className="text-[10px] font-bold" style={{ color: '#EF4444' }}>⚠ No hay ningún jugador con rol Gestor — el 50% de gestión queda sin asignar</div>
+                        )}
+                        {jvInversores.length > 0 && jvCapitalInversores === 0 && (
+                          <div className="text-[10px] font-bold" style={{ color: '#EF4444' }}>⚠ Los inversores no tienen capital cargado — no se puede repartir su 50%</div>
                         )}
                         {res && Math.abs(jvCapitalTotal - res.totalReal) > 1 && (
                           <div className="text-[10px] font-bold" style={{ color: '#EF4444' }}>⚠ El capital aportado suma {fmt(jvCapitalTotal)}, la inversión total es {fmt(res.totalReal)}</div>
