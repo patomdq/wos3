@@ -60,6 +60,24 @@ Pendiente:
 - Drop de las 3 tablas legacy una vez confirmado el flujo nuevo en producción por unas semanas
 - Contratar Fragua (si Pato decide avanzar) y conectar la fuente de comparables en `lib/analizarInmueble.ts`
 
+**Última sesión — 13/07/2026 (continuación)**
+
+Hecho:
+- **Mercado — solapas de estado + buscador** (`app/(app)/mercado/page.tsx`)
+  - Nueva fila de solapas por estado del pipeline: `Todos · Sin analizar · En estudio · Ofertado · En arras · Comprado`, con contador por solapa y mismo color que el badge de cada card (`SUBESTADO_CFG`)
+  - Buscador por título/dirección/ciudad (no existía ningún input de búsqueda antes)
+  - Se combina con el filtro de tipología existente (pills) — los tres filtros son AND entre sí
+  - Objetivo: que el módulo escale cuando pase de 3 a 100+ inmuebles sin volverse una búsqueda eterna en un grid plano
+  - Commit `15296b2`, pusheado a `origin master` — ✅ deployado, build verificado antes del push
+- **Limpieza DB — tabla `inmuebles`**: se detectaron 56 de 59 filas en estado `borrador`, generadas por bug del bot de Telegram (duplicados exactos, mensajes sueltos tipo `/start`, drafts de edificios nunca completados — Plaza Constitución, Calle Nueva, Paseo Alameda, ya identificados como duplicados de bug en la sesión del 06/06). Se confirmó con Pato que en Mercado solo existen 3 inmuebles reales (1 en_arras, 1 ofertado, 1 en_estudio) y se borraron los 56 `borrador` + sus 13 `inmueble_unidades` huérfanas asociadas
+  - Tabla `proyectos` (9 filas) verificada e intacta — todo es historial real (Parcela MDQ, Chalet Las Dalias, San José, Estación, Herrera, Travesía, 19 de Octubre, Dúplex La Alfoquia, Proyecto Cervantes en `en_arras` = el "1 pendiente de cerrar"), nada se tocó ahí
+  - Estado final verificado: `inmuebles` = 3 filas (en_arras, ofertado, en_estudio), `proyectos` = 9 filas sin cambios
+
+Pendiente:
+- Revisar si hay más data huérfana/sin uso en otras tablas (edificios, tareas, movimientos) — ofrecido, no ejecutado todavía
+- Drop de las 3 tablas legacy (`inmuebles_radar`, `inmuebles_estudio`, `edificios_estudio`) — sigue pendiente de la sesión anterior
+- Contratar Fragua y conectar comparables — sigue pendiente
+
 **Última sesión — 23/06/2026**
 
 Hecho:
@@ -386,3 +404,5 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Mesa de Juntas — check-in sin rechazo, historial 24h | ✅ producción |
 | Fix API invite — RLS con JWT de caller | ✅ producción |
 | Fix Objetivo 1M€ — Proyectos = HASU | ✅ producción |
+| Mercado — solapas por estado (pipeline) + buscador título/dirección/ciudad | ✅ producción |
+| Limpieza DB — 56 filas `borrador` huérfanas eliminadas de `inmuebles` | ✅ hecho 13/07/2026 |
