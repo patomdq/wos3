@@ -70,7 +70,7 @@ type Inmueble = {
   jv_jugadores?: JvJugador[]
 }
 
-type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor'; capital: number }
+type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor' | 'mixto'; gestorPct?: number; capital: number }
 
 type Unidad = {
   id: string
@@ -505,7 +505,9 @@ export default function MercadoPage() {
   const updateJugador = (id: string, campo: keyof JvJugador, val: string) => {
     setJvJugadores(prev => prev.map(j => {
       if (j.id !== id) return j
-      if (campo === 'nombre' || campo === 'rol') return { ...j, [campo]: val }
+      if (campo === 'nombre') return { ...j, nombre: val }
+      if (campo === 'rol') return { ...j, rol: val as JvJugador['rol'], gestorPct: val === 'mixto' ? (j.gestorPct ?? 50) : undefined }
+      if (campo === 'gestorPct') return { ...j, gestorPct: Math.max(0, Math.min(100, parseFloat(val) || 0)) }
       return { ...j, capital: parseFloat(val) || 0 }
     }))
     setSavedId(null)
@@ -899,15 +901,19 @@ export default function MercadoPage() {
   const inbrutoBen = (feeInbruto > 0 || feeGestionObra > 0) ? feeInbruto + feeGestionObra : null
 
   // JV / Gestor — regla fija: 50% del beneficio para gestores (partes iguales entre ellos),
-  // 50% para inversores (a prorrata de su capital dentro del pool de inversores)
+  // 50% para inversores (a prorrata de su capital dentro del pool de inversores).
+  // Rol 'mixto': el jugador participa de ambos pools según su % gestor/inversor (ej. 50/50)
+  const jvFracGestor = (j: JvJugador) => j.rol === 'gestor' ? 1 : j.rol === 'inversor' ? 0 : (j.gestorPct ?? 50) / 100
+  const jvFracInversor = (j: JvJugador) => 1 - jvFracGestor(j)
   const jvCapitalTotal = jvJugadores.reduce((s, j) => s + j.capital, 0)
-  const jvGestores = jvJugadores.filter(j => j.rol === 'gestor')
-  const jvInversores = jvJugadores.filter(j => j.rol === 'inversor')
-  const jvCapitalInversores = jvInversores.reduce((s, j) => s + j.capital, 0)
+  const jvGestores = jvJugadores.filter(j => jvFracGestor(j) > 0)
+  const jvInversores = jvJugadores.filter(j => jvFracInversor(j) > 0)
+  const jvTotalFracGestor = jvJugadores.reduce((s, j) => s + jvFracGestor(j), 0)
+  const jvCapitalInversores = jvJugadores.reduce((s, j) => s + j.capital * jvFracInversor(j), 0)
   const jvResultados = jvJugadores.map(j => {
-    const poolPct = j.rol === 'gestor'
-      ? (jvGestores.length > 0 ? 0.5 / jvGestores.length : 0)
-      : (jvCapitalInversores > 0 ? 0.5 * (j.capital / jvCapitalInversores) : 0)
+    const poolPctGestor = jvTotalFracGestor > 0 ? 0.5 * (jvFracGestor(j) / jvTotalFracGestor) : 0
+    const poolPctInversor = jvCapitalInversores > 0 ? 0.5 * ((j.capital * jvFracInversor(j)) / jvCapitalInversores) : 0
+    const poolPct = poolPctGestor + poolPctInversor
     const beneficio = caavBen !== null ? poolPct * caavBen : null
     const roi = (beneficio !== null && j.capital > 0) ? (beneficio / j.capital) * 100 : null
     const roiAnual = (roi !== null && duracionMeses > 0) ? (Math.pow(1 + roi / 100, 12 / duracionMeses) - 1) * 100 : null
@@ -2502,6 +2508,7 @@ export default function MercadoPage() {
                               <select value={j.rol} onChange={e => updateJugador(j.id, 'rol', e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-bold uppercase" style={INP_L}>
                                 <option value="gestor">Gestor</option>
                                 <option value="inversor">Inversor</option>
+                                <option value="mixto">Mixto</option>
                               </select>
                               <button onClick={() => removeJugador(j.id)} className="text-sm font-black" style={{ color: '#EF4444' }}>✕</button>
                             </div>
@@ -2509,6 +2516,15 @@ export default function MercadoPage() {
                               <label className="block text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Capital aportado (€)</label>
                               <input type="number" value={j.capital || ''} onChange={e => updateJugador(j.id, 'capital', e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-xs outline-none font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#A855F7'} onBlur={e => e.target.style.borderColor='#ECEAE4'} placeholder="€" />
                             </div>
+                            {j.rol === 'mixto' && (
+                              <div className="mb-2">
+                                <label className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>
+                                  <span>% como Gestor</span>
+                                  <span style={{ color: '#A855F7' }}>{j.gestorPct ?? 50}% Gestor · {100 - (j.gestorPct ?? 50)}% Inversor</span>
+                                </label>
+                                <input type="range" min="0" max="100" step="5" value={j.gestorPct ?? 50} onChange={e => updateJugador(j.id, 'gestorPct', e.target.value)} className="w-full" style={{ accentColor: '#A855F7' }} />
+                              </div>
+                            )}
                             <div className="grid grid-cols-5 gap-1 pt-2" style={{ borderTop: '1px solid #ECEAE4' }}>
                               <div className="text-center">
                                 <div className="text-[8px] font-bold uppercase" style={{ color: '#aaa' }}>% capital</div>
@@ -2540,7 +2556,7 @@ export default function MercadoPage() {
                     {jvJugadores.length > 0 && (
                       <div className="flex flex-col gap-1">
                         {jvGestores.length === 0 && (
-                          <div className="text-[10px] font-bold" style={{ color: '#EF4444' }}>⚠ No hay ningún jugador con rol Gestor — el 50% de gestión queda sin asignar</div>
+                          <div className="text-[10px] font-bold" style={{ color: '#EF4444' }}>⚠ No hay ningún jugador con parte de Gestor — el 50% de gestión queda sin asignar</div>
                         )}
                         {jvInversores.length > 0 && jvCapitalInversores === 0 && (
                           <div className="text-[10px] font-bold" style={{ color: '#EF4444' }}>⚠ Los inversores no tienen capital cargado — no se puede repartir su 50%</div>
