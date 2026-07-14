@@ -3,11 +3,11 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import { authFetch } from '@/lib/auth-fetch'
-import DeudaFiltros, { FILTROS_INICIALES, DeudaFiltrosState } from '@/components/DeudaFiltros'
+import DeudaFiltros, { FILTROS_INICIALES, DeudaFiltrosState, pasaFiltros } from '@/components/DeudaFiltros'
 import DeudaListado from '@/components/DeudaListado'
 import DeudaFichaModal from '@/components/DeudaFichaModal'
 import DeudaImportWizard from '@/components/DeudaImportWizard'
-import { DeudaPosicion, ESTADO_INTERNO_CFG, calcRatioRiesgoCargas, agruparPorContrato } from '@/lib/deuda-schema'
+import { DeudaPosicion, ESTADO_INTERNO_CFG, agruparPorContrato } from '@/lib/deuda-schema'
 
 // Leaflet necesita `window` — no puede pasar por el render de servidor.
 const DeudaMapa = dynamic(() => import('@/components/DeudaMapa'), { ssr: false, loading: () => <div className="rounded-2xl animate-pulse" style={{ height: 560, background: '#E2E0D8' }} /> })
@@ -119,31 +119,24 @@ export default function DeudaPage() {
     [posiciones, filtroEstado]
   )
 
-  const filtradas = useMemo(() => {
-    const buscar = filtros.buscar.trim().toLowerCase()
-    return porEstado.filter(p => {
-      if (buscar) {
-        const haystack = [p.contract_id, p.direccion, p.titular_deuda, p.ciudad].filter(Boolean).join(' ').toLowerCase()
-        if (!haystack.includes(buscar)) return false
-      }
-      if (filtros.provincia !== 'todos' && p.provincia !== filtros.provincia) return false
-      if (filtros.ciudad !== 'todos' && p.ciudad !== filtros.ciudad) return false
-      if (filtros.broker !== 'todos' && p.broker_origen !== filtros.broker) return false
-      if (filtros.tipoColateral !== 'todos' && p.tipo_colateral !== filtros.tipoColateral) return false
-      if (filtros.subtipoColateral !== 'todos' && p.subtipo_colateral !== filtros.subtipoColateral) return false
-      if (filtros.precioMin && (p.asking_price ?? -Infinity) < Number(filtros.precioMin)) return false
-      if (filtros.precioMax && (p.asking_price ?? Infinity) > Number(filtros.precioMax)) return false
-      if (filtros.obMin && (p.deuda_ob ?? -Infinity) < Number(filtros.obMin)) return false
-      if (filtros.obMax && (p.deuda_ob ?? Infinity) > Number(filtros.obMax)) return false
-      if (filtros.estadosJudiciales.length > 0 && (!p.estado_judicial_normalizado || !filtros.estadosJudiciales.includes(p.estado_judicial_normalizado))) return false
-      if (filtros.ocultarRiesgoCargas && calcRatioRiesgoCargas(p.cargas_previas, p.asking_price).alerta) return false
-      return true
-    })
-  }, [porEstado, filtros])
+  const filtradas = useMemo(
+    () => porEstado.filter(p => pasaFiltros(p, filtros)),
+    [porEstado, filtros]
+  )
 
   const grupos = useMemo(() => agruparPorContrato(filtradas), [filtradas])
   const grupoAbierto = contratoAbierto ? grupos.find(g => g.contractId === contratoAbierto) : null
   const pendientesGeocod = useMemo(() => posiciones.filter(p => (p.lat == null || p.lng == null) && p.direccion).length, [posiciones])
+
+  // Cuántos CONTRATOS quedan afuera solo por el toggle "ocultar riesgo de cargas" (activo por default) —
+  // Pato reportó "veo 15 pero el excel tiene 25" y la causa real era esta: 24 filas reales (25 con
+  // el header del excel), agrupadas en 17 contratos, de los cuales 2 quedan ocultos por default.
+  // Sin esta cuenta visible, el toggle enterrado en "Más filtros" no explica por qué faltan tarjetas.
+  const contratosOcultosPorRiesgo = useMemo(() => {
+    if (!filtros.ocultarRiesgoCargas) return 0
+    const sinEseFiltro = porEstado.filter(p => pasaFiltros(p, filtros, { ignorarRiesgo: true }))
+    return agruparPorContrato(sinEseFiltro).length - grupos.length
+  }, [porEstado, filtros, grupos])
 
   return (
     <div style={{ background: '#F4F4F4', minHeight: '100vh' }}>
@@ -206,6 +199,18 @@ export default function DeudaPage() {
           provincias={provincias} ciudades={ciudades} brokers={brokers}
           tiposColateral={tiposColateral} subtiposColateral={subtiposColateral}
         />
+
+        {contratosOcultosPorRiesgo > 0 && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3 mb-4 flex-wrap" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+            <div className="text-[13px] font-bold" style={{ color: '#B91C1C' }}>
+              🔴 {contratosOcultosPorRiesgo} contrato{contratosOcultosPorRiesgo === 1 ? '' : 's'} oculto{contratosOcultosPorRiesgo === 1 ? '' : 's'} — tiene{contratosOcultosPorRiesgo === 1 ? '' : 'n'} cargas previas por encima del asking price
+            </div>
+            <button onClick={() => setFiltros(f => ({ ...f, ocultarRiesgoCargas: false }))}
+              className="px-3 py-1.5 rounded-lg text-[12px] font-black flex-shrink-0" style={{ background: '#fff', color: '#B91C1C', border: '1px solid rgba(239,68,68,0.3)' }}>
+              Mostrar de todas formas
+            </button>
+          </div>
+        )}
 
         {vista === 'mapa' && pendientesGeocod > 0 && (
           <div className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3 mb-4 flex-wrap" style={{ background: 'rgba(166,133,90,0.1)', border: '1px solid rgba(166,133,90,0.3)' }}>

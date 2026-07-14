@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ESTADOS_JUDICIALES_NORMALIZADOS, ESTADO_JUDICIAL_LABEL, EstadoJudicialNormalizado } from '@/lib/deuda-schema'
+import { ESTADOS_JUDICIALES_NORMALIZADOS, ESTADO_JUDICIAL_LABEL, EstadoJudicialNormalizado, DeudaPosicion, calcRatioRiesgoCargas } from '@/lib/deuda-schema'
 
 export type DeudaFiltrosState = {
   buscar: string
@@ -22,6 +22,29 @@ export const FILTROS_INICIALES: DeudaFiltrosState = {
   tipoColateral: 'todos', subtipoColateral: 'todos',
   precioMin: '', precioMax: '', obMin: '', obMax: '',
   estadosJudiciales: [], ocultarRiesgoCargas: true,
+}
+
+// Predicado compartido — usado por la página tanto para el filtrado real como para calcular
+// cuántos contratos quedan afuera SOLO por el toggle "ocultar riesgo de cargas", sin duplicar
+// la lógica en dos lugares (eso fue lo que generó la confusión de "veo 15 pero son más").
+export function pasaFiltros(p: DeudaPosicion, filtros: DeudaFiltrosState, opts?: { ignorarRiesgo?: boolean }): boolean {
+  const buscar = filtros.buscar.trim().toLowerCase()
+  if (buscar) {
+    const haystack = [p.contract_id, p.direccion, p.titular_deuda, p.ciudad].filter(Boolean).join(' ').toLowerCase()
+    if (!haystack.includes(buscar)) return false
+  }
+  if (filtros.provincia !== 'todos' && p.provincia !== filtros.provincia) return false
+  if (filtros.ciudad !== 'todos' && p.ciudad !== filtros.ciudad) return false
+  if (filtros.broker !== 'todos' && p.broker_origen !== filtros.broker) return false
+  if (filtros.tipoColateral !== 'todos' && p.tipo_colateral !== filtros.tipoColateral) return false
+  if (filtros.subtipoColateral !== 'todos' && p.subtipo_colateral !== filtros.subtipoColateral) return false
+  if (filtros.precioMin && (p.asking_price ?? -Infinity) < Number(filtros.precioMin)) return false
+  if (filtros.precioMax && (p.asking_price ?? Infinity) > Number(filtros.precioMax)) return false
+  if (filtros.obMin && (p.deuda_ob ?? -Infinity) < Number(filtros.obMin)) return false
+  if (filtros.obMax && (p.deuda_ob ?? Infinity) > Number(filtros.obMax)) return false
+  if (filtros.estadosJudiciales.length > 0 && (!p.estado_judicial_normalizado || !filtros.estadosJudiciales.includes(p.estado_judicial_normalizado))) return false
+  if (!opts?.ignorarRiesgo && filtros.ocultarRiesgoCargas && calcRatioRiesgoCargas(p.cargas_previas, p.asking_price).alerta) return false
+  return true
 }
 
 const SEL = { background: '#F9F8F5', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }
