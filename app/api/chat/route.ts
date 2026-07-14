@@ -5,7 +5,7 @@ import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
 import { getOrgAccessToken } from '@/lib/gcalToken'
 import { gcalCreateEvent } from '@/lib/googleCalendar'
 import { verifyAuth } from '@/lib/api-auth'
-import { scrapeIdealista } from '@/lib/scrape-idealista'
+import { scrapeIdealista, extractFromHtml } from '@/lib/scrape-idealista'
 import { calcEscenarios, calcCostoTotal, calcGastosFijos, type Escenario } from '@/lib/formulas'
 import { buscarComparables } from '@/lib/search-comparables'
 import { analizarInmueble, calcularSemaforo, type AnalisisInput } from '@/lib/analizarInmueble'
@@ -2548,7 +2548,7 @@ export async function POST(req: NextRequest) {
   if (!auth) return NextResponse.json({ text: 'No autorizado.' }, { status: 401 })
 
   try {
-    const { messages, context, imageData, mediaType, images } = await req.json()
+    const { messages, context, imageData, mediaType, images, htmlFiles } = await req.json()
     // Normalize: support both single imageData/mediaType and new images[] array
     const imageList: { base64: string; mediaType: string }[] = images?.length
       ? images
@@ -2577,7 +2577,32 @@ export async function POST(req: NextRequest) {
     const lastUserContent = [...allMsgs].reverse().find(m => m.role === 'user')?.content as string || ''
     const anyUrlMatch = lastUserContent.match(/https?:\/\/\S+/i)
     let portalCtx = ''
-    if (anyUrlMatch) {
+
+    // Página guardada manualmente (el usuario la descargó porque el scraping por URL falló)
+    const htmlFileList: { name: string; html: string }[] = htmlFiles?.length ? htmlFiles : []
+    if (htmlFileList.length > 0) {
+      const first = htmlFileList[0]
+      const htmlLower = (first.html || '').toLowerCase()
+      const portalName = Object.entries(PORTAL_NAMES).find(([d]) => htmlLower.includes(d))?.[1] || 'Portal inmobiliario'
+      const scraped = extractFromHtml(first.html || '', first.name || 'archivo adjunto')
+      if (scraped.precio || scraped.direccion) {
+        const campos = [
+          scraped.titulo       ? `Título: ${scraped.titulo}` : null,
+          scraped.precio       ? `Precio: ${scraped.precio.toLocaleString('es-ES')}€` : null,
+          scraped.direccion    ? `Dirección: ${scraped.direccion}` : null,
+          scraped.ciudad       ? `Ciudad: ${scraped.ciudad}` : null,
+          scraped.habitaciones ? `Habitaciones: ${scraped.habitaciones}` : null,
+          scraped.superficie   ? `Superficie: ${scraped.superficie} m²` : null,
+          scraped.banos        ? `Baños: ${scraped.banos}` : null,
+          scraped.descripcion  ? `Descripción: ${scraped.descripcion}` : null,
+        ].filter(Boolean).join('\n')
+        portalCtx = `\n\n[${portalName.toUpperCase()} — ARCHIVO ADJUNTO "${first.name}"] Info extraída del archivo HTML que subió el usuario (la página no se pudo scrapear por link):\n${campos}\n\nINSTRUCCIÓN: Mostrá este resumen al usuario de forma limpia y preguntá "¿Lo cargo al Radar?". Si confirma, usá insert_radar con estos datos, fuente='${portalName}'. Si falta algún campo, completalo con null.`
+      } else {
+        portalCtx = `\n\n[ARCHIVO ADJUNTO "${first.name}"] El usuario subió un archivo HTML pero no se pudieron extraer los datos automáticamente. Pedile que te diga manualmente: precio, dirección, ciudad, habitaciones y superficie.`
+      }
+    }
+
+    if (!portalCtx && anyUrlMatch) {
       const rawUrl = anyUrlMatch[0].replace(/[.,;:!?)'"]+$/, '') // trim trailing punctuation
       const lcUrl = rawUrl.toLowerCase()
       const portalName = Object.entries(PORTAL_NAMES).find(([d]) => lcUrl.includes(d))?.[1]
