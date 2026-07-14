@@ -126,9 +126,9 @@ Hecho:
   - **No testeado en vivo** — por la regla de nunca correr servidor local ni auto-loguearse (ver `feedback_coding.md`), el flujo de import con `samples/estenpl.xlsx` queda pendiente de que Pato lo pruebe en el deploy de Vercel
 
 Pendiente:
-- Probar el flujo completo de import en producción con `samples/estenpl.xlsx` (o la planilla real del broker)
-- Mapa con pines + popup (Google Maps Geocoding + JS API) — bloqueado, falta que Pato genere/comparta una API key de Google Maps desde la cuenta de Google Cloud ya existente (confirmó que la cuenta existe, falta la key concreta)
-- Definir si/cómo una posición de deuda `comprado` se enlaza con Proyectos cuando se convierte en compra real — no estaba en el brief, a confirmar con Pato
+- Probar el flujo completo de import en producción con `samples/estenpl.xlsx` (o la planilla real del broker) — ✅ ya se probó en una sesión posterior (ver entradas "continuación 2/3" más arriba), quedó resuelto
+- ~~Mapa con pines + popup (Google Maps Geocoding + JS API) — bloqueado, falta API key de Google Maps~~ — resuelto en sesión posterior con OpenStreetMap + Leaflet en vez de esperar la key (ver "continuación 2" más arriba), no bloquea más
+- Definir si/cómo una posición de deuda `comprado` se enlaza con Proyectos cuando se convierte en compra real — no estaba en el brief, a confirmar con Pato (sigue abierto)
 
 **Última sesión — 14/07/2026 (chat WOS3 — adjuntar HTML + análisis automático)**
 
@@ -642,3 +642,12 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | BONUS CCP en JV/Gestor (% gestor/inversor sobre excedente, cálculo automático con Beneficio final + liquidación) | ✅ producción |
 | Chat WOS3 — adjuntar archivo HTML/texto (no solo imágenes) | ✅ producción |
 | Chat WOS3 — análisis automático (ROI/comparables) al detectar portal, con resumen corto + botón "Ver informe completo" | ✅ producción |
+| Chat WOS3 — pregunta reforma estimada antes de calcular ROI al detectar portal (ya no asume 0€ en silencio) | ✅ producción |
+| Área DEUDA v1 (import planillas broker, mapeo de columnas por Claude, filtros, estados) | ✅ producción |
+| Deuda — ficha de detalle completa (Colateral/Deuda/Estado judicial, todos los campos canónicos con label) | ✅ producción |
+| Deuda — mapa con pines (OpenStreetMap + Leaflet, geocoding vía Nominatim, sin API key) | ✅ producción |
+| Deuda — imagen por posición (mismo patrón que portada de Mercado) | ✅ producción |
+| Deuda — banner de transparencia cuando el filtro de riesgo oculta contratos | ✅ producción |
+| Wallest Design System — bronce + Marcellus/Hanken en toda la app (fondo claro mantenido) | ✅ producción |
+| Wallest Design System Fase 2 (geometría literal: radios 2px/26px/999px) | ⏳ pendiente |
+| Portal inversor / Dossier — tratamiento "dark-first" del design system | ⏳ pendiente de decisión de Pato |
