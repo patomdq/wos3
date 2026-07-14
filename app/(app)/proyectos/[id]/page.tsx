@@ -626,7 +626,7 @@ export default function ProyectoDetalle() {
           ].map(k => (
             <div key={k.l} className="rounded-xl p-3 text-center" style={{ background: '#F0EEE9', border: '1px solid rgba(0,0,0,0.08)' }}>
               <div className="font-black text-[15px]" style={{ color: k.c }}>{k.v}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wide mt-1" style={{ color: '#888' }}>{k.l}</div>
+              <div className="text-[12px] font-bold uppercase tracking-wide mt-1" style={{ color: '#888' }}>{k.l}</div>
             </div>
           ))}
         </div>
@@ -649,33 +649,33 @@ export default function ProyectoDetalle() {
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <div className="rounded-xl p-3.5" style={CARD}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Ingresos</div>
+              <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Ingresos</div>
               <div className="font-black text-[22px]" style={{ color:'#1A1A1A' }}>{fmtK(ingresos)}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: '#999999' }}>venta + devoluciones</div>
+              <div className="text-[12px] mt-0.5" style={{ color: '#999999' }}>venta + devoluciones</div>
             </div>
             <div className="rounded-xl p-3.5" style={CARD}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Gastos</div>
+              <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Gastos</div>
               <div className="font-black text-[22px]" style={{ color: '#EF4444' }}>{fmtK(gastos)}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: '#999999' }}>compra + reforma + otros</div>
+              <div className="text-[12px] mt-0.5" style={{ color: '#999999' }}>compra + reforma + otros</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2.5 mb-3">
             <div className="rounded-xl p-3.5" style={CARD}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Beneficio</div>
+              <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Beneficio</div>
               <div className="font-black text-[22px]" style={{ color: ingresos - gastos >= 0 ? '#22C55E' : '#EF4444' }}>{fmtK(ingresos - gastos)}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: '#999999' }}>ingresos − gastos</div>
+              <div className="text-[12px] mt-0.5" style={{ color: '#999999' }}>ingresos − gastos</div>
             </div>
             <div className="rounded-xl p-3.5" style={CARD}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Capital aportado</div>
+              <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Capital aportado</div>
               <div className="font-black text-[22px]" style={{ color: '#60A5FA' }}>{fmtK(capitalAportado)}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: '#999999' }}>socios · no es ingreso</div>
+              <div className="text-[12px] mt-0.5" style={{ color: '#999999' }}>socios · no es ingreso</div>
             </div>
           </div>
 
           {/* Tabla movimientos */}
           <div className="rounded-2xl overflow-hidden" style={CARD}>
             <div className="p-4 pb-0 flex items-center justify-between">
-              <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Movimientos <span style={{ color:'#999999', fontSize:13 }}>({movimientos.length})</span></div>
+              <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Movimientos <span style={{ color:'#999999', fontSize:14 }}>({movimientos.length})</span></div>
               <button onClick={() => openMovForm()}
                 className="text-sm font-black px-3 py-1.5 rounded-xl"
                 style={{ background:'#A6855A', color: '#14110C' }}>
@@ -692,9 +692,9 @@ export default function ProyectoDetalle() {
                   <div className="mt-2">
                     {/* Header */}
                     <div className="flex px-3 py-2" style={{ borderBottom:'1px solid rgba(0,0,0,0.08)', background:'#F0EEE9' }}>
-                      <div style={{ width:72, flexShrink:0, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#999999' }}>Fecha</div>
-                      <div style={{ flex:1, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#999999' }}>Concepto</div>
-                      <div style={{ width:96, textAlign:'right', flexShrink:0, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#999999' }}>Total</div>
+                      <div style={{ width:72, flexShrink:0, fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#999999' }}>Fecha</div>
+                      <div style={{ flex:1, fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#999999' }}>Concepto</div>
+                      <div style={{ width:96, textAlign:'right', flexShrink:0, fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#999999' }}>Total</div>
                     </div>
                     {movimientos.map((m, i) => {
                       const isIngreso = m.tipo === 'Ingreso' || m.monto > 0
@@ -703,13 +703,13 @@ export default function ProyectoDetalle() {
                       return (
                         <div key={m.id} className="flex items-center px-3 py-2.5"
                           style={{ borderBottom: i < movimientos.length-1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                          <div style={{ width:72, flexShrink:0, fontSize:12, fontWeight:500, color:'#666666' }}>{m.fecha}</div>
+                          <div style={{ width:72, flexShrink:0, fontSize:13, fontWeight:500, color:'#666666' }}>{m.fecha}</div>
                           <div style={{ flex:1, overflow:'hidden', paddingRight:8 }}>
-                            <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:13, fontWeight:500, color:'#1A1A1A' }}>
+                            <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:14, fontWeight:500, color:'#1A1A1A' }}>
                               {m.concepto || m.descripcion}
                             </div>
                           </div>
-                          <div style={{ width:96, flexShrink:0, textAlign:'right', fontSize:13, fontWeight:900, fontFamily:'monospace', color: montoColor, whiteSpace:'nowrap' }}>
+                          <div style={{ width:96, flexShrink:0, textAlign:'right', fontSize:14, fontWeight:900, fontFamily:'monospace', color: montoColor, whiteSpace:'nowrap' }}>
                             {isIngreso ? '+' : '-'}{fmt(total)}
                           </div>
                         </div>
@@ -718,12 +718,12 @@ export default function ProyectoDetalle() {
                     {/* Footer totales */}
                     <div style={{ borderTop:'2px solid rgba(0,0,0,0.08)', background:'#F0EEE9' }}>
                       <div className="flex px-3 py-2">
-                        <div style={{ flex:1, textAlign:'right', fontSize:12, fontWeight:700, color:'#1A1A1A', paddingRight:8 }}>Total gastos:</div>
-                        <div style={{ width:96, textAlign:'right', fontSize:13, fontWeight:900, fontFamily:'monospace', color:'#EF4444' }}>-{fmt(gastos)}</div>
+                        <div style={{ flex:1, textAlign:'right', fontSize:13, fontWeight:700, color:'#1A1A1A', paddingRight:8 }}>Total gastos:</div>
+                        <div style={{ width:96, textAlign:'right', fontSize:14, fontWeight:900, fontFamily:'monospace', color:'#EF4444' }}>-{fmt(gastos)}</div>
                       </div>
                       <div className="flex px-3 py-2" style={{ borderTop:'1px solid rgba(0,0,0,0.04)' }}>
-                        <div style={{ flex:1, textAlign:'right', fontSize:12, fontWeight:700, color:'#1A1A1A', paddingRight:8 }}>Total ingresos:</div>
-                        <div style={{ width:96, textAlign:'right', fontSize:13, fontWeight:900, fontFamily:'monospace', color:'#22C55E' }}>+{fmt(ingresos)}</div>
+                        <div style={{ flex:1, textAlign:'right', fontSize:13, fontWeight:700, color:'#1A1A1A', paddingRight:8 }}>Total ingresos:</div>
+                        <div style={{ width:96, textAlign:'right', fontSize:14, fontWeight:900, fontFamily:'monospace', color:'#22C55E' }}>+{fmt(ingresos)}</div>
                       </div>
                     </div>
                   </div>
@@ -736,7 +736,7 @@ export default function ProyectoDetalle() {
                       <thead>
                         <tr style={{ background:'#F0EEE9' }}>
                           {['Fecha','Tipo','Cat.','Descripción','Proveedor','Cant.','P.Unit.','Total','Forma pago','Obs.','Acciones'].map(h => (
-                            <th key={h} className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
+                            <th key={h} className="px-3 py-2.5 text-left text-[12px] font-bold uppercase tracking-wide whitespace-nowrap"
                               style={{ color:'#999999', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>{h}</th>
                           ))}
                         </tr>
@@ -748,26 +748,26 @@ export default function ProyectoDetalle() {
                           const montoColor = isIngreso ? '#22C55E' : '#EF4444'
                           return (
                             <tr key={m.id} style={{ borderBottom: i < movimientos.length-1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap' }}>{m.fecha}</td>
-                              <td style={{ padding:'10px 12px', fontSize:12, fontWeight:700, whiteSpace:'nowrap', color: montoColor }}>{isIngreso ? 'Ingreso' : 'Gasto'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap' }}>{m.categoria||'—'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:13, color:'#1A1A1A', maxWidth:160 }}>
+                              <td style={{ padding:'10px 12px', fontSize:13, color:'#666666', whiteSpace:'nowrap' }}>{m.fecha}</td>
+                              <td style={{ padding:'10px 12px', fontSize:13, fontWeight:700, whiteSpace:'nowrap', color: montoColor }}>{isIngreso ? 'Ingreso' : 'Gasto'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:13, color:'#666666', whiteSpace:'nowrap' }}>{m.categoria||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:14, color:'#1A1A1A', maxWidth:160 }}>
                                 <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.concepto || m.descripcion}</div>
                               </td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap' }}>{m.proveedor||'—'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', textAlign:'right', whiteSpace:'nowrap' }}>{m.cantidad||'—'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', textAlign:'right', whiteSpace:'nowrap' }}>{m.precio_unitario ? fmt(m.precio_unitario) : '—'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:13, fontWeight:900, fontFamily:'monospace', textAlign:'right', whiteSpace:'nowrap', color: montoColor }}>
+                              <td style={{ padding:'10px 12px', fontSize:13, color:'#666666', whiteSpace:'nowrap' }}>{m.proveedor||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:13, color:'#666666', textAlign:'right', whiteSpace:'nowrap' }}>{m.cantidad||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:13, color:'#666666', textAlign:'right', whiteSpace:'nowrap' }}>{m.precio_unitario ? fmt(m.precio_unitario) : '—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:14, fontWeight:900, fontFamily:'monospace', textAlign:'right', whiteSpace:'nowrap', color: montoColor }}>
                                 {isIngreso ? '+' : '-'}{fmt(total)}
                               </td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap' }}>{m.forma_pago||'—'}</td>
-                              <td style={{ padding:'10px 12px', fontSize:12, color:'#666666', whiteSpace:'nowrap', maxWidth:100 }}>
+                              <td style={{ padding:'10px 12px', fontSize:13, color:'#666666', whiteSpace:'nowrap' }}>{m.forma_pago||'—'}</td>
+                              <td style={{ padding:'10px 12px', fontSize:13, color:'#666666', whiteSpace:'nowrap', maxWidth:100 }}>
                                 <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.observaciones||'—'}</div>
                               </td>
                               <td style={{ padding:'10px 12px' }}>
                                 <div style={{ display:'flex', gap:6, justifyContent:'center' }}>
-                                  <button onClick={() => openMovForm(m)} style={{ fontSize:12, fontWeight:700, padding:'3px 8px', borderRadius:6, background:'rgba(0,0,0,0.06)', color:'#1A1A1A', border:'none', cursor:'pointer' }}>✎</button>
-                                  <button onClick={() => deleteMov(m.id)} style={{ fontSize:12, fontWeight:700, padding:'3px 8px', borderRadius:6, background:'rgba(239,68,68,0.18)', color:'#EF4444', border:'none', cursor:'pointer' }}>✕</button>
+                                  <button onClick={() => openMovForm(m)} style={{ fontSize:13, fontWeight:700, padding:'3px 8px', borderRadius:6, background:'rgba(0,0,0,0.06)', color:'#1A1A1A', border:'none', cursor:'pointer' }}>✎</button>
+                                  <button onClick={() => deleteMov(m.id)} style={{ fontSize:13, fontWeight:700, padding:'3px 8px', borderRadius:6, background:'rgba(239,68,68,0.18)', color:'#EF4444', border:'none', cursor:'pointer' }}>✕</button>
                                 </div>
                               </td>
                             </tr>
@@ -776,13 +776,13 @@ export default function ProyectoDetalle() {
                       </tbody>
                       <tfoot>
                         <tr style={{ borderTop:'2px solid rgba(0,0,0,0.08)', background:'#F0EEE9' }}>
-                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:13, fontWeight:700, textAlign:'right', color:'#1A1A1A' }}>Total gastos:</td>
-                          <td style={{ padding:'10px 12px', fontSize:13, fontWeight:900, fontFamily:'monospace', textAlign:'right', color:'#EF4444' }}>-{fmt(gastos)}</td>
+                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:14, fontWeight:700, textAlign:'right', color:'#1A1A1A' }}>Total gastos:</td>
+                          <td style={{ padding:'10px 12px', fontSize:14, fontWeight:900, fontFamily:'monospace', textAlign:'right', color:'#EF4444' }}>-{fmt(gastos)}</td>
                           <td colSpan={3}></td>
                         </tr>
                         <tr style={{ borderTop:'1px solid rgba(0,0,0,0.04)', background:'#F0EEE9' }}>
-                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:13, fontWeight:700, textAlign:'right', color:'#1A1A1A' }}>Total ingresos:</td>
-                          <td style={{ padding:'10px 12px', fontSize:13, fontWeight:900, fontFamily:'monospace', textAlign:'right', color:'#22C55E' }}>+{fmt(ingresos)}</td>
+                          <td colSpan={7} style={{ padding:'10px 12px', fontSize:14, fontWeight:700, textAlign:'right', color:'#1A1A1A' }}>Total ingresos:</td>
+                          <td style={{ padding:'10px 12px', fontSize:14, fontWeight:900, fontFamily:'monospace', textAlign:'right', color:'#22C55E' }}>+{fmt(ingresos)}</td>
                           <td colSpan={3}></td>
                         </tr>
                       </tfoot>
@@ -792,7 +792,7 @@ export default function ProyectoDetalle() {
 
                 {/* Toggle */}
                 <button onClick={() => setTablaExpandida(!tablaExpandida)}
-                  style={{ width:'100%', padding:'11px 0', fontSize:12, fontWeight:900, textAlign:'center', background:'#F0EEE9', color:'#1A1A1A', borderTop:'1px solid rgba(0,0,0,0.08)', cursor:'pointer', border:'none' }}>
+                  style={{ width:'100%', padding:'11px 0', fontSize:13, fontWeight:900, textAlign:'center', background:'#F0EEE9', color:'#1A1A1A', borderTop:'1px solid rgba(0,0,0,0.08)', cursor:'pointer', border:'none' }}>
                   {tablaExpandida ? '▲ Vista compacta' : '▼ Ver tabla completa'}
                 </button>
               </div>
@@ -820,11 +820,11 @@ export default function ProyectoDetalle() {
           )}
           <div className="grid grid-cols-2 gap-2.5 mb-3">
             <div className="rounded-xl p-3.5" style={CARD}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Presupuesto</div>
+              <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Presupuesto</div>
               <div className="font-black text-[22px]" style={{ color:'#1A1A1A' }}>{fmtK(presupuestoTotal)}</div>
             </div>
             <div className="rounded-xl p-3.5" style={CARD}>
-              <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Ejecutado</div>
+              <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Ejecutado</div>
               <div className="font-black text-[22px]" style={{ color:'#A6855A' }}>{fmtK(ejecutadoTotal)}</div>
               <div className="text-xs font-bold mt-1" style={{ color:'#999999' }}>resta {fmtK(Math.max(0,presupuestoTotal-ejecutadoTotal))}</div>
             </div>
@@ -866,8 +866,8 @@ export default function ProyectoDetalle() {
                 <div className="flex px-4 pt-3 pb-1" style={{ borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
                   <div style={{ width:130, flexShrink:0 }} />
                   <div className="flex-1 relative" style={{ height:16 }}>
-                    <span className="absolute left-0 text-[10px] font-bold" style={{ color:'#888' }}>{fmtDate(minMs)}</span>
-                    <span className="absolute right-0 text-[10px] font-bold" style={{ color:'#888' }}>{fmtDate(maxMs)}</span>
+                    <span className="absolute left-0 text-[12px] font-bold" style={{ color:'#888' }}>{fmtDate(minMs)}</span>
+                    <span className="absolute right-0 text-[12px] font-bold" style={{ color:'#888' }}>{fmtDate(maxMs)}</span>
                   </div>
                 </div>
                 {/* Filas */}
@@ -883,8 +883,8 @@ export default function ProyectoDetalle() {
                         style={{ borderBottom: i < partidas.length-1 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
                         {/* Nombre */}
                         <div style={{ width:130, flexShrink:0, paddingRight:8 }}>
-                          <div style={{ fontSize:11, fontWeight:700, color:'#1A1A1A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nombre}</div>
-                          {dep && <div style={{ fontSize:10, color:'#999999', marginTop:1 }}>↳ {dep.nombre}</div>}
+                          <div style={{ fontSize:12, fontWeight:700, color:'#1A1A1A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nombre}</div>
+                          {dep && <div style={{ fontSize:12, color:'#999999', marginTop:1 }}>↳ {dep.nombre}</div>}
                         </div>
                         {/* Canvas barra */}
                         <div className="flex-1 relative" style={{ height:22, background:'rgba(0,0,0,0.04)', borderRadius:4 }}>
@@ -903,12 +903,12 @@ export default function ProyectoDetalle() {
                               opacity: p.estado === 'ok' ? 0.85 : 1,
                             }} />
                           ) : (
-                            <div style={{ position:'absolute', left:4, top:'50%', transform:'translateY(-50%)', fontSize:10, color:'#999999', fontStyle:'italic' }}>sin fechas</div>
+                            <div style={{ position:'absolute', left:4, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#999999', fontStyle:'italic' }}>sin fechas</div>
                           )}
                         </div>
                         {/* Estado pill */}
                         <div style={{ width:68, flexShrink:0, textAlign:'right' }}>
-                          <span style={{ fontSize:10, fontWeight:700, color, background:`${color}22`, padding:'2px 6px', borderRadius:4 }}>
+                          <span style={{ fontSize:12, fontWeight:700, color, background:`${color}22`, padding:'2px 6px', borderRadius:4 }}>
                             {ESTADO_PARTIDA[p.estado]?.label || p.estado}
                           </span>
                         </div>
@@ -921,12 +921,12 @@ export default function ProyectoDetalle() {
                   {Object.entries(BAR_COLOR).map(([k,c]) => (
                     <div key={k} className="flex items-center gap-1.5">
                       <div style={{ width:10, height:10, borderRadius:2, background:c }} />
-                      <span style={{ fontSize:10, fontWeight:700, color:'#888', textTransform:'capitalize' }}>{k}</span>
+                      <span style={{ fontSize:12, fontWeight:700, color:'#888', textTransform:'capitalize' }}>{k}</span>
                     </div>
                   ))}
                   <div className="flex items-center gap-1.5">
                     <div style={{ width:2, height:10, background:'rgba(0,0,0,0.2)' }} />
-                    <span style={{ fontSize:10, fontWeight:700, color:'#888' }}>hoy</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:'#888' }}>hoy</span>
                   </div>
                 </div>
               </div>
@@ -936,7 +936,7 @@ export default function ProyectoDetalle() {
           {/* ── Vista Tabla ── */}
           {reformaVista === 'tabla' && <div className="rounded-2xl overflow-hidden" style={CARD}>
             <div className="px-4 py-3.5 flex items-center justify-between" style={{ borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
-              <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Partidas <span style={{ color:'#999999', fontSize:13 }}>({partidas.length})</span></div>
+              <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Partidas <span style={{ color:'#999999', fontSize:14 }}>({partidas.length})</span></div>
               <button onClick={() => openPartidaForm()}
                 className="text-sm font-black px-3 py-1.5 rounded-xl"
                 style={{ background:'#A6855A', color: '#14110C' }}>
@@ -951,7 +951,7 @@ export default function ProyectoDetalle() {
                   <thead>
                     <tr style={{ background:'#F0EEE9' }}>
                       {['','Partida','Categoría','Estado','Presupuesto','Ejecutado','%','Acciones'].map(h => (
-                        <th key={h} className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
+                        <th key={h} className="px-3 py-2.5 text-left text-[12px] font-bold uppercase tracking-wide whitespace-nowrap"
                           style={{ color:'#999999', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>{h}</th>
                       ))}
                     </tr>
@@ -970,7 +970,7 @@ export default function ProyectoDetalle() {
                             {/* Expand toggle */}
                             <td className="px-2 py-3" style={{ width:28 }}>
                               <button onClick={() => togglePartida(p.id)}
-                                className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-black"
+                                className="w-5 h-5 rounded flex items-center justify-center text-[12px] font-black"
                                 style={{ background:'rgba(0,0,0,0.06)', color: isExpanded ? '#A6855A' : '#888' }}>
                                 {isExpanded ? '▾' : '▸'}
                               </button>
@@ -980,7 +980,7 @@ export default function ProyectoDetalle() {
                             <td className="px-3 py-3">
                               <select value={p.estado}
                                 onChange={e => cambiarEstadoPartida(p.id, e.target.value)}
-                                className="text-[11px] font-bold px-2 py-1 rounded-full outline-none cursor-pointer"
+                                className="text-[12px] font-bold px-2 py-1 rounded-full outline-none cursor-pointer"
                                 style={{ background:ep.bg, color:ep.c, border:`1px solid ${ep.c}33` }}>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="en_curso">En curso</option>
@@ -1019,7 +1019,7 @@ export default function ProyectoDetalle() {
                                         <thead>
                                           <tr style={{ background:'rgba(0,0,0,0.03)' }}>
                                             {['Ítem','Estancia','Proveedor','Coste','F. Compra','Nota',''].map(h => (
-                                              <th key={h} className="px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wide"
+                                              <th key={h} className="px-3 py-1.5 text-left text-[12px] font-bold uppercase tracking-wide"
                                                 style={{ color:'#999999', borderBottom:'1px solid rgba(0,0,0,0.05)' }}>{h}</th>
                                             ))}
                                           </tr>
@@ -1039,8 +1039,8 @@ export default function ProyectoDetalle() {
                                               </td>
                                               <td className="px-2 py-2">
                                                 <div className="flex gap-1">
-                                                  <button onClick={() => openItemForm(p.id, item)} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background:'rgba(0,0,0,0.06)', color:'#1A1A1A' }}>✎</button>
-                                                  <button onClick={() => deleteItem(item)} className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
+                                                  <button onClick={() => openItemForm(p.id, item)} className="text-[12px] font-bold px-1.5 py-0.5 rounded" style={{ background:'rgba(0,0,0,0.06)', color:'#1A1A1A' }}>✎</button>
+                                                  <button onClick={() => deleteItem(item)} className="text-[12px] font-bold px-1.5 py-0.5 rounded" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
                                                 </div>
                                               </td>
                                             </tr>
@@ -1048,7 +1048,7 @@ export default function ProyectoDetalle() {
                                         </tbody>
                                         <tfoot>
                                           <tr style={{ borderTop:'1px solid rgba(0,0,0,0.08)', background:'rgba(0,0,0,0.03)' }}>
-                                            <td colSpan={3} className="px-3 py-1.5 text-[10px] font-bold text-right" style={{ color:'#999999' }}>Total ítems:</td>
+                                            <td colSpan={3} className="px-3 py-1.5 text-[12px] font-bold text-right" style={{ color:'#999999' }}>Total ítems:</td>
                                             <td className="px-3 py-1.5 text-xs font-black font-mono text-right" style={{ color:'#A6855A' }}>
                                               {fmt(items.reduce((s,it) => s+(it.coste||0),0))}
                                             </td>
@@ -1159,7 +1159,7 @@ export default function ProyectoDetalle() {
                 <div key={b.id} className="relative mb-4">
                   <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background:'#A6855A', border:'2px solid #F2F1ED' }} />
                   <div className="flex items-center justify-between mb-1">
-                    <div className="text-[11px] font-bold font-mono tracking-wide" style={{ color:'#999999' }}>
+                    <div className="text-[12px] font-bold font-mono tracking-wide" style={{ color:'#999999' }}>
                       {new Date(b.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}).toUpperCase()}
                     </div>
                     <div className="flex gap-1.5">
@@ -1189,11 +1189,11 @@ export default function ProyectoDetalle() {
               </div>
               <div className="grid grid-cols-2 gap-2.5 mb-3">
                 <div className="rounded-xl p-3.5" style={CARD}>
-                  <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Capital invertido</div>
+                  <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Capital invertido</div>
                   <div className="font-black text-[22px]" style={{ color:'#1A1A1A' }}>{fmtK(inversor.capital_invertido||0)}</div>
                 </div>
                 <div className="rounded-xl p-3.5" style={CARD}>
-                  <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Retorno est.</div>
+                  <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Retorno est.</div>
                   <div className="font-black text-[22px]" style={{ color:'#22C55E' }}>{fmtK(inversor.retorno_estimado||0)}</div>
                   <div className="text-xs font-bold mt-1" style={{ color:'#999999' }}>ROI {inversor.roi||0}%</div>
                 </div>
@@ -1248,17 +1248,17 @@ export default function ProyectoDetalle() {
             {/* Resumen */}
             <div className="grid grid-cols-3 gap-2.5 mb-4">
               <div className="rounded-xl p-3.5" style={CARD}>
-                <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Activos</div>
+                <div className="text-[12px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Activos</div>
                 <div className="font-black text-[22px]" style={{ color:'#1A1A1A' }}>{activos.length}</div>
               </div>
               <div className="rounded-xl p-3.5" style={CARD}>
-                <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Mejor oferta</div>
+                <div className="text-[12px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Mejor oferta</div>
                 <div className="font-black text-[18px]" style={{ color:'#22C55E' }}>{mejorOferta ? fmtK(mejorOferta) : '—'}</div>
               </div>
               <div className="rounded-xl p-3.5" style={CARD}>
-                <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Próx. visita</div>
-                <div className="font-black text-[13px]" style={{ color:'#1A1A1A' }}>{proximaVisita ? new Date(proximaVisita.proxima_visita).toLocaleDateString('es-ES',{day:'2-digit',month:'short'}) : '—'}</div>
-                {proximaVisita && <div className="text-[10px] font-bold mt-0.5" style={{ color:'#999999' }}>{proximaVisita.nombre}</div>}
+                <div className="text-[12px] font-bold uppercase tracking-wide mb-1" style={{ color:'#888' }}>Próx. visita</div>
+                <div className="font-black text-[14px]" style={{ color:'#1A1A1A' }}>{proximaVisita ? new Date(proximaVisita.proxima_visita).toLocaleDateString('es-ES',{day:'2-digit',month:'short'}) : '—'}</div>
+                {proximaVisita && <div className="text-[12px] font-bold mt-0.5" style={{ color:'#999999' }}>{proximaVisita.nombre}</div>}
               </div>
             </div>
 
@@ -1285,14 +1285,14 @@ export default function ProyectoDetalle() {
                       {/* Header */}
                       <div className="p-3.5 flex items-start gap-3">
                         <button onClick={() => toggleProspecto(p.id)}
-                          className="w-6 h-6 rounded flex items-center justify-center text-[11px] font-black flex-shrink-0 mt-0.5"
+                          className="w-6 h-6 rounded flex items-center justify-center text-[12px] font-black flex-shrink-0 mt-0.5"
                           style={{ background:'rgba(0,0,0,0.06)', color: isExpanded ? '#A6855A' : '#888' }}>
                           {isExpanded ? '▾' : '▸'}
                         </button>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>{p.nombre}</span>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background:`${ec}22`, color:ec }}>
+                            <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background:`${ec}22`, color:ec }}>
                               {p.estado}
                             </span>
                           </div>
@@ -1312,10 +1312,10 @@ export default function ProyectoDetalle() {
                       {isExpanded && (
                         <div style={{ borderTop:'1px solid rgba(0,0,0,0.08)', background:'rgba(0,0,0,0.03)' }}>
                           <div className="flex items-center justify-between px-4 py-2.5">
-                            <span className="text-[11px] font-black uppercase tracking-wide" style={{ color:'#888' }}>Interacciones ({ints.length})</span>
+                            <span className="text-[12px] font-black uppercase tracking-wide" style={{ color:'#888' }}>Interacciones ({ints.length})</span>
                             <button
                               onClick={() => { setInteraccionProspectoId(p.id); setInteraccionForm({ tipo:'llamada', fecha: new Date().toISOString().split('T')[0], nota:'' }); setShowInteraccionForm(true) }}
-                              className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                              className="text-[12px] font-black px-2.5 py-1 rounded-lg"
                               style={{ background:'#A6855A', color: '#14110C' }}>
                               + Registrar
                             </button>
@@ -1329,12 +1329,12 @@ export default function ProyectoDetalle() {
                                   <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: ESTADO_PROSPECTO_COLOR[p.estado] || '#A6855A' }} />
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-[11px] font-black" style={{ color:'#A6855A', textTransform:'capitalize' }}>{int.tipo}</span>
-                                      <span className="text-[11px]" style={{ color:'#999999' }}>{new Date(int.fecha).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})}</span>
+                                      <span className="text-[12px] font-black" style={{ color:'#A6855A', textTransform:'capitalize' }}>{int.tipo}</span>
+                                      <span className="text-[12px]" style={{ color:'#999999' }}>{new Date(int.fecha).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})}</span>
                                     </div>
                                     {int.nota && <div className="text-xs font-medium mt-0.5" style={{ color:'#444444' }}>{int.nota}</div>}
                                   </div>
-                                  <button onClick={() => deleteInteraccion(int.id, p.id)} className="text-[10px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
+                                  <button onClick={() => deleteInteraccion(int.id, p.id)} className="text-[12px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
                                 </div>
                               ))}
                             </div>
@@ -1364,27 +1364,27 @@ export default function ProyectoDetalle() {
               </div>
               <div className="flex flex-col gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
                   <input type="text" value={prospectoForm.nombre} placeholder="Nombre completo"
                     onChange={e => setProspectoForm(f=>({...f,nombre:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Teléfono</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Teléfono</label>
                     <input type="tel" value={prospectoForm.telefono} placeholder="612 345 678"
                       onChange={e => setProspectoForm(f=>({...f,telefono:e.target.value}))}
                       className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Email</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Email</label>
                     <input type="email" value={prospectoForm.email} placeholder="email@ejemplo.com"
                       onChange={e => setProspectoForm(f=>({...f,email:e.target.value}))}
                       className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Estado</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Estado</label>
                   <select value={prospectoForm.estado} onChange={e => setProspectoForm(f=>({...f,estado:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
                     {ESTADOS_PROSPECTO.map(s => <option key={s}>{s}</option>)}
@@ -1392,20 +1392,20 @@ export default function ProyectoDetalle() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Mejor oferta (€)</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Mejor oferta (€)</label>
                     <input type="number" step="1000" value={prospectoForm.mejor_oferta} placeholder="85000"
                       onChange={e => setProspectoForm(f=>({...f,mejor_oferta:e.target.value}))}
                       className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Próxima visita</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Próxima visita</label>
                     <input type="date" value={prospectoForm.proxima_visita}
                       onChange={e => setProspectoForm(f=>({...f,proxima_visita:e.target.value}))}
                       className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Notas</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Notas</label>
                   <textarea rows={2} value={prospectoForm.notas} placeholder="Observaciones..."
                     onChange={e => setProspectoForm(f=>({...f,notas:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium resize-none" style={INPUT_STYLE} />
@@ -1413,7 +1413,7 @@ export default function ProyectoDetalle() {
               </div>
               <button onClick={saveProspecto} disabled={savingProspecto || !prospectoForm.nombre.trim()}
                 className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
-                style={{ background:'#A6855A', color: '#14110C' }}>
+                style={{ background:'#14110C', color: '#F8F3E9' }}>
                 {savingProspecto ? 'Guardando...' : editingProspectoId ? 'Actualizar' : 'Agregar prospecto'}
               </button>
             </div>
@@ -1436,21 +1436,21 @@ export default function ProyectoDetalle() {
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo</label>
                     <select value={interaccionForm.tipo} onChange={e => setInteraccionForm(f=>({...f,tipo:e.target.value}))}
                       className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium capitalize" style={INPUT_STYLE}>
                       {TIPOS_INTERACCION.map(t => <option key={t}>{t}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha</label>
                     <input type="date" value={interaccionForm.fecha}
                       onChange={e => setInteraccionForm(f=>({...f,fecha:e.target.value}))}
                       className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nota *</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nota *</label>
                   <textarea rows={3} value={interaccionForm.nota} placeholder="Descripción de la interacción..."
                     onChange={e => setInteraccionForm(f=>({...f,nota:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium resize-none" style={INPUT_STYLE} />
@@ -1458,7 +1458,7 @@ export default function ProyectoDetalle() {
               </div>
               <button onClick={saveInteraccion} disabled={savingInteraccion || !interaccionForm.nota.trim()}
                 className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
-                style={{ background:'#A6855A', color: '#14110C' }}>
+                style={{ background:'#14110C', color: '#F8F3E9' }}>
                 {savingInteraccion ? 'Guardando...' : 'Registrar'}
               </button>
             </div>
@@ -1481,36 +1481,36 @@ export default function ProyectoDetalle() {
               <form onSubmit={saveMov}>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha *</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha *</label>
                     <input type="date" required value={movForm.fecha} onChange={e => setMovForm(f=>({...f,fecha:e.target.value}))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo *</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo *</label>
                     <select value={movForm.tipo} onChange={e => setMovForm(f=>({...f,tipo:e.target.value}))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INPUT_STYLE}>
                       <option>Gasto</option><option>Ingreso</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Categoría *</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Categoría *</label>
                     <select value={movForm.categoria} onChange={e => setMovForm(f=>({...f,categoria:e.target.value}))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INPUT_STYLE}>
                       {CATEGORIAS_MOV.map(c => <option key={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Descripción *</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Descripción *</label>
                     <input type="text" required value={movForm.descripcion} onChange={e => setMovForm(f=>({...f,descripcion:e.target.value}))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Proveedor</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Proveedor</label>
                     <input type="text" value={movForm.proveedor} onChange={e => setMovForm(f=>({...f,proveedor:e.target.value}))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Cantidad</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Cantidad</label>
                     <input type="number" step="0.01" value={movForm.cantidad}
                       onChange={e => {
                         const c = e.target.value
@@ -1520,7 +1520,7 @@ export default function ProyectoDetalle() {
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Precio unitario (€)</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Precio unitario (€)</label>
                     <input type="number" step="0.01" value={movForm.precio_unitario}
                       onChange={e => {
                         const p = e.target.value
@@ -1530,30 +1530,30 @@ export default function ProyectoDetalle() {
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Total (€) *</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Total (€) *</label>
                     <input type="number" step="0.01" required value={movForm.total} onChange={e => setMovForm(f=>({...f,total:e.target.value}))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-bold" style={{ ...INPUT_STYLE, borderColor:'rgba(166,133,90,0.5)' }} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Forma de pago</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Forma de pago</label>
                     <input type="text" value={movForm.forma_pago} onChange={e => setMovForm(f=>({...f,forma_pago:e.target.value}))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nº Factura</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nº Factura</label>
                     <input type="text" value={movForm.numero_factura} onChange={e => setMovForm(f=>({...f,numero_factura:e.target.value}))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INPUT_STYLE} />
                   </div>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Observaciones</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Observaciones</label>
                   <textarea rows={2} value={movForm.observaciones} onChange={e => setMovForm(f=>({...f,observaciones:e.target.value}))}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none" style={INPUT_STYLE} />
                 </div>
                 <div className="flex gap-3">
                   <button type="submit" disabled={savingMov}
                     className="flex-1 py-4 rounded-xl text-base font-black disabled:opacity-50"
-                    style={{ background:'#A6855A', color: '#14110C' }}>
+                    style={{ background:'#14110C', color: '#F8F3E9' }}>
                     {savingMov ? 'Guardando...' : 'Guardar'}
                   </button>
                   <button type="button" onClick={() => setShowMovForm(false)}
@@ -1581,21 +1581,21 @@ export default function ProyectoDetalle() {
             </div>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Título *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Título *</label>
                 <input type="text" value={tareaForm.titulo} placeholder="Ej. Pedir presupuesto electricista"
                   onChange={e => setTareaForm(f=>({...f,titulo:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Prioridad</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Prioridad</label>
                   <select value={tareaForm.prioridad} onChange={e => setTareaForm(f=>({...f,prioridad:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
                     <option>Alta</option><option>Media</option><option>Baja</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Estado</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Estado</label>
                   <select value={tareaForm.estado} onChange={e => setTareaForm(f=>({...f,estado:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
                     <option>Pendiente</option><option>En curso</option><option>Completada</option>
@@ -1604,12 +1604,12 @@ export default function ProyectoDetalle() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha límite</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha límite</label>
                   <input type="date" value={tareaForm.fecha_limite} onChange={e => setTareaForm(f=>({...f,fecha_limite:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Asignado a</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Asignado a</label>
                   <input type="text" value={tareaForm.asignado_a} placeholder="Nombre"
                     onChange={e => setTareaForm(f=>({...f,asignado_a:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
@@ -1618,7 +1618,7 @@ export default function ProyectoDetalle() {
             </div>
             <button onClick={saveTarea} disabled={savingTarea || !tareaForm.titulo.trim()}
               className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#A6855A', color: '#14110C' }}>
+              style={{ background:'#14110C', color: '#F8F3E9' }}>
               {savingTarea ? 'Guardando...' : editingTareaId ? 'Guardar cambios' : 'Agregar tarea'}
             </button>
           </div>
@@ -1638,20 +1638,20 @@ export default function ProyectoDetalle() {
             </div>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Contenido *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Contenido *</label>
                 <textarea rows={4} value={bitacoraForm.contenido} placeholder="Descripción de lo que ocurrió..."
                   onChange={e => setBitacoraForm(f=>({...f,contenido:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium resize-none" style={INPUT_STYLE} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Autor</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Autor</label>
                   <input type="text" value={bitacoraForm.autor} placeholder="Tu nombre"
                     onChange={e => setBitacoraForm(f=>({...f,autor:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo</label>
                   <select value={bitacoraForm.tipo} onChange={e => setBitacoraForm(f=>({...f,tipo:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
                     <option value="nota">Nota</option>
@@ -1663,7 +1663,7 @@ export default function ProyectoDetalle() {
             </div>
             <button onClick={saveBitacoraEntry} disabled={savingBitacora || !bitacoraForm.contenido.trim()}
               className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#A6855A', color: '#14110C' }}>
+              style={{ background:'#14110C', color: '#F8F3E9' }}>
               {savingBitacora ? 'Guardando...' : editingBitacoraId ? 'Guardar cambios' : 'Guardar entrada'}
             </button>
           </div>
@@ -1683,19 +1683,19 @@ export default function ProyectoDetalle() {
             </div>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
                 <input type="text" value={docForm.nombre} placeholder="Ej. Planos reforma cocina"
                   onChange={e => setDocForm(f=>({...f,nombre:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Link de Google Drive *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Link de Google Drive *</label>
                 <input type="url" value={docForm.url} placeholder="https://drive.google.com/..."
                   onChange={e => setDocForm(f=>({...f,url:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Tipo</label>
                 <select value={docForm.tipo} onChange={e => setDocForm(f=>({...f,tipo:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
                   <option value="">Drive</option>
@@ -1710,7 +1710,7 @@ export default function ProyectoDetalle() {
             </div>
             <button onClick={saveDoc} disabled={savingDoc || !docForm.nombre.trim() || !docForm.url.trim()}
               className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#A6855A', color: '#14110C' }}>
+              style={{ background:'#14110C', color: '#F8F3E9' }}>
               {savingDoc ? 'Guardando...' : 'Agregar documento'}
             </button>
           </div>
@@ -1730,13 +1730,13 @@ export default function ProyectoDetalle() {
             </div>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
                 <input type="text" value={nuevaPartida.nombre} placeholder="Ej. Demolición interior"
                   onChange={e => setNuevaPartida(p=>({...p,nombre:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Categoría</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Categoría</label>
                 <select value={nuevaPartida.categoria} onChange={e => setNuevaPartida(p=>({...p,categoria:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
                   {['obra','materiales','mobiliario','electro','decoracion','otros'].map(c => (
@@ -1746,13 +1746,13 @@ export default function ProyectoDetalle() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Presupuesto (€)</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Presupuesto (€)</label>
                   <input type="number" value={nuevaPartida.presupuesto} placeholder="0"
                     onChange={e => setNuevaPartida(p=>({...p,presupuesto:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Ejecutado (€)</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Ejecutado (€)</label>
                   <input type="number" value={nuevaPartida.ejecutado} placeholder="0"
                     onChange={e => setNuevaPartida(p=>({...p,ejecutado:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
@@ -1760,13 +1760,13 @@ export default function ProyectoDetalle() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Inicio</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Inicio</label>
                   <input type="date" value={nuevaPartida.fecha_inicio}
                     onChange={e => setNuevaPartida(p=>({...p,fecha_inicio:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fin estimado</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fin estimado</label>
                   <input type="date" value={nuevaPartida.fecha_fin_estimada}
                     onChange={e => setNuevaPartida(p=>({...p,fecha_fin_estimada:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
@@ -1774,13 +1774,13 @@ export default function ProyectoDetalle() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fin real</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fin real</label>
                   <input type="date" value={nuevaPartida.fecha_fin_real}
                     onChange={e => setNuevaPartida(p=>({...p,fecha_fin_real:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Depende de</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Depende de</label>
                   <select value={nuevaPartida.depende_de}
                     onChange={e => setNuevaPartida(p=>({...p,depende_de:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE}>
@@ -1794,7 +1794,7 @@ export default function ProyectoDetalle() {
             </div>
             <button onClick={savePartida} disabled={savingPartida || !nuevaPartida.nombre.trim()}
               className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#A6855A', color: '#14110C' }}>
+              style={{ background:'#14110C', color: '#F8F3E9' }}>
               {savingPartida ? 'Guardando...' : editingPartidaId ? 'Actualizar partida' : 'Agregar partida'}
             </button>
           </div>
@@ -1814,20 +1814,20 @@ export default function ProyectoDetalle() {
             </div>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
                 <input type="text" value={itemForm.nombre} placeholder="Ej. Cuadro eléctrico"
                   onChange={e => setItemForm(f=>({...f,nombre:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Estancia</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Estancia</label>
                   <input type="text" value={itemForm.estancia} placeholder="Cocina, Baño…"
                     onChange={e => setItemForm(f=>({...f,estancia:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Proveedor</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Proveedor</label>
                   <input type="text" value={itemForm.proveedor} placeholder="Nombre empresa"
                     onChange={e => setItemForm(f=>({...f,proveedor:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
@@ -1835,20 +1835,20 @@ export default function ProyectoDetalle() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Coste (€)</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Coste (€)</label>
                   <input type="number" step="0.01" value={itemForm.coste} placeholder="0.00"
                     onChange={e => setItemForm(f=>({...f,coste:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha compra</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Fecha compra</label>
                   <input type="date" value={itemForm.fecha_compra}
                     onChange={e => setItemForm(f=>({...f,fecha_compra:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT_STYLE} />
                 </div>
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nota</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nota</label>
                 <textarea rows={2} value={itemForm.nota} placeholder="Observaciones…"
                   onChange={e => setItemForm(f=>({...f,nota:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium resize-none" style={INPUT_STYLE} />
@@ -1856,7 +1856,7 @@ export default function ProyectoDetalle() {
             </div>
             <button onClick={saveItem} disabled={savingItem || !itemForm.nombre.trim()}
               className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#A6855A', color: '#14110C' }}>
+              style={{ background:'#14110C', color: '#F8F3E9' }}>
               {savingItem ? 'Guardando...' : editingItemId ? 'Actualizar ítem' : 'Agregar ítem'}
             </button>
           </div>

@@ -136,11 +136,11 @@ export default function ReportePage() {
       {/* Print button — solo visible en pantalla */}
       <div className="no-print" style={{ position: 'fixed', top: 16, right: 16, zIndex: 99, display: 'flex', gap: 8 }}>
         <button onClick={() => window.print()}
-          style={{ padding: '8px 18px', background: '#A6855A', color: '#14110C', border: 'none', borderRadius: 8, fontFamily: 'Helvetica,Arial,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ padding: '8px 18px', background: '#14110C', color: '#F8F3E9', border: 'none', borderRadius: 8, fontFamily: 'Helvetica,Arial,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
           Descargar PDF
         </button>
         <button onClick={() => window.close()}
-          style={{ padding: '8px 14px', background: '#F5F4F0', color: '#888', border: 'none', borderRadius: 8, fontFamily: 'Helvetica,Arial,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ padding: '8px 14px', background: '#F5F4F0', color: '#888', border: 'none', borderRadius: 8, fontFamily: 'Helvetica,Arial,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
           ✕
         </button>
       </div>
@@ -150,21 +150,21 @@ export default function ReportePage() {
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#A6855A', textTransform: 'uppercase', marginBottom: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#A6855A', textTransform: 'uppercase', marginBottom: 4 }}>
               WALLEST · HASU ACTIVOS INMOBILIARIOS SL
             </div>
             <div style={{ fontSize: 22, fontWeight: 900, color: '#1A1A1A', lineHeight: 1.2, marginBottom: 4 }}>
               {nombre}
             </div>
             {item.ciudad && (
-              <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 2 }}>
                 📍 {item.direccion && item.titulo ? item.direccion + ', ' : ''}{item.ciudad}
               </div>
             )}
-            <div style={{ fontSize: 10, color: '#AAA', marginTop: 6 }}>Análisis generado el {fecha}</div>
+            <div style={{ fontSize: 12, color: '#AAA', marginTop: 6 }}>Análisis generado el {fecha}</div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 10, color: '#AAA', marginBottom: 2 }}>Precio de compra</div>
+            <div style={{ fontSize: 12, color: '#AAA', marginBottom: 2 }}>Precio de compra</div>
             <div style={{ fontSize: 24, fontWeight: 900, color: '#A6855A', fontVariantNumeric: 'tabular-nums' }}>
               {fmt(item.precio_compra)}
             </div>
@@ -193,8 +193,8 @@ export default function ReportePage() {
                 { label: 'Estado', val: item.estado || '—' },
               ].map(r => (
                 <div key={r.label} style={{ background: '#F5F4F0', borderRadius: 8, padding: '8px 10px' }}>
-                  <div style={{ fontSize: 8, fontWeight: 700, color: '#AAA', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>{r.label}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#222', textTransform: r.label === 'Tipología' || r.label === 'Estado' ? 'capitalize' : 'none' }}>{r.val}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#AAA', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>{r.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#222', textTransform: r.label === 'Tipología' || r.label === 'Estado' ? 'capitalize' : 'none' }}>{r.val}</div>
                 </div>
               ))}
             </div>
@@ -204,24 +204,24 @@ export default function ReportePage() {
         {/* ── Notas ────────────────────────────────────────────────────────── */}
         {item.notas && (
           <div style={{ marginBottom: 20, borderLeft: '4px solid #A6855A', background: '#FFF8F4', borderRadius: '0 8px 8px 0', padding: '10px 14px', border: '1px solid #F5D5C0', borderLeftColor: '#A6855A', borderLeftWidth: 4 }}>
-            <div style={{ fontSize: 8, fontWeight: 700, color: '#A6855A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Notas</div>
-            <div style={{ fontSize: 11, color: '#555', lineHeight: 1.6 }}>{item.notas}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#A6855A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Notas</div>
+            <div style={{ fontSize: 12, color: '#555', lineHeight: 1.6 }}>{item.notas}</div>
           </div>
         )}
 
         {/* ── Tabla de escenarios ──────────────────────────────────────────── */}
         {totalInv && pvs.some(p => p) && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#1A1A1A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: '#1A1A1A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
               Análisis de rentabilidad
             </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
               <thead>
                 <tr style={{ background: '#F5F4F0' }}>
-                  <th style={{ width: 120, padding: '8px 10px', textAlign: 'left', fontSize: 8, fontWeight: 700, color: '#AAA', textTransform: 'uppercase', letterSpacing: 1, border: '1px solid #ECEAE4' }}></th>
+                  <th style={{ width: 120, padding: '8px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#AAA', textTransform: 'uppercase', letterSpacing: 1, border: '1px solid #ECEAE4' }}></th>
                   {ESC.map(s => (
-                    <th key={s.label} style={{ padding: '8px 10px', textAlign: 'center', fontSize: 9, fontWeight: 900, color: s.color, textTransform: 'uppercase', letterSpacing: 1, background: s.bg, border: '1px solid #ECEAE4' }}>
+                    <th key={s.label} style={{ padding: '8px 10px', textAlign: 'center', fontSize: 11, fontWeight: 900, color: s.color, textTransform: 'uppercase', letterSpacing: 1, background: s.bg, border: '1px solid #ECEAE4' }}>
                       {s.label}
                     </th>
                   ))}
@@ -236,9 +236,9 @@ export default function ReportePage() {
                   { label: `ROI anualizado${dm ? ` (${dm}m)` : ''}`, vals: roisAnual.map(r => r !== null ? r.toFixed(1) + '%' : '—'), bg: '#F5F4F0', bold: true, colors: roisAnual.map(roiColor) },
                 ].map(row => (
                   <tr key={row.label}>
-                    <td style={{ padding: '8px 10px', fontSize: 10, fontWeight: 700, color: '#666', background: row.bg, border: '1px solid #ECEAE4' }}>{row.label}</td>
+                    <td style={{ padding: '8px 10px', fontSize: 12, fontWeight: 700, color: '#666', background: row.bg, border: '1px solid #ECEAE4' }}>{row.label}</td>
                     {row.vals.map((v, i) => (
-                      <td key={i} style={{ padding: '8px 10px', textAlign: 'center', fontSize: 12, fontWeight: row.bold ? 900 : 400, fontVariantNumeric: 'tabular-nums', color: row.colors ? row.colors[i] : '#333', background: row.bg, border: '1px solid #ECEAE4' }}>
+                      <td key={i} style={{ padding: '8px 10px', textAlign: 'center', fontSize: 13, fontWeight: row.bold ? 900 : 400, fontVariantNumeric: 'tabular-nums', color: row.colors ? row.colors[i] : '#333', background: row.bg, border: '1px solid #ECEAE4' }}>
                         {v}
                       </td>
                     ))}
@@ -252,20 +252,20 @@ export default function ReportePage() {
         {/* ── Desglose de gastos ───────────────────────────────────────────── */}
         {gastoRows.length > 0 && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#1A1A1A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: '#1A1A1A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
               Desglose de inversión
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
               <tbody>
                 {gastoRows.map((r, i) => (
                   <tr key={r.label} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAF8' }}>
-                    <td style={{ padding: '7px 10px', fontSize: 10, color: '#555', border: '1px solid #ECEAE4' }}>{r.label}</td>
-                    <td style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: '#222', textAlign: 'right', fontVariantNumeric: 'tabular-nums', border: '1px solid #ECEAE4' }}>{fmt(r.val)}</td>
+                    <td style={{ padding: '7px 10px', fontSize: 12, color: '#555', border: '1px solid #ECEAE4' }}>{r.label}</td>
+                    <td style={{ padding: '7px 10px', fontSize: 12, fontWeight: 700, color: '#222', textAlign: 'right', fontVariantNumeric: 'tabular-nums', border: '1px solid #ECEAE4' }}>{fmt(r.val)}</td>
                   </tr>
                 ))}
                 <tr style={{ background: '#1A1A1A' }}>
-                  <td style={{ padding: '9px 10px', fontSize: 10, fontWeight: 900, color: '#fff', border: '1px solid #1A1A1A' }}>INVERSIÓN TOTAL</td>
-                  <td style={{ padding: '9px 10px', fontSize: 13, fontWeight: 900, color: '#A6855A', textAlign: 'right', fontVariantNumeric: 'tabular-nums', border: '1px solid #1A1A1A' }}>{fmt(totalInv)}</td>
+                  <td style={{ padding: '9px 10px', fontSize: 12, fontWeight: 900, color: '#fff', border: '1px solid #1A1A1A' }}>INVERSIÓN TOTAL</td>
+                  <td style={{ padding: '9px 10px', fontSize: 14, fontWeight: 900, color: '#A6855A', textAlign: 'right', fontVariantNumeric: 'tabular-nums', border: '1px solid #1A1A1A' }}>{fmt(totalInv)}</td>
                 </tr>
               </tbody>
             </table>
@@ -275,10 +275,10 @@ export default function ReportePage() {
         {/* ── Footer ───────────────────────────────────────────────────────── */}
         <div style={{ borderTop: '1px solid #ECEAE4', paddingTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#A6855A' }}>WALLEST</div>
-            <div style={{ fontSize: 8, color: '#AAA' }}>HASU Activos Inmobiliarios SL · wallest.pro</div>
+            <div style={{ fontSize: 12, fontWeight: 900, color: '#A6855A' }}>WALLEST</div>
+            <div style={{ fontSize: 10, color: '#AAA' }}>HASU Activos Inmobiliarios SL · wallest.pro</div>
           </div>
-          <div style={{ fontSize: 8, color: '#CCC' }}>
+          <div style={{ fontSize: 10, color: '#CCC' }}>
             Documento de uso interno · {fecha}
           </div>
         </div>

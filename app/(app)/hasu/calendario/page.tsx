@@ -261,7 +261,7 @@ export default function CalendarioPage() {
               </div>
               <div className="rounded-2xl overflow-hidden mb-4" style={CARD}>
                 <div className="grid grid-cols-7" style={{background:'#1E1E1E',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-                  {DAYS_ES.map(d => <div key={d} className="py-2 text-center text-[11px] font-bold uppercase tracking-wide" style={{color:'rgba(255,255,255,0.4)'}}>{d}</div>)}
+                  {DAYS_ES.map(d => <div key={d} className="py-2 text-center text-[12px] font-bold uppercase tracking-wide" style={{color:'rgba(255,255,255,0.4)'}}>{d}</div>)}
                 </div>
                 <div className="grid grid-cols-7">
                   {Array.from({length:firstDay}).map((_,i) => <div key={`e${i}`} className="h-11" style={{borderBottom:'1px solid rgba(255,255,255,0.04)'}} />)}
@@ -273,7 +273,7 @@ export default function CalendarioPage() {
                       <div key={k} onClick={() => setSelectedDay(k)}
                         className="h-11 flex flex-col items-center justify-start pt-1 cursor-pointer"
                         style={{borderBottom:'1px solid rgba(255,255,255,0.04)', background: isSel ? 'rgba(166,133,90,0.12)' : 'transparent'}}>
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold"
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[14px] font-bold"
                           style={{background: isToday ? '#A6855A' : 'transparent', color: isToday ? '#14110C' : isSel ? '#A6855A' : 'rgba(255,255,255,0.8)', fontWeight: isToday||isSel ? 900 : 600}}>
                           {dn}
                         </div>
@@ -309,7 +309,7 @@ export default function CalendarioPage() {
                       <div key={wd.key} onClick={() => setSelectedDay(wd.key)}
                         className="flex flex-col items-center py-3 cursor-pointer gap-1"
                         style={{background: isSel ? 'rgba(166,133,90,0.12)' : 'transparent', borderRight:'1px solid rgba(255,255,255,0.04)'}}>
-                        <div className="text-[10px] font-bold uppercase tracking-wide" style={{color:'rgba(255,255,255,0.4)'}}>{wd.dayName}</div>
+                        <div className="text-[12px] font-bold uppercase tracking-wide" style={{color:'rgba(255,255,255,0.4)'}}>{wd.dayName}</div>
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black"
                           style={{background: isToday ? '#A6855A' : 'transparent', color: isToday ? '#14110C' : isSel ? '#A6855A' : 'rgba(255,255,255,0.85)'}}>
                           {wd.dayNum}
@@ -334,7 +334,7 @@ export default function CalendarioPage() {
                 <button onClick={prevDia} className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-white" style={{background:'#1E1E1E'}}>‹</button>
                 <div className="text-center">
                   <div className="font-black text-[17px] text-white">{selLabel}</div>
-                  {selectedDay===todayStr && <div className="text-[11px] font-bold" style={{color:'#A6855A'}}>Hoy</div>}
+                  {selectedDay===todayStr && <div className="text-[12px] font-bold" style={{color:'#A6855A'}}>Hoy</div>}
                 </div>
                 <button onClick={nextDia} className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-white" style={{background:'#1E1E1E'}}>›</button>
               </div>
@@ -393,7 +393,7 @@ export default function CalendarioPage() {
 
       {/* ══ TAREAS ══ */}
       <div className="px-4 pb-10">
-        <div className="text-[11px] font-bold uppercase tracking-[1px] mb-3" style={{color:'#888'}}>Tareas</div>
+        <div className="text-[12px] font-bold uppercase tracking-[1px] mb-3" style={{color:'#888'}}>Tareas</div>
 
         {/* Cat tabs */}
         <div className="flex rounded-xl overflow-hidden mb-4" style={{border:'1px solid rgba(255,255,255,0.1)'}}>
@@ -422,7 +422,7 @@ export default function CalendarioPage() {
                 <div className="text-sm font-bold text-white leading-snug" style={{textDecoration: t.estado==='hecho' ? 'line-through' : 'none', opacity: t.estado==='hecho' ? 0.4 : 1}}>
                   {t.texto}
                 </div>
-                <div className="text-[11px] font-bold mt-0.5" style={{color: STATE_COLOR[t.estado]}}>
+                <div className="text-[12px] font-bold mt-0.5" style={{color: STATE_COLOR[t.estado]}}>
                   {STATE_LABEL[t.estado]}
                 </div>
               </div>
@@ -459,18 +459,18 @@ export default function CalendarioPage() {
             </div>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Título *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Título *</label>
                 <input type="text" value={form.titulo} placeholder="Ej. Reunión con José Luis"
                   onChange={e => setForm(f=>({...f,titulo:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT} />
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Descripción</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Descripción</label>
                 <textarea rows={2} value={form.descripcion} onChange={e => setForm(f=>({...f,descripcion:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium resize-none" style={INPUT} />
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Fecha</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Fecha</label>
                 <input type="date" value={form.fecha} onChange={e => setForm(f=>({...f,fecha:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT} />
               </div>
@@ -481,12 +481,12 @@ export default function CalendarioPage() {
               {!form.todo_el_dia && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Inicio</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Inicio</label>
                     <input type="time" value={form.hora_inicio} onChange={e => setForm(f=>({...f,hora_inicio:e.target.value}))}
                       className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Fin</label>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{color:'#888'}}>Fin</label>
                     <input type="time" value={form.hora_fin} onChange={e => setForm(f=>({...f,hora_fin:e.target.value}))}
                       className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INPUT} />
                   </div>
@@ -495,7 +495,7 @@ export default function CalendarioPage() {
             </div>
             <button onClick={saveEvent} disabled={saving||!form.titulo.trim()}
               className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{background:'#A6855A', color:'#14110C'}}>
+              style={{background:'#14110C', color:'#F8F3E9'}}>
               {saving ? 'Creando...' : 'Crear evento'}
             </button>
           </div>

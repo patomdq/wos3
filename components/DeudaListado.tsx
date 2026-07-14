@@ -75,12 +75,12 @@ export default function DeudaListado({
   return (
     <div>
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div className="text-[12px] font-bold" style={{ color: '#888' }}>
+        <div className="text-[13px] font-bold" style={{ color: '#888' }}>
           {desde + 1}–{Math.min(desde + porPagina, grupos.length)} de {grupos.length} contratos
         </div>
         <div className="flex items-center gap-1.5">
           <select value={porPagina} onChange={e => cambiarPorPagina(Number(e.target.value))}
-            className="rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none" style={{ background: '#F9F8F5', border: '1.5px solid #ECEAE4', color: '#666', appearance: 'none' as const }}>
+            className="rounded-lg px-2 py-1.5 text-[12px] font-bold outline-none" style={{ background: '#F9F8F5', border: '1.5px solid #ECEAE4', color: '#666', appearance: 'none' as const }}>
             {TAMANOS_PAGINA.map(n => <option key={n} value={n}>{n} / página</option>)}
           </select>
           <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={paginaActual === 1}
@@ -98,21 +98,21 @@ export default function DeudaListado({
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="min-w-0">
                   <div className="font-black text-[15px] truncate" style={{ color: '#111' }}>{g.ciudad || 'Sin ciudad'}</div>
-                  <div className="text-[11px] font-bold truncate" style={{ color: '#999' }}>{g.provincia || 'Sin provincia'}</div>
+                  <div className="text-[12px] font-bold truncate" style={{ color: '#999' }}>{g.provincia || 'Sin provincia'}</div>
                 </div>
                 {g.tieneAlerta && <span className="flex-shrink-0 text-base" title="Cargas previas superan el asking price">🔴</span>}
               </div>
-              <div className="text-[10px] font-mono truncate mb-2" style={{ color: '#BBB' }}>{g.contractId}</div>
+              <div className="text-[12px] font-mono truncate mb-2" style={{ color: '#BBB' }}>{g.contractId}</div>
               {g.items.length > 1 && (
-                <span className="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-black mb-2" style={{ background: '#F0EEE8', color: '#888' }}>
+                <span className="inline-block px-1.5 py-0.5 rounded-md text-[12px] font-black mb-2" style={{ background: '#F0EEE8', color: '#888' }}>
                   {g.items.length} garantías
                 </span>
               )}
-              <div className="text-[11px] font-bold truncate" style={{ color: '#888' }}>{g.broker || 'Sin broker'}</div>
+              <div className="text-[12px] font-bold truncate" style={{ color: '#888' }}>{g.broker || 'Sin broker'}</div>
             </div>
             <div className="px-4 py-3" style={{ borderTop: '1px solid #F5F4F0', background: '#FAFAF8' }}>
               <div className="font-black text-[15px]" style={{ color: '#111' }}>{fmt(g.askingTotal)}</div>
-              <div className="text-[10px]" style={{ color: '#999' }}>OB {fmt(g.obTotal)}</div>
+              <div className="text-[12px]" style={{ color: '#999' }}>OB {fmt(g.obTotal)}</div>
             </div>
           </button>
         ))}
@@ -131,12 +131,12 @@ export default function DeudaListado({
                     <div className="font-black text-[16px] truncate" style={{ color: '#111' }}>
                       {[grupoAbierto.ciudad, grupoAbierto.provincia].filter(Boolean).join(', ') || 'Sin ubicación'}
                       {grupoAbierto.tieneAlerta && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-black align-middle" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}>
+                        <span className="ml-2 px-1.5 py-0.5 rounded-md text-[12px] font-black align-middle" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}>
                           🔴 Cargas &gt; precio
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] mt-0.5 font-mono truncate" style={{ color: '#999' }}>{grupoAbierto.contractId} · {grupoAbierto.broker || 'Sin broker'}</div>
+                    <div className="text-[12px] mt-0.5 font-mono truncate" style={{ color: '#999' }}>{grupoAbierto.contractId} · {grupoAbierto.broker || 'Sin broker'}</div>
                   </div>
                   <button onClick={() => setContratoAbierto(null)} className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
                 </div>
@@ -151,23 +151,23 @@ export default function DeudaListado({
                   return (
                     <div key={p.id} className="px-5 py-3 flex flex-wrap items-center gap-2" style={{ borderTop: '1px solid #F5F4F0' }}>
                       <div className="flex-1 min-w-[220px]">
-                        <div className="text-[12px] font-bold" style={{ color: '#333' }}>{p.direccion || '(sin dirección)'}</div>
-                        <div className="text-[11px] mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: '#999' }}>
+                        <div className="text-[13px] font-bold" style={{ color: '#333' }}>{p.direccion || '(sin dirección)'}</div>
+                        <div className="text-[12px] mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: '#999' }}>
                           <span>{[p.tipo_colateral, p.subtipo_colateral].filter(Boolean).join(' · ') || 'Sin tipo'}</span>
                           {judCfg && p.estado_judicial_normalizado && (
-                            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black" style={{ background: judCfg.bg, color: judCfg.color }}>
+                            <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: judCfg.bg, color: judCfg.color }}>
                               {ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado]}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="text-right text-[11px]" style={{ color: '#666', minWidth: 90 }}>
+                      <div className="text-right text-[12px]" style={{ color: '#666', minWidth: 90 }}>
                         <div className="font-black" style={{ color: '#111' }}>{fmt(p.asking_price)}</div>
                         <div>OB {fmt(p.deuda_ob)}</div>
                       </div>
 
-                      <div className="text-right text-[11px]" style={{ color: '#666', minWidth: 70 }}>
+                      <div className="text-right text-[12px]" style={{ color: '#666', minWidth: 70 }}>
                         <div>Desc. {pct(descuento)}</div>
                         <div style={{ color: riesgo.alerta ? '#EF4444' : riesgo.sinPrecio ? '#BBB' : '#666', fontWeight: riesgo.alerta ? 900 : 400 }}>
                           {riesgo.sinPrecio ? 'Sin precio' : `Cargas ${pct(riesgo.ratio)}`}
@@ -175,13 +175,13 @@ export default function DeudaListado({
                       </div>
 
                       {riesgo.alerta && (
-                        <span className="px-2 py-1 rounded-lg text-[10px] font-black" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }} title="Cargas previas superan el asking price">
+                        <span className="px-2 py-1 rounded-lg text-[12px] font-black" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }} title="Cargas previas superan el asking price">
                           🔴 Riesgo
                         </span>
                       )}
 
                       <select value={p.estado_interno} onChange={e => onUpdateEstado(p.id, e.target.value)}
-                        className="rounded-lg px-2 py-1.5 text-[11px] font-black outline-none" style={{ background: estCfg.bg, color: estCfg.color, border: 'none', appearance: 'none' as const }}>
+                        className="rounded-lg px-2 py-1.5 text-[12px] font-black outline-none" style={{ background: estCfg.bg, color: estCfg.color, border: 'none', appearance: 'none' as const }}>
                         {Object.entries(ESTADO_INTERNO_CFG).map(([k, cfg]) => <option key={k} value={k}>{cfg.label}</option>)}
                       </select>
                     </div>

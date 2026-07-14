@@ -173,7 +173,7 @@ export default function AdminPage() {
         ) : displayUsers.map((u, i) => (
           <div key={u.id} className="px-5 py-4 flex items-center gap-3"
             style={{ borderTop: i > 0 ? '1px solid #F2F1ED' : 'none' }}>
-            <div className="w-[40px] h-[40px] rounded-full flex items-center justify-center text-[13px] font-black flex-shrink-0"
+            <div className="w-[40px] h-[40px] rounded-full flex items-center justify-center text-[14px] font-black flex-shrink-0"
               style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length], color: AVATAR_COLORS[i % AVATAR_COLORS.length] === '#A6855A' ? '#14110C' : '#fff' }}>
               {initials(u.nombre || u.email || '?')}
             </div>
@@ -181,7 +181,7 @@ export default function AdminPage() {
               {u.nombre && <div className="text-sm font-bold truncate" style={{ color: '#111' }}>{u.nombre}</div>}
               <div className="text-xs font-mono mt-0.5 truncate" style={{ color: '#AAA' }}>{u.email || u.user_id}</div>
             </div>
-            <span className="text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0"
+            <span className="text-[12px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0"
               style={{ background: ROLE_BG[u.role] || '#F2F1ED', color: ROLE_COLOR[u.role] || '#888' }}>
               {ROLE_LABEL[u.role] || u.role}
             </span>
@@ -209,17 +209,17 @@ export default function AdminPage() {
 
               <div className="space-y-3 mb-5">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Nombre</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Nombre</label>
                   <input type="text" value={editForm.nombre} onChange={e => setEditForm(f => ({ ...f, nombre: e.target.value }))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INP} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Email</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Email</label>
                   <input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium" style={INP} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Rol</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Rol</label>
                   <select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
                     style={{ ...INP, appearance: 'none' } as any}>
@@ -235,10 +235,10 @@ export default function AdminPage() {
                 <div className="mb-5 rounded-2xl p-4" style={{ background: '#FFF7F0', border: '1.5px solid rgba(166,133,90,0.2)' }}>
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#A6855A' }} />
-                    <div className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#A6855A' }}>Control de acceso</div>
+                    <div className="text-[13px] font-black uppercase tracking-wide" style={{ color: '#A6855A' }}>Control de acceso</div>
                   </div>
                   <div className="mb-4">
-                    <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: '#AAA' }}>Páginas visibles</div>
+                    <div className="text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color: '#AAA' }}>Páginas visibles</div>
                     <div className="grid grid-cols-2 gap-2">
                       {ALL_PAGES.map(p => {
                         const on = editPages.includes(p.id)
@@ -260,7 +260,7 @@ export default function AdminPage() {
                   {editPages.includes('proyectos') && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#AAA' }}>Proyectos permitidos</div>
+                        <div className="text-[12px] font-bold uppercase tracking-wide" style={{ color: '#AAA' }}>Proyectos permitidos</div>
                         <button onClick={() => setEditProjectIds(editProjectIds === null ? [] : null)}
                           className="text-xs font-black px-2.5 py-1 rounded-lg"
                           style={{
@@ -305,7 +305,7 @@ export default function AdminPage() {
                   style={{ background: '#F2F1ED', color: '#888' }}>Cancelar</button>
                 <button onClick={saveEdit} disabled={savingEdit}
                   className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-40"
-                  style={{ background: '#A6855A', color: '#14110C' }}>
+                  style={{ background: '#14110C', color: '#F8F3E9' }}>
                   {savingEdit ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>
@@ -325,7 +325,7 @@ export default function AdminPage() {
 
             <div className="space-y-3 mb-5">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Email *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Email *</label>
                 <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                   placeholder="usuario@ejemplo.com"
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
@@ -334,7 +334,7 @@ export default function AdminPage() {
                   onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Nombre</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Nombre</label>
                 <input type="text" value={inviteNombre} onChange={e => setInviteNombre(e.target.value)}
                   placeholder="Nombre completo"
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
@@ -343,7 +343,7 @@ export default function AdminPage() {
                   onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Rol</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>Rol</label>
                 <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
                   style={{ ...INP, appearance: 'none' } as any}>
@@ -368,7 +368,7 @@ export default function AdminPage() {
                 style={{ background: '#F2F1ED', color: '#888' }}>Cancelar</button>
               <button onClick={handleInvite} disabled={inviting || !inviteEmail}
                 className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-40"
-                style={{ background: '#A6855A', color: '#14110C' }}>
+                style={{ background: '#14110C', color: '#F8F3E9' }}>
                 {inviting ? 'Enviando...' : 'Invitar'}
               </button>
             </div>

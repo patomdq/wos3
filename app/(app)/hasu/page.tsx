@@ -197,7 +197,7 @@ export default function HasuPage() {
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(20,17,12,0.82) 0%, rgba(166,133,90,0.55) 100%)' }} />
           <div style={{ position: 'absolute', inset: 0, padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
             <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}>HASU</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 4, fontWeight: 600 }}>Control de empresa · Track Record · Módulos</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4, fontWeight: 600 }}>Control de empresa · Track Record · Módulos</div>
           </div>
         </div>
       </div>
@@ -221,8 +221,8 @@ export default function HasuPage() {
               <div key={k.label} style={{ ...card, padding: '28px 24px' }}>
                 <div style={{ fontSize: 24, marginBottom: 12 }}>{k.icon}</div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: k.color, letterSpacing: '-0.02em', lineHeight: 1 }}>{k.val}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#999', marginTop: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{k.label}</div>
-                <div style={{ fontSize: 11, color: '#BBB', marginTop: 4 }}>{k.sub}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#999', marginTop: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{k.label}</div>
+                <div style={{ fontSize: 12, color: '#BBB', marginTop: 4 }}>{k.sub}</div>
               </div>
             ))}
           </div>
@@ -235,7 +235,7 @@ export default function HasuPage() {
             {/* Objetivo 1M€ */}
             <div style={{ ...card, padding: '28px 32px' }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>Objetivo 1.000.000 € · Dic 2027</div>
-              <div style={{ fontSize: 11, color: '#BBB', marginBottom: 16 }}>Beneficio acumulado de operaciones con venta real</div>
+              <div style={{ fontSize: 12, color: '#BBB', marginBottom: 16 }}>Beneficio acumulado de operaciones con venta real</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
                 <div style={{ fontSize: 34, fontWeight: 900, color: '#A6855A', letterSpacing: '-0.03em', lineHeight: 1 }}>{fmt(totalBenefReal)}</div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: '#A6855A' }}>{pct.toFixed(1)}%</div>
@@ -243,16 +243,16 @@ export default function HasuPage() {
               <div style={{ height: 8, background: '#F2F1ED', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
                 <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#A6855A,#FBBF24)', borderRadius: 99, transition: 'width 0.8s ease' }} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#CCC', fontWeight: 700, marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#CCC', fontWeight: 700, marginBottom: 20 }}>
                 <span>0€</span><span>→ 1M€</span>
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ flex: 1, background: '#FAFAF8', borderRadius: 12, padding: '12px 14px', border: '1px solid #ECEAE4' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#BBB', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 4 }}>Meses restantes</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#BBB', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 4 }}>Meses restantes</div>
                   <div style={{ fontSize: 18, fontWeight: 900, color: '#111' }}>{mesesRest}</div>
                 </div>
                 <div style={{ flex: 1, background: '#FAFAF8', borderRadius: 12, padding: '12px 14px', border: '1px solid #ECEAE4' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#BBB', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 4 }}>Necesario/mes</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#BBB', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 4 }}>Necesario/mes</div>
                   <div style={{ fontSize: 18, fontWeight: 900, color: '#A6855A' }}>{fmt(porMes)}</div>
                 </div>
               </div>
@@ -261,9 +261,9 @@ export default function HasuPage() {
             {/* ROI por operación */}
             <div style={{ ...card, padding: 24 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>ROI por operación</div>
-              <div style={{ fontSize: 11, color: '#BBB', marginBottom: 20 }}>Bronce = activo · Verde = vendido</div>
+              <div style={{ fontSize: 12, color: '#BBB', marginBottom: 20 }}>Bronce = activo · Verde = vendido</div>
               {trackRows.filter(r => getRoi(r) !== 0).length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#CCC', fontSize: 12, padding: '20px 0' }}>Sin datos de ROI todavía</div>
+                <div style={{ textAlign: 'center', color: '#CCC', fontSize: 13, padding: '20px 0' }}>Sin datos de ROI todavía</div>
               ) : (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 90 }}>
                   {trackRows.filter(r => getRoi(r) !== 0).slice(0, 8).map(r => {
@@ -272,9 +272,9 @@ export default function HasuPage() {
                     const isVendido = VENDIDOS.includes(r.estado)
                     return (
                       <div key={r.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, color: isVendido ? '#22C55E' : '#A6855A' }}>{roi.toFixed(0)}%</div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: isVendido ? '#22C55E' : '#A6855A' }}>{roi.toFixed(0)}%</div>
                         <div style={{ width: '100%', height: h, borderRadius: '6px 6px 0 0', background: isVendido ? 'linear-gradient(180deg,#22C55E,#16A34A)' : 'linear-gradient(180deg,#A6855A,#F59E0B)' }} />
-                        <div style={{ fontSize: 8, color: '#BBB', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, maxWidth: 50, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.nombre.split(' ').slice(-1)[0]}</div>
+                        <div style={{ fontSize: 10, color: '#BBB', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, maxWidth: 50, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.nombre.split(' ').slice(-1)[0]}</div>
                       </div>
                     )
                   })}
@@ -296,7 +296,7 @@ export default function HasuPage() {
             ['extranjero',       'Extranjero'],
           ] as [CatTab, string][]).map(([k, l]) => (
             <button key={k} onClick={() => setCatTab(k)}
-              style={{ flex: 1, padding: '10px 16px', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', background: catTab === k ? '#A6855A' : 'transparent', color: catTab === k ? '#14110C' : '#999' }}>
+              style={{ flex: 1, padding: '10px 16px', fontSize: 13, fontWeight: 800, border: 'none', cursor: 'pointer', background: catTab === k ? '#A6855A' : 'transparent', color: catTab === k ? '#14110C' : '#999' }}>
               {l}
             </button>
           ))}
@@ -322,8 +322,8 @@ export default function HasuPage() {
               <div key={k.label} style={{ ...card, padding: '24px' }}>
                 <div style={{ fontSize: 20, marginBottom: 10 }}>{k.icon}</div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: k.color, letterSpacing: '-0.02em', lineHeight: 1 }}>{k.val}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#999', marginTop: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{k.label}</div>
-                <div style={{ fontSize: 11, color: '#BBB', marginTop: 3 }}>{k.sub}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#999', marginTop: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{k.label}</div>
+                <div style={{ fontSize: 12, color: '#BBB', marginTop: 3 }}>{k.sub}</div>
               </div>
             ))}
           </div>
@@ -335,7 +335,7 @@ export default function HasuPage() {
         {loading ? (
           <div style={{ height: 200, borderRadius: 18, background: '#E8E6E0' }} />
         ) : filtered.length === 0 ? (
-          <div style={{ ...card, padding: 40, textAlign: 'center', color: '#BBB', fontSize: 13 }}>Sin operaciones</div>
+          <div style={{ ...card, padding: 40, textAlign: 'center', color: '#BBB', fontSize: 14 }}>Sin operaciones</div>
         ) : (
           <div style={{ ...card, marginBottom: 48, overflow: 'hidden' }}>
             {/* Filtros dentro de la card */}
@@ -343,16 +343,16 @@ export default function HasuPage() {
               <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid #ECEAE4' }}>
                 {([['todos','Todos'],['en_curso','En curso'],['patrimonio','Patrimonio'],['finalizado','Finalizados']] as [FilterKey,string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setFilter(k)}
-                    style={{ padding: '6px 14px', fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', background: filter === k ? '#A6855A' : 'transparent', color: filter === k ? '#14110C' : '#999' }}>
+                    style={{ padding: '6px 14px', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', background: filter === k ? '#A6855A' : 'transparent', color: filter === k ? '#14110C' : '#999' }}>
                     {l}
                   </button>
                 ))}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#BBB' }}>Ordenar:</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#BBB' }}>Ordenar:</span>
                 {([['roi','ROI'],['fecha','Fecha'],['duracion','Duración']] as [SortKey,string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setSortBy(k)}
-                    style={{ padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800, border: 'none', cursor: 'pointer', background: sortBy === k ? 'rgba(166,133,90,0.12)' : '#F2F1ED', color: sortBy === k ? '#A6855A' : '#BBB' }}>
+                    style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', background: sortBy === k ? 'rgba(166,133,90,0.12)' : '#F2F1ED', color: sortBy === k ? '#A6855A' : '#BBB' }}>
                     {l}
                   </button>
                 ))}
@@ -361,11 +361,11 @@ export default function HasuPage() {
 
             <div style={{ overflowX: 'auto' }}>
               {filter === 'patrimonio' ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820, fontSize: 12 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820, fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #ECEAE4' }}>
                     {['#','Proyecto','Tipo','P. Compra','Renta Neta','Rentabilidad Anual','Antigüedad','Acumulado','Estado'].map(h => (
-                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#BBB', whiteSpace: 'nowrap' as const }}>{h}</th>
+                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 12, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#BBB', whiteSpace: 'nowrap' as const }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -378,19 +378,19 @@ export default function HasuPage() {
                     const compraDate = r.fecha_compra ? new Date(r.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) : '—'
                     return (
                       <tr key={r.id} style={{ borderBottom: i < filtered.length-1 ? '1px solid #F2F1ED' : 'none' }}>
-                        <td style={{ padding: '11px 14px', fontSize: 10, fontWeight: 700, color: '#CCC', whiteSpace: 'nowrap' as const }}>{r.codigo || '—'}</td>
+                        <td style={{ padding: '11px 14px', fontSize: 12, fontWeight: 700, color: '#CCC', whiteSpace: 'nowrap' as const }}>{r.codigo || '—'}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 800, color: '#111', whiteSpace: 'nowrap' as const }}>{r.nombre}</td>
                         <td style={{ padding: '11px 14px', color: '#888', whiteSpace: 'nowrap' as const }}>{r.tipo || '—'}</td>
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
                           <div style={{ fontWeight: 700, color: '#111' }}>{r.precio_compra ? fmtK(r.precio_compra) : '—'}</div>
-                          {compraDate !== '—' && <div style={{ fontSize: 10, color: '#CCC', marginTop: 1 }}>{compraDate}</div>}
+                          {compraDate !== '—' && <div style={{ fontSize: 12, color: '#CCC', marginTop: 1 }}>{compraDate}</div>}
                         </td>
                         <td style={{ padding: '11px 14px', fontWeight: 700, color: r.renta_neta_mensual ? '#111' : '#DDD', whiteSpace: 'nowrap' as const }}>{r.renta_neta_mensual ? fmt(r.renta_neta_mensual) : '—'}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 900, color: rentAnual !== null ? '#22C55E' : '#DDD', whiteSpace: 'nowrap' as const }}>{rentAnual !== null ? fmtPct(rentAnual) : '—'}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 700, color: '#888', whiteSpace: 'nowrap' as const }}>{antiguedad(inicioAlquiler)}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 800, color: acumulado !== null ? '#111' : '#DDD', whiteSpace: 'nowrap' as const }}>{acumulado !== null ? fmt(acumulado) : '—'}</td>
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
-                          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: `${estColor}18`, color: estColor }}>{ESTADO_LABEL[r.estado] || r.estado}</span>
+                          <span style={{ fontSize: 12, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: `${estColor}18`, color: estColor }}>{ESTADO_LABEL[r.estado] || r.estado}</span>
                         </td>
                       </tr>
                     )
@@ -405,7 +405,7 @@ export default function HasuPage() {
                     <tfoot>
                       <tr style={{ borderTop: '2px solid #ECEAE4', background: '#FAFAF8' }}>
                         <td style={{ padding: '10px 14px' }} />
-                        <td style={{ padding: '10px 14px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, color: '#BBB' }}>{filtered.length} operaciones</td>
+                        <td style={{ padding: '10px 14px', fontSize: 12, fontWeight: 800, textTransform: 'uppercase' as const, color: '#BBB' }}>{filtered.length} operaciones</td>
                         <td colSpan={2} />
                         <td style={{ padding: '10px 14px', fontWeight: 900, color: '#111' }}>{totalRenta > 0 ? fmt(totalRenta) : '—'}</td>
                         <td style={{ padding: '10px 14px', fontWeight: 900, color: rentMedia !== null ? '#22C55E' : '#DDD' }}>{rentMedia !== null ? fmtPct(rentMedia) : '—'}</td>
@@ -418,11 +418,11 @@ export default function HasuPage() {
                 })()}
               </table>
               ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880, fontSize: 12 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880, fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #ECEAE4' }}>
                     {['#','Proyecto','Tipo','Estructura','P. Compra','P. Venta','Dur.','Inv. Total','Inv. HASU','Benef. Total','Benef. HASU','ROI HASU','ROI Anual.','Estado'].map(h => (
-                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#BBB', whiteSpace: 'nowrap' as const }}>{h}</th>
+                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 12, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#BBB', whiteSpace: 'nowrap' as const }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -441,25 +441,25 @@ export default function HasuPage() {
                     const compraDate = r.fecha_compra ? new Date(r.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) : '—'
                     return (
                       <tr key={r.id} style={{ borderBottom: i < filtered.length-1 ? '1px solid #F2F1ED' : 'none' }}>
-                        <td style={{ padding: '11px 14px', fontSize: 10, fontWeight: 700, color: '#CCC', whiteSpace: 'nowrap' as const }}>{r.codigo || '—'}</td>
+                        <td style={{ padding: '11px 14px', fontSize: 12, fontWeight: 700, color: '#CCC', whiteSpace: 'nowrap' as const }}>{r.codigo || '—'}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 800, color: '#111', whiteSpace: 'nowrap' as const }}>{r.nombre}</td>
                         <td style={{ padding: '11px 14px', color: '#888', whiteSpace: 'nowrap' as const }}>{r.tipo || '—'}</td>
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
                           {r.porcentaje_hasu >= 100
-                            ? <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: '#F2F1ED', color: '#888' }}>100%</span>
-                            : <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: 'rgba(166,133,90,0.1)', color: '#A6855A' }}>JV {r.porcentaje_hasu}%</span>
+                            ? <span style={{ fontSize: 12, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: '#F2F1ED', color: '#888' }}>100%</span>
+                            : <span style={{ fontSize: 12, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: 'rgba(166,133,90,0.1)', color: '#A6855A' }}>JV {r.porcentaje_hasu}%</span>
                           }
                         </td>
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
                           <div style={{ fontWeight: 700, color: '#111' }}>{r.precio_compra ? fmtK(r.precio_compra) : '—'}</div>
-                          {compraDate !== '—' && <div style={{ fontSize: 10, color: '#CCC', marginTop: 1 }}>{compraDate}</div>}
+                          {compraDate !== '—' && <div style={{ fontSize: 12, color: '#CCC', marginTop: 1 }}>{compraDate}</div>}
                         </td>
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
                           <div style={{ fontWeight: 700, color: '#111' }}>
                             {getVenta(r) > 0 ? fmtK(getVenta(r)) : '—'}
-                            {!r.precio_venta_real && getVenta(r) > 0 && <span style={{ fontSize: 9, color: '#CCC', marginLeft: 3 }}>est.</span>}
+                            {!r.precio_venta_real && getVenta(r) > 0 && <span style={{ fontSize: 11, color: '#CCC', marginLeft: 3 }}>est.</span>}
                           </div>
-                          {ventaDate !== '—' && <div style={{ fontSize: 10, color: '#CCC', marginTop: 1 }}>{ventaDate}</div>}
+                          {ventaDate !== '—' && <div style={{ fontSize: 12, color: '#CCC', marginTop: 1 }}>{ventaDate}</div>}
                         </td>
                         <td style={{ padding: '11px 14px', fontWeight: 700, color: '#888', textAlign: 'center', whiteSpace: 'nowrap' as const }}>{dur !== null ? `${dur}m` : '—'}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 700, color: '#111', whiteSpace: 'nowrap' as const }}>{inv > 0 ? fmtK(inv) : '—'}</td>
@@ -469,7 +469,7 @@ export default function HasuPage() {
                         <td style={{ padding: '11px 14px', fontWeight: 900, color: hasVenta ? (roi >= 0 ? '#22C55E' : '#EF4444') : '#DDD', whiteSpace: 'nowrap' as const }}>{inv > 0 && hasVenta ? fmtPct(roi) : '—'}</td>
                         <td style={{ padding: '11px 14px', fontWeight: 900, color: hasVenta && roiAnu !== null ? (roiAnu >= 0 ? '#22C55E' : '#EF4444') : '#DDD', whiteSpace: 'nowrap' as const }}>{roiAnu !== null && hasVenta ? fmtPct(roiAnu) : '—'}</td>
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
-                          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: `${estColor}18`, color: estColor }}>{ESTADO_LABEL[r.estado] || r.estado}</span>
+                          <span style={{ fontSize: 12, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: `${estColor}18`, color: estColor }}>{ESTADO_LABEL[r.estado] || r.estado}</span>
                         </td>
                       </tr>
                     )
@@ -490,7 +490,7 @@ export default function HasuPage() {
                     <tfoot>
                       <tr style={{ borderTop: '2px solid #ECEAE4', background: '#FAFAF8' }}>
                         <td style={{ padding: '10px 14px' }} />
-                        <td style={{ padding: '10px 14px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, color: '#BBB' }}>{filtered.length} operaciones</td>
+                        <td style={{ padding: '10px 14px', fontSize: 12, fontWeight: 800, textTransform: 'uppercase' as const, color: '#BBB' }}>{filtered.length} operaciones</td>
                         <td colSpan={2} />
                         <td style={{ padding: '10px 14px' }} /><td style={{ padding: '10px 14px' }} />
                         <td style={{ padding: '10px 14px', fontWeight: 900, color: '#888', textAlign: 'center' }}>{durMedia !== null ? `${durMedia}m` : '—'}</td>
@@ -520,7 +520,7 @@ export default function HasuPage() {
               <div style={{ width: 46, height: 46, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0, background: m.bg }}>{m.icon}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>{m.nombre}</div>
-                <div style={{ fontSize: 11, color: '#BBB', marginTop: 3 }}>{m.desc}</div>
+                <div style={{ fontSize: 12, color: '#BBB', marginTop: 3 }}>{m.desc}</div>
               </div>
               <div style={{ fontSize: 20, color: '#DDD', flexShrink: 0 }}>›</div>
             </button>

@@ -120,7 +120,7 @@ export default function Nav() {
           <button key={item.id} onClick={() => router.push(item.href)}
             className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5">
             <span className="text-[26px] leading-none">{item.icon}</span>
-            <span className="text-[12px] font-bold uppercase tracking-wide"
+            <span className="text-[13px] font-bold uppercase tracking-wide"
               style={{ color: active === item.id ? '#A6855A' : '#888' }}>{item.label}</span>
           </button>
         ))}
@@ -131,13 +131,13 @@ export default function Nav() {
             <div className="relative">
               <span className="text-[24px] leading-none">🔔</span>
               {unread > 0 && (
-                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white"
+                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[11px] font-black text-white"
                   style={{ background: '#EF4444' }}>
                   {unread > 9 ? '9+' : unread}
                 </div>
               )}
             </div>
-            <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: unread > 0 ? '#EF4444' : '#888' }}>
+            <span className="text-[13px] font-bold uppercase tracking-wide" style={{ color: unread > 0 ? '#EF4444' : '#888' }}>
               {unread > 0 ? `${unread} nueva${unread > 1 ? 's' : ''}` : 'Alertas'}
             </span>
           </button>
@@ -146,11 +146,11 @@ export default function Nav() {
         {/* Profile button */}
         <button onClick={() => setProfileOpen(true)}
           className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white"
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-black text-white"
             style={{ background: avatarBg }}>
             {initials(userName)}
           </div>
-          <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: '#888' }}>Cuenta</span>
+          <span className="text-[13px] font-bold uppercase tracking-wide" style={{ color: '#888' }}>Cuenta</span>
         </button>
       </nav>
 
@@ -176,13 +176,13 @@ export default function Nav() {
         {/* Profile section — bottom of sidebar */}
         <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl mb-1" style={{ background: '#1A1A1A' }}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black text-white flex-shrink-0"
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-black text-white flex-shrink-0"
               style={{ background: avatarBg }}>
               {initials(userName)}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-bold text-white truncate">{user?.nombre || 'Usuario'}</div>
-              <div className="text-[10px] truncate" style={{ color: '#666' }}>{user?.email}</div>
+              <div className="text-[12px] truncate" style={{ color: '#666' }}>{user?.email}</div>
             </div>
           </div>
           <button onClick={() => setChangePwOpen(true)}
@@ -224,12 +224,12 @@ export default function Nav() {
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2">
                           {!n.leida && <div className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5" style={{ background: '#A6855A' }} />}
-                          <div className="text-[12px] font-black" style={{ color: '#A6855A' }}>{n.proyecto}</div>
+                          <div className="text-[13px] font-black" style={{ color: '#A6855A' }}>{n.proyecto}</div>
                         </div>
-                        <div className="text-[11px] flex-shrink-0" style={{ color: '#555' }}>{timeAgo(n.created_at)}</div>
+                        <div className="text-[12px] flex-shrink-0" style={{ color: '#555' }}>{timeAgo(n.created_at)}</div>
                       </div>
-                      <div className="text-[12px] font-bold mb-1" style={{ color: '#888' }}>{n.de_nombre}</div>
-                      <div className="text-[13px] text-white leading-relaxed">{n.contenido}</div>
+                      <div className="text-[13px] font-bold mb-1" style={{ color: '#888' }}>{n.de_nombre}</div>
+                      <div className="text-[14px] text-white leading-relaxed">{n.contenido}</div>
                     </div>
                   ))}
                 </div>
@@ -256,7 +256,7 @@ export default function Nav() {
               <div>
                 <div className="font-black text-base text-white">{user?.nombre || 'Usuario'}</div>
                 <div className="text-xs font-medium mt-0.5" style={{ color: '#888' }}>{user?.email}</div>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide mt-1 inline-block"
+                <span className="text-[12px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide mt-1 inline-block"
                   style={{ background: 'rgba(166,133,90,0.18)', color: '#A6855A' }}>
                   {user?.role || 'viewer'}
                 </span>
@@ -289,13 +289,13 @@ export default function Nav() {
 
             <div className="space-y-3 mb-5">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Nueva contraseña</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Nueva contraseña</label>
                 <input type="password" value={pw} onChange={e => setPw(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Repetir contraseña</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Repetir contraseña</label>
                 <input type="password" value={pw2} onChange={e => setPw2(e.target.value)}
                   placeholder="Repetí la contraseña"
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />

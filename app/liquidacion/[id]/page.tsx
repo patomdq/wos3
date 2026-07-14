@@ -156,7 +156,7 @@ export default function LiquidacionPage() {
       <div className="print-bar">
         <button
           onClick={() => window.print()}
-          style={{ background: '#A6855A', color: '#14110C', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
+          style={{ background: '#14110C', color: '#F8F3E9', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
           Descargar PDF ↓
         </button>
       </div>
@@ -261,8 +261,8 @@ export default function LiquidacionPage() {
                     <td className="right orange"><strong>{fmt(netoSocio)}</strong></td>
                   </tr>
                   <tr>
-                    <td style={{ color: '#888', fontSize: 12 }}>A ingresar en Hacienda en nombre de {p.socio_nombre}</td>
-                    <td className="right" style={{ color: '#888', fontSize: 12 }}>{fmt(retencion)}</td>
+                    <td style={{ color: '#888', fontSize: 13 }}>A ingresar en Hacienda en nombre de {p.socio_nombre}</td>
+                    <td className="right" style={{ color: '#888', fontSize: 13 }}>{fmt(retencion)}</td>
                   </tr>
                 </tbody>
               </table>

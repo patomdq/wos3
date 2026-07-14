@@ -103,13 +103,13 @@ export default function DossierPage() {
 
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: ORANGE, letterSpacing: 1.5 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: ORANGE, letterSpacing: 1.5 }}>
             HASU · DOSSIER
           </span>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: DARK, margin: '4px 0 6px' }}>
             Generador de Dossier
           </h1>
-          <p style={{ fontSize: 13, color: GRAY, margin: 0 }}>
+          <p style={{ fontSize: 14, color: GRAY, margin: 0 }}>
             Presentación multi-inmueble para inversores
           </p>
         </div>
@@ -126,7 +126,7 @@ export default function DossierPage() {
             { label: 'Rent. bruta media', value: `${rentBruta}%` },
           ].map(k => (
             <div key={k.label}>
-              <div style={{ fontSize: 10, color: '#888', fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>
+              <div style={{ fontSize: 12, color: '#888', fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>
                 {k.label.toUpperCase()}
               </div>
               <div style={{ fontSize: 22, fontWeight: 700, color: ORANGE }}>{k.value}</div>
@@ -140,7 +140,7 @@ export default function DossierPage() {
           border: `1px solid ${BORDER}`, marginBottom: 24
         }}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: GRAY, letterSpacing: 1, display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: GRAY, letterSpacing: 1, display: 'block', marginBottom: 6 }}>
               TÍTULO DEL DOSSIER
             </label>
             <input
@@ -154,7 +154,7 @@ export default function DossierPage() {
             />
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: GRAY, letterSpacing: 1, display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: GRAY, letterSpacing: 1, display: 'block', marginBottom: 6 }}>
               NOMBRE DEL INVERSOR <span style={{ color: '#bbb', fontWeight: 400 }}>(opcional)</span>
             </label>
             <input
@@ -172,7 +172,7 @@ export default function DossierPage() {
 
         {/* Lista de inmuebles */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: GRAY, letterSpacing: 1, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: GRAY, letterSpacing: 1, marginBottom: 12 }}>
             INMUEBLES INCLUIDOS
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -182,14 +182,14 @@ export default function DossierPage() {
                 border: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: DARK }}>{p.nombre}</div>
-                  <div style={{ fontSize: 11, color: GRAY, marginTop: 2 }}>{p.ubicacion}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: DARK }}>{p.nombre}</div>
+                  <div style={{ fontSize: 12, color: GRAY, marginTop: 2 }}>{p.ubicacion}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: ORANGE }}>
                     {(p.precio/1000).toFixed(0)}k€
                   </div>
-                  <div style={{ fontSize: 11, color: GRAY }}>{p.alquiler}€/mes</div>
+                  <div style={{ fontSize: 12, color: GRAY }}>{p.alquiler}€/mes</div>
                 </div>
               </div>
             ))}

@@ -169,9 +169,9 @@ export default function PortalInversorPage() {
           <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
             style={{ background: ORANGE, color: '#14110C' }}>W</div>
           <div className="flex-1 min-w-0">
-            <span className="font-black text-[13px]" style={{ color: '#111' }}>Wallest</span>
+            <span className="font-black text-[14px]" style={{ color: '#111' }}>Wallest</span>
             <span className="mx-1.5 text-[#DDD]">·</span>
-            <span className="text-[13px]" style={{ color: '#AAA' }}>Portal de Inversores</span>
+            <span className="text-[14px]" style={{ color: '#AAA' }}>Portal de Inversores</span>
           </div>
           <span className="text-xs font-medium hidden sm:block" style={{ color: '#AAA' }}>{inversor?.nombre}</span>
           <button onClick={handleLogout} className="text-xs font-black px-3 py-1.5 rounded-lg"
@@ -207,7 +207,7 @@ export default function PortalInversorPage() {
                 )}
                 <div style={{ position: 'relative', zIndex: 1 }} className="flex items-start justify-between">
                   <div>
-                    <div className="text-[11px] font-bold uppercase tracking-widest mb-1 opacity-80 text-white">
+                    <div className="text-[12px] font-bold uppercase tracking-widest mb-1 opacity-80 text-white">
                       Joint Venture · {participacion}% participación
                     </div>
                     <h1 className="font-black text-[26px] md:text-[30px] text-white leading-none" style={{ letterSpacing: -1 }}>
@@ -234,9 +234,9 @@ export default function PortalInversorPage() {
                   { l: 'ROI', v: `${roi.toFixed(0)}%`, sub: vendido ? '✓ confirmado' : 'estimado', c: vendido ? GREEN : ORANGE },
                 ].map(k => (
                   <div key={k.l} className="px-5 py-4 text-center">
-                    <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>{k.l}</div>
+                    <div className="text-[12px] font-bold uppercase tracking-wide mb-1" style={{ color: '#AAA' }}>{k.l}</div>
                     <div className="font-black text-[22px] leading-none" style={{ color: k.c }}>{k.v}</div>
-                    <div className="text-[11px] font-medium mt-1" style={{ color: '#AAA' }}>{k.sub}</div>
+                    <div className="text-[12px] font-medium mt-1" style={{ color: '#AAA' }}>{k.sub}</div>
                   </div>
                 ))}
               </div>
@@ -266,7 +266,7 @@ export default function PortalInversorPage() {
 
                   {/* Torta — composición del capital */}
                   <div className="rounded-2xl p-5" style={{ background: CARD, border: '1px solid #E8E4DC' }}>
-                    <div className="font-black text-[13px] mb-1" style={{ color: '#111' }}>Composición del capital</div>
+                    <div className="font-black text-[14px] mb-1" style={{ color: '#111' }}>Composición del capital</div>
                     <div className="text-xs mb-3" style={{ color: '#AAA' }}>Sobre {fmt(inversion)} total invertido</div>
                     <div className="flex items-center gap-4">
                       <ResponsiveContainer width={110} height={110}>
@@ -283,8 +283,8 @@ export default function PortalInversorPage() {
                           <div key={d.name} className="flex items-center gap-2">
                             <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} />
                             <div>
-                              <div className="text-[11px] font-bold" style={{ color: '#111' }}>{fmt(d.value)}</div>
-                              <div className="text-[10px]" style={{ color: '#AAA' }}>{d.name}</div>
+                              <div className="text-[12px] font-bold" style={{ color: '#111' }}>{fmt(d.value)}</div>
+                              <div className="text-[12px]" style={{ color: '#AAA' }}>{d.name}</div>
                             </div>
                           </div>
                         ))}
@@ -294,13 +294,13 @@ export default function PortalInversorPage() {
 
                   {/* Barras — inversión vs retorno */}
                   <div className="rounded-2xl p-5" style={{ background: CARD, border: '1px solid #E8E4DC' }}>
-                    <div className="font-black text-[13px] mb-1" style={{ color: '#111' }}>Tu inversión vs retorno</div>
+                    <div className="font-black text-[14px] mb-1" style={{ color: '#111' }}>Tu inversión vs retorno</div>
                     <div className="text-xs mb-3" style={{ color: '#AAA' }}>{vendido ? 'Resultado real' : 'Escenario realista'}</div>
                     <ResponsiveContainer width="100%" height={110}>
                       <BarChart data={barData} barCategoryGap="30%" margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                         <CartesianGrid vertical={false} stroke="#F0EDE7" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#AAA' }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 10, fill: '#AAA' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
+                        <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#AAA' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 12, fill: '#AAA' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
                         <Tooltip formatter={(v: any) => fmt(v)} />
                         <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                           {barData.map((d, i) => <Cell key={i} fill={d.color} />)}
@@ -319,11 +319,11 @@ export default function PortalInversorPage() {
                       <div className="rounded-xl p-5 flex items-center justify-between"
                         style={{ background: 'linear-gradient(135deg,rgba(45,122,79,0.07),rgba(45,122,79,0.03))', border: '1.5px solid rgba(45,122,79,0.18)' }}>
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: GREEN }}>Precio de venta real</div>
+                          <div className="text-[12px] font-black uppercase tracking-widest mb-2" style={{ color: GREEN }}>Precio de venta real</div>
                           <div className="font-black text-[32px] leading-none" style={{ color: '#111', letterSpacing: -1 }}>{fmt(proyecto.precio_venta_real)}</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: GREEN }}>Tu beneficio</div>
+                          <div className="text-[12px] font-black uppercase tracking-widest mb-2" style={{ color: GREEN }}>Tu beneficio</div>
                           <div className="font-black text-[32px] leading-none" style={{ color: GREEN, letterSpacing: -1 }}>+{fmt(benefInv)}</div>
                           <div className="font-black text-sm mt-1" style={{ color: GREEN }}>+{roi.toFixed(0)}% ROI</div>
                         </div>
@@ -342,7 +342,7 @@ export default function PortalInversorPage() {
                                 background: isMain ? `rgba(166,133,90,0.07)` : BG,
                                 border: `1.5px solid ${isMain ? 'rgba(166,133,90,0.25)' : '#E8E4DC'}`,
                               }}>
-                              <div className="text-[10px] font-black uppercase tracking-wide mb-2"
+                              <div className="text-[12px] font-black uppercase tracking-wide mb-2"
                                 style={{ color: isMain ? ORANGE : '#AAA' }}>{s.label}</div>
                               <div className="font-black text-[16px]" style={{ color: '#111' }}>{fmt(s.v)}</div>
                               <div className="font-bold text-sm mt-0.5" style={{ color: s.benefInv >= 0 ? GREEN : '#EF4444' }}>
@@ -379,7 +379,7 @@ export default function PortalInversorPage() {
                     { l: 'Saldo',    v: fmt(ingresos - gastos), c: ingresos >= gastos ? GREEN : '#EF4444' },
                   ].map(k => (
                     <div key={k.l} className="rounded-xl p-4 text-center" style={{ background: CARD, border: '1px solid #E8E4DC' }}>
-                      <div className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>{k.l}</div>
+                      <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#AAA' }}>{k.l}</div>
                       <div className="font-black text-[20px]" style={{ color: k.c }}>{k.v}</div>
                     </div>
                   ))}
@@ -397,12 +397,12 @@ export default function PortalInversorPage() {
                   if (chartData.length < 2) return null
                   return (
                     <div className="rounded-2xl p-5" style={{ background: CARD, border: '1px solid #E8E4DC' }}>
-                      <div className="font-black text-[13px] mb-4" style={{ color: '#111' }}>Flujo mensual</div>
+                      <div className="font-black text-[14px] mb-4" style={{ color: '#111' }}>Flujo mensual</div>
                       <ResponsiveContainer width="100%" height={120}>
                         <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barCategoryGap="35%">
                           <CartesianGrid vertical={false} stroke="#F0EDE7" />
-                          <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#AAA' }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 10, fill: '#AAA' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
+                          <XAxis dataKey="mes" tick={{ fontSize: 12, fill: '#AAA' }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 12, fill: '#AAA' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
                           <Tooltip formatter={(v: any) => fmt(Math.abs(v))} />
                           <Bar dataKey="value" radius={[5, 5, 0, 0]}>
                             {chartData.map((d, i) => <Cell key={i} fill={d.value >= 0 ? GREEN : '#EF4444'} />)}
@@ -414,7 +414,7 @@ export default function PortalInversorPage() {
                 })()}
 
                 <div className="rounded-2xl overflow-hidden" style={{ background: CARD, border: '1px solid #E8E4DC' }}>
-                  <div className="px-5 py-4 font-black text-[13px]" style={{ color: '#111', borderBottom: `1px solid ${BG}` }}>
+                  <div className="px-5 py-4 font-black text-[14px]" style={{ color: '#111', borderBottom: `1px solid ${BG}` }}>
                     Detalle de movimientos
                   </div>
                   {movimientos.length === 0 ? (
@@ -424,7 +424,7 @@ export default function PortalInversorPage() {
                       <thead>
                         <tr style={{ background: BG }}>
                           {['Fecha', 'Concepto', 'Importe'].map(h => (
-                            <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-wide"
+                            <th key={h} className="text-left px-5 py-3 text-[12px] font-bold uppercase tracking-wide"
                               style={{ color: '#AAA', borderBottom: `1px solid #E8E4DC` }}>{h}</th>
                           ))}
                         </tr>
@@ -464,7 +464,7 @@ export default function PortalInversorPage() {
                           {i < bitacora.length - 1 && <div className="w-px flex-1 mt-1.5" style={{ background: '#E8E4DC' }} />}
                         </div>
                         <div className="pb-2 min-w-0">
-                          <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#CCC' }}>
+                          <div className="text-[12px] font-bold uppercase tracking-wide mb-1" style={{ color: '#CCC' }}>
                             {new Date(b.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}
                           </div>
                           <div className="text-sm leading-relaxed" style={{ color: '#333' }}>{b.contenido}</div>
@@ -484,7 +484,7 @@ export default function PortalInversorPage() {
             {/* Progreso */}
             <div className="rounded-2xl p-5"
               style={{ background: CARD, border: '1px solid #E8E4DC', boxShadow: '0 1px 6px rgba(0,0,0,0.04)' }}>
-              <div className="font-black text-[13px] mb-4" style={{ color: '#111' }}>Estado de la operación</div>
+              <div className="font-black text-[14px] mb-4" style={{ color: '#111' }}>Estado de la operación</div>
               <div>
                 {STEPS.map((s, i) => {
                   const done   = i < currentStep
@@ -492,7 +492,7 @@ export default function PortalInversorPage() {
                   return (
                     <div key={s}>
                       <div className="flex items-center gap-3 py-1.5">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0"
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-black flex-shrink-0"
                           style={{
                             background: done ? 'rgba(45,122,79,0.12)' : active ? 'rgba(166,133,90,0.12)' : BG,
                             border: `1.5px solid ${done ? GREEN : active ? ORANGE : '#E8E4DC'}`,
@@ -525,13 +525,13 @@ export default function PortalInversorPage() {
 
               {/* Gestor */}
               <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${BG}` }}>
-                <div className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: '#CCC' }}>Gestionado por</div>
+                <div className="text-[12px] font-bold uppercase tracking-widest mb-2.5" style={{ color: '#CCC' }}>Gestionado por</div>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm flex-shrink-0"
                     style={{ background: `linear-gradient(135deg,${ORANGE},${SAND})`, color: '#14110C' }}>H</div>
                   <div>
-                    <div className="text-[12px] font-black" style={{ color: '#111' }}>Hasu Activos Inmobiliarios SL</div>
-                    <a href="mailto:patricio@wallest.pro" className="text-[11px] font-medium" style={{ color: ORANGE }}>patricio@wallest.pro</a>
+                    <div className="text-[13px] font-black" style={{ color: '#111' }}>Hasu Activos Inmobiliarios SL</div>
+                    <a href="mailto:patricio@wallest.pro" className="text-[12px] font-medium" style={{ color: ORANGE }}>patricio@wallest.pro</a>
                   </div>
                 </div>
               </div>
@@ -539,7 +539,7 @@ export default function PortalInversorPage() {
 
             {/* Mini resumen numérico */}
             <div className="rounded-2xl p-5" style={{ background: CARD, border: '1px solid #E8E4DC' }}>
-              <div className="font-black text-[13px] mb-4" style={{ color: '#111' }}>Resumen financiero</div>
+              <div className="font-black text-[14px] mb-4" style={{ color: '#111' }}>Resumen financiero</div>
               <div className="space-y-3">
                 {[
                   { l: 'Precio de compra',   v: fmt(proyecto?.precio_compra || 0),  c: '#111' },

@@ -61,11 +61,11 @@ export default function DocsPage() {
               <div className="text-xs font-medium mt-0.5" style={{ color: '#555' }}>{d.descripcion}</div>
             </div>
             <div className="flex-shrink-0 flex flex-col items-end gap-1">
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
+              <span className="text-[12px] font-black px-2 py-0.5 rounded-full"
                 style={{ background: TIPO_COLOR[d.tipo]?.bg || '#282828', color: TIPO_COLOR[d.tipo]?.c || '#888' }}>
                 {d.tipo}
               </span>
-              <span className="text-[10px] font-semibold" style={{ color: d.disponible ? '#22C55E' : '#555' }}>
+              <span className="text-[12px] font-semibold" style={{ color: d.disponible ? '#22C55E' : '#555' }}>
                 {d.disponible ? d.fecha : 'Pendiente'}
               </span>
             </div>

@@ -41,7 +41,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div className="font-display" style={{ fontSize: 28, color: '#111', letterSpacing: '0.2em', paddingLeft: '0.2em', lineHeight: 1 }}>WALLEST</div>
-          <div style={{ fontSize: 10, color: '#BBB', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginTop: 8 }}>
+          <div style={{ fontSize: 12, color: '#BBB', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginTop: 8 }}>
             Hasu Activos Inmobiliarios SL
           </div>
         </div>
@@ -51,7 +51,7 @@ export default function LoginPage() {
           {(['wos', 'inversor'] as Section[]).map(s => (
             <button key={s} onClick={() => { setSection(s); setError('') }} style={{
               flex: 1, padding: '9px', borderRadius: 9, border: 'none', cursor: 'pointer',
-              fontSize: 12, fontWeight: 800,
+              fontSize: 13, fontWeight: 800,
               background: section === s ? '#A6855A' : 'transparent',
               color: section === s ? '#14110C' : '#111',
               transition: 'all 0.15s',
@@ -66,30 +66,30 @@ export default function LoginPage() {
           <div style={{ fontSize: 16, fontWeight: 900, color: '#111', marginBottom: 3 }}>
             {isWos ? 'Acceso operativo' : 'Acceso inversor'}
           </div>
-          <div style={{ fontSize: 11, color: '#888', marginBottom: 20 }}>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 20 }}>
             {isWos ? 'Panel de gestión interno de HASU' : 'Consultá el estado de tu inversión en tiempo real'}
           </div>
 
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                 Correo electrónico
               </div>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder={isWos ? 'tu@wallest.pro' : 'tu@email.com'} required
-                style={{ width: '100%', background: '#F2F1ED', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 14px', fontSize: 13, color: '#111', outline: 'none', fontFamily: 'inherit' }}
+                style={{ width: '100%', background: '#F2F1ED', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 14px', fontSize: 14, color: '#111', outline: 'none', fontFamily: 'inherit' }}
                 onFocus={e => e.target.style.borderColor = '#A6855A'}
                 onBlur={e => e.target.style.borderColor = '#ECEAE4'} />
             </div>
 
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                 Contraseña
               </div>
               <div style={{ position: 'relative' }}>
                 <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••" required
-                  style={{ width: '100%', background: '#fff', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 40px 11px 14px', fontSize: 13, color: '#111', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: '#fff', border: '1.5px solid #ECEAE4', borderRadius: 11, padding: '11px 40px 11px 14px', fontSize: 14, color: '#111', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
                   onFocus={e => e.target.style.borderColor = '#A6855A'}
                   onBlur={e => e.target.style.borderColor = '#ECEAE4'} />
                 <button type="button" onClick={() => setShowPassword(v => !v)}
@@ -100,24 +100,24 @@ export default function LoginPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#A6855A', cursor: 'pointer' }}>¿Olvidaste tu contraseña?</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#A6855A', cursor: 'pointer' }}>¿Olvidaste tu contraseña?</span>
             </div>
 
             {section === 'inversor' && (
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', background: '#F9F8F5', border: '1px solid #ECEAE4', borderRadius: 10, padding: '10px 12px', marginBottom: 16 }}>
                 <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)}
                   style={{ marginTop: 1, flexShrink: 0, width: 15, height: 15, accentColor: '#A6855A', cursor: 'pointer' }} />
-                <span style={{ fontSize: 11, color: '#AAA', lineHeight: 1.4 }}>
+                <span style={{ fontSize: 12, color: '#AAA', lineHeight: 1.4 }}>
                   Acepto los <span style={{ color: '#A6855A', fontWeight: 700 }}>términos y condiciones</span> de Wallest
                 </span>
               </label>
             )}
 
-            {error && <div style={{ fontSize: 12, color: '#EF4444', marginBottom: 12, fontWeight: 600 }}>{error}</div>}
+            {error && <div style={{ fontSize: 13, color: '#EF4444', marginBottom: 12, fontWeight: 600 }}>{error}</div>}
 
             <button type="submit" disabled={loading} style={{
-              width: '100%', background: '#A6855A', color: '#14110C', border: 'none',
-              borderRadius: 11, padding: '13px', fontSize: 13, fontWeight: 900,
+              width: '100%', background: '#14110C', color: '#F8F3E9', border: 'none',
+              borderRadius: 11, padding: '13px', fontSize: 14, fontWeight: 900,
               cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
             }}>
               {loading ? 'Verificando...' : isWos ? 'Iniciar sesión →' : 'Ver mi inversión →'}

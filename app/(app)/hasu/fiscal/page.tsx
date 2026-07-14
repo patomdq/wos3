@@ -63,7 +63,7 @@ export default function FiscalPage() {
               <div className="text-sm font-bold text-white">{d.titulo}</div>
               <div className="text-xs font-medium mt-0.5" style={{ color: '#555' }}>{d.periodo} · Vence {d.fecha}</div>
             </div>
-            <span className="text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0"
+            <span className="text-[12px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0"
               style={{ background: ESTADO_BG[d.estado], color: ESTADO_COLOR[d.estado] }}>
               {d.estado}
             </span>

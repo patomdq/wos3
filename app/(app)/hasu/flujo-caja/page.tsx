@@ -180,15 +180,15 @@ export default function FlujoCajaPage() {
         <div className="mb-4 space-y-2">
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-xl p-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Entradas</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Entradas</div>
               <div className="font-black text-[15px]" style={{ color: '#22C55E' }}>{fmt(totals.entradas)}</div>
             </div>
             <div className="rounded-xl p-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Salidas</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Salidas</div>
               <div className="font-black text-[15px]" style={{ color: '#EF4444' }}>{fmt(totals.salidas)}</div>
             </div>
             <div className="rounded-xl p-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Saldo</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Saldo</div>
               <div className="font-black text-[15px]" style={{ color: totals.saldo >= 0 ? '#22C55E' : '#EF4444' }}>
                 {fmtS(totals.saldo)}
               </div>
@@ -197,13 +197,13 @@ export default function FlujoCajaPage() {
           {/* Bloque HASU — solo visible en JV */}
           {!isHasu && cuentaInfo?.esJV && (
             <div className="rounded-xl p-3.5" style={{ background: '#1a1000', border: '1px solid rgba(166,133,90,0.35)' }}>
-              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#A6855A' }}>
+              <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#A6855A' }}>
                 Beneficio operativo HASU {cuentaInfo.pct}%
               </div>
               <div className="font-black text-[18px]" style={{ color: totals.beneficioHasu >= 0 ? '#A6855A' : '#EF4444' }}>
                 {fmtS(totals.beneficioHasu)}
               </div>
-              <div className="text-[9px] mt-0.5" style={{ color: '#555' }}>excl. capital inversores y compra</div>
+              <div className="text-[11px] mt-0.5" style={{ color: '#555' }}>excl. capital inversores y compra</div>
             </div>
           )}
         </div>
@@ -264,32 +264,32 @@ export default function FlujoCajaPage() {
             <div className="font-black text-[17px] text-white mb-5">{editingId ? 'Editar movimiento' : 'Nuevo movimiento'}</div>
             <div className="space-y-3 mb-5">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Concepto *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Concepto *</label>
                 <input type="text" value={form.concepto} onChange={e => setForm(f=>({...f,concepto:e.target.value}))}
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Tipo</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Tipo</label>
                   <select value={form.tipo} onChange={e => setForm(f=>({...f,tipo:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP}>
                     <option>Gasto</option><option>Ingreso</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Monto (€) *</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Monto (€) *</label>
                   <input type="number" step="0.01" value={form.monto} onChange={e => setForm(f=>({...f,monto:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Fecha</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Fecha</label>
                   <input type="date" value={form.fecha} onChange={e => setForm(f=>({...f,fecha:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Categoría</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Categoría</label>
                   <select value={form.categoria} onChange={e => setForm(f=>({...f,categoria:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP}>
                     {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
@@ -298,7 +298,7 @@ export default function FlujoCajaPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Proyecto</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Proyecto</label>
                   <select value={form.proyecto_id} onChange={e => setForm(f=>({...f,proyecto_id:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP}>
                     <option value="">Sin proyecto</option>
@@ -306,7 +306,7 @@ export default function FlujoCajaPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Cuenta</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Cuenta</label>
                   <input type="text" value={form.cuenta} onChange={e => setForm(f=>({...f,cuenta:e.target.value}))}
                     placeholder="CaixaBank HASU" list="cuentas-list"
                     className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
@@ -322,7 +322,7 @@ export default function FlujoCajaPage() {
                 style={{ background: '#282828', color: '#888' }}>Cancelar</button>
               <button onClick={saveForm} disabled={saving || !form.concepto.trim() || !form.monto}
                 className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-40"
-                style={{ background: '#A6855A', color: '#14110C' }}>
+                style={{ background: '#14110C', color: '#F8F3E9' }}>
                 {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Guardar'}
               </button>
             </div>

@@ -120,7 +120,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
             <div className="flex items-center gap-2 mt-3">
               {['archivo', 'mapeo', 'resultado'].map((s, i) => (
                 <div key={s} className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-[12px] font-black"
                     style={{ background: step === s ? '#A6855A' : '#F0EEE8', color: step === s ? '#14110C' : '#999' }}>{i + 1}</div>
                   {i < 2 && <div className="w-6 h-[2px]" style={{ background: '#F0EEE8' }} />}
                 </div>
@@ -138,14 +138,14 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
             {step === 'archivo' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Broker / fondo / servicer de origen *</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Broker / fondo / servicer de origen *</label>
                   <input type="text" value={brokerOrigen} onChange={e => setBrokerOrigen(e.target.value)}
                     placeholder="Ej: FENCIA, colaborador Almería..."
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP} />
-                  <div className="text-[11px] mt-1" style={{ color: '#999' }}>Si ya importaste de este broker antes, se reusa el mapeo guardado automáticamente.</div>
+                  <div className="text-[12px] mt-1" style={{ color: '#999' }}>Si ya importaste de este broker antes, se reusa el mapeo guardado automáticamente.</div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Archivo Excel/CSV *</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Archivo Excel/CSV *</label>
                   <input type="file" accept=".xlsx,.xls,.csv" onChange={e => setArchivo(e.target.files?.[0] || null)}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP} />
                 </div>
@@ -162,7 +162,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
                 </div>
 
                 <div className="rounded-xl overflow-hidden mb-4" style={{ border: '1px solid #ECEAE4' }}>
-                  <div className="grid grid-cols-[1fr_1fr_140px_110px] px-3 py-2 text-[10px] font-black uppercase tracking-wide" style={{ background: '#F9F8F5', color: '#888' }}>
+                  <div className="grid grid-cols-[1fr_1fr_140px_110px] px-3 py-2 text-[12px] font-black uppercase tracking-wide" style={{ background: '#F9F8F5', color: '#888' }}>
                     <div>Columna del Excel</div>
                     <div>Muestra</div>
                     <div>Campo canónico</div>
@@ -179,10 +179,10 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
                         <div className="font-bold truncate" style={{ color: '#333' }} title={h}>{h}</div>
                         <div className="truncate" style={{ color: '#888' }} title={String(muestra)}>{String(muestra)}</div>
                         <select value={actual} onChange={e => setCampoDeColumna(h, e.target.value as CampoCanonico)}
-                          className="rounded-lg px-2 py-1.5 text-[11px] font-bold outline-none" style={{ ...INP, appearance: 'none' as const }}>
+                          className="rounded-lg px-2 py-1.5 text-[12px] font-bold outline-none" style={{ ...INP, appearance: 'none' as const }}>
                           {CAMPOS_CANONICOS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                         </select>
-                        <span className="px-2 py-1 rounded-lg text-[10px] font-black text-center" style={{ color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
+                        <span className="px-2 py-1 rounded-lg text-[12px] font-black text-center" style={{ color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
                       </div>
                     )
                   })}
@@ -190,8 +190,8 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
 
                 {muestraPreview.length > 0 && (
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Preview con el mapeo actual</div>
-                    <div className="rounded-xl p-3 text-[11px] space-y-2" style={{ background: '#F9F8F5', border: '1px solid #ECEAE4' }}>
+                    <div className="text-[12px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Preview con el mapeo actual</div>
+                    <div className="rounded-xl p-3 text-[12px] space-y-2" style={{ background: '#F9F8F5', border: '1px solid #ECEAE4' }}>
                       {muestraPreview.map((r, i) => (
                         <div key={i} style={{ color: '#666' }}>
                           <span className="font-black" style={{ color: '#333' }}>{r.contract_id || '(sin contract_id)'}</span>
@@ -221,7 +221,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
           <div className="flex-shrink-0 px-5 py-3 flex gap-2" style={{ borderTop: '1px solid #F0EEE8' }}>
             {step === 'archivo' && (
               <button onClick={parsearYProponerMapeo} disabled={cargando}
-                className="flex-1 py-3 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#A6855A', color: '#14110C' }}>
+                className="flex-1 py-3 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#14110C', color: '#F8F3E9' }}>
                 {cargando ? 'Analizando columnas...' : 'Continuar'}
               </button>
             )}
@@ -229,13 +229,13 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
               <>
                 <button onClick={() => setStep('archivo')} className="py-3 px-5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666' }}>Atrás</button>
                 <button onClick={confirmarImport} disabled={importando}
-                  className="flex-1 py-3 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#A6855A', color: '#14110C' }}>
+                  className="flex-1 py-3 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#14110C', color: '#F8F3E9' }}>
                   {importando ? 'Importando...' : 'Confirmar e importar'}
                 </button>
               </>
             )}
             {step === 'resultado' && (
-              <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-black" style={{ background: '#A6855A', color: '#14110C' }}>Cerrar</button>
+              <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-black" style={{ background: '#14110C', color: '#F8F3E9' }}>Cerrar</button>
             )}
           </div>
         </div>

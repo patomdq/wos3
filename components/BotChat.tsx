@@ -401,14 +401,14 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
                   {td.url && (
                     <a href={td.url} target="_blank" rel="noopener"
                       className="flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold w-full"
-                      style={{ background: '#A6855A', color: '#14110C', textDecoration: 'none' }}>
+                      style={{ background: '#14110C', color: '#F8F3E9', textDecoration: 'none' }}>
                       <span>{td.action === 'informe' ? '📊' : '📄'}</span> {td.action === 'informe' ? 'Ver informe completo' : 'Descargar PDF'}
                     </a>
                   )}
                 </div>
               ))}
 
-              <div className="text-[10px] mt-1 font-semibold tracking-wide" style={{ color: t.timeColor }}>{m.time}</div>
+              <div className="text-[12px] mt-1 font-semibold tracking-wide" style={{ color: t.timeColor }}>{m.time}</div>
             </div>
           </div>
         ))}
@@ -446,7 +446,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
             <div key={idx} className="relative flex-shrink-0">
               <img src={img.preview} alt="preview" className="w-14 h-14 object-cover rounded-lg" />
               <button onClick={() => removeImage(idx)}
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black"
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[11px] font-black"
                 style={{ background: '#EF4444', color: '#fff' }}>✕</button>
             </div>
           ))}
@@ -464,7 +464,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
               <span className="text-sm">📄</span>
               <span className="text-xs font-semibold truncate max-w-[120px]" style={{ color: '#ccc' }}>{f.name}</span>
               <button onClick={() => removeFile(idx)}
-                className="absolute top-1/2 -translate-y-1/2 right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black"
+                className="absolute top-1/2 -translate-y-1/2 right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[11px] font-black"
                 style={{ background: '#EF4444', color: '#fff' }}>✕</button>
             </div>
           ))}
@@ -500,7 +500,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
             <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
             <div className="font-black text-[16px] text-white mb-4">Editar registro</div>
             <div className="mb-3">
-              <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>
+              <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>
                 {editState.table === 'movimientos' ? 'Concepto' : editState.table === 'partidas_reforma' ? 'Nombre' : 'Título'}
               </label>
               <input type="text" value={editState.concepto} onChange={e => setEditState(s => s ? { ...s, concepto: e.target.value } : s)}
@@ -511,7 +511,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
             </div>
             {editState.table !== 'tareas' && (
               <div className="mb-5">
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>
                   {editState.table === 'movimientos' ? 'Monto (€)' : 'Presupuesto (€)'}
                 </label>
                 <input type="number" value={editState.monto} onChange={e => setEditState(s => s ? { ...s, monto: e.target.value } : s)}
@@ -523,7 +523,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
             )}
             <div className="flex gap-2">
               <button onClick={() => setEditState(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#282828', color: '#888' }}>Cancelar</button>
-              <button onClick={saveEdit} disabled={editSaving} className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#A6855A', color: '#14110C' }}>
+              <button onClick={saveEdit} disabled={editSaving} className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#14110C', color: '#F8F3E9' }}>
                 {editSaving ? 'Guardando...' : 'Guardar'}
               </button>
             </div>

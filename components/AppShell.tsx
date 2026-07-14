@@ -159,17 +159,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {collapsed ? (
               <button onClick={() => setCollapsed(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <div className="font-display" style={{ fontSize: 17, color: '#A6855A' }}>W</div>
-                <div style={{ fontSize: 9, color: '#CCC' }}>›</div>
+                <div style={{ fontSize: 11, color: '#CCC' }}>›</div>
               </button>
             ) : (
               <>
                 <div>
                   <div className="font-display" style={{ fontSize: 16, color: '#111', letterSpacing: '0.2em', paddingLeft: '0.2em' }}>WALLEST</div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#BBB', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.4, marginTop: 2 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#BBB', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.4, marginTop: 2 }}>
                     HASU ACTIVOS INMOBILIARIOS SL
                   </div>
                 </div>
-                <button onClick={() => setCollapsed(true)} style={{ width: 24, height: 24, borderRadius: '50%', background: '#F2F1ED', border: '1px solid #ECEAE4', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 11, color: '#888', flexShrink: 0 }}>
+                <button onClick={() => setCollapsed(true)} style={{ width: 24, height: 24, borderRadius: '50%', background: '#F2F1ED', border: '1px solid #ECEAE4', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, color: '#888', flexShrink: 0 }}>
                   ‹
                 </button>
               </>
@@ -203,7 +203,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     {item.icon}
                   </div>
                   {!collapsed && (
-                    <div style={{ fontSize: 13, fontWeight: isActive ? 800 : 700, color: isActive ? '#111' : '#888' }}>
+                    <div style={{ fontSize: 14, fontWeight: isActive ? 800 : 700, color: isActive ? '#111' : '#888' }}>
                       {item.label}
                     </div>
                   )}
@@ -222,25 +222,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             }}>
               {user?.handle && (
                 <button onClick={() => { setDropdownOpen(false); openNotifs() }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#F59E0B', background: 'none', border: 'none', width: '100%', textAlign: 'left' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#F59E0B', background: 'none', border: 'none', width: '100%', textAlign: 'left' }}>
                   <span>🔔</span> Alertas
-                  {unread > 0 && <span style={{ marginLeft: 'auto', background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 900, padding: '1px 5px', borderRadius: 99 }}>{unread}</span>}
+                  {unread > 0 && <span style={{ marginLeft: 'auto', background: '#EF4444', color: '#fff', fontSize: 11, fontWeight: 900, padding: '1px 5px', borderRadius: 99 }}>{unread}</span>}
                 </button>
               )}
               <button onClick={() => { setDropdownOpen(false); setProfileOpen(true) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#888', background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#888', background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#F2F1ED')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                 <span>👤</span> Mi cuenta
               </button>
               <button onClick={() => { setDropdownOpen(false); setChangePwOpen(true) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#888', background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#888', background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#F2F1ED')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                 <span>🔑</span> Ajustes
               </button>
               <button onClick={logout}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#EF4444', background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#EF4444', background: 'none', border: 'none', width: '100%', textAlign: 'left' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                 <span>→</span> Cerrar sesión
@@ -272,7 +272,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   position: 'absolute', top: -1, right: -1,
                   width: 12, height: 12, borderRadius: '50%',
                   background: '#EF4444', border: '2px solid #FAFAF8',
-                  fontSize: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900,
+                  fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900,
                 }}>
                   {unread > 9 ? '9+' : unread}
                 </div>
@@ -280,8 +280,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             {!collapsed && (
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{user?.nombre || 'Usuario'}</div>
-                <div style={{ fontSize: 10, color: '#AAA', marginTop: 2 }}>{user?.email}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>{user?.nombre || 'Usuario'}</div>
+                <div style={{ fontSize: 12, color: '#AAA', marginTop: 2 }}>{user?.email}</div>
               </div>
             )}
           </button>
@@ -319,13 +319,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
                 }}>🤖</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: '#111' }}>WOS Bot</div>
-                  <div style={{ fontSize: 10, color: '#BBB' }}>Análisis · ROI · Operaciones</div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>WOS Bot</div>
+                  <div style={{ fontSize: 12, color: '#BBB' }}>Análisis · ROI · Operaciones</div>
                 </div>
                 <button onClick={() => setBotOpen(false)} style={{
                   width: 28, height: 28, borderRadius: '50%', background: '#F2F1ED',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, color: '#888', cursor: 'pointer', border: 'none',
+                  fontSize: 12, color: '#888', cursor: 'pointer', border: 'none',
                 }}>✕</button>
               </div>
               <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -371,7 +371,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button key={item.id} onClick={() => router.push(item.href)}
               className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5">
               <span className="text-[26px] leading-none">{item.icon}</span>
-              <span className="text-[12px] font-bold uppercase tracking-wide"
+              <span className="text-[13px] font-bold uppercase tracking-wide"
                 style={{ color: activeId === item.id ? '#A6855A' : '#888' }}>{item.label}</span>
             </button>
           ))}
@@ -381,24 +381,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="relative">
                 <span className="text-[24px] leading-none">🔔</span>
                 {unread > 0 && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white"
+                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[11px] font-black text-white"
                     style={{ background: '#EF4444' }}>
                     {unread > 9 ? '9+' : unread}
                   </div>
                 )}
               </div>
-              <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: unread > 0 ? '#EF4444' : '#888' }}>
+              <span className="text-[13px] font-bold uppercase tracking-wide" style={{ color: unread > 0 ? '#EF4444' : '#888' }}>
                 {unread > 0 ? `${unread}` : 'Alertas'}
               </span>
             </button>
           )}
           <button onClick={() => setProfileOpen(true)}
             className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white"
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-black text-white"
               style={{ background: '#A6855A' }}>
               {initials(userName)}
             </div>
-            <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: '#888' }}>Cuenta</span>
+            <span className="text-[13px] font-bold uppercase tracking-wide" style={{ color: '#888' }}>Cuenta</span>
           </button>
         </nav>
       </div>
@@ -432,12 +432,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2">
                           {!n.leida && <div className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5" style={{ background: '#A6855A' }} />}
-                          <div className="text-[12px] font-black" style={{ color: '#A6855A' }}>{n.proyecto}</div>
+                          <div className="text-[13px] font-black" style={{ color: '#A6855A' }}>{n.proyecto}</div>
                         </div>
-                        <div className="text-[11px] flex-shrink-0" style={{ color: '#555' }}>{timeAgo(n.created_at)}</div>
+                        <div className="text-[12px] flex-shrink-0" style={{ color: '#555' }}>{timeAgo(n.created_at)}</div>
                       </div>
-                      <div className="text-[12px] font-bold mb-1" style={{ color: '#888' }}>{n.de_nombre}</div>
-                      <div className="text-[13px] text-white leading-relaxed">{n.contenido}</div>
+                      <div className="text-[13px] font-bold mb-1" style={{ color: '#888' }}>{n.de_nombre}</div>
+                      <div className="text-[14px] text-white leading-relaxed">{n.contenido}</div>
                     </div>
                   ))}
                 </div>
@@ -462,7 +462,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div>
                 <div className="font-black text-base text-white">{user?.nombre || 'Usuario'}</div>
                 <div className="text-xs font-medium mt-0.5" style={{ color: '#888' }}>{user?.email}</div>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide mt-1 inline-block"
+                <span className="text-[12px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide mt-1 inline-block"
                   style={{ background: 'rgba(166,133,90,0.18)', color: '#A6855A' }}>
                   {user?.role || 'viewer'}
                 </span>
@@ -492,13 +492,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div className="font-black text-[17px] text-white mb-5">Cambiar contraseña</div>
             <div className="space-y-3 mb-5">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Nueva contraseña</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Nueva contraseña</label>
                 <input type="password" value={pw} onChange={e => setPw(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Repetir contraseña</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Repetir contraseña</label>
                 <input type="password" value={pw2} onChange={e => setPw2(e.target.value)}
                   placeholder="Repetí la contraseña"
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />

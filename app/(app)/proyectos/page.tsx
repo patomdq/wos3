@@ -231,13 +231,13 @@ export default function ProyectosPage() {
             <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}>
               Proyectos
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 4, fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4, fontWeight: 600 }}>
               {activos.length} activos · {finalizados.length} vendidos · Capital {capitalTotal > 0 ? fmt(capitalTotal) : '—'}
             </div>
           </div>
           <button
             onClick={() => openBotPanel()}
-            style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.02em' }}>
+            style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.02em' }}>
             + Nuevo
           </button>
         </div>
@@ -257,8 +257,8 @@ export default function ProyectosPage() {
             <div key={k.label} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: '28px 24px' }}>
               <div style={{ fontSize: 24, marginBottom: 12 }}>{k.icon}</div>
               <div style={{ fontSize: 22, fontWeight: 900, color: k.color, letterSpacing: '-0.02em', lineHeight: 1 }}>{k.val}</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#999', marginTop: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{k.label}</div>
-              <div style={{ fontSize: 11, color: '#BBB', marginTop: 4 }}>{k.sub}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#999', marginTop: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{k.label}</div>
+              <div style={{ fontSize: 12, color: '#BBB', marginTop: 4 }}>{k.sub}</div>
             </div>
           ))}
         </div>
@@ -269,9 +269,9 @@ export default function ProyectosPage() {
           {/* ROI por operación */}
           <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: 24 }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>ROI por operación</div>
-            <div style={{ fontSize: 11, color: '#BBB', marginBottom: 16 }}>Bronce = activo · Verde = vendido</div>
+            <div style={{ fontSize: 12, color: '#BBB', marginBottom: 16 }}>Bronce = activo · Verde = vendido</div>
             {[...activos, ...finalizados].filter(p => getRoi(p) !== 0).length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#CCC', fontSize: 12, padding: '20px 0' }}>Sin datos de ROI todavía</div>
+              <div style={{ textAlign: 'center', color: '#CCC', fontSize: 13, padding: '20px 0' }}>Sin datos de ROI todavía</div>
             ) : (
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 80 }}>
                 {[...activos, ...finalizados].filter(p => getRoi(p) !== 0).slice(0, 7).map(p => {
@@ -281,9 +281,9 @@ export default function ProyectosPage() {
                   const isVendido = ESTADOS_VENDIDOS.includes(p.estado)
                   return (
                     <div key={p.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <div style={{ fontSize: 9, fontWeight: 800, color: isVendido ? '#22C55E' : '#A6855A' }}>{roi.toFixed(0)}%</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: isVendido ? '#22C55E' : '#A6855A' }}>{roi.toFixed(0)}%</div>
                       <div style={{ width: '100%', height: h, borderRadius: '6px 6px 0 0', background: isVendido ? 'linear-gradient(180deg,#22C55E,#16A34A)' : 'linear-gradient(180deg,#A6855A,#F59E0B)' }} />
-                      <div style={{ fontSize: 8, color: '#BBB', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, maxWidth: 40, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre.split(' ')[0]}</div>
+                      <div style={{ fontSize: 10, color: '#BBB', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, maxWidth: 40, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre.split(' ')[0]}</div>
                     </div>
                   )
                 })}
@@ -301,7 +301,7 @@ export default function ProyectosPage() {
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>PROYECTOS ACTIVOS</div>
-              <button onClick={() => openBotPanel()} style={{ fontSize: 12, fontWeight: 800, color: '#A6855A', background: 'none', border: 'none', cursor: 'pointer' }}>+ Nuevo vía bot</button>
+              <button onClick={() => openBotPanel()} style={{ fontSize: 13, fontWeight: 800, color: '#A6855A', background: 'none', border: 'none', cursor: 'pointer' }}>+ Nuevo vía bot</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
               {activos.map(p => {
@@ -340,14 +340,14 @@ export default function ProyectosPage() {
                       <div style={{ position: 'relative', height: 110, overflow: 'hidden' }}>
                         <img src={p.imagen_portada} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.3))' }} />
-                        <label style={{ position: 'absolute', bottom: 8, right: 8, width: 26, height: 26, borderRadius: 8, background: 'rgba(0,0,0,0.45)', color: '#fff', cursor: uploadingImg[p.id] ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }} title="Cambiar imagen">
+                        <label style={{ position: 'absolute', bottom: 8, right: 8, width: 26, height: 26, borderRadius: 8, background: 'rgba(0,0,0,0.45)', color: '#fff', cursor: uploadingImg[p.id] ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }} title="Cambiar imagen">
                           {uploadingImg[p.id] ? '…' : '📷'}
                           <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(p.id, f) }} />
                         </label>
                       </div>
                     ) : (
                       <label style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '10px 20px 0', cursor: uploadingImg[p.id] ? 'wait' : 'pointer', width: 'fit-content' }}>
-                        <span style={{ fontSize: 11, color: '#CCC', fontWeight: 700 }}>{uploadingImg[p.id] ? 'Subiendo…' : '📷 Agregar portada'}</span>
+                        <span style={{ fontSize: 12, color: '#CCC', fontWeight: 700 }}>{uploadingImg[p.id] ? 'Subiendo…' : '📷 Agregar portada'}</span>
                         <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(p.id, f) }} />
                       </label>
                     )}
@@ -356,19 +356,19 @@ export default function ProyectosPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                         <div style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
                           <div style={{ fontSize: 14, fontWeight: 900, color: '#111', lineHeight: 1.3 }}>{p.nombre}</div>
-                          <div style={{ fontSize: 11, color: '#999', marginTop: 3 }}>📍 {p.direccion || p.ciudad || '—'}</div>
+                          <div style={{ fontSize: 12, color: '#999', marginTop: 3 }}>📍 {p.direccion || p.ciudad || '—'}</div>
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ fontSize: 18, fontWeight: 900, color: ventaEst ? (roiReal >= 0 ? '#22C55E' : '#EF4444') : '#CCC' }}>
                             {ventaEst ? `${roiReal >= 0 ? '+' : ''}${roiReal.toFixed(1)}%` : '—'}
                           </div>
-                          <div style={{ fontSize: 10, color: '#BBB', fontWeight: 700 }}>ROI est.</div>
+                          <div style={{ fontSize: 12, color: '#BBB', fontWeight: 700 }}>ROI est.</div>
                         </div>
                       </div>
 
                       {/* Badges */}
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 14, alignItems: 'center' }}>
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, background: 'rgba(166,133,90,0.12)', color: '#A6855A' }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, padding: '3px 8px', borderRadius: 100, background: 'rgba(166,133,90,0.12)', color: '#A6855A' }}>
                           {p.porcentaje_hasu < 100 ? `JV ${p.porcentaje_hasu}%` : '100% HASU'}
                         </span>
                         <select
@@ -376,7 +376,7 @@ export default function ProyectosPage() {
                           disabled={saving[p.id]}
                           onClick={e => e.stopPropagation()}
                           onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
-                          style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, border: 'none', outline: 'none', cursor: 'pointer', background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888', WebkitAppearance: 'none', MozAppearance: 'none' } as React.CSSProperties}
+                          style={{ fontSize: 12, fontWeight: 800, padding: '3px 8px', borderRadius: 100, border: 'none', outline: 'none', cursor: 'pointer', background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888', WebkitAppearance: 'none', MozAppearance: 'none' } as React.CSSProperties}
                         >
                           {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
                             <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
@@ -388,21 +388,21 @@ export default function ProyectosPage() {
                       {/* Avance */}
                       <div style={{ marginBottom: 16 }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#999', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Avance reforma</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#999', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Avance reforma</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <button onClick={() => setEditAvance(e => ({ ...e, [p.id]: String(Math.max(0, pct - 5)) }))}
-                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #E8E6E0', background: '#FAFAF8', color: '#888', fontSize: 11, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #E8E6E0', background: '#FAFAF8', color: '#888', fontSize: 12, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
                             <input
                               type="number" min="0" max="100"
                               value={pct}
                               onChange={e => setEditAvance(prev => ({ ...prev, [p.id]: e.target.value }))}
                               onBlur={e => { if (editAvance[p.id] !== undefined) guardarAvance(p.id, e.target.value) }}
                               onKeyDown={e => { if (e.key === 'Enter') guardarAvance(p.id, editAvance[p.id] ?? String(p.avance_reforma||0)) }}
-                              style={{ width: 36, textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#111', border: '1px solid #E8E6E0', borderRadius: 6, outline: 'none', background: '#FAFAF8' }}
+                              style={{ width: 36, textAlign: 'center', fontSize: 12, fontWeight: 900, color: '#111', border: '1px solid #E8E6E0', borderRadius: 6, outline: 'none', background: '#FAFAF8' }}
                             />
                             <button onClick={() => setEditAvance(e => ({ ...e, [p.id]: String(Math.min(100, pct + 5)) }))}
-                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #E8E6E0', background: '#FAFAF8', color: '#A6855A', fontSize: 11, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                            <span style={{ fontSize: 10, fontWeight: 900, color: pctColor }}>%</span>
+                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #E8E6E0', background: '#FAFAF8', color: '#A6855A', fontSize: 12, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                            <span style={{ fontSize: 12, fontWeight: 900, color: pctColor }}>%</span>
                           </div>
                         </div>
                         <div style={{ height: 6, background: '#F2F1ED', borderRadius: 99, overflow: 'hidden', cursor: 'pointer' }}
@@ -417,34 +417,34 @@ export default function ProyectosPage() {
                       <div style={{ padding: '16px 20px 20px', borderTop: '1px solid #F2F1ED' }}>
                         {/* Escenarios */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#999' }}>Escenarios de venta</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#999' }}>Escenarios de venta</div>
                           {!ep ? (
                             <button onClick={() => initEditPrecios(p)}
-                              style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: 'rgba(166,133,90,0.1)', color: '#A6855A', border: 'none', cursor: 'pointer' }}>Editar ✎</button>
+                              style={{ fontSize: 12, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: 'rgba(166,133,90,0.1)', color: '#A6855A', border: 'none', cursor: 'pointer' }}>Editar ✎</button>
                           ) : (
                             <div style={{ display: 'flex', gap: 6 }}>
                               <button onClick={() => setEditPrecios(e => { const n2 = { ...e }; delete n2[p.id]; return n2 })}
-                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F2F1ED', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
+                                style={{ fontSize: 12, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F2F1ED', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
                               <button onClick={() => guardarPrecios(p.id)} disabled={saving[p.id + '_pr']}
-                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#A6855A', color: '#14110C', border: 'none', cursor: 'pointer', opacity: saving[p.id + '_pr'] ? 0.5 : 1 }}>Guardar</button>
+                                style={{ fontSize: 12, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#A6855A', color: '#14110C', border: 'none', cursor: 'pointer', opacity: saving[p.id + '_pr'] ? 0.5 : 1 }}>Guardar</button>
                             </div>
                           )}
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
                           {escenarios.map(s => (
                             <div key={s.label} style={{ borderRadius: 12, padding: '10px', textAlign: 'center', background: '#FAFAF8', border: `1px solid ${s.color}25` }}>
-                              <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase' as const, color: s.color, marginBottom: 4 }}>{s.label}</div>
+                              <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase' as const, color: s.color, marginBottom: 4 }}>{s.label}</div>
                               {ep ? (
                                 <input type="number" value={ep[s.key]}
                                   onChange={e => setEditPrecios(prev => ({ ...prev, [p.id]: { ...prev[p.id], [s.key]: e.target.value } }))}
                                   placeholder="€"
-                                  style={{ width: '100%', textAlign: 'center', fontSize: 11, fontWeight: 900, border: `1px solid ${s.color}50`, borderRadius: 6, outline: 'none', background: '#fff', padding: '2px 0' }}
+                                  style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 900, border: `1px solid ${s.color}50`, borderRadius: 6, outline: 'none', background: '#fff', padding: '2px 0' }}
                                 />
                               ) : (
                                 <>
-                                  <div style={{ fontSize: 12, fontWeight: 900, color: '#111' }}>{fmt(s.venta)}</div>
-                                  <div style={{ fontSize: 10, fontWeight: 700, color: s.benef >= 0 ? '#22C55E' : '#EF4444' }}>{s.benef >= 0 ? '+' : ''}{fmt(s.benef)}</div>
-                                  <div style={{ fontSize: 10, fontWeight: 800, color: s.color }}>{s.roi >= 0 ? '+' : ''}{s.roi.toFixed(1)}%</div>
+                                  <div style={{ fontSize: 13, fontWeight: 900, color: '#111' }}>{fmt(s.venta)}</div>
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: s.benef >= 0 ? '#22C55E' : '#EF4444' }}>{s.benef >= 0 ? '+' : ''}{fmt(s.benef)}</div>
+                                  <div style={{ fontSize: 12, fontWeight: 800, color: s.color }}>{s.roi >= 0 ? '+' : ''}{s.roi.toFixed(1)}%</div>
                                 </>
                               )}
                             </div>
@@ -459,8 +459,8 @@ export default function ProyectosPage() {
                             { l: 'Benef. HASU', v: ventaBase ? (escenarios[1].benef >= 0 ? '+' : '') + fmt(escenarios[1].benef) : '—', c: escenarios[1].benef >= 0 ? '#22C55E' : '#EF4444' },
                           ].map(k => (
                             <div key={k.l} style={{ borderRadius: 10, padding: '8px 10px', background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
-                              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 3 }}>{k.l}</div>
-                              <div style={{ fontSize: 12, fontWeight: 900, color: k.c }}>{k.v}</div>
+                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 3 }}>{k.l}</div>
+                              <div style={{ fontSize: 13, fontWeight: 900, color: k.c }}>{k.v}</div>
                             </div>
                           ))}
                         </div>
@@ -468,15 +468,15 @@ export default function ProyectosPage() {
                         {/* Fechas */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                           <div style={{ borderRadius: 10, padding: '8px 10px', background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
-                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 3 }}>F. compra · Duración</div>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: '#111' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 3 }}>F. compra · Duración</div>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>
                               {p.fecha_compra ? new Date(p.fecha_compra).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) : '—'}
                               {durMeses !== null ? ` · ${durMeses}m` : ''}
                             </div>
                           </div>
                           <div style={{ borderRadius: 10, padding: '8px 10px', background: '#FAFAF8', border: '1px solid #ECEAE4' }}>
-                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 3 }}>Días desde compra</div>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: '#111' }}>{diasDesde !== null ? `${diasDesde} días` : '—'}</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, color: '#BBB', marginBottom: 3 }}>Días desde compra</div>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{diasDesde !== null ? `${diasDesde} días` : '—'}</div>
                           </div>
                         </div>
 
@@ -484,17 +484,17 @@ export default function ProyectosPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 12, padding: '10px 14px', background: semCfg.bg, border: `1px solid ${semCfg.color}30`, marginBottom: 12 }}>
                           <div style={{ width: 10, height: 10, borderRadius: '50%', background: semCfg.color, flexShrink: 0, boxShadow: `0 0 6px ${semCfg.color}` }} />
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 900, color: semCfg.color }}>{sem === 'verde' ? '✓ Proyecto saludable' : sem === 'naranja' ? '⚠ Atención' : '✕ Acción urgente'}</div>
-                            <div style={{ fontSize: 10, color: '#888', marginTop: 1 }}>{semCfg.label}</div>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: semCfg.color }}>{sem === 'verde' ? '✓ Proyecto saludable' : sem === 'naranja' ? '⚠ Atención' : '✕ Acción urgente'}</div>
+                            <div style={{ fontSize: 12, color: '#888', marginTop: 1 }}>{semCfg.label}</div>
                           </div>
                         </div>
 
                         <button onClick={ev => marcarVendido(p, ev)}
-                          style={{ width: '100%', padding: '11px', borderRadius: 12, fontSize: 12, fontWeight: 900, background: 'rgba(34,197,94,0.10)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)', cursor: 'pointer', marginBottom: 8 }}>
+                          style={{ width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 900, background: 'rgba(34,197,94,0.10)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)', cursor: 'pointer', marginBottom: 8 }}>
                           Marcar como Vendido ✓
                         </button>
                         <button onClick={() => router.push(`/proyectos/${p.id}`)}
-                          style={{ width: '100%', padding: '11px', borderRadius: 12, fontSize: 12, fontWeight: 900, background: '#A6855A', color: '#14110C', border: 'none', cursor: 'pointer' }}>
+                          style={{ width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 900, background: '#14110C', color: '#F8F3E9', border: 'none', cursor: 'pointer' }}>
                           Abrir proyecto completo →
                         </button>
                       </div>
@@ -502,7 +502,7 @@ export default function ProyectosPage() {
 
                     {/* Ver más */}
                     <button onClick={() => toggle(p.id)}
-                      style={{ width: '100%', padding: '10px', fontSize: 11, fontWeight: 900, textAlign: 'center', borderTop: '1px solid #F2F1ED', background: 'none', border: 'none', borderTop: '1px solid #F2F1ED', color: isExp ? '#CCC' : '#A6855A', cursor: 'pointer', letterSpacing: '0.04em' } as React.CSSProperties}>
+                      style={{ width: '100%', padding: '10px', fontSize: 12, fontWeight: 900, textAlign: 'center', borderTop: '1px solid #F2F1ED', background: 'none', border: 'none', borderTop: '1px solid #F2F1ED', color: isExp ? '#CCC' : '#A6855A', cursor: 'pointer', letterSpacing: '0.04em' } as React.CSSProperties}>
                       {isExp ? 'Ver menos ↑' : 'Ver más ↓'}
                     </button>
                   </div>
@@ -522,7 +522,7 @@ export default function ProyectosPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                     <div onClick={() => router.push(`/proyectos/${p.id}`)} style={{ cursor: 'pointer', flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>{p.nombre}</div>
-                      <div style={{ fontSize: 11, color: '#999', marginTop: 3 }}>📍 {p.ciudad || '—'}</div>
+                      <div style={{ fontSize: 12, color: '#999', marginTop: 3 }}>📍 {p.ciudad || '—'}</div>
                     </div>
                     <button onClick={e => deleteProyecto(p, e)}
                       style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: 'none', cursor: 'pointer', flexShrink: 0 }}>✕</button>
@@ -533,14 +533,14 @@ export default function ProyectosPage() {
                       disabled={saving[p.id]}
                       onClick={e => e.stopPropagation()}
                       onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
-                      style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, border: 'none', outline: 'none', cursor: 'pointer', background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888', WebkitAppearance: 'none', MozAppearance: 'none' } as React.CSSProperties}
+                      style={{ fontSize: 12, fontWeight: 800, padding: '3px 8px', borderRadius: 100, border: 'none', outline: 'none', cursor: 'pointer', background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888', WebkitAppearance: 'none', MozAppearance: 'none' } as React.CSSProperties}
                     >
                       {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
                         <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
                       ))}
                     </select>
                     {p.precio_compra && (
-                      <span style={{ fontSize: 12, fontWeight: 900, color: '#111' }}>{fmt(p.precio_compra)}</span>
+                      <span style={{ fontSize: 13, fontWeight: 900, color: '#111' }}>{fmt(p.precio_compra)}</span>
                     )}
                   </div>
                 </div>
@@ -559,7 +559,7 @@ export default function ProyectosPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                     <div onClick={() => router.push(`/proyectos/${p.id}`)} style={{ cursor: 'pointer', flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>{p.nombre}</div>
-                      <div style={{ fontSize: 11, color: '#999', marginTop: 3 }}>📍 {p.ciudad || '—'}</div>
+                      <div style={{ fontSize: 12, color: '#999', marginTop: 3 }}>📍 {p.ciudad || '—'}</div>
                     </div>
                     <button onClick={e => deleteProyecto(p, e)}
                       style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: 'none', cursor: 'pointer', flexShrink: 0 }}>✕</button>
@@ -570,14 +570,14 @@ export default function ProyectosPage() {
                       disabled={saving[p.id]}
                       onClick={e => e.stopPropagation()}
                       onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
-                      style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, border: 'none', outline: 'none', cursor: 'pointer', background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888', WebkitAppearance: 'none', MozAppearance: 'none' } as React.CSSProperties}
+                      style={{ fontSize: 12, fontWeight: 800, padding: '3px 8px', borderRadius: 100, border: 'none', outline: 'none', cursor: 'pointer', background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888', WebkitAppearance: 'none', MozAppearance: 'none' } as React.CSSProperties}
                     >
                       {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
                         <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
                       ))}
                     </select>
                     {p.precio_compra && (
-                      <span style={{ fontSize: 12, fontWeight: 900, color: '#111' }}>{fmt(p.precio_compra)}</span>
+                      <span style={{ fontSize: 13, fontWeight: 900, color: '#111' }}>{fmt(p.precio_compra)}</span>
                     )}
                   </div>
                 </div>
@@ -592,7 +592,7 @@ export default function ProyectosPage() {
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#BBB' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🏠</div>
             <div style={{ fontSize: 14, fontWeight: 700 }}>No hay proyectos todavía</div>
-            <div style={{ fontSize: 12, marginTop: 4 }}>Usá el bot para crear el primero</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>Usá el bot para crear el primero</div>
           </div>
         )}
       </div>

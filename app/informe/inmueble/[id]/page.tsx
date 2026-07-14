@@ -232,7 +232,7 @@ export default function InformeInmueblePage() {
 
       <div className="print-bar">
         <button onClick={() => window.print()}
-          style={{ background: '#A6855A', color: '#14110C', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
+          style={{ background: '#14110C', color: '#F8F3E9', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
           Descargar PDF ↓
         </button>
       </div>

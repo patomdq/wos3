@@ -118,37 +118,37 @@ export default function ProveedoresPage() {
 
             <div className="space-y-3 mb-5">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Nombre *</label>
                 <input type="text" value={form.nombre} onChange={e => setForm(f=>({...f,nombre:e.target.value}))}
                   placeholder="Ej. Electricidad García SL"
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Rubro</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Rubro</label>
                 <input type="text" value={form.rubro} onChange={e => setForm(f=>({...f,rubro:e.target.value}))}
                   placeholder="Ej. Electricidad"
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Contacto</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Contacto</label>
                 <input type="text" value={form.contacto} onChange={e => setForm(f=>({...f,contacto:e.target.value}))}
                   placeholder="Nombre del contacto"
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Email</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Email</label>
                   <input type="email" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Teléfono</label>
+                  <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Teléfono</label>
                   <input type="text" value={form.telefono} onChange={e => setForm(f=>({...f,telefono:e.target.value}))}
                     className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>CIF</label>
+                <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>CIF</label>
                 <input type="text" value={form.cif} onChange={e => setForm(f=>({...f,cif:e.target.value}))}
                   placeholder="B12345678"
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium" style={INP} />
@@ -161,7 +161,7 @@ export default function ProveedoresPage() {
                 style={{ background:'#282828', color:'#888' }}>Cancelar</button>
               <button onClick={save} disabled={saving || !form.nombre.trim()}
                 className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-40"
-                style={{ background:'#A6855A', color:'#14110C' }}>
+                style={{ background:'#14110C', color:'#F8F3E9' }}>
                 {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Guardar'}
               </button>
             </div>

@@ -77,7 +77,7 @@ export default function DeudaPage() {
           <div className="absolute inset-0 flex items-end justify-between" style={{ padding: '20px 24px' }}>
             <div>
               <h1 className="font-black text-[28px] text-white leading-tight" style={{ letterSpacing: '-0.5px' }}>Deuda</h1>
-              <p className="text-[12px] font-semibold mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Posiciones de deuda / NPL — brokers y servicers</p>
+              <p className="text-[13px] font-semibold mt-1" style={{ color: 'rgba(255,255,255,0.75)' }}>Posiciones de deuda / NPL — brokers y servicers</p>
             </div>
             <button onClick={() => setWizardOpen(true)}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-black text-white"
