@@ -108,8 +108,47 @@ export type DeudaPosicion = {
   importacion_id: string | null
   lat: number | null
   lng: number | null
+  imagen_url: string | null
   estado_interno: string
   raw_data: Record<string, any> | null
   created_at: string
   updated_at: string
+}
+
+export type GrupoDeuda = {
+  contractId: string
+  items: DeudaPosicion[]
+  askingTotal: number
+  obTotal: number
+  ciudad: string | null | undefined
+  provincia: string | null | undefined
+  broker: string | null | undefined
+  titular: string | null | undefined
+  estadoJudicial: EstadoJudicialNormalizado | undefined
+  imagenUrl: string | null | undefined
+  tieneAlerta: boolean
+}
+
+// Agrupa posiciones por contract_id (un contrato puede tener varias garantías/inmuebles)
+// — usado tanto en el listado en grilla como en el mapa, para no duplicar la lógica.
+export function agruparPorContrato(posiciones: DeudaPosicion[]): GrupoDeuda[] {
+  const map = new Map<string, DeudaPosicion[]>()
+  posiciones.forEach(p => {
+    const arr = map.get(p.contract_id) || []
+    arr.push(p)
+    map.set(p.contract_id, arr)
+  })
+  return Array.from(map.entries()).map(([contractId, items]) => ({
+    contractId,
+    items,
+    askingTotal: items.reduce((s, i) => s + (i.asking_price || 0), 0),
+    obTotal: items.reduce((s, i) => s + (i.deuda_ob || 0), 0),
+    ciudad: items[0]?.ciudad,
+    provincia: items[0]?.provincia,
+    broker: items[0]?.broker_origen,
+    titular: items.find(i => i.titular_deuda)?.titular_deuda,
+    estadoJudicial: items.find(i => i.estado_judicial_normalizado)?.estado_judicial_normalizado as EstadoJudicialNormalizado | undefined,
+    imagenUrl: items.find(i => i.imagen_url)?.imagen_url,
+    tieneAlerta: items.some(i => calcRatioRiesgoCargas(i.cargas_previas, i.asking_price).alerta),
+  }))
 }
