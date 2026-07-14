@@ -39,6 +39,23 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 14/07/2026 (rediseño: Wallest Design System — colores + tipografía)**
+
+Hecho:
+- **Aplicación del nuevo Wallest Design System a todo WOS3** — reemplazo del acento naranja (`#F26E1F`) por el bronce del design system (`#A6855A` primario / `#C7A877` soft), + tipografía Marcellus (display) + Hanken Grotesk (UI/body)
+  - **Alcance decidido**: solo color + tipografía, manteniendo el fondo claro (`#F2ECE0`/cream) en toda la app interna (Proyectos/Mercado/Deuda/HASU/Admin/login/BotChat/informes/dossier). NO se adoptó la geometría literal del design system (radios 2px en botones, 26px en cards, 999px en pills) — WOS3 sigue con sus `rounded-xl`/`rounded-2xl`/`rounded-full` existentes, para no forzar un rediseño de forma en 29+ archivos en la misma pasada. A confirmar con Pato si se quiere una fase 2 de geometría más adelante
+  - `app/globals.css` / `tailwind.config.ts`: tokens nuevos (`--wl-ink #14110C`, `--wl-ink-2 #1B1610`, `--wl-cream #F2ECE0`, `--wl-cream-bright #F8F3E9`, `--wl-accent #A6855A`, `--wl-accent-soft #C7A877`), clase `.font-display` (Marcellus)
+  - `app/layout.tsx`: carga Marcellus + Hanken Grotesk vía `next/font/google` (antes solo se declaraban variables CSS sin fuente real cargada)
+  - **Regla de contraste aplicada en todo el swap**: cualquier relleno sólido bronce/accent-soft usa texto oscuro `#14110C` (nunca blanco) — es la convención literal del design system, verificada en sus propios ejemplos de chips/botones
+  - 29 archivos tocados: `AppShell.tsx`, `Nav.tsx` (dead code, igual actualizado), `login/page.tsx`, `BotChat.tsx`, `proyectos/page.tsx` + `[id]/page.tsx`, `mercado/page.tsx`, `admin/page.tsx`, `deuda/page.tsx` (+ hero gradiente ink→bronce), `DeudaFiltros.tsx`, `DeudaImportWizard.tsx`, toda la sección `hasu/*` (page, calendario, docs, fiscal, flujo-caja, proveedores), `informe/inmueble/[id]`, `reporte/[id]`, `liquidacion/[id]`, `dossier/page.tsx` + `dossier/print/page.tsx`, `generateDossierPDF.ts` + `generateReportePDF.ts` (jsPDF, vía helper `hexToRgb()`), `inversor/portal/page.tsx` (constante `ORANGE` + gradiente hero), `lib/notifications.ts` (email HTML)
+  - Trabajo ejecutado en 3 tandas vía subagentes (chrome principal hecho a mano, páginas operativas / HASU / informes-documentos delegadas) con las mismas reglas de contraste y tamaño de fuente en cada una, build verificado (`next build` ok) después de cada tanda y al final
+  - Commit `211f0b5`, pusheado a `origin master`
+
+Pendiente:
+- **Decisión pendiente de Pato**: en una sesión anterior se había hablado de que el portal inversor y el dossier recibieran el tratamiento "dark-first" completo del design system (fondos oscuros, glass panels, `backdrop-filter`), a diferencia del resto de WOS3 que mantiene fondo claro. En esta sesión, por alcance y para no romper nada sin confirmación, se les aplicó el mismo tratamiento que al resto (bronce + Marcellus sobre fondo claro/imagen existente). Falta confirmar si se quiere ese tratamiento dark-first como fase separada
+- Fase 2 de geometría (radios 2px/26px/999px literales del design system) — no se tocó en esta sesión, ver nota de alcance arriba
+- No testeado visualmente en vivo (regla de nunca correr servidor local) — pendiente que Pato lo revise en el deploy de Vercel
+
 **Última sesión — 14/07/2026 (nueva área DEUDA)**
 
 Hecho:
