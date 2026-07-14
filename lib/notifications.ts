@@ -82,8 +82,8 @@ async function sendMentionEmail(
         <tr><td style="background:#141414;border-radius:20px 20px 0 0;padding:24px 24px 16px;">
           <table cellpadding="0" cellspacing="0">
             <tr>
-              <td style="width:36px;height:36px;background:#F26E1F;border-radius:10px;text-align:center;vertical-align:middle;">
-                <span style="color:#fff;font-weight:900;font-size:16px;">W</span>
+              <td style="width:36px;height:36px;background:#A6855A;border-radius:10px;text-align:center;vertical-align:middle;">
+                <span style="color:#14110C;font-weight:900;font-size:16px;">W</span>
               </td>
               <td style="padding-left:10px;color:#888;font-size:13px;font-weight:600;">WOS3 · Wallest</td>
             </tr>
@@ -96,12 +96,12 @@ async function sendMentionEmail(
           <p style="margin:0 0 20px;color:#888;font-size:13px;">${ctx.proyecto}${tipoLabel}</p>
 
           <div style="background:#1E1E1E;border-radius:14px;padding:18px;margin-bottom:24px;">
-            <p style="margin:0 0 8px;color:#F26E1F;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">${ctx.autor}</p>
+            <p style="margin:0 0 8px;color:#A6855A;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">${ctx.autor}</p>
             <p style="margin:0;color:#fff;font-size:15px;line-height:1.6;">${ctx.contenido}</p>
           </div>
 
           <a href="https://wos3.vercel.app"
-             style="display:block;background:#F26E1F;color:#fff;text-align:center;padding:14px;border-radius:12px;font-weight:900;font-size:14px;text-decoration:none;">
+             style="display:block;background:#A6855A;color:#14110C;text-align:center;padding:14px;border-radius:12px;font-weight:900;font-size:14px;text-decoration:none;">
             Abrir WOS3 →
           </a>
         </td></tr>

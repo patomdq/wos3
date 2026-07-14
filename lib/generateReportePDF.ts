@@ -1,7 +1,7 @@
 // Genera el PDF de un inmueble usando jsPDF de forma programática
 // Devuelve un Blob listo para descargar o compartir vía Web Share API
 
-const ORANGE = '#F26E1F'
+const ORANGE = '#A6855A'
 const BLACK  = '#1A1A1A'
 const GRAY   = '#666666'
 const GRAY_L = '#F5F4F0'

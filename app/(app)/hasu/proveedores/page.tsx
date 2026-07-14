@@ -72,8 +72,8 @@ export default function ProveedoresPage() {
           style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>←</button>
         <div className="flex-1 font-bold text-[17px] text-white">Proveedores</div>
         <button onClick={openAdd}
-          className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
-          style={{ background: '#F26E1F' }}>+ Agregar</button>
+          className="text-sm font-black px-3 py-1.5 rounded-xl"
+          style={{ background: '#A6855A', color: '#14110C' }}>+ Agregar</button>
       </div>
 
       {/* List */}
@@ -89,7 +89,7 @@ export default function ProveedoresPage() {
           {proveedores.map((p, i) => (
             <div key={p.id} className="px-4 py-3.5 flex gap-3 items-center"
               style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.07)' : undefined }}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{ background:'rgba(242,110,31,0.18)' }}>🔧</div>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{ background:'rgba(166,133,90,0.18)' }}>🔧</div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-bold text-white truncate">{p.nombre}</div>
                 <div className="text-xs font-medium mt-0.5 truncate" style={{ color:'#888' }}>{p.rubro}{p.contacto ? ` · ${p.contacto}` : ''}</div>
@@ -160,8 +160,8 @@ export default function ProveedoresPage() {
                 className="flex-1 py-3.5 rounded-xl text-sm font-black"
                 style={{ background:'#282828', color:'#888' }}>Cancelar</button>
               <button onClick={save} disabled={saving || !form.nombre.trim()}
-                className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
-                style={{ background:'#F26E1F' }}>
+                className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-40"
+                style={{ background:'#A6855A', color:'#14110C' }}>
                 {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Guardar'}
               </button>
             </div>

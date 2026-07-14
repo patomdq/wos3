@@ -94,10 +94,10 @@ export default function LiquidacionPage() {
         .header-sub { font-size: 14px; color: #888; font-weight: 500; }
         .roi-badge {
           position: absolute; right: 40px; top: 36px;
-          background: #F26E1F; border-radius: 16px; padding: 16px 22px; text-align: center; min-width: 110px;
+          background: #A6855A; border-radius: 16px; padding: 16px 22px; text-align: center; min-width: 110px;
         }
-        .roi-badge .roi-num { font-size: 32px; font-weight: 900; color: #fff; line-height: 1; }
-        .roi-badge .roi-label { font-size: 10px; color: rgba(255,255,255,0.8); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+        .roi-badge .roi-num { font-size: 32px; font-weight: 900; color: #14110C; line-height: 1; }
+        .roi-badge .roi-label { font-size: 10px; color: rgba(20,17,12,0.75); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
 
         /* ── KPIs ── */
         .kpis { display: grid; grid-template-columns: 1fr 1fr 1fr; border-bottom: 1px solid #eee; }
@@ -116,7 +116,7 @@ export default function LiquidacionPage() {
           background: #1a1a1a; padding: 12px 16px; border-radius: 8px 8px 0 0;
         }
         .section-num {
-          background: #F26E1F; color: #fff; font-size: 11px; font-weight: 900;
+          background: #A6855A; color: #14110C; font-size: 11px; font-weight: 900;
           width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         .section-title { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #fff; }
@@ -129,8 +129,8 @@ export default function LiquidacionPage() {
         .table td.right { text-align: right; }
         .table tr:last-child td { border-bottom: none; }
         .table tr.total td { background: #fafafa; font-weight: 800; font-size: 14px; color: #111; border-top: 2px solid #e5e5e5; }
-        .table tr.total td.orange { color: #F26E1F; }
-        .table td.orange { color: #F26E1F; font-weight: 700; }
+        .table tr.total td.orange { color: #A6855A; }
+        .table td.orange { color: #A6855A; font-weight: 700; }
         .table td.red { color: #EF4444; }
         .table td.green { color: #22C55E; font-weight: 700; }
 
@@ -156,7 +156,7 @@ export default function LiquidacionPage() {
       <div className="print-bar">
         <button
           onClick={() => window.print()}
-          style={{ background: '#F26E1F', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
+          style={{ background: '#A6855A', color: '#14110C', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
           Descargar PDF ↓
         </button>
       </div>

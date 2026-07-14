@@ -77,7 +77,7 @@ export default function DeudaFiltros({
           placeholder="Precio max €" className="w-[120px] rounded-xl px-3 py-2.5 text-sm outline-none font-medium font-mono" style={INP} />
         <button onClick={() => setMasFiltrosOpen(o => !o)}
           className="rounded-xl px-3 py-2.5 text-sm font-black flex items-center gap-1.5"
-          style={{ background: masFiltrosActivos ? 'rgba(242,110,31,0.1)' : '#F5F4F0', color: masFiltrosActivos ? '#F26E1F' : '#666', border: masFiltrosActivos ? '1.5px solid rgba(242,110,31,0.3)' : '1.5px solid #ECEAE4' }}>
+          style={{ background: masFiltrosActivos ? 'rgba(166,133,90,0.1)' : '#F5F4F0', color: masFiltrosActivos ? '#A6855A' : '#666', border: masFiltrosActivos ? '1.5px solid rgba(166,133,90,0.3)' : '1.5px solid #ECEAE4' }}>
           Más filtros {masFiltrosActivos ? '●' : ''} {masFiltrosOpen ? '▲' : '▼'}
         </button>
       </div>
@@ -120,9 +120,9 @@ export default function DeudaFiltros({
                 <button key={e} onClick={() => toggleEstadoJudicial(e)}
                   className="px-2.5 py-1.5 rounded-lg text-[11px] font-black"
                   style={{
-                    background: filtros.estadosJudiciales.includes(e) ? '#F26E1F' : '#fff',
-                    color: filtros.estadosJudiciales.includes(e) ? '#fff' : '#666',
-                    border: filtros.estadosJudiciales.includes(e) ? '1.5px solid #F26E1F' : '1.5px solid #ECEAE4',
+                    background: filtros.estadosJudiciales.includes(e) ? '#A6855A' : '#fff',
+                    color: filtros.estadosJudiciales.includes(e) ? '#14110C' : '#666',
+                    border: filtros.estadosJudiciales.includes(e) ? '1.5px solid #A6855A' : '1.5px solid #ECEAE4',
                   }}>
                   {ESTADO_JUDICIAL_LABEL[e]}
                 </button>

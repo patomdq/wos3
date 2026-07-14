@@ -9,10 +9,10 @@ const TABS = ['Finanzas','Reforma','Pendientes','Bitácora','Inversor','Docs','C
 const ESTADOS_PROSPECTO = ['Contactado','Visita programada','Visita realizada','Oferta recibida','En negociación','Descartado']
 const ESTADO_PROSPECTO_COLOR: Record<string,string> = {
   'Contactado':'#60A5FA','Visita programada':'#F59E0B','Visita realizada':'#a78bfa',
-  'Oferta recibida':'#F26E1F','En negociación':'#22C55E','Descartado':'#EF4444',
+  'Oferta recibida':'#A6855A','En negociación':'#22C55E','Descartado':'#EF4444',
 }
 const TIPOS_INTERACCION = ['llamada','visita','mensaje','email','nota']
-const ESTADO_COLOR: Record<string,string> = { captado:'#888', analisis:'#60A5FA', ofertado:'#F59E0B', comprado:'#22C55E', reforma:'#F26E1F', venta:'#a78bfa', reservado:'#F59E0B', con_oferta:'#F26E1F', en_arras:'#22C55E', patrimonial:'#3B82F6', vendido:'#22C55E', cerrado:'#22C55E' }
+const ESTADO_COLOR: Record<string,string> = { captado:'#888', analisis:'#60A5FA', ofertado:'#F59E0B', comprado:'#22C55E', reforma:'#A6855A', venta:'#a78bfa', reservado:'#F59E0B', con_oferta:'#A6855A', en_arras:'#22C55E', patrimonial:'#3B82F6', vendido:'#22C55E', cerrado:'#22C55E' }
 const ESTADO_LABEL_MAP: Record<string,string> = { captado:'Captado', analisis:'Análisis', ofertado:'Ofertado', comprado:'Comprado', reforma:'Reforma', venta:'En venta', reservado:'Reservado', con_oferta:'Ofertado', en_arras:'En arras', patrimonial:'Patrimonial (alquiler)', vendido:'Vendido', cerrado:'Vendido' }
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2}).format(n)
 const fmtK = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
@@ -600,17 +600,17 @@ export default function ProyectoDetalle() {
           ← Volver
         </button>
         <button onClick={() => router.push(`/bot?proyecto_id=${id}`)}
-          className="flex items-center gap-1.5 text-sm font-black px-3 py-1.5 rounded-xl text-white"
-          style={{ background: '#F26E1F' }}>
+          className="flex items-center gap-1.5 text-sm font-black px-3 py-1.5 rounded-xl"
+          style={{ background: '#A6855A', color: '#14110C' }}>
           🤖 Bot
         </button>
       </div>
 
       {/* Hero */}
       <div className="rounded-2xl p-4 mb-4 relative overflow-hidden" style={CARD}>
-        <div className="absolute right-[-20px] top-[-20px] w-[100px] h-[100px] rounded-full" style={{ background: 'rgba(242,110,31,0.08)' }} />
+        <div className="absolute right-[-20px] top-[-20px] w-[100px] h-[100px] rounded-full" style={{ background: 'rgba(166,133,90,0.08)' }} />
         <div className="flex gap-3 items-start mb-4 relative">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: 'rgba(242,110,31,0.18)' }}>🏠</div>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: 'rgba(166,133,90,0.18)' }}>🏠</div>
           <div>
             <div className="font-black text-[22px] leading-tight tracking-tight" style={{ color:'#1A1A1A' }}>{proyecto.nombre}</div>
             <div className="text-xs font-bold mt-1" style={{ color:'#999999' }}>
@@ -637,7 +637,7 @@ export default function ProyectoDetalle() {
         {TABS.map((t, i) => (
           <button key={t} onClick={() => setTab(i)}
             className="flex-shrink-0 px-4 py-2.5 text-sm font-bold whitespace-nowrap"
-            style={{ color: tab===i ? '#F26E1F' : '#999999', borderBottom: tab===i ? '2.5px solid #F26E1F' : '2.5px solid transparent', marginBottom: -1 }}>
+            style={{ color: tab===i ? '#A6855A' : '#999999', borderBottom: tab===i ? '2.5px solid #A6855A' : '2.5px solid transparent', marginBottom: -1 }}>
             {t}
           </button>
         ))}
@@ -677,8 +677,8 @@ export default function ProyectoDetalle() {
             <div className="p-4 pb-0 flex items-center justify-between">
               <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Movimientos <span style={{ color:'#999999', fontSize:13 }}>({movimientos.length})</span></div>
               <button onClick={() => openMovForm()}
-                className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
-                style={{ background:'#F26E1F' }}>
+                className="text-sm font-black px-3 py-1.5 rounded-xl"
+                style={{ background:'#A6855A', color: '#14110C' }}>
                 + Agregar
               </button>
             </div>
@@ -825,7 +825,7 @@ export default function ProyectoDetalle() {
             </div>
             <div className="rounded-xl p-3.5" style={CARD}>
               <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Ejecutado</div>
-              <div className="font-black text-[22px]" style={{ color:'#F26E1F' }}>{fmtK(ejecutadoTotal)}</div>
+              <div className="font-black text-[22px]" style={{ color:'#A6855A' }}>{fmtK(ejecutadoTotal)}</div>
               <div className="text-xs font-bold mt-1" style={{ color:'#999999' }}>resta {fmtK(Math.max(0,presupuestoTotal-ejecutadoTotal))}</div>
             </div>
           </div>
@@ -833,12 +833,12 @@ export default function ProyectoDetalle() {
           <div className="flex gap-2 mb-3">
             <button onClick={() => setReformaVista('tabla')}
               className="flex-1 py-2 rounded-xl text-sm font-black"
-              style={{ background: reformaVista==='tabla' ? '#F26E1F' : '#F0EEE9', color: reformaVista==='tabla' ? '#fff' : '#888' }}>
+              style={{ background: reformaVista==='tabla' ? '#A6855A' : '#F0EEE9', color: reformaVista==='tabla' ? '#14110C' : '#888' }}>
               Tabla
             </button>
             <button onClick={() => setReformaVista('gantt')}
               className="flex-1 py-2 rounded-xl text-sm font-black"
-              style={{ background: reformaVista==='gantt' ? '#F26E1F' : '#F0EEE9', color: reformaVista==='gantt' ? '#fff' : '#888' }}>
+              style={{ background: reformaVista==='gantt' ? '#A6855A' : '#F0EEE9', color: reformaVista==='gantt' ? '#14110C' : '#888' }}>
               Timeline
             </button>
           </div>
@@ -859,7 +859,7 @@ export default function ProyectoDetalle() {
             const todayMs = new Date().setHours(0,0,0,0)
             const todayPct = Math.min(100, Math.max(0, ((todayMs - minMs) / totalMs) * 100))
             const fmtDate = (ms: number) => new Date(ms).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})
-            const BAR_COLOR: Record<string,string> = { ok:'#22C55E', retrasada:'#EF4444', en_curso:'#F26E1F', pendiente:'#888' }
+            const BAR_COLOR: Record<string,string> = { ok:'#22C55E', retrasada:'#EF4444', en_curso:'#A6855A', pendiente:'#888' }
             return (
               <div className="rounded-2xl overflow-hidden" style={CARD}>
                 {/* Eje de fechas */}
@@ -938,8 +938,8 @@ export default function ProyectoDetalle() {
             <div className="px-4 py-3.5 flex items-center justify-between" style={{ borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
               <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Partidas <span style={{ color:'#999999', fontSize:13 }}>({partidas.length})</span></div>
               <button onClick={() => openPartidaForm()}
-                className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
-                style={{ background:'#F26E1F' }}>
+                className="text-sm font-black px-3 py-1.5 rounded-xl"
+                style={{ background:'#A6855A', color: '#14110C' }}>
                 + Partida
               </button>
             </div>
@@ -966,12 +966,12 @@ export default function ProyectoDetalle() {
                       const isLoadingItems = loadingItems.has(p.id)
                       return (
                         <React.Fragment key={p.id}>
-                          <tr style={{ borderBottom: (!isExpanded && i < partidas.length-1) ? '1px solid rgba(0,0,0,0.04)' : 'none', background: isExpanded ? 'rgba(242,110,31,0.04)' : 'transparent' }}>
+                          <tr style={{ borderBottom: (!isExpanded && i < partidas.length-1) ? '1px solid rgba(0,0,0,0.04)' : 'none', background: isExpanded ? 'rgba(166,133,90,0.04)' : 'transparent' }}>
                             {/* Expand toggle */}
                             <td className="px-2 py-3" style={{ width:28 }}>
                               <button onClick={() => togglePartida(p.id)}
                                 className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-black"
-                                style={{ background:'rgba(0,0,0,0.06)', color: isExpanded ? '#F26E1F' : '#888' }}>
+                                style={{ background:'rgba(0,0,0,0.06)', color: isExpanded ? '#A6855A' : '#888' }}>
                                 {isExpanded ? '▾' : '▸'}
                               </button>
                             </td>
@@ -989,7 +989,7 @@ export default function ProyectoDetalle() {
                               </select>
                             </td>
                             <td className="px-3 py-3 text-sm font-mono text-right whitespace-nowrap" style={{ color:'#1A1A1A' }}>{fmt(p.presupuesto||0)}</td>
-                            <td className="px-3 py-3 text-sm font-mono text-right whitespace-nowrap" style={{ color:'#F26E1F' }}>{fmt(p.ejecutado||0)}</td>
+                            <td className="px-3 py-3 text-sm font-mono text-right whitespace-nowrap" style={{ color:'#A6855A' }}>{fmt(p.ejecutado||0)}</td>
                             <td className="px-3 py-3">
                               <div className="flex items-center gap-2">
                                 <div className="h-1.5 w-16 rounded-full overflow-hidden flex-shrink-0" style={{ background:'#ECEAE4' }}>
@@ -1030,7 +1030,7 @@ export default function ProyectoDetalle() {
                                               <td className="px-3 py-2 text-xs font-semibold" style={{ color:'#1A1A1A' }}>{item.nombre}</td>
                                               <td className="px-3 py-2 text-xs" style={{ color:'#666666' }}>{item.estancia||'—'}</td>
                                               <td className="px-3 py-2 text-xs" style={{ color:'#666666' }}>{item.proveedor||'—'}</td>
-                                              <td className="px-3 py-2 text-xs font-mono text-right whitespace-nowrap" style={{ color: item.coste ? '#F26E1F' : '#999999' }}>
+                                              <td className="px-3 py-2 text-xs font-mono text-right whitespace-nowrap" style={{ color: item.coste ? '#A6855A' : '#999999' }}>
                                                 {item.coste ? fmt(item.coste) : '—'}
                                               </td>
                                               <td className="px-3 py-2 text-xs" style={{ color:'#666666' }}>{item.fecha_compra||'—'}</td>
@@ -1049,7 +1049,7 @@ export default function ProyectoDetalle() {
                                         <tfoot>
                                           <tr style={{ borderTop:'1px solid rgba(0,0,0,0.08)', background:'rgba(0,0,0,0.03)' }}>
                                             <td colSpan={3} className="px-3 py-1.5 text-[10px] font-bold text-right" style={{ color:'#999999' }}>Total ítems:</td>
-                                            <td className="px-3 py-1.5 text-xs font-black font-mono text-right" style={{ color:'#F26E1F' }}>
+                                            <td className="px-3 py-1.5 text-xs font-black font-mono text-right" style={{ color:'#A6855A' }}>
                                               {fmt(items.reduce((s,it) => s+(it.coste||0),0))}
                                             </td>
                                             <td colSpan={3}></td>
@@ -1063,8 +1063,7 @@ export default function ProyectoDetalle() {
                                     <div className="px-3 pt-2">
                                       <button onClick={() => openItemForm(p.id)}
                                         className="text-xs font-black px-3 py-1.5 rounded-lg"
-                                        style={{ color:'#F26E1F' }}
-                                        style={{ background:'rgba(242,110,31,0.25)', border:'1px solid rgba(242,110,31,0.4)' }}>
+                                        style={{ color:'#A6855A', background:'rgba(166,133,90,0.25)', border:'1px solid rgba(166,133,90,0.4)' }}>
                                         + Ítem
                                       </button>
                                     </div>
@@ -1081,7 +1080,7 @@ export default function ProyectoDetalle() {
                     <tr style={{ borderTop:'2px solid rgba(0,0,0,0.08)', background:'#F0EEE9' }}>
                       <td colSpan={3} className="px-3 py-2.5 text-sm font-bold text-right" style={{ color:'#1A1A1A' }}>Totales:</td>
                       <td className="px-3 py-2.5 text-sm font-black font-mono text-right" style={{ color:'#1A1A1A' }}>{fmt(presupuestoTotal)}</td>
-                      <td className="px-3 py-2.5 text-sm font-black font-mono text-right" style={{ color:'#F26E1F' }}>{fmt(ejecutadoTotal)}</td>
+                      <td className="px-3 py-2.5 text-sm font-black font-mono text-right" style={{ color:'#A6855A' }}>{fmt(ejecutadoTotal)}</td>
                       <td colSpan={2}></td>
                     </tr>
                   </tfoot>
@@ -1097,8 +1096,8 @@ export default function ProyectoDetalle() {
         <div>
           <div className="flex justify-end mb-3">
             <button onClick={() => openTareaForm()}
-              className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
-              style={{ background:'#F26E1F' }}>
+              className="text-sm font-black px-3 py-1.5 rounded-xl"
+              style={{ background:'#A6855A', color: '#14110C' }}>
               + Agregar
             </button>
           </div>
@@ -1146,8 +1145,8 @@ export default function ProyectoDetalle() {
           <div className="flex items-center justify-between mb-4">
             <div className="font-black text-[15px]" style={{ color:'#1A1A1A' }}>Historial</div>
             <button onClick={() => openBitacoraForm()}
-              className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
-              style={{ background:'#F26E1F' }}>
+              className="text-sm font-black px-3 py-1.5 rounded-xl"
+              style={{ background:'#A6855A', color: '#14110C' }}>
               + Agregar
             </button>
           </div>
@@ -1158,7 +1157,7 @@ export default function ProyectoDetalle() {
               <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background:'#ECEAE4' }} />
               {bitacora.map(b => (
                 <div key={b.id} className="relative mb-4">
-                  <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background:'#F26E1F', border:'2px solid #F2F1ED' }} />
+                  <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background:'#A6855A', border:'2px solid #F2F1ED' }} />
                   <div className="flex items-center justify-between mb-1">
                     <div className="text-[11px] font-bold font-mono tracking-wide" style={{ color:'#999999' }}>
                       {new Date(b.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}).toUpperCase()}
@@ -1169,7 +1168,7 @@ export default function ProyectoDetalle() {
                     </div>
                   </div>
                   <div className="text-sm font-medium leading-relaxed" style={{ color:'#1A1A1A' }}>{b.contenido}</div>
-                  <div className="text-xs font-bold mt-1" style={{ color:'#F26E1F' }}>{b.autor}</div>
+                  <div className="text-xs font-bold mt-1" style={{ color:'#A6855A' }}>{b.autor}</div>
                 </div>
               ))}
             </div>
@@ -1209,8 +1208,8 @@ export default function ProyectoDetalle() {
         <div>
           <div className="flex justify-end mb-3">
             <button onClick={() => setShowDocForm(true)}
-              className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
-              style={{ background:'#F26E1F' }}>
+              className="text-sm font-black px-3 py-1.5 rounded-xl"
+              style={{ background:'#A6855A', color: '#14110C' }}>
               + Agregar link
             </button>
           </div>
@@ -1227,7 +1226,7 @@ export default function ProyectoDetalle() {
                       <div className="text-sm font-bold truncate" style={{ color:'#1A1A1A' }}>{d.nombre}</div>
                       {d.tipo && <div className="text-xs font-medium mt-0.5" style={{ color:'#999999' }}>{d.tipo}</div>}
                     </div>
-                    <span className="text-xs font-bold flex-shrink-0 px-2 py-1 rounded-lg" style={{ background:'rgba(242,110,31,0.18)', color:'#F26E1F' }}>Abrir →</span>
+                    <span className="text-xs font-bold flex-shrink-0 px-2 py-1 rounded-lg" style={{ background:'rgba(166,133,90,0.18)', color:'#A6855A' }}>Abrir →</span>
                   </a>
                   <button onClick={() => deleteDoc(d.id)} className="ml-2 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-lg" style={{ background:'rgba(239,68,68,0.15)', color:'#EF4444' }}>✕</button>
                 </div>
@@ -1266,8 +1265,8 @@ export default function ProyectoDetalle() {
             {/* Botón agregar */}
             <div className="flex justify-end mb-3">
               <button onClick={() => openProspectoForm()}
-                className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
-                style={{ background:'#F26E1F' }}>
+                className="text-sm font-black px-3 py-1.5 rounded-xl"
+                style={{ background:'#A6855A', color: '#14110C' }}>
                 + Prospecto
               </button>
             </div>
@@ -1287,7 +1286,7 @@ export default function ProyectoDetalle() {
                       <div className="p-3.5 flex items-start gap-3">
                         <button onClick={() => toggleProspecto(p.id)}
                           className="w-6 h-6 rounded flex items-center justify-center text-[11px] font-black flex-shrink-0 mt-0.5"
-                          style={{ background:'rgba(0,0,0,0.06)', color: isExpanded ? '#F26E1F' : '#888' }}>
+                          style={{ background:'rgba(0,0,0,0.06)', color: isExpanded ? '#A6855A' : '#888' }}>
                           {isExpanded ? '▾' : '▸'}
                         </button>
                         <div className="flex-1 min-w-0">
@@ -1316,8 +1315,8 @@ export default function ProyectoDetalle() {
                             <span className="text-[11px] font-black uppercase tracking-wide" style={{ color:'#888' }}>Interacciones ({ints.length})</span>
                             <button
                               onClick={() => { setInteraccionProspectoId(p.id); setInteraccionForm({ tipo:'llamada', fecha: new Date().toISOString().split('T')[0], nota:'' }); setShowInteraccionForm(true) }}
-                              className="text-[11px] font-black px-2.5 py-1 rounded-lg text-white"
-                              style={{ background:'#F26E1F' }}>
+                              className="text-[11px] font-black px-2.5 py-1 rounded-lg"
+                              style={{ background:'#A6855A', color: '#14110C' }}>
                               + Registrar
                             </button>
                           </div>
@@ -1327,10 +1326,10 @@ export default function ProyectoDetalle() {
                             <div className="px-4 pb-3 flex flex-col gap-2">
                               {ints.map((int: any) => (
                                 <div key={int.id} className="flex gap-3 items-start group">
-                                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: ESTADO_PROSPECTO_COLOR[p.estado] || '#F26E1F' }} />
+                                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: ESTADO_PROSPECTO_COLOR[p.estado] || '#A6855A' }} />
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-[11px] font-black" style={{ color:'#F26E1F', textTransform:'capitalize' }}>{int.tipo}</span>
+                                      <span className="text-[11px] font-black" style={{ color:'#A6855A', textTransform:'capitalize' }}>{int.tipo}</span>
                                       <span className="text-[11px]" style={{ color:'#999999' }}>{new Date(int.fecha).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})}</span>
                                     </div>
                                     {int.nota && <div className="text-xs font-medium mt-0.5" style={{ color:'#444444' }}>{int.nota}</div>}
@@ -1413,8 +1412,8 @@ export default function ProyectoDetalle() {
                 </div>
               </div>
               <button onClick={saveProspecto} disabled={savingProspecto || !prospectoForm.nombre.trim()}
-                className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
-                style={{ background:'#F26E1F' }}>
+                className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
+                style={{ background:'#A6855A', color: '#14110C' }}>
                 {savingProspecto ? 'Guardando...' : editingProspectoId ? 'Actualizar' : 'Agregar prospecto'}
               </button>
             </div>
@@ -1458,8 +1457,8 @@ export default function ProyectoDetalle() {
                 </div>
               </div>
               <button onClick={saveInteraccion} disabled={savingInteraccion || !interaccionForm.nota.trim()}
-                className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
-                style={{ background:'#F26E1F' }}>
+                className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
+                style={{ background:'#A6855A', color: '#14110C' }}>
                 {savingInteraccion ? 'Guardando...' : 'Registrar'}
               </button>
             </div>
@@ -1533,7 +1532,7 @@ export default function ProyectoDetalle() {
                   <div>
                     <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Total (€) *</label>
                     <input type="number" step="0.01" required value={movForm.total} onChange={e => setMovForm(f=>({...f,total:e.target.value}))}
-                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-bold" style={{ ...INPUT_STYLE, borderColor:'rgba(242,110,31,0.5)' }} />
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-bold" style={{ ...INPUT_STYLE, borderColor:'rgba(166,133,90,0.5)' }} />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Forma de pago</label>
@@ -1553,8 +1552,8 @@ export default function ProyectoDetalle() {
                 </div>
                 <div className="flex gap-3">
                   <button type="submit" disabled={savingMov}
-                    className="flex-1 py-4 text-white rounded-xl text-base font-black disabled:opacity-50"
-                    style={{ background:'#F26E1F' }}>
+                    className="flex-1 py-4 rounded-xl text-base font-black disabled:opacity-50"
+                    style={{ background:'#A6855A', color: '#14110C' }}>
                     {savingMov ? 'Guardando...' : 'Guardar'}
                   </button>
                   <button type="button" onClick={() => setShowMovForm(false)}
@@ -1618,8 +1617,8 @@ export default function ProyectoDetalle() {
               </div>
             </div>
             <button onClick={saveTarea} disabled={savingTarea || !tareaForm.titulo.trim()}
-              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#F26E1F' }}>
+              className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background:'#A6855A', color: '#14110C' }}>
               {savingTarea ? 'Guardando...' : editingTareaId ? 'Guardar cambios' : 'Agregar tarea'}
             </button>
           </div>
@@ -1663,8 +1662,8 @@ export default function ProyectoDetalle() {
               </div>
             </div>
             <button onClick={saveBitacoraEntry} disabled={savingBitacora || !bitacoraForm.contenido.trim()}
-              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#F26E1F' }}>
+              className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background:'#A6855A', color: '#14110C' }}>
               {savingBitacora ? 'Guardando...' : editingBitacoraId ? 'Guardar cambios' : 'Guardar entrada'}
             </button>
           </div>
@@ -1710,8 +1709,8 @@ export default function ProyectoDetalle() {
               </div>
             </div>
             <button onClick={saveDoc} disabled={savingDoc || !docForm.nombre.trim() || !docForm.url.trim()}
-              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#F26E1F' }}>
+              className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background:'#A6855A', color: '#14110C' }}>
               {savingDoc ? 'Guardando...' : 'Agregar documento'}
             </button>
           </div>
@@ -1794,8 +1793,8 @@ export default function ProyectoDetalle() {
               </div>
             </div>
             <button onClick={savePartida} disabled={savingPartida || !nuevaPartida.nombre.trim()}
-              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#F26E1F' }}>
+              className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background:'#A6855A', color: '#14110C' }}>
               {savingPartida ? 'Guardando...' : editingPartidaId ? 'Actualizar partida' : 'Agregar partida'}
             </button>
           </div>
@@ -1856,8 +1855,8 @@ export default function ProyectoDetalle() {
               </div>
             </div>
             <button onClick={saveItem} disabled={savingItem || !itemForm.nombre.trim()}
-              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{ background:'#F26E1F' }}>
+              className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{ background:'#A6855A', color: '#14110C' }}>
               {savingItem ? 'Guardando...' : editingItemId ? 'Actualizar ítem' : 'Agregar ítem'}
             </button>
           </div>

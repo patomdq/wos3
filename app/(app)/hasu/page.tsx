@@ -175,12 +175,12 @@ export default function HasuPage() {
   const MODULOS = [
     { icon: '🔧', bg: 'rgba(96,165,250,0.12)',  nombre: 'Proveedores',        desc: 'Gestión de proveedores y contactos',  href: '/hasu/proveedores' },
     { icon: '🧾', bg: 'rgba(245,158,11,0.12)',  nombre: 'Fiscal y gestoría',  desc: 'IVA, IRPF, documentos legales',       href: '/hasu/fiscal' },
-    { icon: '⚙',  bg: 'rgba(242,110,31,0.12)', nombre: 'Usuarios y permisos', desc: 'Roles · accesos · proyectos',         href: '/admin' },
+    { icon: '⚙',  bg: 'rgba(166,133,90,0.12)', nombre: 'Usuarios y permisos', desc: 'Roles · accesos · proyectos',         href: '/admin' },
     { icon: '📁', bg: 'rgba(167,139,250,0.12)', nombre: 'Docs de empresa',    desc: 'Estatutos · contratos · CIF',         href: '/hasu/docs' },
     { icon: '📅', bg: 'rgba(96,165,250,0.12)', nombre: 'Calendario',          desc: 'Google Calendar · hola@hasu.in',      href: '/hasu/calendario' },
   ]
 
-  const ESTADO_COLOR: Record<string,string> = { comprado:'#22C55E', reforma:'#F26E1F', venta:'#a78bfa', reservado:'#F59E0B', con_oferta:'#F26E1F', en_arras:'#22C55E', patrimonial:'#3B82F6', vendido:'#22C55E', cerrado:'#22C55E', captado:'#555', analisis:'#60A5FA', ofertado:'#F59E0B' }
+  const ESTADO_COLOR: Record<string,string> = { comprado:'#22C55E', reforma:'#A6855A', venta:'#a78bfa', reservado:'#F59E0B', con_oferta:'#A6855A', en_arras:'#22C55E', patrimonial:'#3B82F6', vendido:'#22C55E', cerrado:'#22C55E', captado:'#555', analisis:'#60A5FA', ofertado:'#F59E0B' }
   const ESTADO_LABEL: Record<string,string> = { comprado:'Comprado', reforma:'En reforma', venta:'En venta', reservado:'Reservado', con_oferta:'Ofertado', en_arras:'En arras', patrimonial:'Patrimonial (alquiler)', vendido:'Vendido', cerrado:'Vendido', captado:'Captado', analisis:'Análisis', ofertado:'Ofertado' }
 
   return (
@@ -194,7 +194,7 @@ export default function HasuPage() {
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%' }}
           />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(20,17,12,0.82) 0%, rgba(166,133,90,0.55) 100%)' }} />
           <div style={{ position: 'absolute', inset: 0, padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
             <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}>HASU</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 4, fontWeight: 600 }}>Control de empresa · Track Record · Módulos</div>
@@ -237,11 +237,11 @@ export default function HasuPage() {
               <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>Objetivo 1.000.000 € · Dic 2027</div>
               <div style={{ fontSize: 11, color: '#BBB', marginBottom: 16 }}>Beneficio acumulado de operaciones con venta real</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-                <div style={{ fontSize: 34, fontWeight: 900, color: '#F26E1F', letterSpacing: '-0.03em', lineHeight: 1 }}>{fmt(totalBenefReal)}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: '#F26E1F' }}>{pct.toFixed(1)}%</div>
+                <div style={{ fontSize: 34, fontWeight: 900, color: '#A6855A', letterSpacing: '-0.03em', lineHeight: 1 }}>{fmt(totalBenefReal)}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#A6855A' }}>{pct.toFixed(1)}%</div>
               </div>
               <div style={{ height: 8, background: '#F2F1ED', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#F26E1F,#FBBF24)', borderRadius: 99, transition: 'width 0.8s ease' }} />
+                <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#A6855A,#FBBF24)', borderRadius: 99, transition: 'width 0.8s ease' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#CCC', fontWeight: 700, marginBottom: 20 }}>
                 <span>0€</span><span>→ 1M€</span>
@@ -253,7 +253,7 @@ export default function HasuPage() {
                 </div>
                 <div style={{ flex: 1, background: '#FAFAF8', borderRadius: 12, padding: '12px 14px', border: '1px solid #ECEAE4' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#BBB', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 4 }}>Necesario/mes</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: '#F26E1F' }}>{fmt(porMes)}</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#A6855A' }}>{fmt(porMes)}</div>
                 </div>
               </div>
             </div>
@@ -261,7 +261,7 @@ export default function HasuPage() {
             {/* ROI por operación */}
             <div style={{ ...card, padding: 24 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>ROI por operación</div>
-              <div style={{ fontSize: 11, color: '#BBB', marginBottom: 20 }}>Naranja = activo · Verde = vendido</div>
+              <div style={{ fontSize: 11, color: '#BBB', marginBottom: 20 }}>Bronce = activo · Verde = vendido</div>
               {trackRows.filter(r => getRoi(r) !== 0).length === 0 ? (
                 <div style={{ textAlign: 'center', color: '#CCC', fontSize: 12, padding: '20px 0' }}>Sin datos de ROI todavía</div>
               ) : (
@@ -272,8 +272,8 @@ export default function HasuPage() {
                     const isVendido = VENDIDOS.includes(r.estado)
                     return (
                       <div key={r.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, color: isVendido ? '#22C55E' : '#F26E1F' }}>{roi.toFixed(0)}%</div>
-                        <div style={{ width: '100%', height: h, borderRadius: '6px 6px 0 0', background: isVendido ? 'linear-gradient(180deg,#22C55E,#16A34A)' : 'linear-gradient(180deg,#F26E1F,#F59E0B)' }} />
+                        <div style={{ fontSize: 9, fontWeight: 800, color: isVendido ? '#22C55E' : '#A6855A' }}>{roi.toFixed(0)}%</div>
+                        <div style={{ width: '100%', height: h, borderRadius: '6px 6px 0 0', background: isVendido ? 'linear-gradient(180deg,#22C55E,#16A34A)' : 'linear-gradient(180deg,#A6855A,#F59E0B)' }} />
                         <div style={{ fontSize: 8, color: '#BBB', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, maxWidth: 50, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.nombre.split(' ').slice(-1)[0]}</div>
                       </div>
                     )
@@ -296,7 +296,7 @@ export default function HasuPage() {
             ['extranjero',       'Extranjero'],
           ] as [CatTab, string][]).map(([k, l]) => (
             <button key={k} onClick={() => setCatTab(k)}
-              style={{ flex: 1, padding: '10px 16px', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', background: catTab === k ? '#F26E1F' : 'transparent', color: catTab === k ? '#fff' : '#999' }}>
+              style={{ flex: 1, padding: '10px 16px', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', background: catTab === k ? '#A6855A' : 'transparent', color: catTab === k ? '#14110C' : '#999' }}>
               {l}
             </button>
           ))}
@@ -343,7 +343,7 @@ export default function HasuPage() {
               <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid #ECEAE4' }}>
                 {([['todos','Todos'],['en_curso','En curso'],['patrimonio','Patrimonio'],['finalizado','Finalizados']] as [FilterKey,string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setFilter(k)}
-                    style={{ padding: '6px 14px', fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', background: filter === k ? '#F26E1F' : 'transparent', color: filter === k ? '#fff' : '#999' }}>
+                    style={{ padding: '6px 14px', fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', background: filter === k ? '#A6855A' : 'transparent', color: filter === k ? '#14110C' : '#999' }}>
                     {l}
                   </button>
                 ))}
@@ -352,7 +352,7 @@ export default function HasuPage() {
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#BBB' }}>Ordenar:</span>
                 {([['roi','ROI'],['fecha','Fecha'],['duracion','Duración']] as [SortKey,string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setSortBy(k)}
-                    style={{ padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800, border: 'none', cursor: 'pointer', background: sortBy === k ? 'rgba(242,110,31,0.12)' : '#F2F1ED', color: sortBy === k ? '#F26E1F' : '#BBB' }}>
+                    style={{ padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800, border: 'none', cursor: 'pointer', background: sortBy === k ? 'rgba(166,133,90,0.12)' : '#F2F1ED', color: sortBy === k ? '#A6855A' : '#BBB' }}>
                     {l}
                   </button>
                 ))}
@@ -447,7 +447,7 @@ export default function HasuPage() {
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>
                           {r.porcentaje_hasu >= 100
                             ? <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: '#F2F1ED', color: '#888' }}>100%</span>
-                            : <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: 'rgba(242,110,31,0.1)', color: '#F26E1F' }}>JV {r.porcentaje_hasu}%</span>
+                            : <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: 'rgba(166,133,90,0.1)', color: '#A6855A' }}>JV {r.porcentaje_hasu}%</span>
                           }
                         </td>
                         <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' as const }}>

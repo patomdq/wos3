@@ -73,7 +73,7 @@ export default function DeudaPage() {
             alt="Deuda"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(20,17,12,0.82) 0%, rgba(166,133,90,0.55) 100%)' }} />
           <div className="absolute inset-0 flex items-end justify-between" style={{ padding: '20px 24px' }}>
             <div>
               <h1 className="font-black text-[28px] text-white leading-tight" style={{ letterSpacing: '-0.5px' }}>Deuda</h1>

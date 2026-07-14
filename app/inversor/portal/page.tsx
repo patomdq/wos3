@@ -16,7 +16,7 @@ const ESTADO_STEP: Record<string, number> = {
   comprado: 1, reforma: 2, venta: 3, cerrado: 4, vendido: 5,
 }
 
-const ORANGE = '#E8621A'
+const ORANGE = '#A6855A'
 const GREEN  = '#2D7A4F'
 const SAND   = '#C9A96E'
 const BG     = '#F5F3EF'
@@ -105,7 +105,7 @@ export default function PortalInversorPage() {
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: BG }}>
       <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white" style={{ background: ORANGE }}>W</div>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black" style={{ background: ORANGE, color: '#14110C' }}>W</div>
         <div className="text-sm font-medium animate-pulse" style={{ color: '#AAA' }}>Cargando tu inversión...</div>
       </div>
     </div>
@@ -166,8 +166,8 @@ export default function PortalInversorPage() {
       {/* ── Navbar ── */}
       <nav style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #E8E4DC', position: 'sticky', top: 0, zIndex: 20 }}>
         <div className="max-w-6xl mx-auto px-5 py-3 flex items-center gap-4">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-white flex-shrink-0"
-            style={{ background: ORANGE }}>W</div>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
+            style={{ background: ORANGE, color: '#14110C' }}>W</div>
           <div className="flex-1 min-w-0">
             <span className="font-black text-[13px]" style={{ color: '#111' }}>Wallest</span>
             <span className="mx-1.5 text-[#DDD]">·</span>
@@ -199,11 +199,11 @@ export default function PortalInversorPage() {
                 position: 'relative',
                 minHeight: 100,
                 padding: '20px 24px 20px',
-                background: `linear-gradient(135deg, ${ORANGE} 0%, #C9A96E 100%)`,
+                background: `linear-gradient(135deg, #14110C 0%, ${ORANGE} 100%)`,
               }}>
                 {/* Overlay when image is present */}
                 {proyecto?.imagen_portada && (
-                  <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)` }} />
+                  <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, rgba(20,17,12,0.82) 0%, rgba(166,133,90,0.55) 100%)` }} />
                 )}
                 <div style={{ position: 'relative', zIndex: 1 }} className="flex items-start justify-between">
                   <div>
@@ -339,8 +339,8 @@ export default function PortalInversorPage() {
                           return (
                             <div key={s.label} className="rounded-xl p-4 text-center"
                               style={{
-                                background: isMain ? `rgba(232,98,26,0.07)` : BG,
-                                border: `1.5px solid ${isMain ? 'rgba(232,98,26,0.25)' : '#E8E4DC'}`,
+                                background: isMain ? `rgba(166,133,90,0.07)` : BG,
+                                border: `1.5px solid ${isMain ? 'rgba(166,133,90,0.25)' : '#E8E4DC'}`,
                               }}>
                               <div className="text-[10px] font-black uppercase tracking-wide mb-2"
                                 style={{ color: isMain ? ORANGE : '#AAA' }}>{s.label}</div>
@@ -359,7 +359,7 @@ export default function PortalInversorPage() {
 
                 {/* Nota */}
                 <div className="rounded-xl p-4 flex gap-3 items-center"
-                  style={{ background: `rgba(232,98,26,0.05)`, border: `1px solid rgba(232,98,26,0.12)` }}>
+                  style={{ background: `rgba(166,133,90,0.05)`, border: `1px solid rgba(166,133,90,0.12)` }}>
                   <span className="text-lg">📧</span>
                   <div>
                     <div className="text-sm font-black" style={{ color: '#111' }}>Informe semanal automático</div>
@@ -494,7 +494,7 @@ export default function PortalInversorPage() {
                       <div className="flex items-center gap-3 py-1.5">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0"
                           style={{
-                            background: done ? 'rgba(45,122,79,0.12)' : active ? 'rgba(232,98,26,0.12)' : BG,
+                            background: done ? 'rgba(45,122,79,0.12)' : active ? 'rgba(166,133,90,0.12)' : BG,
                             border: `1.5px solid ${done ? GREEN : active ? ORANGE : '#E8E4DC'}`,
                             color: done ? GREEN : active ? ORANGE : '#CCC',
                           }}>
@@ -527,8 +527,8 @@ export default function PortalInversorPage() {
               <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${BG}` }}>
                 <div className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: '#CCC' }}>Gestionado por</div>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-white flex-shrink-0"
-                    style={{ background: `linear-gradient(135deg,${ORANGE},${SAND})` }}>H</div>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm flex-shrink-0"
+                    style={{ background: `linear-gradient(135deg,${ORANGE},${SAND})`, color: '#14110C' }}>H</div>
                   <div>
                     <div className="text-[12px] font-black" style={{ color: '#111' }}>Hasu Activos Inmobiliarios SL</div>
                     <a href="mailto:patricio@wallest.pro" className="text-[11px] font-medium" style={{ color: ORANGE }}>patricio@wallest.pro</a>

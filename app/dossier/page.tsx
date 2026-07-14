@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { generateDossierPDF, DossierInmueble } from '@/lib/generateDossierPDF'
 
-const ORANGE = '#F26E1F'
+const ORANGE = '#A6855A'
 const DARK   = '#1A1A1A'
 const GRAY   = '#666666'
 const BORDER = '#ECEAE4'
@@ -202,7 +202,7 @@ export default function DossierPage() {
           disabled={loading}
           style={{
             width: '100%', padding: '16px', borderRadius: 12, border: 'none',
-            background: loading ? '#ccc' : ORANGE, color: '#fff',
+            background: loading ? '#ccc' : ORANGE, color: loading ? '#fff' : '#14110C',
             fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
             letterSpacing: 0.5
           }}

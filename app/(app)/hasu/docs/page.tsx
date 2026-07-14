@@ -32,7 +32,7 @@ export default function DocsPage() {
       <div className="flex items-center gap-3 mb-4">
         <button onClick={() => router.back()} className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-lg" style={{ background: '#1E1E1E' }}>‹</button>
         <div className="flex-1 font-bold text-[17px] text-white">Docs de empresa</div>
-        <div className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F' }}>
+        <div className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(166,133,90,0.18)', color: '#A6855A' }}>
           {DOCS.filter(d => d.disponible).length}/{DOCS.length}
         </div>
       </div>
@@ -42,7 +42,7 @@ export default function DocsPage() {
         {['todos', 'Legal', 'JV', 'Seguro'].map(f => (
           <button key={f} onClick={() => setFiltro(f)}
             className="flex-shrink-0 px-3 py-2 rounded-full text-xs font-bold whitespace-nowrap"
-            style={{ background: filtro === f ? '#F26E1F' : '#141414', color: filtro === f ? '#fff' : '#888', border: '1px solid rgba(255,255,255,0.08)' }}>
+            style={{ background: filtro === f ? '#A6855A' : '#141414', color: filtro === f ? '#14110C' : '#888', border: '1px solid rgba(255,255,255,0.08)' }}>
             {f === 'todos' ? 'Todos' : f}
           </button>
         ))}
@@ -75,7 +75,7 @@ export default function DocsPage() {
 
       <div className="mt-4 p-4 rounded-xl text-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="text-xs font-medium" style={{ color: '#555' }}>Integración Google Drive próximamente</div>
-        <div className="text-xs font-black mt-1" style={{ color: '#F26E1F' }}>Conectar Drive →</div>
+        <div className="text-xs font-black mt-1" style={{ color: '#A6855A' }}>Conectar Drive →</div>
       </div>
     </div>
   )

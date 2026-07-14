@@ -41,7 +41,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
         inputBarBg:  '#fff',
         inputFieldBg: '#F2F1ED',
         inputFieldBorder: '1.5px solid #ECEAE4',
-        inputFocusBorder: '#F26E1F',
+        inputFocusBorder: '#A6855A',
         inputColor:  '#111',
         clipBtnBg:   '#F2F1ED',
         clipBtnBorder: '1.5px solid #ECEAE4',
@@ -63,7 +63,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
         inputBarBg:  '#141414',
         inputFieldBg: '#1E1E1E',
         inputFieldBorder: '1.5px solid rgba(255,255,255,0.08)',
-        inputFocusBorder: '#F26E1F',
+        inputFocusBorder: '#A6855A',
         inputColor:  '#fff',
         clipBtnBg:   '#1E1E1E',
         clipBtnBorder: '1.5px solid rgba(255,255,255,0.08)',
@@ -248,7 +248,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
 
       const html = resp
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:#F26E1F;text-decoration:underline;">$1</a>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:#A6855A;text-decoration:underline;">$1</a>')
         .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>')
       const botMsg: Msg = { role: 'bot', text: html, time: now(), toolData: toolResults?.length ? toolResults : undefined }
       setMsgs(m => [...m, botMsg])
@@ -328,7 +328,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
       {/* Topbar — hidden in panel mode (AppShell provides its own header) */}
       {!hideHeader && (
         <div className="flex items-center gap-3 px-4 h-[54px] flex-shrink-0" style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="w-[30px] h-[30px] rounded-lg flex items-center justify-center font-black text-sm text-white" style={{ background: '#F26E1F' }}>W</div>
+          <div className="font-display w-[30px] h-[30px] rounded-lg flex items-center justify-center text-sm" style={{ background: '#A6855A', color: '#14110C' }}>W</div>
           <div className="flex-1 font-bold text-[17px] text-white tracking-[-0.3px]">
             {proyectoNombre ? proyectoNombre : 'Bot'}
             {proyectoNombre && <span className="ml-2 text-xs font-medium opacity-40">Bot</span>}
@@ -345,7 +345,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
         {msgs.map((m, i) => (
           <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className="w-7 h-7 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center text-xs font-black"
-              style={{ background: m.role === 'bot' ? '#F26E1F' : t.userAvatarBg, color: m.role === 'bot' ? '#fff' : (lightTheme ? '#555' : '#fff'), border: 'none' }}>
+              style={{ background: m.role === 'bot' ? '#A6855A' : t.userAvatarBg, color: m.role === 'bot' ? '#14110C' : (lightTheme ? '#555' : '#fff'), border: 'none' }}>
               {m.role === 'bot' ? 'W' : 'P'}
             </div>
             <div className="max-w-[calc(100%-60px)]">
@@ -370,7 +370,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
                   )}
                   {m.text && !m.text.startsWith('📎') && (
                     <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5"
-                      style={{ background: '#F26E1F', color: '#fff', borderRadius: m.imagePreviews?.length ? '0 0 14px 14px' : '14px 4px 14px 14px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                      style={{ background: '#A6855A', color: '#14110C', borderRadius: m.imagePreviews?.length ? '0 0 14px 14px' : '14px 4px 14px 14px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {m.text}
                     </div>
                   )}
@@ -401,7 +401,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
                   {td.url && (
                     <a href={td.url} target="_blank" rel="noopener"
                       className="flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold w-full"
-                      style={{ background: '#F26E1F', color: '#fff', textDecoration: 'none' }}>
+                      style={{ background: '#A6855A', color: '#14110C', textDecoration: 'none' }}>
                       <span>{td.action === 'informe' ? '📊' : '📄'}</span> {td.action === 'informe' ? 'Ver informe completo' : 'Descargar PDF'}
                     </a>
                   )}
@@ -414,7 +414,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
         ))}
         {typing && (
           <div className="flex gap-2">
-            <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-black" style={{ background: '#F26E1F', color: '#fff' }}>W</div>
+            <div className="font-display w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs" style={{ background: '#A6855A', color: '#14110C' }}>W</div>
             <div className="px-3.5 py-3" style={{ background: t.botBubbleBg, border: t.botBubbleBorder, borderRadius: '4px 14px 14px 14px' }}>
               <div className="flex gap-1.5 items-center">
                 {[0,1,2].map(i => (
@@ -476,7 +476,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,.html,.htm,text/html,.txt,text/plain" multiple className="hidden" onChange={handleFileSelect} />
         <button onClick={() => fileRef.current?.click()}
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-base"
-          style={{ background: (attachedImages.length > 0 || attachedFiles.length > 0) ? 'rgba(242,110,31,0.18)' : t.clipBtnBg, border: `1.5px solid ${(attachedImages.length > 0 || attachedFiles.length > 0) ? '#F26E1F' : t.clipBtnBorder.replace('1.5px solid ', '')}`, color: (attachedImages.length > 0 || attachedFiles.length > 0) ? '#F26E1F' : '#888' }}>
+          style={{ background: (attachedImages.length > 0 || attachedFiles.length > 0) ? 'rgba(166,133,90,0.18)' : t.clipBtnBg, border: `1.5px solid ${(attachedImages.length > 0 || attachedFiles.length > 0) ? '#A6855A' : t.clipBtnBorder.replace('1.5px solid ', '')}`, color: (attachedImages.length > 0 || attachedFiles.length > 0) ? '#A6855A' : '#888' }}>
           📎
         </button>
         <textarea ref={taRef} value={input}
@@ -488,8 +488,8 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
           onFocus={e => e.target.style.borderColor = t.inputFocusBorder}
           onBlur={e => e.target.style.borderColor = lightTheme ? '#ECEAE4' : 'rgba(255,255,255,0.08)'} />
         <button onClick={() => send(input)}
-          className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg text-white flex-shrink-0"
-          style={{ background: (input.trim() || attachedImages.length > 0 || attachedFiles.length > 0) ? '#F26E1F' : t.noSendBg }}>↑</button>
+          className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0"
+          style={{ background: (input.trim() || attachedImages.length > 0 || attachedFiles.length > 0) ? '#A6855A' : t.noSendBg, color: (input.trim() || attachedImages.length > 0 || attachedFiles.length > 0) ? '#14110C' : (lightTheme ? '#888' : '#fff') }}>↑</button>
       </div>
 
       {/* Edit sheet */}
@@ -506,7 +506,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
               <input type="text" value={editState.concepto} onChange={e => setEditState(s => s ? { ...s, concepto: e.target.value } : s)}
                 className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium"
                 style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
-                onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                onFocus={e => e.target.style.borderColor = '#A6855A'}
                 onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
             </div>
             {editState.table !== 'tareas' && (
@@ -517,13 +517,13 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
                 <input type="number" value={editState.monto} onChange={e => setEditState(s => s ? { ...s, monto: e.target.value } : s)}
                   className="w-full rounded-xl px-3.5 py-3 text-sm text-white outline-none font-medium font-mono"
                   style={{ background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)' }}
-                  onFocus={e => e.target.style.borderColor = '#F26E1F'}
+                  onFocus={e => e.target.style.borderColor = '#A6855A'}
                   onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.10)'} />
               </div>
             )}
             <div className="flex gap-2">
               <button onClick={() => setEditState(null)} className="flex-1 py-3.5 rounded-xl text-sm font-black" style={{ background: '#282828', color: '#888' }}>Cancelar</button>
-              <button onClick={saveEdit} disabled={editSaving} className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-50" style={{ background: '#F26E1F' }}>
+              <button onClick={saveEdit} disabled={editSaving} className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#A6855A', color: '#14110C' }}>
                 {editSaving ? 'Guardando...' : 'Guardar'}
               </button>
             </div>

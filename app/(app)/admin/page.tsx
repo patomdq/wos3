@@ -8,9 +8,9 @@ type UserRole = { id: string; user_id: string; role: string; email?: string; nom
 type Proyecto = { id: string; nombre: string }
 
 const ROLE_LABEL: Record<string,string> = { admin: 'Admin', pm: 'PM', inversor: 'Inversor', viewer: 'Viewer' }
-const ROLE_COLOR: Record<string,string> = { admin: '#F26E1F', pm: '#60A5FA', inversor: '#22C55E', viewer: '#888' }
-const ROLE_BG:    Record<string,string> = { admin: 'rgba(242,110,31,0.18)', pm: 'rgba(96,165,250,0.15)', inversor: 'rgba(34,197,94,0.15)', viewer: '#282828' }
-const AVATAR_COLORS = ['#E8621A','#7C3AED','#2563EB','#16A34A','#DC2626','#0891B2']
+const ROLE_COLOR: Record<string,string> = { admin: '#A6855A', pm: '#60A5FA', inversor: '#22C55E', viewer: '#888' }
+const ROLE_BG:    Record<string,string> = { admin: 'rgba(166,133,90,0.18)', pm: 'rgba(96,165,250,0.15)', inversor: 'rgba(34,197,94,0.15)', viewer: '#282828' }
+const AVATAR_COLORS = ['#A6855A','#7C3AED','#2563EB','#16A34A','#DC2626','#0891B2']
 
 const ALL_PAGES = [
   { id: 'bot',       label: 'Bot' },
@@ -162,8 +162,8 @@ export default function AdminPage() {
             <div className="text-xs mt-0.5" style={{ color: '#AAA' }}>{displayUsers.length} miembro{displayUsers.length !== 1 ? 's' : ''}</div>
           </div>
           <button onClick={() => setInviteOpen(true)}
-            className="text-sm font-black px-4 py-2 rounded-xl text-white"
-            style={{ background: '#F26E1F' }}>
+            className="text-sm font-black px-4 py-2 rounded-xl"
+            style={{ background: '#A6855A', color: '#14110C' }}>
             + Invitar
           </button>
         </div>
@@ -173,8 +173,8 @@ export default function AdminPage() {
         ) : displayUsers.map((u, i) => (
           <div key={u.id} className="px-5 py-4 flex items-center gap-3"
             style={{ borderTop: i > 0 ? '1px solid #F2F1ED' : 'none' }}>
-            <div className="w-[40px] h-[40px] rounded-full flex items-center justify-center text-[13px] font-black text-white flex-shrink-0"
-              style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}>
+            <div className="w-[40px] h-[40px] rounded-full flex items-center justify-center text-[13px] font-black flex-shrink-0"
+              style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length], color: AVATAR_COLORS[i % AVATAR_COLORS.length] === '#A6855A' ? '#14110C' : '#fff' }}>
               {initials(u.nombre || u.email || '?')}
             </div>
             <div className="flex-1 min-w-0">
@@ -232,10 +232,10 @@ export default function AdminPage() {
               </div>
 
               {isRestricted && (
-                <div className="mb-5 rounded-2xl p-4" style={{ background: '#FFF7F0', border: '1.5px solid rgba(242,110,31,0.2)' }}>
+                <div className="mb-5 rounded-2xl p-4" style={{ background: '#FFF7F0', border: '1.5px solid rgba(166,133,90,0.2)' }}>
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#F26E1F' }} />
-                    <div className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#F26E1F' }}>Control de acceso</div>
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#A6855A' }} />
+                    <div className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#A6855A' }}>Control de acceso</div>
                   </div>
                   <div className="mb-4">
                     <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: '#AAA' }}>Páginas visibles</div>
@@ -246,9 +246,9 @@ export default function AdminPage() {
                           <button key={p.id} onClick={() => togglePage(p.id)}
                             className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold"
                             style={{
-                              background: on ? 'rgba(242,110,31,0.10)' : '#F2F1ED',
-                              border: `1.5px solid ${on ? '#F26E1F' : '#ECEAE4'}`,
-                              color: on ? '#F26E1F' : '#888',
+                              background: on ? 'rgba(166,133,90,0.10)' : '#F2F1ED',
+                              border: `1.5px solid ${on ? '#A6855A' : '#ECEAE4'}`,
+                              color: on ? '#A6855A' : '#888',
                             }}>
                             <span>{on ? '✓' : '○'}</span>
                             <span>{p.label}</span>
@@ -281,9 +281,9 @@ export default function AdminPage() {
                               <button key={p.id} onClick={() => toggleProject(p.id)}
                                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-left"
                                 style={{
-                                  background: sel ? 'rgba(242,110,31,0.08)' : '#F2F1ED',
-                                  border: `1px solid ${sel ? 'rgba(242,110,31,0.35)' : '#ECEAE4'}`,
-                                  color: sel ? '#F26E1F' : '#888',
+                                  background: sel ? 'rgba(166,133,90,0.08)' : '#F2F1ED',
+                                  border: `1px solid ${sel ? 'rgba(166,133,90,0.35)' : '#ECEAE4'}`,
+                                  color: sel ? '#A6855A' : '#888',
                                 }}>
                                 <span>{sel ? '✓' : '○'}</span>
                                 <span>{p.nombre}</span>
@@ -304,8 +304,8 @@ export default function AdminPage() {
                   className="flex-1 py-3.5 rounded-xl text-sm font-black"
                   style={{ background: '#F2F1ED', color: '#888' }}>Cancelar</button>
                 <button onClick={saveEdit} disabled={savingEdit}
-                  className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
-                  style={{ background: '#F26E1F' }}>
+                  className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-40"
+                  style={{ background: '#A6855A', color: '#14110C' }}>
                   {savingEdit ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>
@@ -330,7 +330,7 @@ export default function AdminPage() {
                   placeholder="usuario@ejemplo.com"
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
                   style={INP}
-                  onFocus={e => e.target.style.borderColor='#F26E1F'}
+                  onFocus={e => e.target.style.borderColor='#A6855A'}
                   onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div>
@@ -339,7 +339,7 @@ export default function AdminPage() {
                   placeholder="Nombre completo"
                   className="w-full rounded-xl px-3.5 py-3 text-sm outline-none font-medium"
                   style={INP}
-                  onFocus={e => e.target.style.borderColor='#F26E1F'}
+                  onFocus={e => e.target.style.borderColor='#A6855A'}
                   onBlur={e => e.target.style.borderColor='#ECEAE4'} />
               </div>
               <div>
@@ -367,8 +367,8 @@ export default function AdminPage() {
                 className="flex-1 py-3.5 rounded-xl text-sm font-black"
                 style={{ background: '#F2F1ED', color: '#888' }}>Cancelar</button>
               <button onClick={handleInvite} disabled={inviting || !inviteEmail}
-                className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
-                style={{ background: '#F26E1F' }}>
+                className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-40"
+                style={{ background: '#A6855A', color: '#14110C' }}>
                 {inviting ? 'Enviando...' : 'Invitar'}
               </button>
             </div>

@@ -144,15 +144,15 @@ export default function DossierPrintPage() {
           flex-direction: column;
           justify-content: space-between;
           padding: 14mm 16mm;
-          border-left: 5px solid #F26E1F;
+          border-left: 5px solid #A6855A;
         }
-        .logo { font-size: 10pt; font-weight: 800; color: #F26E1F; letter-spacing: 2px; }
+        .logo { font-size: 10pt; font-weight: 800; color: #A6855A; letter-spacing: 2px; }
         .logo-sub { font-size: 7pt; color: #666; margin-top: 3px; letter-spacing: 1px; }
         .portada-title { font-size: 26pt; font-weight: 800; color: #fff; line-height: 1.15; margin-top: 8mm; }
         .portada-sub { font-size: 11pt; color: #C9A96E; margin-top: 4mm; }
         .portada-kpis { display: flex; flex-direction: column; gap: 6mm; }
         .portada-kpi-label { font-size: 6.5pt; font-weight: 700; color: #888; letter-spacing: 1.2px; text-transform: uppercase; }
-        .portada-kpi-value { font-size: 18pt; font-weight: 800; color: #F26E1F; margin-top: 1mm; }
+        .portada-kpi-value { font-size: 18pt; font-weight: 800; color: #A6855A; margin-top: 1mm; }
         .portada-kpi-divider { height: 1px; background: #333; margin-top: 5mm; }
         .portada-fecha { font-size: 8pt; color: #888; }
         .portada-right-kpis { display: flex; flex-direction: column; gap: 5mm; }
@@ -176,12 +176,12 @@ export default function DossierPrintPage() {
           position: absolute;
           top: 0; left: 0; right: 0;
           height: 5mm;
-          background: #F26E1F;
+          background: #A6855A;
         }
         .inmueble-num {
           font-size: 52pt;
           font-weight: 900;
-          color: #F26E1F;
+          color: #A6855A;
           line-height: 1;
           opacity: 0.9;
         }
@@ -204,13 +204,13 @@ export default function DossierPrintPage() {
           padding-bottom: 4mm;
           margin-bottom: 5mm;
         }
-        .inmueble-logo { font-size: 7.5pt; font-weight: 800; color: #F26E1F; letter-spacing: 1.5px; }
+        .inmueble-logo { font-size: 7.5pt; font-weight: 800; color: #A6855A; letter-spacing: 1.5px; }
         .inmueble-logo-sep { color: #C9A96E; margin: 0 3px; }
         .inmueble-logo-sub { font-size: 6.5pt; color: #999; }
         .inmueble-ubicacion-badge {
           font-size: 6.5pt;
           background: #FEF3EC;
-          color: #F26E1F;
+          color: #A6855A;
           padding: 2px 7px;
           border-radius: 20px;
           font-weight: 700;
@@ -218,9 +218,9 @@ export default function DossierPrintPage() {
         }
 
         .inmueble-nombre { font-size: 18pt; font-weight: 800; color: #111; line-height: 1.15; }
-        .inmueble-edificio { font-size: 9.5pt; color: #F26E1F; font-weight: 600; margin-top: 1mm; }
+        .inmueble-edificio { font-size: 9.5pt; color: #A6855A; font-weight: 600; margin-top: 1mm; }
         .inmueble-tipo { font-size: 7.5pt; color: #888; margin-top: 1.5mm; }
-        .inmueble-divider { height: 2px; width: 25mm; background: #F26E1F; margin: 4mm 0; }
+        .inmueble-divider { height: 2px; width: 25mm; background: #A6855A; margin: 4mm 0; }
         .inmueble-descripcion { font-size: 8.5pt; color: #444; line-height: 1.55; flex: 1; }
 
         .inmueble-tags { display: flex; gap: 3mm; flex-wrap: wrap; margin-top: 3mm; }
@@ -258,13 +258,13 @@ export default function DossierPrintPage() {
           padding: 3mm 4mm;
         }
         .kpi-box.highlight {
-          background: #F26E1F;
-          border-color: #F26E1F;
+          background: #A6855A;
+          border-color: #A6855A;
         }
         .kpi-label { font-size: 5.5pt; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.8px; }
-        .kpi-box.highlight .kpi-label { color: rgba(255,255,255,0.75); }
+        .kpi-box.highlight .kpi-label { color: rgba(20,17,12,0.7); }
         .kpi-value { font-size: 13pt; font-weight: 800; color: #111; margin-top: 1.5mm; }
-        .kpi-box.highlight .kpi-value { color: #fff; }
+        .kpi-box.highlight .kpi-value { color: #14110C; }
         .kpi-value.green { color: #16A34A; }
 
         .slide-footer {
@@ -289,14 +289,14 @@ export default function DossierPrintPage() {
           position: absolute;
           left: 0; right: 0;
           height: 6mm;
-          background: #F26E1F;
+          background: #A6855A;
         }
         .cierre-stripe.top { top: 30%; }
         .cierre-stripe.bottom { bottom: 30%; }
         .cierre-gracias { font-size: 44pt; font-weight: 900; color: #fff; margin-bottom: 6mm; }
         .cierre-sub { font-size: 9.5pt; color: #C9A96E; margin-bottom: 12mm; max-width: 120mm; }
         .cierre-empresa { font-size: 10pt; font-weight: 700; color: #fff; }
-        .cierre-email { font-size: 9pt; color: #F26E1F; margin-top: 2mm; }
+        .cierre-email { font-size: 9pt; color: #A6855A; margin-top: 2mm; }
         .cierre-web { font-size: 8pt; color: #666; margin-top: 1.5mm; }
         .cierre-footer { position: absolute; bottom: 5mm; font-size: 6pt; color: #444; }
 
@@ -310,7 +310,7 @@ export default function DossierPrintPage() {
             padding: 10px 20px; border-radius: 10px; font-size: 13px;
             font-weight: 700; cursor: pointer; border: none;
           }
-          .btn-primary { background: #F26E1F; color: #fff; }
+          .btn-primary { background: #A6855A; color: #14110C; }
           .btn-secondary { background: #fff; color: #111; border: 1px solid #ECEAE4; }
         }
         @media print {
@@ -361,7 +361,7 @@ export default function DossierPrintPage() {
           <div className="portada-right-kpis">
             <div>
               <div className="portada-right-kpi-label">Rentabilidad bruta media</div>
-              <div className="portada-right-kpi-value" style={{ color: '#F26E1F' }}>{rentBrutaTotal}%</div>
+              <div className="portada-right-kpi-value" style={{ color: '#A6855A' }}>{rentBrutaTotal}%</div>
               <div className="portada-right-kpi-divider" />
             </div>
             {[

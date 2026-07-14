@@ -45,7 +45,7 @@ export default function FiscalPage() {
         {['todos', 'pendiente', 'presentado', 'IVA', 'IRPF', 'IS'].map(f => (
           <button key={f} onClick={() => setFiltro(f)}
             className="flex-shrink-0 px-3 py-2 rounded-full text-xs font-bold whitespace-nowrap"
-            style={{ background: filtro === f ? '#F26E1F' : '#141414', color: filtro === f ? '#fff' : '#888', border: '1px solid rgba(255,255,255,0.08)' }}>
+            style={{ background: filtro === f ? '#A6855A' : '#141414', color: filtro === f ? '#14110C' : '#888', border: '1px solid rgba(255,255,255,0.08)' }}>
             {f === 'todos' ? 'Todos' : f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
         ))}
@@ -74,7 +74,7 @@ export default function FiscalPage() {
       <div className="mt-4 p-4 rounded-xl text-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="text-sm font-bold text-white mb-1">Gestoría Hasu</div>
         <div className="text-xs font-medium mb-3" style={{ color: '#888' }}>Documentación conectada próximamente</div>
-        <a href="mailto:gestoria@hasuactivos.es" className="text-sm font-black" style={{ color: '#F26E1F' }}>Contactar gestoría →</a>
+        <a href="mailto:gestoria@hasuactivos.es" className="text-sm font-black" style={{ color: '#A6855A' }}>Contactar gestoría →</a>
       </div>
     </div>
   )

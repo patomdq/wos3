@@ -206,7 +206,7 @@ export default function CalendarioPage() {
       </div>
 
       {/* Toast */}
-      {toast && <div className="fixed top-4 left-1/2 z-[60] -translate-x-1/2 px-4 py-2.5 rounded-xl text-sm font-black text-white shadow-lg" style={{background:'#F26E1F'}}>{toast}</div>}
+      {toast && <div className="fixed top-4 left-1/2 z-[60] -translate-x-1/2 px-4 py-2.5 rounded-xl text-sm font-black shadow-lg" style={{background:'#A6855A', color:'#14110C'}}>{toast}</div>}
 
       {/* Google connection */}
       <div className="mx-4 mb-4 rounded-2xl p-3.5 flex items-center gap-3" style={CARD}>
@@ -228,7 +228,7 @@ export default function CalendarioPage() {
             </button>
           </div>
         ) : (
-          <button onClick={connectGoogle} className="text-sm font-black px-4 py-2 rounded-xl text-white" style={{background:'#F26E1F'}}>
+          <button onClick={connectGoogle} className="text-sm font-black px-4 py-2 rounded-xl" style={{background:'#A6855A', color:'#14110C'}}>
             Conectar
           </button>
         )}
@@ -239,7 +239,7 @@ export default function CalendarioPage() {
         {(['dia','semana','mes'] as ViewMode[]).map(v => (
           <button key={v} onClick={() => setView(v)}
             className="flex-1 py-2.5 text-xs font-black uppercase tracking-wide"
-            style={{background: view===v ? '#F26E1F' : 'transparent', color: view===v ? '#fff' : '#555'}}>
+            style={{background: view===v ? '#A6855A' : 'transparent', color: view===v ? '#14110C' : '#555'}}>
             {v === 'dia' ? 'Día' : v === 'semana' ? 'Semana' : 'Mes'}
           </button>
         ))}
@@ -272,14 +272,14 @@ export default function CalendarioPage() {
                     return (
                       <div key={k} onClick={() => setSelectedDay(k)}
                         className="h-11 flex flex-col items-center justify-start pt-1 cursor-pointer"
-                        style={{borderBottom:'1px solid rgba(255,255,255,0.04)', background: isSel ? 'rgba(242,110,31,0.12)' : 'transparent'}}>
+                        style={{borderBottom:'1px solid rgba(255,255,255,0.04)', background: isSel ? 'rgba(166,133,90,0.12)' : 'transparent'}}>
                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold"
-                          style={{background: isToday ? '#F26E1F' : 'transparent', color: isToday ? '#fff' : isSel ? '#F26E1F' : 'rgba(255,255,255,0.8)', fontWeight: isToday||isSel ? 900 : 600}}>
+                          style={{background: isToday ? '#A6855A' : 'transparent', color: isToday ? '#14110C' : isSel ? '#A6855A' : 'rgba(255,255,255,0.8)', fontWeight: isToday||isSel ? 900 : 600}}>
                           {dn}
                         </div>
                         {evs.length > 0 && (
                           <div className="flex gap-0.5 mt-0.5">
-                            {evs.slice(0,3).map((_,di) => <div key={di} className="w-1 h-1 rounded-full" style={{background:'#F26E1F'}} />)}
+                            {evs.slice(0,3).map((_,di) => <div key={di} className="w-1 h-1 rounded-full" style={{background:'#A6855A'}} />)}
                           </div>
                         )}
                       </div>
@@ -308,15 +308,15 @@ export default function CalendarioPage() {
                     return (
                       <div key={wd.key} onClick={() => setSelectedDay(wd.key)}
                         className="flex flex-col items-center py-3 cursor-pointer gap-1"
-                        style={{background: isSel ? 'rgba(242,110,31,0.12)' : 'transparent', borderRight:'1px solid rgba(255,255,255,0.04)'}}>
+                        style={{background: isSel ? 'rgba(166,133,90,0.12)' : 'transparent', borderRight:'1px solid rgba(255,255,255,0.04)'}}>
                         <div className="text-[10px] font-bold uppercase tracking-wide" style={{color:'rgba(255,255,255,0.4)'}}>{wd.dayName}</div>
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black"
-                          style={{background: isToday ? '#F26E1F' : 'transparent', color: isToday ? '#fff' : isSel ? '#F26E1F' : 'rgba(255,255,255,0.85)'}}>
+                          style={{background: isToday ? '#A6855A' : 'transparent', color: isToday ? '#14110C' : isSel ? '#A6855A' : 'rgba(255,255,255,0.85)'}}>
                           {wd.dayNum}
                         </div>
                         {evs.length > 0 && (
                           <div className="flex gap-0.5">
-                            {evs.slice(0,3).map((_,di) => <div key={di} className="w-1 h-1 rounded-full" style={{background:'#F26E1F'}} />)}
+                            {evs.slice(0,3).map((_,di) => <div key={di} className="w-1 h-1 rounded-full" style={{background:'#A6855A'}} />)}
                           </div>
                         )}
                       </div>
@@ -334,7 +334,7 @@ export default function CalendarioPage() {
                 <button onClick={prevDia} className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-white" style={{background:'#1E1E1E'}}>‹</button>
                 <div className="text-center">
                   <div className="font-black text-[17px] text-white">{selLabel}</div>
-                  {selectedDay===todayStr && <div className="text-[11px] font-bold" style={{color:'#F26E1F'}}>Hoy</div>}
+                  {selectedDay===todayStr && <div className="text-[11px] font-bold" style={{color:'#A6855A'}}>Hoy</div>}
                 </div>
                 <button onClick={nextDia} className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-white" style={{background:'#1E1E1E'}}>›</button>
               </div>
@@ -351,7 +351,7 @@ export default function CalendarioPage() {
                 </div>
               </div>
               <button onClick={() => { setForm(f=>({...f, fecha:selectedDay})); setShowForm(true) }}
-                className="text-sm font-black px-3 py-1.5 rounded-xl text-white" style={{background:'#F26E1F'}}>
+                className="text-sm font-black px-3 py-1.5 rounded-xl" style={{background:'#A6855A', color:'#14110C'}}>
                 + Evento
               </button>
             </div>
@@ -370,7 +370,7 @@ export default function CalendarioPage() {
                   .map(ev => (
                   <div key={ev.id} className="rounded-2xl p-4 flex gap-3 items-start" style={CARD}>
                     <div className="flex-shrink-0 mt-0.5">
-                      <div className="w-1.5 h-full min-h-[2.5rem] rounded-full" style={{background:'#F26E1F'}} />
+                      <div className="w-1.5 h-full min-h-[2.5rem] rounded-full" style={{background:'#A6855A'}} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-black text-white leading-snug">{ev.summary || 'Sin título'}</div>
@@ -400,7 +400,7 @@ export default function CalendarioPage() {
           {(['personal','trabajo'] as TaskCat[]).map(cat => (
             <button key={cat} onClick={() => setTaskCat(cat)}
               className="flex-1 py-2.5 text-xs font-black uppercase tracking-wide"
-              style={{background: taskCat===cat ? '#F26E1F' : 'transparent', color: taskCat===cat ? '#fff' : '#555'}}>
+              style={{background: taskCat===cat ? '#A6855A' : 'transparent', color: taskCat===cat ? '#14110C' : '#555'}}>
               {cat === 'personal' ? 'Personal' : 'Trabajo'}
             </button>
           ))}
@@ -439,8 +439,8 @@ export default function CalendarioPage() {
             placeholder="+ Nueva tarea..."
             className="flex-1 rounded-xl px-4 py-3 text-sm outline-none font-medium" style={INPUT} />
           <button onClick={addTask} disabled={!newTask.trim()}
-            className="px-4 py-3 rounded-xl text-sm font-black text-white disabled:opacity-30"
-            style={{background:'#F26E1F'}}>
+            className="px-4 py-3 rounded-xl text-sm font-black disabled:opacity-30"
+            style={{background:'#A6855A', color:'#14110C'}}>
             +
           </button>
         </div>
@@ -494,8 +494,8 @@ export default function CalendarioPage() {
               )}
             </div>
             <button onClick={saveEvent} disabled={saving||!form.titulo.trim()}
-              className="w-full py-4 text-white rounded-xl text-base font-black mt-5 disabled:opacity-50"
-              style={{background:'#F26E1F'}}>
+              className="w-full py-4 rounded-xl text-base font-black mt-5 disabled:opacity-50"
+              style={{background:'#A6855A', color:'#14110C'}}>
               {saving ? 'Creando...' : 'Crear evento'}
             </button>
           </div>

@@ -121,7 +121,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
               {['archivo', 'mapeo', 'resultado'].map((s, i) => (
                 <div key={s} className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
-                    style={{ background: step === s ? '#F26E1F' : '#F0EEE8', color: step === s ? '#fff' : '#999' }}>{i + 1}</div>
+                    style={{ background: step === s ? '#A6855A' : '#F0EEE8', color: step === s ? '#14110C' : '#999' }}>{i + 1}</div>
                   {i < 2 && <div className="w-6 h-[2px]" style={{ background: '#F0EEE8' }} />}
                 </div>
               ))}
@@ -221,7 +221,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
           <div className="flex-shrink-0 px-5 py-3 flex gap-2" style={{ borderTop: '1px solid #F0EEE8' }}>
             {step === 'archivo' && (
               <button onClick={parsearYProponerMapeo} disabled={cargando}
-                className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-50" style={{ background: '#F26E1F' }}>
+                className="flex-1 py-3 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#A6855A', color: '#14110C' }}>
                 {cargando ? 'Analizando columnas...' : 'Continuar'}
               </button>
             )}
@@ -229,13 +229,13 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
               <>
                 <button onClick={() => setStep('archivo')} className="py-3 px-5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666' }}>Atrás</button>
                 <button onClick={confirmarImport} disabled={importando}
-                  className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-50" style={{ background: '#F26E1F' }}>
+                  className="flex-1 py-3 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#A6855A', color: '#14110C' }}>
                   {importando ? 'Importando...' : 'Confirmar e importar'}
                 </button>
               </>
             )}
             {step === 'resultado' && (
-              <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-black text-white" style={{ background: '#F26E1F' }}>Cerrar</button>
+              <button onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-black" style={{ background: '#A6855A', color: '#14110C' }}>Cerrar</button>
             )}
           </div>
         </div>

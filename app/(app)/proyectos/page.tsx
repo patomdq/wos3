@@ -21,8 +21,8 @@ const ESTADO_LABEL: Record<string,string> = {
 }
 const ESTADO_COLOR: Record<string,string> = {
   captado:'#888', analisis:'#60A5FA', ofertado:'#F59E0B',
-  comprado:'#22C55E', reforma:'#F26E1F',
-  venta:'#a78bfa', reservado:'#F59E0B', con_oferta:'#F26E1F', en_arras:'#22C55E',
+  comprado:'#22C55E', reforma:'#A6855A',
+  venta:'#a78bfa', reservado:'#F59E0B', con_oferta:'#A6855A', en_arras:'#22C55E',
   patrimonial:'#3B82F6',
   vendido:'#22C55E', cerrado:'#22C55E',
 }
@@ -226,7 +226,7 @@ export default function ProyectosPage() {
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 35%' }}
           />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(20,17,12,0.82) 0%, rgba(166,133,90,0.55) 100%)' }} />
           <div style={{ position: 'absolute', inset: 0, padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
             <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}>
               Proyectos
@@ -249,7 +249,7 @@ export default function ProyectosPage() {
         {/* ── KPI ROW ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
           {[
-            { icon: '🏠', val: String(activos.length), label: 'ACTIVOS', sub: pipeline.length > 0 ? `+ ${pipeline.length} en pipeline` : 'En cartera', color: '#F26E1F' },
+            { icon: '🏠', val: String(activos.length), label: 'ACTIVOS', sub: pipeline.length > 0 ? `+ ${pipeline.length} en pipeline` : 'En cartera', color: '#A6855A' },
             { icon: '💰', val: capitalTotal > 0 ? fmt(capitalTotal) : '—', label: 'CAPITAL HASU', sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`, color: '#60A5FA' },
             { icon: '📈', val: benefTotal !== 0 ? fmt(benefTotal) : '—', label: 'BENEFICIO EST.', sub: 'Escenario realista', color: benefTotal >= 0 ? '#22C55E' : '#EF4444' },
             { icon: '⚡', val: roiMedio !== null ? `${roiMedio >= 0 ? '+' : ''}${roiMedio.toFixed(1)}%` : '—', label: 'ROI MEDIO', sub: 'Sobre inversión', color: '#a78bfa' },
@@ -269,7 +269,7 @@ export default function ProyectosPage() {
           {/* ROI por operación */}
           <div style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: 24 }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: '#111', marginBottom: 4 }}>ROI por operación</div>
-            <div style={{ fontSize: 11, color: '#BBB', marginBottom: 16 }}>Naranja = activo · Verde = vendido</div>
+            <div style={{ fontSize: 11, color: '#BBB', marginBottom: 16 }}>Bronce = activo · Verde = vendido</div>
             {[...activos, ...finalizados].filter(p => getRoi(p) !== 0).length === 0 ? (
               <div style={{ textAlign: 'center', color: '#CCC', fontSize: 12, padding: '20px 0' }}>Sin datos de ROI todavía</div>
             ) : (
@@ -281,8 +281,8 @@ export default function ProyectosPage() {
                   const isVendido = ESTADOS_VENDIDOS.includes(p.estado)
                   return (
                     <div key={p.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <div style={{ fontSize: 9, fontWeight: 800, color: isVendido ? '#22C55E' : '#F26E1F' }}>{roi.toFixed(0)}%</div>
-                      <div style={{ width: '100%', height: h, borderRadius: '6px 6px 0 0', background: isVendido ? 'linear-gradient(180deg,#22C55E,#16A34A)' : 'linear-gradient(180deg,#F26E1F,#F59E0B)' }} />
+                      <div style={{ fontSize: 9, fontWeight: 800, color: isVendido ? '#22C55E' : '#A6855A' }}>{roi.toFixed(0)}%</div>
+                      <div style={{ width: '100%', height: h, borderRadius: '6px 6px 0 0', background: isVendido ? 'linear-gradient(180deg,#22C55E,#16A34A)' : 'linear-gradient(180deg,#A6855A,#F59E0B)' }} />
                       <div style={{ fontSize: 8, color: '#BBB', fontWeight: 700, textAlign: 'center', lineHeight: 1.2, maxWidth: 40, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre.split(' ')[0]}</div>
                     </div>
                   )
@@ -301,7 +301,7 @@ export default function ProyectosPage() {
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>PROYECTOS ACTIVOS</div>
-              <button onClick={() => openBotPanel()} style={{ fontSize: 12, fontWeight: 800, color: '#F26E1F', background: 'none', border: 'none', cursor: 'pointer' }}>+ Nuevo vía bot</button>
+              <button onClick={() => openBotPanel()} style={{ fontSize: 12, fontWeight: 800, color: '#A6855A', background: 'none', border: 'none', cursor: 'pointer' }}>+ Nuevo vía bot</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
               {activos.map(p => {
@@ -314,7 +314,7 @@ export default function ProyectosPage() {
                 const pctHasu   = (p.porcentaje_hasu || 100) / 100
                 const escenarios = [
                   { label: 'Conservador', stored: p.precio_venta_conservador, mult: 0.90, color: '#888', key: 'c' as const },
-                  { label: 'Realista',    stored: p.precio_venta_realista,    mult: 1.00, color: '#F26E1F', key: 'r' as const },
+                  { label: 'Realista',    stored: p.precio_venta_realista,    mult: 1.00, color: '#A6855A', key: 'r' as const },
                   { label: 'Optimista',   stored: p.precio_venta_optimista,   mult: 1.10, color: '#22C55E', key: 'o' as const },
                 ].map(s => {
                   const venta     = s.stored ?? (ventaBase * s.mult)
@@ -331,7 +331,7 @@ export default function ProyectosPage() {
                 const semCfg  = SEM_CFG[sem]
                 const ep      = editPrecios[p.id]
                 const pct     = editAvance[p.id] !== undefined ? parseInt(editAvance[p.id]||'0') : p.avance_reforma || 0
-                const pctColor = pct >= 75 ? '#22C55E' : pct >= 40 ? '#F26E1F' : '#60A5FA'
+                const pctColor = pct >= 75 ? '#22C55E' : pct >= 40 ? '#A6855A' : '#60A5FA'
 
                 return (
                   <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -368,7 +368,7 @@ export default function ProyectosPage() {
 
                       {/* Badges */}
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 14, alignItems: 'center' }}>
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, background: 'rgba(242,110,31,0.12)', color: '#F26E1F' }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 100, background: 'rgba(166,133,90,0.12)', color: '#A6855A' }}>
                           {p.porcentaje_hasu < 100 ? `JV ${p.porcentaje_hasu}%` : '100% HASU'}
                         </span>
                         <select
@@ -401,7 +401,7 @@ export default function ProyectosPage() {
                               style={{ width: 36, textAlign: 'center', fontSize: 11, fontWeight: 900, color: '#111', border: '1px solid #E8E6E0', borderRadius: 6, outline: 'none', background: '#FAFAF8' }}
                             />
                             <button onClick={() => setEditAvance(e => ({ ...e, [p.id]: String(Math.min(100, pct + 5)) }))}
-                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #E8E6E0', background: '#FAFAF8', color: '#F26E1F', fontSize: 11, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                              style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid #E8E6E0', background: '#FAFAF8', color: '#A6855A', fontSize: 11, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                             <span style={{ fontSize: 10, fontWeight: 900, color: pctColor }}>%</span>
                           </div>
                         </div>
@@ -420,13 +420,13 @@ export default function ProyectosPage() {
                           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#999' }}>Escenarios de venta</div>
                           {!ep ? (
                             <button onClick={() => initEditPrecios(p)}
-                              style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: 'rgba(242,110,31,0.1)', color: '#F26E1F', border: 'none', cursor: 'pointer' }}>Editar ✎</button>
+                              style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: 'rgba(166,133,90,0.1)', color: '#A6855A', border: 'none', cursor: 'pointer' }}>Editar ✎</button>
                           ) : (
                             <div style={{ display: 'flex', gap: 6 }}>
                               <button onClick={() => setEditPrecios(e => { const n2 = { ...e }; delete n2[p.id]; return n2 })}
                                 style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F2F1ED', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
                               <button onClick={() => guardarPrecios(p.id)} disabled={saving[p.id + '_pr']}
-                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#F26E1F', color: '#fff', border: 'none', cursor: 'pointer', opacity: saving[p.id + '_pr'] ? 0.5 : 1 }}>Guardar</button>
+                                style={{ fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 8, background: '#A6855A', color: '#14110C', border: 'none', cursor: 'pointer', opacity: saving[p.id + '_pr'] ? 0.5 : 1 }}>Guardar</button>
                             </div>
                           )}
                         </div>
@@ -494,7 +494,7 @@ export default function ProyectosPage() {
                           Marcar como Vendido ✓
                         </button>
                         <button onClick={() => router.push(`/proyectos/${p.id}`)}
-                          style={{ width: '100%', padding: '11px', borderRadius: 12, fontSize: 12, fontWeight: 900, background: '#F26E1F', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                          style={{ width: '100%', padding: '11px', borderRadius: 12, fontSize: 12, fontWeight: 900, background: '#A6855A', color: '#14110C', border: 'none', cursor: 'pointer' }}>
                           Abrir proyecto completo →
                         </button>
                       </div>
@@ -502,7 +502,7 @@ export default function ProyectosPage() {
 
                     {/* Ver más */}
                     <button onClick={() => toggle(p.id)}
-                      style={{ width: '100%', padding: '10px', fontSize: 11, fontWeight: 900, textAlign: 'center', borderTop: '1px solid #F2F1ED', background: 'none', border: 'none', borderTop: '1px solid #F2F1ED', color: isExp ? '#CCC' : '#F26E1F', cursor: 'pointer', letterSpacing: '0.04em' } as React.CSSProperties}>
+                      style={{ width: '100%', padding: '10px', fontSize: 11, fontWeight: 900, textAlign: 'center', borderTop: '1px solid #F2F1ED', background: 'none', border: 'none', borderTop: '1px solid #F2F1ED', color: isExp ? '#CCC' : '#A6855A', cursor: 'pointer', letterSpacing: '0.04em' } as React.CSSProperties}>
                       {isExp ? 'Ver menos ↑' : 'Ver más ↓'}
                     </button>
                   </div>

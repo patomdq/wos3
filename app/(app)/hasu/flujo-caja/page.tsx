@@ -142,14 +142,14 @@ export default function FlujoCajaPage() {
         <div className="flex-1">
           <div className="font-bold text-[17px] text-white">Flujo de caja</div>
           {cuentaInfo?.esJV && (
-            <div className="text-xs font-semibold mt-0.5" style={{ color: '#F26E1F' }}>
+            <div className="text-xs font-semibold mt-0.5" style={{ color: '#A6855A' }}>
               {cuentaInfo.proj} · JV {cuentaInfo.pct}% HASU
             </div>
           )}
         </div>
         <button onClick={() => { setEditingId(null); setForm(emptyForm()); setShowForm(true) }}
-          className="text-sm font-black px-3 py-1.5 rounded-xl text-white"
-          style={{ background: '#F26E1F' }}>+ Mov.</button>
+          className="text-sm font-black px-3 py-1.5 rounded-xl"
+          style={{ background: '#A6855A', color: '#14110C' }}>+ Mov.</button>
       </div>
 
       {/* Filtro cuenta */}
@@ -161,9 +161,9 @@ export default function FlujoCajaPage() {
             <button key={c} onClick={() => setFiltroCuenta(c)}
               className="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap"
               style={{
-                background: filtroCuenta === c ? '#F26E1F' : '#141414',
-                color: filtroCuenta === c ? '#fff' : '#888',
-                border: `1px solid ${filtroCuenta === c ? '#F26E1F' : 'rgba(255,255,255,0.08)'}`,
+                background: filtroCuenta === c ? '#A6855A' : '#141414',
+                color: filtroCuenta === c ? '#14110C' : '#888',
+                border: `1px solid ${filtroCuenta === c ? '#A6855A' : 'rgba(255,255,255,0.08)'}`,
               }}>
               {c === 'todas' ? 'Todas' : c}
             </button>
@@ -196,11 +196,11 @@ export default function FlujoCajaPage() {
           </div>
           {/* Bloque HASU — solo visible en JV */}
           {!isHasu && cuentaInfo?.esJV && (
-            <div className="rounded-xl p-3.5" style={{ background: '#1a1000', border: '1px solid rgba(242,110,31,0.35)' }}>
-              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#F26E1F' }}>
+            <div className="rounded-xl p-3.5" style={{ background: '#1a1000', border: '1px solid rgba(166,133,90,0.35)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#A6855A' }}>
                 Beneficio operativo HASU {cuentaInfo.pct}%
               </div>
-              <div className="font-black text-[18px]" style={{ color: totals.beneficioHasu >= 0 ? '#F26E1F' : '#EF4444' }}>
+              <div className="font-black text-[18px]" style={{ color: totals.beneficioHasu >= 0 ? '#A6855A' : '#EF4444' }}>
                 {fmtS(totals.beneficioHasu)}
               </div>
               <div className="text-[9px] mt-0.5" style={{ color: '#555' }}>excl. capital inversores y compra</div>
@@ -235,7 +235,7 @@ export default function FlujoCajaPage() {
                     {(m as any).proyectos?.nombre && <span>· {(m as any).proyectos.nombre}</span>}
                     {m.categoria && <span>· {m.categoria}</span>}
                     {esCapital && <span style={{ color: '#60A5FA' }}>· capital</span>}
-                    {!esCapital && pct < 100 && <span style={{ color: '#F26E1F' }}>· JV {pct}%</span>}
+                    {!esCapital && pct < 100 && <span style={{ color: '#A6855A' }}>· JV {pct}%</span>}
                   </div>
                 </div>
                 <div className="font-black text-sm flex-shrink-0"
@@ -321,8 +321,8 @@ export default function FlujoCajaPage() {
                 className="flex-1 py-3.5 rounded-xl text-sm font-black"
                 style={{ background: '#282828', color: '#888' }}>Cancelar</button>
               <button onClick={saveForm} disabled={saving || !form.concepto.trim() || !form.monto}
-                className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
-                style={{ background: '#F26E1F' }}>
+                className="flex-1 py-3.5 rounded-xl text-sm font-black disabled:opacity-40"
+                style={{ background: '#A6855A', color: '#14110C' }}>
                 {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Guardar'}
               </button>
             </div>

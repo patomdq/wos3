@@ -158,13 +158,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div style={{ padding: collapsed ? '16px 0' : '16px 20px', borderBottom: '1px solid #ECEAE4', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between' }}>
             {collapsed ? (
               <button onClick={() => setCollapsed(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{ fontSize: 15, fontWeight: 900, color: '#F26E1F' }}>W</div>
+                <div className="font-display" style={{ fontSize: 17, color: '#A6855A' }}>W</div>
                 <div style={{ fontSize: 9, color: '#CCC' }}>›</div>
               </button>
             ) : (
               <>
                 <div>
-                  <div style={{ fontSize: 17, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>WALLEST</div>
+                  <div className="font-display" style={{ fontSize: 16, color: '#111', letterSpacing: '0.2em', paddingLeft: '0.2em' }}>WALLEST</div>
                   <div style={{ fontSize: 9, fontWeight: 700, color: '#BBB', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.4, marginTop: 2 }}>
                     HASU ACTIVOS INMOBILIARIOS SL
                   </div>
@@ -187,7 +187,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 12,
                     padding: collapsed ? '12px 0' : '12px 20px', width: '100%',
                     justifyContent: collapsed ? 'center' : 'flex-start',
-                    cursor: 'pointer', background: isActive ? 'rgba(242,110,31,0.08)' : 'transparent',
+                    cursor: 'pointer', background: isActive ? 'rgba(166,133,90,0.08)' : 'transparent',
                     border: 'none', textAlign: 'left',
                     whiteSpace: 'nowrap', overflow: 'hidden',
                     position: 'relative',
@@ -197,9 +197,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                 >
                   {isActive && (
-                    <div style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, background: '#F26E1F', borderRadius: '0 3px 3px 0' }} />
+                    <div style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, background: '#A6855A', borderRadius: '0 3px 3px 0' }} />
                   )}
-                  <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: collapsed ? 22 : 16, flexShrink: 0, color: isActive ? '#F26E1F' : undefined }}>
+                  <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: collapsed ? 22 : 16, flexShrink: 0, color: isActive ? '#A6855A' : undefined }}>
                     {item.icon}
                   </div>
                   {!collapsed && (
@@ -262,7 +262,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           >
             <div style={{
               width: 42, height: 42, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #F26E1F, #FBBF24)',
+              background: 'linear-gradient(135deg, #A6855A, #C7A877)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 15, fontWeight: 900, color: '#fff', flexShrink: 0, position: 'relative',
             }}>
@@ -315,7 +315,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: '50%',
-                  background: 'linear-gradient(135deg,#F26E1F,#FBBF24)',
+                  background: 'linear-gradient(135deg,#A6855A,#C7A877)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
                 }}>🤖</div>
                 <div style={{ flex: 1 }}>
@@ -342,15 +342,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             style={{
               position: 'fixed', bottom: 24, right: 24,
               width: 62, height: 62, borderRadius: '50%',
-              background: '#F26E1F',
-              boxShadow: '0 4px 20px rgba(242,110,31,0.4)',
+              background: '#A6855A',
+              boxShadow: '0 4px 20px rgba(166,133,90,0.4)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 26, cursor: 'pointer', border: 'none',
               zIndex: 100,
               transition: 'transform 0.15s, box-shadow 0.15s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 28px rgba(242,110,31,0.5)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(242,110,31,0.4)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 28px rgba(166,133,90,0.5)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(166,133,90,0.4)' }}
           >
             🤖
           </button>
@@ -372,7 +372,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5">
               <span className="text-[26px] leading-none">{item.icon}</span>
               <span className="text-[12px] font-bold uppercase tracking-wide"
-                style={{ color: activeId === item.id ? '#F26E1F' : '#888' }}>{item.label}</span>
+                style={{ color: activeId === item.id ? '#A6855A' : '#888' }}>{item.label}</span>
             </button>
           ))}
           {user?.handle && (
@@ -395,7 +395,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <button onClick={() => setProfileOpen(true)}
             className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5">
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white"
-              style={{ background: '#E8621A' }}>
+              style={{ background: '#A6855A' }}>
               {initials(userName)}
             </div>
             <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: '#888' }}>Cuenta</span>
@@ -428,11 +428,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="space-y-2">
                   {notifs.map(n => (
                     <div key={n.id} className="rounded-2xl p-4"
-                      style={{ background: n.leida ? '#1A1A1A' : '#1E1E1E', border: `1px solid ${n.leida ? 'rgba(255,255,255,0.05)' : 'rgba(242,110,31,0.25)'}` }}>
+                      style={{ background: n.leida ? '#1A1A1A' : '#1E1E1E', border: `1px solid ${n.leida ? 'rgba(255,255,255,0.05)' : 'rgba(166,133,90,0.25)'}` }}>
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2">
-                          {!n.leida && <div className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5" style={{ background: '#F26E1F' }} />}
-                          <div className="text-[12px] font-black" style={{ color: '#F26E1F' }}>{n.proyecto}</div>
+                          {!n.leida && <div className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5" style={{ background: '#A6855A' }} />}
+                          <div className="text-[12px] font-black" style={{ color: '#A6855A' }}>{n.proyecto}</div>
                         </div>
                         <div className="text-[11px] flex-shrink-0" style={{ color: '#555' }}>{timeAgo(n.created_at)}</div>
                       </div>
@@ -456,14 +456,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div className="w-9 h-1 rounded-full mx-auto mb-5" style={{ background: '#333' }} />
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-black text-white flex-shrink-0"
-                style={{ background: '#E8621A' }}>
+                style={{ background: '#A6855A' }}>
                 {initials(userName)}
               </div>
               <div>
                 <div className="font-black text-base text-white">{user?.nombre || 'Usuario'}</div>
                 <div className="text-xs font-medium mt-0.5" style={{ color: '#888' }}>{user?.email}</div>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide mt-1 inline-block"
-                  style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F' }}>
+                  style={{ background: 'rgba(166,133,90,0.18)', color: '#A6855A' }}>
                   {user?.role || 'viewer'}
                 </span>
               </div>
@@ -516,7 +516,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 style={{ background: '#282828', color: '#888' }}>Cancelar</button>
               <button onClick={changePassword} disabled={saving || !pw || !pw2}
                 className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
-                style={{ background: '#F26E1F' }}>
+                style={{ background: '#A6855A' }}>
                 {saving ? 'Guardando...' : 'Actualizar'}
               </button>
             </div>

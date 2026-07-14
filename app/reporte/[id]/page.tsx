@@ -136,7 +136,7 @@ export default function ReportePage() {
       {/* Print button — solo visible en pantalla */}
       <div className="no-print" style={{ position: 'fixed', top: 16, right: 16, zIndex: 99, display: 'flex', gap: 8 }}>
         <button onClick={() => window.print()}
-          style={{ padding: '8px 18px', background: '#F26E1F', color: '#fff', border: 'none', borderRadius: 8, fontFamily: 'Helvetica,Arial,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ padding: '8px 18px', background: '#A6855A', color: '#14110C', border: 'none', borderRadius: 8, fontFamily: 'Helvetica,Arial,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
           Descargar PDF
         </button>
         <button onClick={() => window.close()}
@@ -150,7 +150,7 @@ export default function ReportePage() {
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#F26E1F', textTransform: 'uppercase', marginBottom: 4 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#A6855A', textTransform: 'uppercase', marginBottom: 4 }}>
               WALLEST · HASU ACTIVOS INMOBILIARIOS SL
             </div>
             <div style={{ fontSize: 22, fontWeight: 900, color: '#1A1A1A', lineHeight: 1.2, marginBottom: 4 }}>
@@ -165,14 +165,14 @@ export default function ReportePage() {
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: 10, color: '#AAA', marginBottom: 2 }}>Precio de compra</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: '#F26E1F', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: '#A6855A', fontVariantNumeric: 'tabular-nums' }}>
               {fmt(item.precio_compra)}
             </div>
           </div>
         </div>
 
         {/* Línea naranja separadora */}
-        <div style={{ height: 3, background: 'linear-gradient(90deg,#F26E1F,#FBBF24)', borderRadius: 2, marginBottom: 20 }} />
+        <div style={{ height: 3, background: 'linear-gradient(90deg,#A6855A,#FBBF24)', borderRadius: 2, marginBottom: 20 }} />
 
         {/* ── Foto + datos básicos ─────────────────────────────────────────── */}
         <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
@@ -203,8 +203,8 @@ export default function ReportePage() {
 
         {/* ── Notas ────────────────────────────────────────────────────────── */}
         {item.notas && (
-          <div style={{ marginBottom: 20, borderLeft: '4px solid #F26E1F', background: '#FFF8F4', borderRadius: '0 8px 8px 0', padding: '10px 14px', border: '1px solid #F5D5C0', borderLeftColor: '#F26E1F', borderLeftWidth: 4 }}>
-            <div style={{ fontSize: 8, fontWeight: 700, color: '#F26E1F', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Notas</div>
+          <div style={{ marginBottom: 20, borderLeft: '4px solid #A6855A', background: '#FFF8F4', borderRadius: '0 8px 8px 0', padding: '10px 14px', border: '1px solid #F5D5C0', borderLeftColor: '#A6855A', borderLeftWidth: 4 }}>
+            <div style={{ fontSize: 8, fontWeight: 700, color: '#A6855A', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Notas</div>
             <div style={{ fontSize: 11, color: '#555', lineHeight: 1.6 }}>{item.notas}</div>
           </div>
         )}
@@ -265,7 +265,7 @@ export default function ReportePage() {
                 ))}
                 <tr style={{ background: '#1A1A1A' }}>
                   <td style={{ padding: '9px 10px', fontSize: 10, fontWeight: 900, color: '#fff', border: '1px solid #1A1A1A' }}>INVERSIÓN TOTAL</td>
-                  <td style={{ padding: '9px 10px', fontSize: 13, fontWeight: 900, color: '#F26E1F', textAlign: 'right', fontVariantNumeric: 'tabular-nums', border: '1px solid #1A1A1A' }}>{fmt(totalInv)}</td>
+                  <td style={{ padding: '9px 10px', fontSize: 13, fontWeight: 900, color: '#A6855A', textAlign: 'right', fontVariantNumeric: 'tabular-nums', border: '1px solid #1A1A1A' }}>{fmt(totalInv)}</td>
                 </tr>
               </tbody>
             </table>
@@ -275,7 +275,7 @@ export default function ReportePage() {
         {/* ── Footer ───────────────────────────────────────────────────────── */}
         <div style={{ borderTop: '1px solid #ECEAE4', paddingTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#F26E1F' }}>WALLEST</div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#A6855A' }}>WALLEST</div>
             <div style={{ fontSize: 8, color: '#AAA' }}>HASU Activos Inmobiliarios SL · wallest.pro</div>
           </div>
           <div style={{ fontSize: 8, color: '#CCC' }}>

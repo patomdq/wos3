@@ -109,7 +109,7 @@ export default function Nav() {
 
   const INP = { background: '#0A0A0A', border: '1.5px solid rgba(255,255,255,0.10)', color: '#fff' } as const
   const userName = user?.nombre || user?.email || ''
-  const avatarBg = '#E8621A'
+  const avatarBg = '#A6855A'
 
   return (
     <>
@@ -121,7 +121,7 @@ export default function Nav() {
             className="flex-1 flex flex-col items-center justify-center gap-1 min-h-[56px] rounded-xl transition-colors active:bg-white/5">
             <span className="text-[26px] leading-none">{item.icon}</span>
             <span className="text-[12px] font-bold uppercase tracking-wide"
-              style={{ color: active === item.id ? '#F26E1F' : '#888' }}>{item.label}</span>
+              style={{ color: active === item.id ? '#A6855A' : '#888' }}>{item.label}</span>
           </button>
         ))}
         {/* Bell button */}
@@ -158,15 +158,15 @@ export default function Nav() {
       <nav style={{ background: '#141414', borderRight: '1px solid rgba(255,255,255,0.08)' }}
         className="hidden flex-col w-[220px] h-screen flex-shrink-0 p-3 gap-1">
         <div className="flex items-center gap-3 px-3 py-4 mb-2">
-          <div style={{ background: '#F26E1F' }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-white">W</div>
+          <div style={{ background: '#A6855A' }} className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-white">W</div>
           <span className="font-bold text-base text-white">WOS 3.0</span>
         </div>
         {items.map(item => (
           <button key={item.id} onClick={() => router.push(item.href)}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors"
             style={{
-              background: active === item.id ? 'rgba(242,110,31,0.18)' : 'transparent',
-              color: active === item.id ? '#F26E1F' : '#888',
+              background: active === item.id ? 'rgba(166,133,90,0.18)' : 'transparent',
+              color: active === item.id ? '#A6855A' : '#888',
             }}>
             <span className="text-xl">{item.icon}</span>
             <span className="text-sm font-semibold">{item.label}</span>
@@ -220,11 +220,11 @@ export default function Nav() {
                 <div className="space-y-2">
                   {notifs.map(n => (
                     <div key={n.id} className="rounded-2xl p-4"
-                      style={{ background: n.leida ? '#1A1A1A' : '#1E1E1E', border: `1px solid ${n.leida ? 'rgba(255,255,255,0.05)' : 'rgba(242,110,31,0.25)'}` }}>
+                      style={{ background: n.leida ? '#1A1A1A' : '#1E1E1E', border: `1px solid ${n.leida ? 'rgba(255,255,255,0.05)' : 'rgba(166,133,90,0.25)'}` }}>
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2">
-                          {!n.leida && <div className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5" style={{ background: '#F26E1F' }} />}
-                          <div className="text-[12px] font-black" style={{ color: '#F26E1F' }}>{n.proyecto}</div>
+                          {!n.leida && <div className="w-2 h-2 rounded-full flex-shrink-0 mt-0.5" style={{ background: '#A6855A' }} />}
+                          <div className="text-[12px] font-black" style={{ color: '#A6855A' }}>{n.proyecto}</div>
                         </div>
                         <div className="text-[11px] flex-shrink-0" style={{ color: '#555' }}>{timeAgo(n.created_at)}</div>
                       </div>
@@ -257,7 +257,7 @@ export default function Nav() {
                 <div className="font-black text-base text-white">{user?.nombre || 'Usuario'}</div>
                 <div className="text-xs font-medium mt-0.5" style={{ color: '#888' }}>{user?.email}</div>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide mt-1 inline-block"
-                  style={{ background: 'rgba(242,110,31,0.18)', color: '#F26E1F' }}>
+                  style={{ background: 'rgba(166,133,90,0.18)', color: '#A6855A' }}>
                   {user?.role || 'viewer'}
                 </span>
               </div>
@@ -315,7 +315,7 @@ export default function Nav() {
                 style={{ background: '#282828', color: '#888' }}>Cancelar</button>
               <button onClick={changePassword} disabled={saving || !pw || !pw2}
                 className="flex-1 py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
-                style={{ background: '#F26E1F' }}>
+                style={{ background: '#A6855A' }}>
                 {saving ? 'Guardando...' : 'Actualizar'}
               </button>
             </div>

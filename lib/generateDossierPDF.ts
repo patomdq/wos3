@@ -1,7 +1,7 @@
 // Generador de dossier multi-inmueble para inversores
 // Landscape A4 (297x210mm), estilo presentación profesional
 
-const ORANGE  = '#F26E1F'
+const ORANGE  = '#A6855A'
 const SAND    = '#C9A96E'
 const BLACK   = '#1A1A1A'
 const DARK    = '#111111'
@@ -287,8 +287,8 @@ export function generateDossierPDF(config: DossierConfig, jsPDF: any, filename =
       const ky = kpiY + 4
       if (k.highlight) {
         rect(kx, ky - 3, kpiW - 2, kpiH, ORANGE)
-        txt(k.label.toUpperCase(), kx + 4, ky + 2, { size: 5.5, bold: true, color: '#FFFFFF' })
-        txt(k.value, kx + 4, ky + 11, { size: 14, bold: true, color: WHITE })
+        txt(k.label.toUpperCase(), kx + 4, ky + 2, { size: 5.5, bold: true, color: '#14110C' })
+        txt(k.value, kx + 4, ky + 11, { size: 14, bold: true, color: '#14110C' })
       } else {
         rect(kx, ky - 3, kpiW - 2, kpiH, WHITE)
         setFill(BORDER); doc.setLineWidth(0.3); doc.rect(kx, ky - 3, kpiW - 2, kpiH, 'S')

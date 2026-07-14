@@ -133,7 +133,7 @@ export default function InformeInmueblePage() {
   }
   const escenariosProfundo = [
     { label: 'Conservador', color: '#888' },
-    { label: 'Realista',    color: '#F26E1F' },
+    { label: 'Realista',    color: '#A6855A' },
     { label: 'Optimista',   color: '#22C55E' },
   ].map((e, i) => ({ ...e, ...calcEscProfundo([ventaC, ventaR, ventaO][i]) }))
 
@@ -166,9 +166,9 @@ export default function InformeInmueblePage() {
         .header-title { font-size: 32px; font-weight: 900; color: #fff; line-height: 1.1; margin-bottom: 6px; }
         .header-sub { font-size: 13px; color: #666; font-weight: 500; margin-bottom: 3px; }
         .header-date { font-size: 12px; color: #555; }
-        .roi-badge { position: absolute; right: 40px; top: 36px; background: #F26E1F; border-radius: 16px; padding: 16px 22px; text-align: center; min-width: 110px; }
-        .roi-badge .num { font-size: 30px; font-weight: 900; color: #fff; line-height: 1; }
-        .roi-badge .lbl { font-size: 10px; color: rgba(255,255,255,0.8); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+        .roi-badge { position: absolute; right: 40px; top: 36px; background: #A6855A; border-radius: 16px; padding: 16px 22px; text-align: center; min-width: 110px; }
+        .roi-badge .num { font-size: 30px; font-weight: 900; color: #14110C; line-height: 1; }
+        .roi-badge .lbl { font-size: 10px; color: rgba(20,17,12,0.75); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
 
         .kpis { display: grid; grid-template-columns: 1fr 1fr 1fr; border-bottom: 1px solid #eee; }
         .kpi { padding: 20px 28px; border-right: 1px solid #eee; }
@@ -180,7 +180,7 @@ export default function InformeInmueblePage() {
         .body { padding: 28px 40px 40px; }
         .section { margin-bottom: 22px; }
         .section-header { display: flex; align-items: center; gap: 10px; background: #1a1a1a; padding: 11px 16px; border-radius: 8px 8px 0 0; }
-        .section-num { background: #F26E1F; color: #fff; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .section-num { background: #A6855A; color: #14110C; font-size: 11px; font-weight: 900; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .section-title { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #fff; }
 
         .table { width: 100%; border-collapse: collapse; border: 1px solid #e5e5e5; border-top: none; }
@@ -191,7 +191,7 @@ export default function InformeInmueblePage() {
         .table td.muted { color: #bbb; text-align: right; }
         .table tr:last-child td { border-bottom: none; }
         .table tr.total td { background: #fafafa; font-weight: 900; font-size: 14px; color: #111; border-top: 2px solid #e5e5e5; }
-        .table tr.total .orange { color: #F26E1F; }
+        .table tr.total .orange { color: #A6855A; }
 
         .escenarios { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #e5e5e5; border-top: none; }
         .esc { padding: 18px 16px; border-right: 1px solid #e5e5e5; }
@@ -210,7 +210,7 @@ export default function InformeInmueblePage() {
         .mc-item { padding: 14px 16px; border-right: 1px solid #e5e5e5; text-align: center; }
         .mc-item:last-child { border-right: none; }
         .mc-roi { font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #999; margin-bottom: 4px; }
-        .mc-price { font-size: 18px; font-weight: 900; color: #F26E1F; }
+        .mc-price { font-size: 18px; font-weight: 900; color: #A6855A; }
         .mc-diff { font-size: 11px; color: #bbb; margin-top: 3px; }
 
         .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #e5e5e5; border-top: none; }
@@ -232,7 +232,7 @@ export default function InformeInmueblePage() {
 
       <div className="print-bar">
         <button onClick={() => window.print()}
-          style={{ background: '#F26E1F', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
+          style={{ background: '#A6855A', color: '#14110C', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
           Descargar PDF ↓
         </button>
       </div>
@@ -417,7 +417,7 @@ export default function InformeInmueblePage() {
                   <div className="maxcompra">
                     {[
                       { roi: '30%', precio: max30, color: '#888' },
-                      { roi: '50%', precio: max50, color: '#F26E1F' },
+                      { roi: '50%', precio: max50, color: '#A6855A' },
                       { roi: '70%', precio: max70, color: '#22C55E' },
                     ].map(m => (
                       <div key={m.roi} className="mc-item">

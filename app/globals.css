@@ -2,8 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --wl-ink: #14110C;
+  --wl-ink-2: #1B1610;
+  --wl-cream: #F2ECE0;
+  --wl-cream-bright: #F8F3E9;
+  --wl-accent: #A6855A;
+  --wl-accent-soft: #C7A877;
+}
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; background: #0A0A0A; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
+html, body { height: 100%; background: var(--wl-cream); color: var(--wl-ink); font-family: var(--font-hanken), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
-input, textarea { caret-color: #F26E1F; }
+input, textarea { caret-color: var(--wl-accent); }
+.font-display { font-family: var(--font-marcellus), Georgia, serif; }
