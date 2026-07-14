@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   DeudaPosicion, ESTADO_INTERNO_CFG, ESTADO_JUDICIAL_LABEL, ESTADO_JUDICIAL_COLOR,
-  calcRatioRiesgoCargas, calcDescuento,
+  EstadoJudicialNormalizado, calcRatioRiesgoCargas, calcDescuento,
 } from '@/lib/deuda-schema'
 
 const fmt = (n: number | null | undefined) => {
@@ -51,6 +51,8 @@ export default function DeudaListado({
       ciudad: items[0]?.ciudad,
       provincia: items[0]?.provincia,
       broker: items[0]?.broker_origen,
+      titular: items.find(i => i.titular_deuda)?.titular_deuda,
+      estadoJudicial: items.find(i => i.estado_judicial_normalizado)?.estado_judicial_normalizado as EstadoJudicialNormalizado | undefined,
       tieneAlerta: items.some(i => calcRatioRiesgoCargas(i.cargas_previas, i.asking_price).alerta),
     }))
   }, [posiciones])
@@ -103,16 +105,30 @@ export default function DeudaListado({
                 {g.tieneAlerta && <span className="flex-shrink-0 text-base" title="Cargas previas superan el asking price">🔴</span>}
               </div>
               <div className="text-[12px] font-mono truncate mb-2" style={{ color: '#BBB' }}>{g.contractId}</div>
-              {g.items.length > 1 && (
-                <span className="inline-block px-1.5 py-0.5 rounded-md text-[12px] font-black mb-2" style={{ background: '#F0EEE8', color: '#888' }}>
-                  {g.items.length} garantías
-                </span>
-              )}
+              <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                {g.items.length > 1 && (
+                  <span className="inline-block px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: '#F0EEE8', color: '#888' }}>
+                    {g.items.length} garantías
+                  </span>
+                )}
+                {g.estadoJudicial && (
+                  <span className="inline-block px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: ESTADO_JUDICIAL_COLOR[g.estadoJudicial].bg, color: ESTADO_JUDICIAL_COLOR[g.estadoJudicial].color }}>
+                    {ESTADO_JUDICIAL_LABEL[g.estadoJudicial]}
+                  </span>
+                )}
+              </div>
+              {g.titular && <div className="text-[12px] font-bold truncate" style={{ color: '#666' }}>Titular: {g.titular}</div>}
               <div className="text-[12px] font-bold truncate" style={{ color: '#888' }}>{g.broker || 'Sin broker'}</div>
             </div>
             <div className="px-4 py-3" style={{ borderTop: '1px solid #F5F4F0', background: '#FAFAF8' }}>
-              <div className="font-black text-[15px]" style={{ color: '#111' }}>{fmt(g.askingTotal)}</div>
-              <div className="text-[12px]" style={{ color: '#999' }}>OB {fmt(g.obTotal)}</div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#999' }}>Asking price</span>
+                <span className="font-black text-[15px]" style={{ color: '#111' }}>{fmt(g.askingTotal)}</span>
+              </div>
+              <div className="flex items-baseline justify-between mt-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#999' }}>Deuda OB</span>
+                <span className="text-[12px] font-bold" style={{ color: '#999' }}>{fmt(g.obTotal)}</span>
+              </div>
             </div>
           </button>
         ))}
@@ -149,41 +165,68 @@ export default function DeudaListado({
                   const estCfg = ESTADO_INTERNO_CFG[p.estado_interno] || ESTADO_INTERNO_CFG.nuevo
                   const judCfg = p.estado_judicial_normalizado ? ESTADO_JUDICIAL_COLOR[p.estado_judicial_normalizado] : null
                   return (
-                    <div key={p.id} className="px-5 py-3 flex flex-wrap items-center gap-2" style={{ borderTop: '1px solid #F5F4F0' }}>
-                      <div className="flex-1 min-w-[220px]">
-                        <div className="text-[13px] font-bold" style={{ color: '#333' }}>{p.direccion || '(sin dirección)'}</div>
-                        <div className="text-[12px] mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: '#999' }}>
-                          <span>{[p.tipo_colateral, p.subtipo_colateral].filter(Boolean).join(' · ') || 'Sin tipo'}</span>
-                          {judCfg && p.estado_judicial_normalizado && (
-                            <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: judCfg.bg, color: judCfg.color }}>
-                              {ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado]}
-                            </span>
-                          )}
+                    <div key={p.id} className="px-5 py-4" style={{ borderTop: '1px solid #F5F4F0' }}>
+                      {/* Cabecera: dirección + tipo + badges + estado interno */}
+                      <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+                        <div className="min-w-[220px]">
+                          <div className="text-[14px] font-bold" style={{ color: '#333' }}>{p.direccion || '(sin dirección)'}</div>
+                          <div className="text-[12px] mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: '#999' }}>
+                            <span>{[p.tipo_colateral, p.subtipo_colateral].filter(Boolean).join(' · ') || 'Sin tipo'}</span>
+                            {judCfg && p.estado_judicial_normalizado && (
+                              <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: judCfg.bg, color: judCfg.color }}>
+                                {ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado]}
+                              </span>
+                            )}
+                            {riesgo.alerta && (
+                              <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }} title="Cargas previas superan el asking price">
+                                🔴 Riesgo cargas
+                              </span>
+                            )}
+                          </div>
                         </div>
+                        <select value={p.estado_interno} onChange={e => onUpdateEstado(p.id, e.target.value)}
+                          className="rounded-lg px-2 py-1.5 text-[12px] font-black outline-none flex-shrink-0" style={{ background: estCfg.bg, color: estCfg.color, border: 'none', appearance: 'none' as const }}>
+                          {Object.entries(ESTADO_INTERNO_CFG).map(([k, cfg]) => <option key={k} value={k}>{cfg.label}</option>)}
+                        </select>
                       </div>
 
-                      <div className="text-right text-[12px]" style={{ color: '#666', minWidth: 90 }}>
-                        <div className="font-black" style={{ color: '#111' }}>{fmt(p.asking_price)}</div>
-                        <div>OB {fmt(p.deuda_ob)}</div>
+                      {/* Resumen económico — estilo ficha de deuda (FENCIA) */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                        <Kpi label="Deuda OB" value={fmt(p.deuda_ob)} />
+                        <Kpi label="Deuda total" value={fmt(p.deuda_tot)} />
+                        <Kpi label="Asking price" value={fmt(p.asking_price)} highlight />
+                        <Kpi label="Descuento" value={pct(descuento)} />
                       </div>
 
-                      <div className="text-right text-[12px]" style={{ color: '#666', minWidth: 70 }}>
-                        <div>Desc. {pct(descuento)}</div>
-                        <div style={{ color: riesgo.alerta ? '#EF4444' : riesgo.sinPrecio ? '#BBB' : '#666', fontWeight: riesgo.alerta ? 900 : 400 }}>
-                          {riesgo.sinPrecio ? 'Sin precio' : `Cargas ${pct(riesgo.ratio)}`}
-                        </div>
+                      {/* Ficha detallada: Colateral / Deuda y titular / Estado judicial */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <Ficha titulo="Colateral">
+                          <Field label="Tipo" value={p.tipo_colateral} />
+                          <Field label="Subtipo" value={p.subtipo_colateral} />
+                          <Field label="Referencia catastral" value={p.ref_catastral} mono />
+                          <Field label="Nº Registro" value={p.n_registro} mono />
+                          <Field label="CCAA" value={p.ccaa} />
+                          <Field label="Provincia" value={p.provincia} />
+                          <Field label="Ciudad" value={p.ciudad} />
+                          <Field label="Código postal" value={p.zip} />
+                        </Ficha>
+
+                        <Ficha titulo="Deuda">
+                          <Field label="Titular de la deuda" value={p.titular_deuda} />
+                          <Field label="Contract ID" value={p.contract_id} mono />
+                          <Field label="Nº préstamos" value={p.n_loans != null ? String(p.n_loans) : null} />
+                          <Field label="Cargas previas" value={fmt(p.cargas_previas)} />
+                          <Field label="Cargas posteriores" value={fmt(p.cargas_posteriores)} />
+                          <Field label="Broker de origen" value={p.broker_origen} />
+                        </Ficha>
+
+                        <Ficha titulo="Estado judicial">
+                          <Field label="Estado normalizado" value={p.estado_judicial_normalizado ? ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado] : null} />
+                          <Field label="Estado (texto original del broker)" value={p.estado_judicial_raw} />
+                          <Field label="Ratio cargas / precio" value={riesgo.sinPrecio ? 'Sin precio' : pct(riesgo.ratio)}
+                            danger={riesgo.alerta} />
+                        </Ficha>
                       </div>
-
-                      {riesgo.alerta && (
-                        <span className="px-2 py-1 rounded-lg text-[12px] font-black" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }} title="Cargas previas superan el asking price">
-                          🔴 Riesgo
-                        </span>
-                      )}
-
-                      <select value={p.estado_interno} onChange={e => onUpdateEstado(p.id, e.target.value)}
-                        className="rounded-lg px-2 py-1.5 text-[12px] font-black outline-none" style={{ background: estCfg.bg, color: estCfg.color, border: 'none', appearance: 'none' as const }}>
-                        {Object.entries(ESTADO_INTERNO_CFG).map(([k, cfg]) => <option key={k} value={k}>{cfg.label}</option>)}
-                      </select>
                     </div>
                   )
                 })}
@@ -192,6 +235,35 @@ export default function DeudaListado({
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+function Kpi({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="rounded-xl px-3 py-2" style={{ background: highlight ? 'rgba(166,133,90,0.1)' : '#F9F8F5', border: highlight ? '1px solid rgba(166,133,90,0.3)' : '1px solid #ECEAE4' }}>
+      <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#999' }}>{label}</div>
+      <div className="text-[15px] font-black mt-0.5" style={{ color: highlight ? '#A6855A' : '#111' }}>{value}</div>
+    </div>
+  )
+}
+
+function Ficha({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl p-3" style={{ background: '#FAFAF8', border: '1px solid #F0EEE8' }}>
+      <div className="text-[11px] font-black uppercase tracking-wide mb-2" style={{ color: '#A6855A' }}>{titulo}</div>
+      <div className="space-y-1.5">{children}</div>
+    </div>
+  )
+}
+
+function Field({ label, value, mono, danger }: { label: string; value: string | null | undefined; mono?: boolean; danger?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[12px] font-semibold flex-shrink-0" style={{ color: '#999' }}>{label}</span>
+      <span className={`text-[12px] font-bold text-right truncate ${mono ? 'font-mono' : ''}`} style={{ color: danger ? '#EF4444' : '#333' }}>
+        {value || '—'}
+      </span>
     </div>
   )
 }
