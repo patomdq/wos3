@@ -39,6 +39,28 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 14/07/2026 (nueva área DEUDA)**
+
+Hecho:
+- **Área DEUDA — v1 completa** (importar planillas de brokers/servicers/fondos de NPL, filtrar, gestionar). 100% interna (Pato + Silvia), nunca expuesta al portal inversor, sin mezclar con HASU/JV ni con la fórmula ROI de `/lib/formulas.ts`
+  - Nav: `Proyectos, Mercado, Deuda, HASU` (`components/AppShell.tsx`, ítem `{ id: 'deuda', href: '/deuda', icon: '⚖️' }`) + página `deuda` agregada a `ALL_PAGES` en `/admin` para permisos (NO incluida por default en `editPages` — requiere opt-in explícito por ser sensible)
+  - Supabase (`mxdesbiyjvdnpehklwcb`) — 4 tablas nuevas: `deuda_posiciones` (posición individual, `campos_extra`/`raw_data` jsonb para no perder nada), `deuda_mapeos_broker` (mapeo de columnas reusable por broker), `deuda_importaciones` (historial de cargas), `deuda_estados_judiciales` (diccionario creciente de clasificación de estado judicial, `estado_raw → estado_normalizado`)
+  - **Deviación deliberada del brief original**: NO hay unique constraint `(contract_id, ref_catastral)` — se probó con el Excel real (`samples/estenpl.xlsx`, 24 filas) y ese par colisiona 2 veces con datos distintos. Imports quedan append-only, agrupados por `importacion_id`; dedup entre re-imports queda como revisión manual pendiente, no resuelto automáticamente
+  - `lib/deuda-schema.ts` — tipos canónicos, `calcRatioRiesgoCargas()` (alerta si cargas_previas > asking_price, estado `sinPrecio` aparte de ratio 0), `calcDescuento()`, configs de estado interno (`nuevo/en_analisis/descartado/comprado`) y estado judicial normalizado (`prejudicial/subasta_señalada/subasta_pendiente/oposicion/resuelto/otro`)
+  - `app/api/deuda/mapeo/route.ts` — Claude propone mapeo de columnas por broker (reusa el guardado si el broker ya importó antes con las mismas columnas)
+  - `app/api/deuda/import/route.ts` — normaliza filas según mapeo confirmado, repara mojibake (Latin-1/UTF-8 mal decodificado, típico en Excels de brokers), clasifica estado judicial nuevo vía Claude (batch, solo valores no vistos), inserta en `deuda_posiciones`, guarda el mapeo confirmado para la próxima
+  - `components/DeudaImportWizard.tsx` — wizard 3 pasos (archivo → mapeo con preview y confianza alta/media/baja → resultado), parseo client-side con `xlsx` (`raw:false` para no perder ceros a la izquierda de `contract_id`)
+  - `components/DeudaFiltros.tsx` — filtros en dos niveles estilo Idealista: barra siempre visible (buscar, provincia, ciudad, precio min/max) + panel "Más filtros" expandible (broker, tipo/subtipo colateral, deuda OB, estado judicial multiselect, toggle ocultar riesgo de cargas — activo por default)
+  - `components/DeudaListado.tsx` — listado agrupado por `contract_id` (colapsable), badge "N garantías" si el contrato tiene varias posiciones, badge rojo "Cargas > precio" si hay alerta, selector de estado interno inline
+  - `app/(app)/deuda/page.tsx` — orquesta fetch de `deuda_posiciones`, hero con gradiente (sin foto stock, a diferencia de Proyectos/Mercado/HASU — sección de datos/legal sin fotos de inmuebles), tabs por estado interno con contador, wiring de filtros y listado, apertura del wizard
+  - Build verificado (`next build` ok) antes del push. Commit `ee06ded`, pusheado a `origin master`
+  - **No testeado en vivo** — por la regla de nunca correr servidor local ni auto-loguearse (ver `feedback_coding.md`), el flujo de import con `samples/estenpl.xlsx` queda pendiente de que Pato lo pruebe en el deploy de Vercel
+
+Pendiente:
+- Probar el flujo completo de import en producción con `samples/estenpl.xlsx` (o la planilla real del broker)
+- Mapa con pines + popup (Google Maps Geocoding + JS API) — bloqueado, falta que Pato genere/comparta una API key de Google Maps desde la cuenta de Google Cloud ya existente (confirmó que la cuenta existe, falta la key concreta)
+- Definir si/cómo una posición de deuda `comprado` se enlaza con Proyectos cuando se convierte en compra real — no estaba en el brief, a confirmar con Pato
+
 **Última sesión — 14/07/2026 (chat WOS3 — adjuntar HTML + análisis automático)**
 
 Hecho:
