@@ -327,7 +327,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
             <div className="max-w-[calc(100%-60px)]">
               {m.role === 'bot' ? (
                 <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5"
-                  style={{ background: t.botBubbleBg, border: t.botBubbleBorder, color: t.botBubbleColor, borderRadius: '4px 14px 14px 14px' }}
+                  style={{ background: t.botBubbleBg, border: t.botBubbleBorder, color: t.botBubbleColor, borderRadius: '4px 14px 14px 14px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                   dangerouslySetInnerHTML={{ __html: m.text }} />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -346,7 +346,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
                   )}
                   {m.text && !m.text.startsWith('📎') && (
                     <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5"
-                      style={{ background: '#F26E1F', color: '#fff', borderRadius: m.imagePreviews?.length ? '0 0 14px 14px' : '14px 4px 14px 14px', whiteSpace: 'pre-wrap' }}>
+                      style={{ background: '#F26E1F', color: '#fff', borderRadius: m.imagePreviews?.length ? '0 0 14px 14px' : '14px 4px 14px 14px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {m.text}
                     </div>
                   )}
