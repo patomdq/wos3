@@ -45,7 +45,10 @@ export default function DeudaMapa({
   const conCoords = grupos.filter(g => g.items.some(i => i.lat != null && i.lng != null))
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4', height: 560 }}>
+    // isolation: 'isolate' contiene los z-index internos de Leaflet (paneles/popups/controles llegan
+    // a 700-1000) en su propio contexto de apilamiento — sin esto, el mapa se dibuja por delante de
+    // cualquier modal/overlay de la app que use un z-index "normal" (ej. z-40/z-50 de Tailwind).
+    <div className="rounded-2xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4', height: 560, isolation: 'isolate' }}>
       <style>{`.deuda-marker-alerta { filter: hue-rotate(150deg) saturate(4); }`}</style>
       <MapContainer center={CENTRO_ESPANA} zoom={conCoords.length ? 6 : 5} style={{ height: '100%', width: '100%' }}>
         <TileLayer
