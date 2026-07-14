@@ -67,7 +67,13 @@ export default function DeudaPage() {
   return (
     <div style={{ background: '#F4F4F4', minHeight: '100vh' }}>
       <div style={{ padding: '20px 20px 0' }}>
-        <div style={{ position: 'relative', height: 160, overflow: 'hidden', borderRadius: 20, background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }}>
+        <div style={{ position: 'relative', height: 160, overflow: 'hidden', borderRadius: 20 }}>
+          <img
+            src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1400&h=500&fit=crop&q=80"
+            alt="Deuda"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(232,98,26,0.82) 0%, rgba(201,169,110,0.70) 100%)' }} />
           <div className="absolute inset-0 flex items-end justify-between" style={{ padding: '20px 24px' }}>
             <div>
               <h1 className="font-black text-[28px] text-white leading-tight" style={{ letterSpacing: '-0.5px' }}>Deuda</h1>
