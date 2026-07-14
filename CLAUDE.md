@@ -81,6 +81,16 @@ Hecho, tras feedback de Pato probando en producción:
 Pendiente:
 - Ninguno abierto de esta sub-sesión — falta que Pato confirme en el deploy que ahora sí ubica las 24 y que el banner de contratos ocultos se ve bien
 
+**Última sesión — 14/07/2026 (continuación 4 — Deuda: campos cortados / Chat: reforma silenciosa)**
+
+Hecho:
+- **Deuda — campos cortados en la ficha** (`components/DeudaFichaModal.tsx`): el componente `Field` mostraba label+valor en la misma línea con `truncate`, cortando referencias catastrales, contract IDs largos, titulares completos y el texto original de estado judicial con "...". Rediseñado a label arriba / valor abajo con wrap normal. Commit `e2affb9`
+- **Chat WOS3 — el bot asumía reforma=0€ en silencio** (`app/api/chat/route.ts`): Pato reportó que al subir un HTML de Idealista el bot devolvió un ROI definitivo (-15%) sin preguntar nada. Causa: instrucción de una sesión anterior ("reforma=0, análisis rápido, no preguntes, ejecutá directo") al detectar portal con superficie (HTML adjunto o link). Confirmado con Pato (vía pregunta directa) el cambio: ahora el bot muestra un resumen breve y PREGUNTA la reforma estimada antes de calcular — si el usuario dice "no sé", usa 0€ pero lo dice explícito en el resultado en vez de asumirlo callado. Commit `0344230`
+- Ambos con build verificado, pusheados a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión
+
 **Última sesión — 14/07/2026 (rediseño: Wallest Design System — colores + tipografía)**
 
 Hecho:
