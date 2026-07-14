@@ -18,6 +18,7 @@ type WosNotif = {
 const NAV_ITEMS = [
   { id: 'proyectos', href: '/proyectos', icon: '🏗️', label: 'Proyectos' },
   { id: 'mercado',   href: '/mercado',   icon: '🔍', label: 'Mercado' },
+  { id: 'deuda',     href: '/deuda',     icon: '⚖️', label: 'Deuda' },
   { id: 'hasu',      href: '/hasu',      icon: '🏢', label: 'HASU' },
   { id: 'bot',       href: '/bot',       icon: '◎',  label: 'Bot' },
 ]
@@ -26,6 +27,7 @@ const ALL_MOBILE_ITEMS = [
   { id: 'bot',       href: '/bot',       icon: '◎',  label: 'Bot' },
   { id: 'proyectos', href: '/proyectos', icon: '🏗️', label: 'Proyectos' },
   { id: 'mercado',   href: '/mercado',   icon: '🔍', label: 'Mercado' },
+  { id: 'deuda',     href: '/deuda',     icon: '⚖️', label: 'Deuda' },
   { id: 'hasu',      href: '/hasu',      icon: '🏢', label: 'HASU' },
 ]
 

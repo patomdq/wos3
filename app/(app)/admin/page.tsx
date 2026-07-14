@@ -16,6 +16,7 @@ const ALL_PAGES = [
   { id: 'bot',       label: 'Bot' },
   { id: 'proyectos', label: 'Proyectos' },
   { id: 'mercado',   label: 'Mercado' },
+  { id: 'deuda',     label: 'Deuda' },
   { id: 'hasu',      label: 'HASU' },
 ]
 
