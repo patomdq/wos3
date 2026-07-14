@@ -54,6 +54,23 @@ Hecho:
 Pendiente:
 - Ninguno abierto de esta sub-sesión — falta que Pato revise en el deploy de Vercel (regla fija: nunca correr servidor local)
 
+**Última sesión — 14/07/2026 (continuación 2 — Deuda: mapa + imagen por posición)**
+
+Hecho:
+- Pato pidió mapa con pines (como referencia FENCIA) y espacio para subir imagen del inmueble (como Mercado). El mapa venía **bloqueado** desde sesiones anteriores por falta de una API key de Google Maps — se destrabó usando **OpenStreetMap + Leaflet**, gratis y sin key, en vez de esperar la key de Google (decisión confirmada con Pato vía pregunta directa)
+  - `npm install leaflet react-leaflet@4 @types/leaflet`
+  - Migración Supabase: columna `imagen_url` en `deuda_posiciones` (`lat`/`lng` ya existían desde el diseño original de la tabla, no se usaban)
+  - `app/api/deuda/geocode/route.ts` (nuevo) — geocoding server-side vía Nominatim (OSM), sin API key. Resuelve 1 dirección por request, respeta política de Nominatim (User-Agent + máx. 1 req/seg — el cliente espacia las llamadas)
+  - `components/DeudaMapa.tsx` (nuevo) — mapa Leaflet con pines por contrato, popup con resumen + botón "Ver ficha completa", pines rojos para riesgo de cargas. Cargado vía `next/dynamic({ ssr: false })` en la page porque Leaflet necesita `window`
+  - `components/DeudaFichaModal.tsx` (nuevo, extraído de `DeudaListado.tsx`) — agrega upload de imagen por posición (mismo patrón que portada de Mercado, mismo bucket `portadas`) + botón "📍 Ubicar en mapa" individual
+  - `lib/deuda-schema.ts` — nuevo helper `agruparPorContrato()` (antes vivía duplicado dentro de `DeudaListado`), usado tanto por Lista como por Mapa
+  - `app/(app)/deuda/page.tsx` — toggle "☰ Lista / 🗺️ Mapa", banner "N posiciones sin ubicar" con botón de geocodificación en lote (agrupa direcciones repetidas, espaciado 1.1s/request), estado `contratoAbierto` subido acá para que Lista y Mapa compartan la misma ficha
+  - Build verificado. Commit `388a854`, pusheado a `origin master`
+
+Pendiente:
+- Geocodificar en producción (botón "📍 Ubicar todas") — no se ejecutó en esta sesión, queda para cuando Pato lo pruebe en el deploy
+- Si en el futuro se quiere el look de Google Maps (satelital/Street View) hay que retomar el camino con API key + billing — por ahora Leaflet/OSM cubre la necesidad sin esa dependencia
+
 **Última sesión — 14/07/2026 (rediseño: Wallest Design System — colores + tipografía)**
 
 Hecho:
