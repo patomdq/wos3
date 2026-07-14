@@ -68,8 +68,18 @@ Hecho:
   - Build verificado. Commit `388a854`, pusheado a `origin master`
 
 Pendiente:
-- Geocodificar en producción (botón "📍 Ubicar todas") — no se ejecutó en esta sesión, queda para cuando Pato lo pruebe en el deploy
 - Si en el futuro se quiere el look de Google Maps (satelital/Street View) hay que retomar el camino con API key + billing — por ahora Leaflet/OSM cubre la necesidad sin esa dependencia
+
+**Última sesión — 14/07/2026 (continuación 3 — Deuda: fixes geocoding, z-index del mapa, y conteo confuso)**
+
+Hecho, tras feedback de Pato probando en producción:
+- **Geocoding se quedaba en 12/24**: direcciones de brokers traen ruido que Nominatim no matchea (códigos catastrales `Es:E Pl:02 Pt:B`, sótanos/garajes pegados, mojibake residual `2Âº D`, carreteras nacionales sin prefijo `N-`, CP sin cero inicial). `app/api/deuda/geocode/route.ts` ahora limpia la dirección + hace 3 intentos en cascada (completa → sin CP → solo ciudad/provincia como pin aproximado) para que ninguna posición con ciudad conocida quede sin pin
+- **Mapa tapaba el modal de ficha al hacer clic en un pin**: los paneles/popups/controles de Leaflet usan z-index 400-1000 que le ganan al z-40/z-50 de Tailwind del modal (`.leaflet-container` no arma su propio contexto de apilamiento). Fix: `isolation: isolate` en el wrapper del mapa (`components/DeudaMapa.tsx`)
+- **"Veo 15 pero el excel tiene 25"**: investigado en Supabase — no era bug de import. El Excel tiene 25 filas visuales pero la fila 1 es el header (24 filas de datos reales, coincide con lo insertado). Esas 24 posiciones se agrupan en 17 contratos, y el toggle "ocultar riesgo de cargas" (activo por default, enterrado en "Más filtros") escondía 2 de esos 17 sin ninguna pista visible. Se agregó un banner rojo permanente arriba del listado/mapa cuando hay contratos ocultos por ese filtro, con botón "Mostrar de todas formas". Se extrajo el predicado de filtrado a `pasaFiltros()` en `components/DeudaFiltros.tsx` para no duplicar la lógica
+- Commit `ec2308c` (geocoding + z-index) y `bbd3bdc` (banner de transparencia), pusheados a `origin master`, build verificado en cada uno
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión — falta que Pato confirme en el deploy que ahora sí ubica las 24 y que el banner de contratos ocultos se ve bien
 
 **Última sesión — 14/07/2026 (rediseño: Wallest Design System — colores + tipografía)**
 
