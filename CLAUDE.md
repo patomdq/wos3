@@ -39,6 +39,21 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 14/07/2026 (continuación — corrección de contraste/tipografía + fichas de Deuda)**
+
+Hecho:
+- **Corrección de contraste en botones grandes** — feedback explícito de Pato tras ver el deploy: "tipografia oscura sobre oscuro" en CTAs grandes (ej. "Guardar cambios" en modal de Mercado). Causa: bronce (`#A6855A`) + texto oscuro (`#14110C`) pasa WCAG AA formal (~5.48:1) pero dos tonos cálidos análogos leen como poco contraste al ojo humano en superficies grandes
+  - Regla dividida por prominencia: **CTAs grandes/primarios** → fill ink (`#14110C`) + texto cream (`#F8F3E9`); **UI chica de soporte** (badges/chips/tabs/avatars/botones "+ X" que solo abren modales) → se mantiene bronce + texto oscuro, que sí lee bien a esa escala y es la convención propia del design system
+  - ~30 botones corregidos en `proyectos/[id]/page.tsx`, `proyectos/page.tsx`, `mercado/page.tsx` (incluido el botón exacto del screenshot), `admin/page.tsx`, `hasu/flujo-caja`, `hasu/proveedores`, `hasu/calendario`, `liquidacion/[id]`, `reporte/[id]`, `informe/inmueble/[id]`, `login/page.tsx`, `DeudaImportWizard.tsx`, `BotChat.tsx`
+- **Piso mínimo de tamaño de fuente subido en toda la app** — feedback: "la letra en todo el WOS es algo pequeña". Script mecánico (regex, no agente) sobre `fontSize: N` inline y clases `text-[Npx]`, mapeo `{7→10, 8→10, 9→11, 10→12, 11→12, 12→13, 13→14}`. 23 archivos, 763 coincidencias. Las clases semánticas Tailwind `text-xs`/`text-sm` NO se tocaron (368 usos combinados) — deliberado, fuera de alcance de esta pasada
+  - Commit `9f9d77b`, pusheado a `origin master`, build verificado (39/39 páginas)
+- **Área Deuda — fichas de detalle con campos que faltaban**: Pato mandó capturas de FENCIA (plataforma que vende deuda/NPL) mostrando el estándar de la industria — estado judicial, titular de la deuda, referencia catastral, valoración, etc. En WOS3 esos datos SÍ se guardaban en `deuda_posiciones` (el import ya los persistía) pero la UI nunca los renderizaba
+  - `components/DeudaListado.tsx` reescrito: card de contrato (grid) ahora muestra badge de estado judicial + titular de la deuda + footer con labels explícitos ("Asking price" / "Deuda OB" en vez de solo el número); modal de detalle por posición rediseñado como ficha de 3 bloques al estilo FENCIA — **Colateral** (tipo/subtipo, referencia catastral, nº registro, CCAA, provincia, ciudad, código postal), **Deuda** (titular, contract ID, nº préstamos, cargas previas/posteriores, broker), **Estado judicial** (normalizado + texto original del broker, ratio cargas/precio) — más 4 KPIs destacados arriba (Deuda OB / Deuda total / Asking price / Descuento)
+  - Commit `fd77cc9`, pusheado a `origin master`, build verificado
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión — falta que Pato revise en el deploy de Vercel (regla fija: nunca correr servidor local)
+
 **Última sesión — 14/07/2026 (rediseño: Wallest Design System — colores + tipografía)**
 
 Hecho:
