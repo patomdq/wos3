@@ -1225,9 +1225,9 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         duracionMeses: input.duracion_meses ?? undefined,
       }
 
-      let resultado, textoReporte
+      let resultado
       try {
-        ;({ resultado, textoReporte } = await analizarInmueble(analisisInput))
+        ;({ resultado } = await analizarInmueble(analisisInput))
       } catch (e: any) {
         return { result: `No pude completar el análisis: ${e.message}` }
       }
@@ -1258,15 +1258,20 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         .select('id')
         .single()
 
+      const fmt = (n: number) => Math.round(n).toLocaleString('es-ES')
+      const resumen = `${resultado.semaforo.emoji} **${input.nombre}** — ROI ${(resultado.roi * 100).toFixed(1)}%\nVenta estimada: ${fmt(resultado.precioVenta)}€ (fuente: ${resultado.fuenteVenta}) · Beneficio: ${fmt(resultado.beneficioNeto)}€`
+
       if (error || !inserted) {
-        return { result: `${textoReporte}\n\n⚠️ El análisis se calculó pero no se pudo guardar como borrador: ${error?.message}` }
+        return { result: `${resumen}\n\n⚠️ El análisis se calculó pero no se pudo guardar como borrador: ${error?.message}` }
       }
 
       return {
-        result: `${textoReporte}\n\n¿Lo doy de alta en Mercado o lo descarto?`,
+        result: `${resumen}\n\n¿Lo doy de alta en Mercado o lo descarto?`,
         table: 'inmuebles',
         recordId: inserted.id,
         label: input.nombre,
+        action: 'informe',
+        url: `https://wos3.vercel.app/informe/inmueble/${inserted.id}`,
       }
     }
     if (name === 'confirmar_alta_mercado') {
@@ -2596,7 +2601,9 @@ export async function POST(req: NextRequest) {
           scraped.banos        ? `Baños: ${scraped.banos}` : null,
           scraped.descripcion  ? `Descripción: ${scraped.descripcion}` : null,
         ].filter(Boolean).join('\n')
-        portalCtx = `\n\n[${portalName.toUpperCase()} — ARCHIVO ADJUNTO "${first.name}"] Info extraída del archivo HTML que subió el usuario (la página no se pudo scrapear por link):\n${campos}\n\nINSTRUCCIÓN: Mostrá este resumen al usuario de forma limpia y preguntá "¿Lo cargo al Radar?". Si confirma, usá insert_radar con estos datos, fuente='${portalName}'. Si falta algún campo, completalo con null.`
+        portalCtx = scraped.superficie
+          ? `\n\n[${portalName.toUpperCase()} — ARCHIVO ADJUNTO "${first.name}"] Datos extraídos del archivo HTML que subió el usuario (la página no se pudo scrapear por link):\n${campos}\n\nINSTRUCCIÓN: Llamá ahora mismo a analizar_inmueble con nombre='${scraped.direccion || scraped.titulo || 'Inmueble'}', ciudad='${scraped.ciudad || ''}', precio_compra=${scraped.precio || 0}, metros=${scraped.superficie}${scraped.habitaciones ? `, habitaciones=${scraped.habitaciones}` : ''}, reforma=0 (análisis rápido — no le preguntes la reforma, puede ajustarla después). No preguntes nada antes, ejecutá la herramienta directo.`
+          : `\n\n[${portalName.toUpperCase()} — ARCHIVO ADJUNTO "${first.name}"] Datos extraídos del archivo HTML:\n${campos}\n\nFalta la superficie (m²) para calcular comparables y ROI. Pedísela al usuario; en cuanto la tengas, llamá a analizar_inmueble con reforma=0. Si prefiere no darla, usá insert_radar con estos datos y fuente='${portalName}'.`
       } else {
         portalCtx = `\n\n[ARCHIVO ADJUNTO "${first.name}"] El usuario subió un archivo HTML pero no se pudieron extraer los datos automáticamente. Pedile que te diga manualmente: precio, dirección, ciudad, habitaciones y superficie.`
       }
@@ -2622,7 +2629,9 @@ export async function POST(req: NextRequest) {
             scraped.banos        ? `Baños: ${scraped.banos}` : null,
             scraped.descripcion  ? `Descripción: ${scraped.descripcion}` : null,
           ].filter(Boolean).join('\n')
-          portalCtx = `\n\n[${portalName.toUpperCase()} DETECTADO] Info extraída del link:\n${campos}\nURL: ${rawUrl}\n\nINSTRUCCIÓN: Mostrá este resumen al usuario de forma limpia y preguntá "¿Lo cargo al Radar?". Si confirma, usá insert_radar con estos datos, fuente='${portalName}' y url='${rawUrl}'. Si falta algún campo, completalo con null.`
+          portalCtx = scraped.superficie
+            ? `\n\n[${portalName.toUpperCase()} DETECTADO] Datos extraídos del link:\n${campos}\nURL: ${rawUrl}\n\nINSTRUCCIÓN: Llamá ahora mismo a analizar_inmueble con nombre='${scraped.direccion || scraped.titulo || 'Inmueble'}', ciudad='${scraped.ciudad || ''}', precio_compra=${scraped.precio || 0}, metros=${scraped.superficie}${scraped.habitaciones ? `, habitaciones=${scraped.habitaciones}` : ''}, reforma=0 (análisis rápido — no le preguntes la reforma, puede ajustarla después), url='${rawUrl}'. No preguntes nada antes, ejecutá la herramienta directo.`
+            : `\n\n[${portalName.toUpperCase()} DETECTADO] Datos extraídos del link:\n${campos}\nURL: ${rawUrl}\n\nFalta la superficie (m²) para calcular comparables y ROI. Pedísela al usuario; en cuanto la tengas, llamá a analizar_inmueble con reforma=0 y url='${rawUrl}'. Si prefiere no darla, usá insert_radar con estos datos, fuente='${portalName}' y url='${rawUrl}'.`
         }
       }
     }
@@ -2742,7 +2751,7 @@ ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
 
     // Para tools con output estructurado fijo (analizar_inmueble, generar_informe_estudio),
     // devolver el resultado del tool directamente — no dejar que Claude lo reformule.
-    const deterministicResult = toolResults.find(tr => tr.action === 'pdf')
+    const deterministicResult = toolResults.find(tr => tr.action === 'pdf' || tr.action === 'informe')
     if (deterministicResult) {
       return NextResponse.json({ text: deterministicResult.result, toolResults })
     }

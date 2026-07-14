@@ -402,7 +402,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
                     <a href={td.url} target="_blank" rel="noopener"
                       className="flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold w-full"
                       style={{ background: '#F26E1F', color: '#fff', textDecoration: 'none' }}>
-                      <span>📄</span> Descargar PDF
+                      <span>{td.action === 'informe' ? '📊' : '📄'}</span> {td.action === 'informe' ? 'Ver informe completo' : 'Descargar PDF'}
                     </a>
                   )}
                 </div>

@@ -39,6 +39,50 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 14/07/2026 (chat WOS3 — adjuntar HTML + análisis automático)**
+
+Hecho:
+- **Fix wrap de links largos en el chat** (`components/BotChat.tsx`) — al pegar una URL larga desbordaba los márgenes del panel. Se agregó `wordBreak: 'break-word', overflowWrap: 'anywhere'` a las burbujas de bot y de usuario
+- **Adjuntar archivos HTML/texto al chat** (`components/BotChat.tsx`) — antes el chat solo aceptaba imágenes. Caso real: Idealista bloquea el scraping directo por link, así que Pato descarga la página completa y la sube
+  - Nuevo tipo `AttachedFile` + estado `attachedFiles`, `handleFileSelect` ahora rama por `file.type` (imagen → base64 como antes; HTML/texto → `readAsText`, truncado a 300k chars)
+  - Chip nuevo en la UI (📄 nombre + ✕ quitar), input acepta `.html,.htm,text/html,.txt,text/plain` además de imágenes
+  - `app/api/chat/route.ts` recibe `htmlFiles` en el body, reusa `extractFromHtml()` de `lib/scrape-idealista.ts` (mismo parser que ya usaba el scraping por URL) para extraer precio/dirección/ciudad/habitaciones/superficie/baños
+- **Análisis de mercado automático al detectar portal (archivo o link)** (`app/api/chat/route.ts`) — antes, tanto el archivo adjunto como el link detectado solo disparaban `insert_radar` (guardar datos crudos), nunca corrían ROI/comparables como sí hace el bot de Telegram. Causa: instrucción hardcodeada en `portalCtx`, no dependía de Fragua (que sigue sin contratar)
+  - Si el HTML/link trae superficie: instruye a Claude a llamar `analizar_inmueble` directo (reforma=0, análisis rápido, sin preguntar antes) en vez de `insert_radar`
+  - Si falta superficie: pide ese dato primero; si el usuario no lo tiene, cae a `insert_radar` como antes
+  - Tool `analizar_inmueble` ya no devuelve el reporte largo (`textoReporte`) en el chat — devuelve un resumen corto de 2 líneas (semáforo + ROI + venta estimada + beneficio) + `action: 'informe'` + `url` a `/informe/inmueble/[id]` (página de reporte visual ya existente, reutilizada tal cual)
+  - Bypass determinístico (`toolResults.find(tr => tr.action === 'pdf' || tr.action === 'informe')`) extendido para que el resumen se muestre literal, sin que Claude lo reformule — mismo patrón que ya usaba `generar_informe_estudio`
+  - `components/BotChat.tsx`: el botón del toolData ahora muestra "📊 Ver informe completo" cuando `action === 'informe'` (antes solo existía "📄 Descargar PDF")
+  - Decisión explícita de Pato: análisis rápido en el chat + botón a informe completo, en vez de embeber todo el reporte largo dentro del chat (que no era visual/cómodo en el panel angosto)
+  - Build verificado antes del push
+
+Pendiente:
+- Ninguno abierto de esta sesión
+
+**Última sesión — 13/07/2026 (continuación — BONUS CCP: cálculo automático)**
+
+Hecho:
+- **Campo "Beneficio final (€)" + cálculo automático del bonus** (`app/(app)/mercado/page.tsx`), corrigiendo la sub-sesión anterior
+  - Pato notó que faltaba el dato con el cual calcular el bonus: se agregó el campo "Beneficio final (€)" junto al de "Beneficio acordado en el CCP (€)"
+  - En cuanto se carga el beneficio final, se calcula automáticamente: excedente = beneficio final − CCP acordado, y su reparto entre gestor(es)/inversor(es) según el % de bonus (60/40 default), con la misma ponderación que el reparto base (gestores en partes iguales, inversores a prorrata de capital) — nueva función pura `calcJvBono(jugadores, excedente, pctGestor, pctInversor)`
+  - Se muestra tabla con excedente total + Jugador/% bonus/Bonus(€) por jugador. Si el beneficio final no supera al CCP, se avisa que no hay excedente y no aplica bonus
+  - Columna nueva en Supabase `inmuebles`: `jv_bono_beneficio_final`
+  - Commit `62d9e41`, pusheado a `origin master` — ✅ build verificado antes del push
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión
+
+**Última sesión — 13/07/2026 (continuación — BONUS CCP en JV/Gestor)**
+
+Hecho:
+- **BONUS (excedente sobre el CCP) — nueva subsección en la card JV/Gestor** (`app/(app)/mercado/page.tsx`)
+  - Caso real: el Contrato de Cuentas de Participación (CCP) fija un beneficio acordado (ej. 100.000€); si el negocio termina rindiendo más (ej. 140.000€), el excedente (40.000€) se reparte con un % distinto al 50/50 fijo del reparto base — típicamente 60% gestor / 40% inversor(es)
+  - Se agregaron 2 inputs enlazados "% Gestor (bonus)" / "% Inversor (bonus)" (se autocompletan a 100 entre sí, default 60/40) + campo de referencia "Beneficio acordado en el CCP (€)"
+  - Al pie de la card, campo de texto libre "Liquidación final" para completar manualmente cuando la operación se cierre y se liquide el reparto real (incluido el bonus si aplica) — decisión de diseño: texto libre en vez de campos numéricos rígidos, porque el reparto real de liquidación puede variar caso a caso
+  - Columnas nuevas en Supabase `inmuebles`: `jv_bono_pct_gestor`, `jv_bono_pct_inversor`, `jv_bono_beneficio_ccp`, `jv_bono_liquidacion` (persisten solo si `jvModo === 'jv'`)
+  - Commit `dc38e72`, pusheado a `origin master` — ✅ build verificado antes del push
+  - **Nota**: en esta sub-sesión original faltaba el campo "Beneficio final" (ver entrada de arriba, corregida en la sub-sesión siguiente)
+
 **Última sesión — 13/07/2026 (continuación — generador de Dossier)**
 
 Hecho:
@@ -504,3 +548,6 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Reparto JV visible en card principal de Mercado (badge + tabla Jugador/Capital/Beneficio) | ✅ producción |
 | Generador de Dossier multi-inmueble para inversores (`/dossier`, `/dossier/print`) | ✅ producción (con cartera de prueba, no datos reales todavía) |
 | Catálogo reforma Fase 2 (tabla catalogo_reforma + admin + conexión calculadora) | ⏳ pendiente |
+| BONUS CCP en JV/Gestor (% gestor/inversor sobre excedente, cálculo automático con Beneficio final + liquidación) | ✅ producción |
+| Chat WOS3 — adjuntar archivo HTML/texto (no solo imágenes) | ✅ producción |
+| Chat WOS3 — análisis automático (ROI/comparables) al detectar portal, con resumen corto + botón "Ver informe completo" | ✅ producción |
