@@ -180,18 +180,21 @@ function Ficha({ titulo, children }: { titulo: string; children: React.ReactNode
   return (
     <div className="rounded-xl p-3" style={{ background: '#FAFAF8', border: '1px solid #F0EEE8' }}>
       <div className="text-[11px] font-black uppercase tracking-wide mb-2" style={{ color: '#A6855A' }}>{titulo}</div>
-      <div className="space-y-1.5">{children}</div>
+      <div className="space-y-2">{children}</div>
     </div>
   )
 }
 
+// Label arriba / valor abajo (en vez de label-valor en la misma línea con truncate) — con
+// referencias catastrales, contract IDs largos o titulares con nombre completo, la versión en
+// una sola línea los cortaba con "..." y no había forma de leerlos sin copiar el HTML.
 function Field({ label, value, mono, danger }: { label: string; value: string | null | undefined; mono?: boolean; danger?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[12px] font-semibold flex-shrink-0" style={{ color: '#999' }}>{label}</span>
-      <span className={`text-[12px] font-bold text-right truncate ${mono ? 'font-mono' : ''}`} style={{ color: danger ? '#EF4444' : '#333' }}>
+    <div>
+      <div className="text-[11px] font-semibold" style={{ color: '#999' }}>{label}</div>
+      <div className={`text-[12.5px] font-bold break-words ${mono ? 'font-mono' : ''}`} style={{ color: danger ? '#EF4444' : '#333' }}>
         {value || '—'}
-      </span>
+      </div>
     </div>
   )
 }
