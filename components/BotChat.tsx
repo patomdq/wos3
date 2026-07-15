@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { supabase } from '@/lib/supabase'
 
 type ToolData = { id: string; result: string; table?: string; recordId?: string; label?: string; url?: string; action?: string }
@@ -73,6 +75,29 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
         timeColor:   '#555',
         noSendBg:    '#282828',
       }
+  const mdBorder = lightTheme ? 'rgba(20,17,12,0.10)' : 'rgba(255,255,255,0.10)'
+  const mdHeaderBg = lightTheme ? 'rgba(166,133,90,0.10)' : 'rgba(166,133,90,0.16)'
+  const mdCodeBg = lightTheme ? 'rgba(20,17,12,0.06)' : 'rgba(255,255,255,0.08)'
+  const mdComponents = {
+    p: ({ children }: any) => <p style={{ margin: '0 0 0.6em' }}>{children}</p>,
+    strong: ({ children }: any) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+    a: ({ href, children }: any) => <a href={href} target="_blank" rel="noopener" style={{ color: '#A6855A', textDecoration: 'underline' }}>{children}</a>,
+    h1: ({ children }: any) => <div style={{ fontSize: 15, fontWeight: 800, margin: '0.2em 0 0.5em' }}>{children}</div>,
+    h2: ({ children }: any) => <div style={{ fontSize: 14, fontWeight: 800, margin: '0.7em 0 0.4em' }}>{children}</div>,
+    h3: ({ children }: any) => <div style={{ fontSize: 13.5, fontWeight: 700, margin: '0.6em 0 0.3em' }}>{children}</div>,
+    ul: ({ children }: any) => <ul style={{ margin: '0.3em 0 0.6em', paddingLeft: '1.2em' }}>{children}</ul>,
+    ol: ({ children }: any) => <ol style={{ margin: '0.3em 0 0.6em', paddingLeft: '1.2em' }}>{children}</ol>,
+    li: ({ children }: any) => <li style={{ marginBottom: '0.2em' }}>{children}</li>,
+    hr: () => <hr style={{ border: 'none', borderTop: `1px solid ${mdBorder}`, margin: '0.8em 0' }} />,
+    code: ({ children }: any) => <code style={{ background: mdCodeBg, padding: '1px 5px', borderRadius: 4, fontSize: '0.9em', fontFamily: 'monospace' }}>{children}</code>,
+    table: ({ children }: any) => (
+      <div style={{ overflowX: 'auto', margin: '0.6em 0', borderRadius: 8, border: `1px solid ${mdBorder}` }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>{children}</table>
+      </div>
+    ),
+    th: ({ children }: any) => <th style={{ background: mdHeaderBg, color: '#A6855A', fontWeight: 800, textAlign: 'left', padding: '6px 8px', borderBottom: `1px solid ${mdBorder}`, whiteSpace: 'nowrap' }}>{children}</th>,
+    td: ({ children }: any) => <td style={{ padding: '6px 8px', borderBottom: `1px solid ${mdBorder}`, verticalAlign: 'top' }}>{children}</td>,
+  }
   const [msgs, setMsgs] = useState<Msg[]>([WELCOME])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
@@ -264,11 +289,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
       const { text: resp, toolResults } = await res.json()
       setTyping(false)
 
-      const html = resp
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:#A6855A;text-decoration:underline;">$1</a>')
-        .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>')
-      const botMsg: Msg = { role: 'bot', text: html, time: now(), toolData: toolResults?.length ? toolResults : undefined }
+      const botMsg: Msg = { role: 'bot', text: resp, time: now(), toolData: toolResults?.length ? toolResults : undefined }
       setMsgs(m => [...m, botMsg])
       setHistorial(h => [...h, { role: 'assistant', content: resp }])
 
@@ -369,8 +390,9 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
             <div className="max-w-[calc(100%-60px)]">
               {m.role === 'bot' ? (
                 <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5"
-                  style={{ background: t.botBubbleBg, border: t.botBubbleBorder, color: t.botBubbleColor, borderRadius: '4px 14px 14px 14px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-                  dangerouslySetInnerHTML={{ __html: m.text }} />
+                  style={{ background: t.botBubbleBg, border: t.botBubbleBorder, color: t.botBubbleColor, borderRadius: '4px 14px 14px 14px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{m.text}</ReactMarkdown>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                   {m.imagePreviews && m.imagePreviews.length > 0 && (
