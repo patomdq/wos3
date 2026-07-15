@@ -39,6 +39,16 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — panel expandido como capa flotante)**
+
+Hecho:
+- Pato confirmó que el botón 🗑 funcionó (chat limpio) y probó el botón expandir ⤢ — pero al expandirse, el panel seguía siendo parte del layout flex normal, así que Proyectos/Mercado/etc. quedaban apiñados en la columna angosta que sobraba
+- Fix en `components/AppShell.tsx`: cuando `botExpanded` es true, el panel pasa a `position: fixed` (sale del flujo flex, el contenido principal recupera su ancho completo) y flota como una capa por encima con `box-shadow` + backdrop semitransparente (clic afuera del panel lo contrae). El panel angosto (380px) de siempre sigue funcionando igual, sin cambios, cuando no está expandido
+- Build verificado, commit `b0ade9e`, pusheado a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión
+
 **Última sesión — 15/07/2026 (continuación — botón limpiar chat en el panel lateral)**
 
 Hecho:
