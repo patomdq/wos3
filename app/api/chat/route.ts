@@ -924,7 +924,7 @@ const TOOLS: Anthropic.Tool[] = [
   // ── Edificios ────────────────────────────────────────────────────────────────
   {
     name: 'insert_edificio_radar',
-    description: 'Agrega un edificio o finca completa al radar de edificios. Usalo cuando el usuario pida agregar/guardar/meter un edificio, bloque de pisos, o finca completa al radar de edificios. NO usar para pisos o inmuebles individuales.',
+    description: 'Agrega un edificio o finca completa a Mercado (mismo lugar y mismas pestañas que los pisos individuales — Radar/En Estudio/etc, distinguido solo por el badge de tipología "Edificio"; NO es una sección aparte). Usalo cuando el usuario pida agregar/guardar/meter un edificio, bloque de pisos, o finca completa. NO usar para pisos o inmuebles individuales.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -946,7 +946,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'update_edificio',
-    description: 'Edita un edificio del radar o estudio de edificios. Usalo para actualizar precio, estado, notas, o cualquier campo.',
+    description: 'Edita un edificio en Mercado (Radar, En Estudio, etc). Usalo para actualizar precio, estado, notas, o cualquier campo.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -963,7 +963,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'delete_edificio',
-    description: 'Elimina un edificio del radar o estudio de edificios.',
+    description: 'Elimina un edificio de Mercado (Radar, En Estudio, etc).',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -975,12 +975,12 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'mover_edificio_a_estudio',
-    description: 'Mueve un edificio del Radar de Edificios a En Estudio. Usalo cuando el usuario diga "pasá el edificio X a estudio" o "mover edificio a en estudio".',
+    description: 'Mueve un edificio de la pestaña Radar a En Estudio dentro de Mercado (mismo lugar que los pisos). Usalo cuando el usuario diga "pasá el edificio X a estudio" o "mover edificio a en estudio". Esto es SIEMPRE una acción manual explícita — nunca la ejecutes por tu cuenta solo porque el edificio tenga checklist cargado.',
     input_schema: {
       type: 'object' as const,
       properties: {
         id: { type: 'string', description: 'UUID del edificio. Opcional si se usa busqueda.' },
-        busqueda: { type: 'string', description: 'Nombre o dirección parcial del edificio en radar.' },
+        busqueda: { type: 'string', description: 'Nombre o dirección parcial del edificio (en la pestaña Radar de Mercado).' },
       },
       required: [],
     },
@@ -2699,7 +2699,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
 - INMUEBLES MERCADO: para agregar un inmueble nuevo a seguimiento usá insert_radar (guarda en Mercado con estado sin_analizar). Para editar, eliminar o mover un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para pasar a análisis profundo usá analizar_inmueble o mover_radar_a_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR usá delete_radar (Mercado) o delete_estudio (En Estudio).
-- EDIFICIOS (fincas completas, bloques de pisos): viven en la MISMA tabla inmuebles que los pisos individuales, distinguidos por tipologia='edificio'. Para agregar un edificio usá insert_edificio_radar (inserta en inmuebles con tipologia='edificio', estado='borrador' — pendiente de confirmación, igual que analizar_inmueble). Para editar usá update_edificio. Para eliminar/descartar usá delete_edificio. Para mover de Radar (sin_analizar) a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — usá siempre las herramientas específicas de edificio para que queden marcados con tipologia='edificio'. UNIDADES: cuando el usuario mencione pisos, unidades, inquilinos o información por planta, llamá insert_edificio_unidades (en la tabla inmueble_unidades). Si ya hay info de unidades en el mismo mensaje donde se crea el edificio, llamá insert_edificio_radar e insert_edificio_unidades juntos en el mismo turno. Campos clave: planta (ej: "1ª DCHA"), ocupacion ("libre" o "alquilado"), renta_mensual, notas (inquilino + fechas de contrato). IMPORTANTE al cargar edificios: (1) num_plantas: extraélo siempre del texto — "PB+3"=4 plantas, "3 alturas"=3, "planta baja y dos pisos"=3, etc. (2) notas: copiá el texto completo literal del usuario sin resumir ni acortar — ni una palabra menos.
+- EDIFICIOS (fincas completas, bloques de pisos): viven en la MISMA tabla inmuebles y se ven en la MISMA pantalla de Mercado que los pisos individuales (mismas pestañas Radar/En Estudio/Ofertado/etc), distinguidos únicamente por tipologia='edificio' y el badge "Edificio" en la card. NO EXISTE una sección separada de "Radar de Edificios" ni "Estudio de Edificios" — si el usuario dice que no ve un edificio en Mercado, NUNCA le sugieras que busque en una sección aparte; el motivo real es casi siempre que el registro sigue en estado='borrador' (todavía no confirmado con confirmar_alta_mercado). Para agregar un edificio usá insert_edificio_radar (inserta en inmuebles con tipologia='edificio', estado='borrador' — pendiente de confirmación, igual que analizar_inmueble). Para editar usá update_edificio. Para eliminar/descartar usá delete_edificio. Para mover de Radar (sin_analizar) a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — usá siempre las herramientas específicas de edificio para que queden marcados con tipologia='edificio'. UNIDADES: cuando el usuario mencione pisos, unidades, inquilinos o información por planta, llamá insert_edificio_unidades (en la tabla inmueble_unidades). Si ya hay info de unidades en el mismo mensaje donde se crea el edificio, llamá insert_edificio_radar e insert_edificio_unidades juntos en el mismo turno. Campos clave: planta (ej: "1ª DCHA"), ocupacion ("libre" o "alquilado"), renta_mensual, notas (inquilino + fechas de contrato). IMPORTANTE al cargar edificios: (1) num_plantas: extraélo siempre del texto — "PB+3"=4 plantas, "3 alturas"=3, "planta baja y dos pisos"=3, etc. (2) notas: copiá el texto completo literal del usuario sin resumir ni acortar — ni una palabra menos.
 - CHECKLIST DE DOCUMENTACIÓN (due diligence) — CRÍTICO, una operación real se complicó por no chequear esto a tiempo: cuando el usuario describa un inmueble o edificio y mencione (aunque sea de pasada) documentación o estado legal/posesorio — nota simple, licencia de primera ocupación, licencia de final de obra, cédula de habitabilidad, cargas registrales/servidumbres, posesión, okupación, ITE, obra nueva en construcción, vandalismo, certificado energético, IBI, deuda de comunidad — extraé esas menciones y pasalas en checklist_alertas (problema confirmado, ej. "no tiene posesión", "sin LPO", "nota simple parcial") o checklist_ok (confirmado en orden) al llamar analizar_inmueble o insert_edificio_radar. NUNCA inventes ni asumas un ítem que el usuario no mencionó — dejalo pendiente. Si detectás varios ítems bloqueantes (marcados [bloqueante] en la lista de claves), NO llames confirmar_alta_mercado por tu cuenta: mostrale el resumen (la herramienta ya te devuelve el bloque de alertas) y esperá que el usuario decida si avanza igual o descarta. Si el usuario da una descripción rica en riesgos pero sin precio de venta/reforma para calcular ROI, usá igual insert_edificio_radar (o pedí lo mínimo para analizar_inmueble) — el checklist es información valiosa aunque el ROI todavía no cierre. IMPORTANTE: confirmar_alta_mercado SIEMPRE da de alta en Radar (sin_analizar), tenga o no checklist cargado — Radar es el buzón rápido de entrada (Pato sube varios por día) y el checklist se ve igual ahí con el badge de alertas. Pasar a En Estudio es SIEMPRE una decisión manual posterior del usuario (mover_radar_a_estudio o mover_edificio_a_estudio), nunca automática por tener el checklist marcado.
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
@@ -2713,6 +2713,7 @@ REGLAS DE RESPUESTA — MUY IMPORTANTE:
 5. Para editar o eliminar, buscá el ID en el contexto sin mostrárselo al usuario.
 6. Cuando mover_radar_a_estudio tiene éxito, respondé ÚNICAMENTE con el texto exacto del resultado de la herramienta — sin resumen de datos, sin preguntas adicionales, sin texto extra.
 7. Cuando analizar_inmueble, insert_edificio_radar o generar_informe_estudio retornan un resultado, copiá el texto EXACTO del resultado de la herramienta en tu respuesta, sin parafrasear, sin resumir, sin agregar párrafos extra (esto incluye el bloque de alertas del checklist de documentación si aparece). Podés agregar UNA sola línea de pregunta al final si el contexto lo requiere.
+8. CRÍTICO — nunca afirmes que un inmueble "ya está en Radar", "quedó confirmado", "se guardó", "se movió a X estado" a menos que acabes de recibir el resultado exitoso de la herramienta correspondiente (confirmar_alta_mercado, mover_radar_a_estudio, mover_edificio_a_estudio, etc.) EN ESTE MISMO TURNO. Si preguntaste algo (ej. "¿lo confirmo o lo descarto?") y la respuesta del usuario es ambigua o no es un sí/no claro (ej. "no lo había visto", "ok", "dale"), pedile que confirme explícitamente con sí/no antes de llamar la herramienta — nunca asumas y nunca narres un resultado que no ejecutaste.
 
 USO EFICIENTE DE HERRAMIENTAS — CRÍTICO:
 - Para resultados financieros de un proyecto (beneficio, ROI, etc.) usá los datos del contexto (campos: Compra, CostoTotal, VentaReal). NO llames listar_movimientos_proyecto para responder esto.
