@@ -370,7 +370,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
                   )}
                   {m.text && !m.text.startsWith('📎') && (
                     <div className="text-sm font-medium leading-relaxed px-3.5 py-2.5"
-                      style={{ background: '#A6855A', color: '#14110C', borderRadius: m.imagePreviews?.length ? '0 0 14px 14px' : '14px 4px 14px 14px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                      style={{ background: '#14110C', color: '#F8F3E9', borderRadius: m.imagePreviews?.length ? '0 0 14px 14px' : '14px 4px 14px 14px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {m.text}
                     </div>
                   )}
