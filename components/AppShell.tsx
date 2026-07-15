@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUser, canAccessPage } from '@/lib/user-context'
+import { clearBotPanel } from '@/lib/bot-context'
 import BotChat from '@/components/BotChat'
 
 type WosNotif = {
@@ -323,6 +324,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>WOS Bot</div>
                   <div style={{ fontSize: 12, color: '#BBB' }}>Análisis · ROI · Operaciones</div>
                 </div>
+                <button title="Limpiar chat" onClick={() => { if (confirm('¿Limpiar todo el historial de este chat?')) clearBotPanel() }} style={{
+                  width: 28, height: 28, borderRadius: '50%', background: '#F2F1ED',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, color: '#888', cursor: 'pointer', border: 'none',
+                }}>🗑</button>
                 <button title={botExpanded ? 'Contraer panel' : 'Expandir panel'} onClick={() => setBotExpanded(v => !v)} style={{
                   width: 28, height: 28, borderRadius: '50%', background: '#F2F1ED',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',

@@ -308,6 +308,14 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
     if (userId) localStorage.removeItem(`wos3_chat_${userId}${keySuffix}`)
   }
 
+  // Permite limpiar el chat desde afuera (ej. botón 🗑 del header del panel en AppShell,
+  // que no usa el header propio de BotChat por venir con hideHeader).
+  useEffect(() => {
+    const onClear = () => clearChat()
+    window.addEventListener('wos:clear-bot', onClear)
+    return () => window.removeEventListener('wos:clear-bot', onClear)
+  }, [userId, keySuffix])
+
   const deleteRecord = async (msgIdx: number, td: ToolData) => {
     if (!td.table || !td.recordId) return
     if (!confirm(`¿Eliminar "${td.label}"?`)) return

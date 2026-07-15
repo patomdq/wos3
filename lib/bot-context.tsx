@@ -12,6 +12,12 @@ export function closeBotPanel() {
   }
 }
 
+export function clearBotPanel() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('wos:clear-bot'))
+  }
+}
+
 // Legacy hook shim — usable in client components
 export function useBotPanel() {
   return { openBot: openBotPanel, closeBot: closeBotPanel }
