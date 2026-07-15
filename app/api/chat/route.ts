@@ -10,12 +10,35 @@ import { calcEscenarios, calcCostoTotal, calcGastosFijos, type Escenario } from 
 import { buscarComparables } from '@/lib/search-comparables'
 import { analizarInmueble, calcularSemaforo, type AnalisisInput } from '@/lib/analizarInmueble'
 import { checkAndSendMentions } from '@/lib/notifications'
+import { CHECKLIST_ITEMS, getBloqueantesPendientes, getAlertasConfirmadas, type ChecklistDocumentacion } from '@/lib/checklist-documentacion'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
+const CHECKLIST_KEYS = CHECKLIST_ITEMS.map(i => i.key)
+const CHECKLIST_LEGEND = CHECKLIST_ITEMS.map(i => `${i.key}=${i.label}${i.bloqueante ? ' [bloqueante]' : ''}`).join(', ')
+
+function buildChecklistDoc(alertas?: string[], ok?: string[]): ChecklistDocumentacion | undefined {
+  if ((!alertas || alertas.length === 0) && (!ok || ok.length === 0)) return undefined
+  const items: Record<string, 'ok' | 'alerta'> = {}
+  for (const k of ok || []) if (CHECKLIST_KEYS.includes(k)) items[k] = 'ok'
+  for (const k of alertas || []) if (CHECKLIST_KEYS.includes(k)) items[k] = 'alerta'
+  return { items }
+}
+
+// Texto para mostrarle a Pato en el chat — misma lectura que la ficha de Mercado (checklist_documentacion)
+function checklistResumenTexto(cd: ChecklistDocumentacion | undefined): string {
+  if (!cd) return ''
+  const alertas = getAlertasConfirmadas(cd)
+  const bloqueantes = getBloqueantesPendientes(cd)
+  const lineas: string[] = []
+  if (alertas.length > 0) lineas.push(`🔴 Alertas confirmadas: ${alertas.map(a => a.label).join(', ')}`)
+  if (bloqueantes.length > 0) lineas.push(`🔒 Bloqueantes sin resolver: ${bloqueantes.map(b => b.label).join(', ')}`)
+  return lineas.join('\n')
+}
 
 const TOOLS: Anthropic.Tool[] = [
   {
@@ -189,6 +212,8 @@ const TOOLS: Anthropic.Tool[] = [
         alquiler_mensual: { type: 'number', description: 'Alquiler mensual estimado en euros, si aplica. Opcional.' },
         duracion_meses: { type: 'number', description: 'Duración estimada de la operación en meses. Opcional.' },
         url: { type: 'string', description: 'URL del anuncio. Opcional.' },
+        checklist_alertas: { type: 'array', items: { type: 'string', enum: CHECKLIST_KEYS }, description: `Claves del checklist de documentación que el usuario mencionó como problema confirmado (ej: sin posesión, okupado, sin LPO). Claves válidas: ${CHECKLIST_LEGEND}. Opcional — solo incluir lo que el usuario mencionó explícitamente.` },
+        checklist_ok: { type: 'array', items: { type: 'string', enum: CHECKLIST_KEYS }, description: 'Claves del checklist que el usuario confirmó en orden (documentación verificada sin problema). Opcional.' },
       },
       required: ['nombre', 'precio_compra', 'reforma'],
     },
@@ -913,6 +938,8 @@ const TOOLS: Anthropic.Tool[] = [
         url: { type: 'string', description: 'Link del anuncio o fuente' },
         drive_url: { type: 'string', description: 'Link a la carpeta de Google Drive con fotos y documentos del edificio' },
         notas: { type: 'string', description: 'Copia LITERAL el texto completo que el usuario proporcionó sobre el edificio, sin resumir, sin abreviar, sin parafrasear. Si el usuario pegó una descripción larga, guardala íntegra.' },
+        checklist_alertas: { type: 'array', items: { type: 'string', enum: CHECKLIST_KEYS }, description: `Claves del checklist de documentación que el usuario mencionó como problema confirmado (ej: sin posesión, okupado, sin LPO, nota simple parcial). Claves válidas: ${CHECKLIST_LEGEND}. Opcional — solo incluir lo que el usuario mencionó explícitamente.` },
+        checklist_ok: { type: 'array', items: { type: 'string', enum: CHECKLIST_KEYS }, description: 'Claves del checklist que el usuario confirmó en orden (documentación verificada sin problema). Opcional.' },
       },
       required: ['direccion', 'precio_compra'],
     },
@@ -1232,6 +1259,8 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         return { result: `No pude completar el análisis: ${e.message}` }
       }
 
+      const checklistDoc = buildChecklistDoc(input.checklist_alertas, input.checklist_ok)
+
       // ── Guardar como borrador en Mercado — espera confirmación explícita ──
       const { data: inserted, error } = await supabaseAdmin
         .from('inmuebles')
@@ -1254,19 +1283,26 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
           url: input.url ?? null,
           fuente: 'chat',
           estado: 'borrador',
+          checklist_documentacion: checklistDoc || {},
         })
         .select('id')
         .single()
 
       const fmt = (n: number) => Math.round(n).toLocaleString('es-ES')
-      const resumen = `${resultado.semaforo.emoji} **${input.nombre}** — ROI ${(resultado.roi * 100).toFixed(1)}%\nVenta estimada: ${fmt(resultado.precioVenta)}€ (fuente: ${resultado.fuenteVenta}) · Beneficio: ${fmt(resultado.beneficioNeto)}€`
+      const checklistTexto = checklistResumenTexto(checklistDoc)
+      const resumen = `${resultado.semaforo.emoji} **${input.nombre}** — ROI ${(resultado.roi * 100).toFixed(1)}%\nVenta estimada: ${fmt(resultado.precioVenta)}€ (fuente: ${resultado.fuenteVenta}) · Beneficio: ${fmt(resultado.beneficioNeto)}€${checklistTexto ? `\n\n${checklistTexto}` : ''}`
 
       if (error || !inserted) {
         return { result: `${resumen}\n\n⚠️ El análisis se calculó pero no se pudo guardar como borrador: ${error?.message}` }
       }
 
+      const pendientes = checklistDoc ? getBloqueantesPendientes(checklistDoc) : []
+      const pregunta = pendientes.length > 0
+        ? `⚠️ Hay ${pendientes.length} punto(s) del checklist sin resolver — no lo doy de alta en Mercado hasta que confirmes. ¿Lo paso a En Estudio igual (con el checklist marcado y pendiente de completar) o lo descarto?`
+        : '¿Lo doy de alta en Mercado o lo descarto?'
+
       return {
-        result: `${resumen}\n\n¿Lo doy de alta en Mercado o lo descarto?`,
+        result: `${resumen}\n\n${pregunta}`,
         table: 'inmuebles',
         recordId: inserted.id,
         label: input.nombre,
@@ -1280,9 +1316,13 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (resolved.resolved.estado !== 'borrador') {
         return { result: `"${resolved.resolved.titulo || resolved.resolved.direccion}" ya está dado de alta en Mercado (estado: ${resolved.resolved.estado}).` }
       }
+      // Si ya se hizo la revisión del checklist de documentación (preanálisis profundo), entra directo a En Estudio
+      // en vez de Radar — el checklist ya es trabajo de estudio, no de triage.
+      const tieneChecklist = !!(resolved.resolved.checklist_documentacion?.items && Object.keys(resolved.resolved.checklist_documentacion.items).length > 0)
+      const estadoDestino = tieneChecklist ? 'en_estudio' : 'sin_analizar'
       const { data, error } = await supabaseAdmin
         .from('inmuebles')
-        .update({ estado: 'sin_analizar' })
+        .update({ estado: estadoDestino })
         .eq('id', resolved.resolved.id)
         .eq('estado', 'borrador')
         .select()
@@ -1290,7 +1330,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (error || !data) return { result: `Error al confirmar el alta: ${error?.message}` }
       const nombre = data.titulo || data.direccion
       return {
-        result: `📦 "${nombre}" dado de alta en Mercado.`,
+        result: `📦 "${nombre}" dado de alta en Mercado${estadoDestino === 'en_estudio' ? ' — En Estudio' : ''}.`,
         table: 'inmuebles',
         recordId: data.id,
         label: nombre,
@@ -2430,6 +2470,8 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         }
       }
 
+      const checklistDoc = buildChecklistDoc(input.checklist_alertas, input.checklist_ok)
+
       const { data, error } = await supabaseAdmin.from('inmuebles').insert([{
         tipologia: 'edificio',
         titulo: input.titulo || null,
@@ -2443,11 +2485,17 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         drive_url: input.drive_url || null,
         notas: input.notas || null,
         estado: 'borrador',
+        checklist_documentacion: checklistDoc || {},
       }]).select().single()
       if (error) return { result: `Error al guardar edificio: ${error.message}` }
       const nombre = data.titulo || data.direccion
+      const checklistTexto = checklistResumenTexto(checklistDoc)
+      const pendientes = checklistDoc ? getBloqueantesPendientes(checklistDoc) : []
+      const pregunta = pendientes.length > 0
+        ? `⚠️ Hay ${pendientes.length} punto(s) del checklist sin resolver — no lo doy de alta en Mercado hasta que confirmes. ¿Lo paso a En Estudio igual (con el checklist marcado y pendiente de completar) o lo descarto?`
+        : '¿Lo doy de alta en Mercado o lo descarto?'
       return {
-        result: `✅ Edificio agregado al radar — ${nombre}${data.ciudad ? ', ' + data.ciudad : ''} (${data.precio_compra?.toLocaleString('es-ES')}€). ¿Lo doy de alta en Mercado o lo descarto?`,
+        result: `✅ Edificio agregado al radar — ${nombre}${data.ciudad ? ', ' + data.ciudad : ''} (${data.precio_compra?.toLocaleString('es-ES')}€).${checklistTexto ? `\n\n${checklistTexto}` : ''}\n\n${pregunta}`,
         table: 'inmuebles',
         recordId: data.id,
         label: `${nombre}${data.ciudad ? ' · ' + data.ciudad : ''}`,
@@ -2651,8 +2699,9 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - TAREAS DE AGENDA (Personal/Trabajo, sin proyecto): insert_agenda_tarea, update_agenda_tarea, delete_agenda_tarea, listar_agenda_tareas. Son las tareas que aparecen en HASU → Calendario. Distintas de las tareas de proyecto. Cuando el usuario pregunte por tareas generales (no de un proyecto), usá listar_agenda_tareas directamente SIN preguntar — ya no hace falta la pregunta de aclaración.
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
-- INMUEBLES MERCADO: para agregar un inmueble nuevo a seguimiento usá insert_radar (guarda en Mercado con estado sin_analizar). Para editar, eliminar o mover un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para pasar a análisis profundo usá insert_estudio o mover_radar_a_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR usá delete_radar (Mercado) o delete_estudio (En Estudio).
+- INMUEBLES MERCADO: para agregar un inmueble nuevo a seguimiento usá insert_radar (guarda en Mercado con estado sin_analizar). Para editar, eliminar o mover un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para pasar a análisis profundo usá analizar_inmueble o mover_radar_a_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR usá delete_radar (Mercado) o delete_estudio (En Estudio).
 - EDIFICIOS (fincas completas, bloques de pisos): viven en la MISMA tabla inmuebles que los pisos individuales, distinguidos por tipologia='edificio'. Para agregar un edificio usá insert_edificio_radar (inserta en inmuebles con tipologia='edificio', estado='borrador' — pendiente de confirmación, igual que analizar_inmueble). Para editar usá update_edificio. Para eliminar/descartar usá delete_edificio. Para mover de Radar (sin_analizar) a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — usá siempre las herramientas específicas de edificio para que queden marcados con tipologia='edificio'. UNIDADES: cuando el usuario mencione pisos, unidades, inquilinos o información por planta, llamá insert_edificio_unidades (en la tabla inmueble_unidades). Si ya hay info de unidades en el mismo mensaje donde se crea el edificio, llamá insert_edificio_radar e insert_edificio_unidades juntos en el mismo turno. Campos clave: planta (ej: "1ª DCHA"), ocupacion ("libre" o "alquilado"), renta_mensual, notas (inquilino + fechas de contrato). IMPORTANTE al cargar edificios: (1) num_plantas: extraélo siempre del texto — "PB+3"=4 plantas, "3 alturas"=3, "planta baja y dos pisos"=3, etc. (2) notas: copiá el texto completo literal del usuario sin resumir ni acortar — ni una palabra menos.
+- CHECKLIST DE DOCUMENTACIÓN (due diligence) — CRÍTICO, una operación real se complicó por no chequear esto a tiempo: cuando el usuario describa un inmueble o edificio y mencione (aunque sea de pasada) documentación o estado legal/posesorio — nota simple, licencia de primera ocupación, licencia de final de obra, cédula de habitabilidad, cargas registrales/servidumbres, posesión, okupación, ITE, obra nueva en construcción, vandalismo, certificado energético, IBI, deuda de comunidad — extraé esas menciones y pasalas en checklist_alertas (problema confirmado, ej. "no tiene posesión", "sin LPO", "nota simple parcial") o checklist_ok (confirmado en orden) al llamar analizar_inmueble o insert_edificio_radar. NUNCA inventes ni asumas un ítem que el usuario no mencionó — dejalo pendiente. Si detectás varios ítems bloqueantes (marcados [bloqueante] en la lista de claves), NO llames confirmar_alta_mercado por tu cuenta: mostrale el resumen (la herramienta ya te devuelve el bloque de alertas) y esperá que el usuario decida si avanza igual o descarta. Si el usuario da una descripción rica en riesgos pero sin precio de venta/reforma para calcular ROI, usá igual insert_edificio_radar (o pedí lo mínimo para analizar_inmueble) — el checklist es información valiosa aunque el ROI todavía no cierre.
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
@@ -2663,8 +2712,8 @@ REGLAS DE RESPUESTA — MUY IMPORTANTE:
 3. Cuando el usuario pregunte por tareas sin contexto de proyecto: si dice "mis tareas", "tareas personal", "tareas trabajo" → usá listar_agenda_tareas directamente. Si hay ambigüedad con un proyecto activo, preguntá "¿Querés las tareas de [proyecto] o las tareas generales de agenda?"
 4. Respuestas cortas y limpias. Solo la info que el usuario necesita ver. Sin columnas técnicas.
 5. Para editar o eliminar, buscá el ID en el contexto sin mostrárselo al usuario.
-6. Cuando insert_estudio o mover_radar_a_estudio tienen éxito, respondé ÚNICAMENTE con el texto exacto del resultado de la herramienta — sin resumen de datos, sin preguntas adicionales, sin texto extra.
-7. Cuando analizar_inmueble o generar_informe_estudio retornan un resultado, copiá el texto EXACTO del resultado de la herramienta en tu respuesta, sin parafrasear, sin resumir, sin agregar párrafos extra. Podés agregar UNA sola línea de pregunta al final si el contexto lo requiere.
+6. Cuando mover_radar_a_estudio tiene éxito, respondé ÚNICAMENTE con el texto exacto del resultado de la herramienta — sin resumen de datos, sin preguntas adicionales, sin texto extra.
+7. Cuando analizar_inmueble, insert_edificio_radar o generar_informe_estudio retornan un resultado, copiá el texto EXACTO del resultado de la herramienta en tu respuesta, sin parafrasear, sin resumir, sin agregar párrafos extra (esto incluye el bloque de alertas del checklist de documentación si aparece). Podés agregar UNA sola línea de pregunta al final si el contexto lo requiere.
 
 USO EFICIENTE DE HERRAMIENTAS — CRÍTICO:
 - Para resultados financieros de un proyecto (beneficio, ROI, etc.) usá los datos del contexto (campos: Compra, CostoTotal, VentaReal). NO llames listar_movimientos_proyecto para responder esto.
