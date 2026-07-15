@@ -41,6 +41,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Sidebar / bot panel state
   const [collapsed, setCollapsed] = useState(false)
   const [botOpen, setBotOpen] = useState(false)
+  const [botExpanded, setBotExpanded] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   useEffect(() => {
@@ -294,8 +295,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Bot panel */}
         <div style={{
-          width: botOpen ? 380 : 0,
-          minWidth: botOpen ? 380 : 0,
+          width: botOpen ? (botExpanded ? 'min(860px, 78vw)' : 380) : 0,
+          minWidth: botOpen ? (botExpanded ? 'min(860px, 78vw)' : 380) : 0,
           height: '100vh',
           background: '#fff',
           borderLeft: '1px solid #ECEAE4',
@@ -322,7 +323,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>WOS Bot</div>
                   <div style={{ fontSize: 12, color: '#BBB' }}>Análisis · ROI · Operaciones</div>
                 </div>
-                <button onClick={() => setBotOpen(false)} style={{
+                <button title={botExpanded ? 'Contraer panel' : 'Expandir panel'} onClick={() => setBotExpanded(v => !v)} style={{
+                  width: 28, height: 28, borderRadius: '50%', background: '#F2F1ED',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, color: '#888', cursor: 'pointer', border: 'none',
+                }}>{botExpanded ? '⤡' : '⤢'}</button>
+                <button onClick={() => { setBotOpen(false); setBotExpanded(false) }} style={{
                   width: 28, height: 28, borderRadius: '50%', background: '#F2F1ED',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 12, color: '#888', cursor: 'pointer', border: 'none',
