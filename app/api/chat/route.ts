@@ -2600,11 +2600,12 @@ export async function POST(req: NextRequest) {
   if (!auth) return NextResponse.json({ text: 'No autorizado.' }, { status: 401 })
 
   try {
-    const { messages, context, imageData, mediaType, images, htmlFiles } = await req.json()
+    const { messages, context, imageData, mediaType, images, htmlFiles, pdfs } = await req.json()
     // Normalize: support both single imageData/mediaType and new images[] array
     const imageList: { base64: string; mediaType: string }[] = images?.length
       ? images
       : imageData && mediaType ? [{ base64: imageData, mediaType }] : []
+    const pdfList: { name: string; base64: string }[] = pdfs?.length ? pdfs : []
     const today = new Date().toISOString().split('T')[0]
 
     // Detect real-estate portal URL in last user message and scrape it
@@ -2729,14 +2730,19 @@ Formato de listas:
 📋 Tarea pendiente · prioridad
 🔨 Partida · estado
 
-Respondé siempre en español. Máximo 3 párrafos.
+Respondé siempre en español. Máximo 3 párrafos — EXCEPTO en modo análisis libre (ver abajo), donde la respuesta puede ser tan larga como el análisis lo requiera.
+
+MODO ANÁLISIS LIBRE — cuando el usuario pida algo que no encaja en ninguna herramienta de la lista (ej. "analizame este plano contra la normativa de habitabilidad", "revisame este contrato y decime qué te parece", "compará estos dos documentos", cualquier pedido de razonamiento/redacción abierto), NO intentes forzarlo en una tool call ni lo rechaces por no tener una herramienta específica. Sos el mismo Claude que en cualquier otra conversación — razoná en profundidad con la información y los documentos que te compartan, y devolvé el análisis completo en la respuesta (texto largo, estructurado con títulos/listas si ayuda a la claridad). Esto es exactamente lo que reemplaza a "ir a otro chat de Claude aparte" — la única herramienta de WOS3 relacionada es generar_informe_personalizado (si existe en tu lista de tools) para guardar el resultado linkeado a un proyecto/inmueble cuando el usuario lo pida explícitamente; si no la tenés disponible, simplemente respondé el análisis en el chat.
 
 ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
 - Determiná el tipo automáticamente analizando su contenido visual.
 - **Factura o presupuesto** → extraé: proveedor, importe total, fecha, concepto/descripción del trabajo. Luego mostrá el resumen y preguntá "¿A qué operación imputamos este gasto?". Cuando el usuario indique el proyecto, llamá insert_documento (con proyecto_id) y después insert_movimiento con los datos extraídos.
 - **Foto de inmueble** → describí el estado general (instalaciones, materiales, acabados), estimá superficie si es posible, listá observaciones relevantes para la reforma. Llamá insert_documento con tipo='foto_inmueble'.
 - **Documento** (contrato, nota, informe, etc.) → extraé información clave: partes, fechas, importes, condiciones relevantes. Llamá insert_documento con tipo='documento'.
-- Si no hay operación/proyecto en contexto cuando se necesite asociar, preguntá antes de guardar con insert_documento.${portalCtx}`
+- **Plano o croquis** (planta, distribución) → esto es modo análisis libre: describí lo que ves, extraé cotas/superficies si están indicadas, y si el usuario pide cruzarlo contra normativa u otro criterio, hacé el análisis completo en la respuesta.
+- Si no hay operación/proyecto en contexto cuando se necesite asociar, preguntá antes de guardar con insert_documento.
+
+ANÁLISIS DE PDFs — cuando el usuario adjunte uno o más archivos PDF (planos, anteproyectos, contratos, informes técnicos, escrituras, etc.), leélos con el mismo nivel de detalle que si fueran texto — Claude puede leer PDFs nativamente, incluyendo texto e imágenes/planos dentro del PDF. Esto es modo análisis libre por defecto: no hay una tool fija para "PDF", así que razoná sobre el contenido y respondé en profundidad según lo que pida el usuario.${portalCtx}`
 
     // Build clean messages — allow content to be string or content array (for vision)
     type CleanMsg = { role: 'user' | 'assistant'; content: string | Anthropic.ContentBlockParam[] }
@@ -2744,8 +2750,9 @@ ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
       .filter(m => typeof m.content === 'string' && m.content.trim() !== '')
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content as string }))
 
-    // If images attached, inject into last user message as vision content blocks
-    if (imageList.length > 0) {
+    // Si hay imágenes y/o PDFs, inyectarlos en el último mensaje de usuario como bloques de contenido
+    // (vision para imágenes, document nativo de Claude para PDFs — planos, contratos, anteproyectos, etc.)
+    if (imageList.length > 0 || pdfList.length > 0) {
       const lastUserIdx = cleanMessages.reduce((found, m, i) => m.role === 'user' ? i : found, -1)
       if (lastUserIdx >= 0) {
         const text = cleanMessages[lastUserIdx].content as string
@@ -2753,11 +2760,21 @@ ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
           type: 'image' as const,
           source: { type: 'base64' as const, media_type: img.mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: img.base64 },
         }))
+        const pdfBlocks: Anthropic.ContentBlockParam[] = pdfList.map(pdf => ({
+          type: 'document' as const,
+          source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: pdf.base64 },
+          title: pdf.name || null,
+        }))
+        const adjuntosLabel = [
+          imageList.length > 0 ? `${imageList.length} imagen${imageList.length > 1 ? 'es' : ''}` : '',
+          pdfList.length > 0 ? `${pdfList.length} PDF${pdfList.length > 1 ? 's' : ''}` : '',
+        ].filter(Boolean).join(' y ')
         cleanMessages[lastUserIdx] = {
           role: 'user',
           content: [
             ...imageBlocks,
-            { type: 'text', text: text || `Analizá ${imageList.length > 1 ? 'estas ' + imageList.length + ' imágenes' : 'esta imagen'}.` },
+            ...pdfBlocks,
+            { type: 'text', text: text || `Analizá ${adjuntosLabel}.` },
           ],
         }
       }
@@ -2765,7 +2782,7 @@ ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
 
     let response = await anthropic.messages.create({
       model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
-      max_tokens: 1024,
+      max_tokens: 4096,
       system: systemPrompt,
       tools: TOOLS,
       messages: cleanMessages
@@ -2791,7 +2808,7 @@ ANÁLISIS DE IMÁGENES — cuando el usuario adjunte una imagen:
 
       response = await anthropic.messages.create({
         model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
-        max_tokens: 1024,
+        max_tokens: 4096,
         system: systemPrompt,
         tools: TOOLS,
         messages: newMessages

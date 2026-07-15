@@ -6,6 +6,7 @@ type ToolData = { id: string; result: string; table?: string; recordId?: string;
 type Msg = { role: 'bot' | 'user'; text: string; time: string; toolData?: ToolData[]; imagePreviews?: string[] }
 type AttachedImage = { file: File; preview: string; base64: string; mediaType: string }
 type AttachedFile = { file: File; name: string; content: string }
+type AttachedPdf = { file: File; name: string; base64: string }
 
 const QUICK = ['📄 Factura', '💰 Saldo HASU', '🔨 Estado obra', '📋 Liquidación', '📅 ¿Qué tareas hay?']
 
@@ -83,6 +84,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
   const [proyectoNombre, setProyectoNombre] = useState('')
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([])
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
+  const [attachedPdfs, setAttachedPdfs] = useState<AttachedPdf[]>([])
   const endRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -183,6 +185,14 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
           setAttachedImages(prev => [...prev, { file, preview: dataUrl, base64, mediaType: file.type }])
         }
         reader.readAsDataURL(file)
+      } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        const reader = new FileReader()
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string
+          const base64 = dataUrl.split(',')[1]
+          setAttachedPdfs(prev => [...prev, { file, name: file.name, base64 }])
+        }
+        reader.readAsDataURL(file)
       } else {
         const reader = new FileReader()
         reader.onload = (ev) => {
@@ -197,13 +207,15 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
 
   const removeImage = (idx: number) => setAttachedImages(prev => prev.filter((_, i) => i !== idx))
   const removeFile = (idx: number) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))
+  const removePdf = (idx: number) => setAttachedPdfs(prev => prev.filter((_, i) => i !== idx))
 
   const send = async (text: string) => {
-    if (!text.trim() && attachedImages.length === 0 && attachedFiles.length === 0) return
+    if (!text.trim() && attachedImages.length === 0 && attachedFiles.length === 0 && attachedPdfs.length === 0) return
     const t = now()
     const attachLabel = [
       attachedImages.length > 0 ? `${attachedImages.length} imagen${attachedImages.length > 1 ? 'es' : ''}` : '',
       attachedFiles.length > 0 ? attachedFiles.map(f => f.name).join(', ') : '',
+      attachedPdfs.length > 0 ? attachedPdfs.map(f => f.name).join(', ') : '',
     ].filter(Boolean).join(' + ')
     const displayText = text || (attachLabel ? `📎 ${attachLabel}` : '')
     const previews = attachedImages.map(img => img.preview)
@@ -213,13 +225,16 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
     if (taRef.current) taRef.current.style.height = 'auto'
     const imgs = [...attachedImages]
     const files = [...attachedFiles]
+    const pdfs = [...attachedPdfs]
     setAttachedImages([])
     setAttachedFiles([])
+    setAttachedPdfs([])
     setTyping(true)
 
     const attachmentParts: string[] = []
     if (imgs.length > 0) attachmentParts.push(`${imgs.length} imagen${imgs.length > 1 ? 'es' : ''} adjunta${imgs.length > 1 ? 's' : ''}: ${imgs.map(i => i.file.name).join(', ')}`)
     if (files.length > 0) attachmentParts.push(`${files.length} archivo${files.length > 1 ? 's' : ''} adjunto${files.length > 1 ? 's' : ''}: ${files.map(f => f.name).join(', ')}`)
+    if (pdfs.length > 0) attachmentParts.push(`${pdfs.length} PDF${pdfs.length > 1 ? 's' : ''} adjunto${pdfs.length > 1 ? 's' : ''}: ${pdfs.map(f => f.name).join(', ')}`)
     const historialText = attachmentParts.length > 0 ? `[${attachmentParts.join(' | ')}] ${text}`.trim() : text
     const newHistorial = [...historial, { role: 'user', content: historialText }]
     setHistorial(newHistorial)
@@ -231,6 +246,9 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
       }
       if (files.length > 0) {
         body.htmlFiles = files.map(f => ({ name: f.name, html: f.content }))
+      }
+      if (pdfs.length > 0) {
+        body.pdfs = pdfs.map(p => ({ name: p.name, base64: p.base64 }))
       }
 
       const { data: { session: freshSession } } = await supabase.auth.getSession()
@@ -471,25 +489,40 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
         </div>
       )}
 
+      {/* Attached PDFs strip */}
+      {attachedPdfs.length > 0 && (
+        <div className="flex items-center gap-2 px-3.5 py-2 flex-shrink-0 overflow-x-auto" style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          {attachedPdfs.map((f, idx) => (
+            <div key={idx} className="relative flex-shrink-0 flex items-center gap-1.5 pl-2.5 pr-6 py-1.5 rounded-lg" style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span className="text-sm">📕</span>
+              <span className="text-xs font-semibold truncate max-w-[120px]" style={{ color: '#ccc' }}>{f.name}</span>
+              <button onClick={() => removePdf(idx)}
+                className="absolute top-1/2 -translate-y-1/2 right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[11px] font-black"
+                style={{ background: '#EF4444', color: '#fff' }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Input */}
       <div className="flex gap-2 px-3.5 py-2.5 flex-shrink-0" style={{ borderTop: t.quickBorder, background: t.inputBarBg }}>
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,.html,.htm,text/html,.txt,text/plain" multiple className="hidden" onChange={handleFileSelect} />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,.html,.htm,text/html,.txt,text/plain,application/pdf,.pdf" multiple className="hidden" onChange={handleFileSelect} />
         <button onClick={() => fileRef.current?.click()}
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-base"
-          style={{ background: (attachedImages.length > 0 || attachedFiles.length > 0) ? 'rgba(166,133,90,0.18)' : t.clipBtnBg, border: `1.5px solid ${(attachedImages.length > 0 || attachedFiles.length > 0) ? '#A6855A' : t.clipBtnBorder.replace('1.5px solid ', '')}`, color: (attachedImages.length > 0 || attachedFiles.length > 0) ? '#A6855A' : '#888' }}>
+          style={{ background: (attachedImages.length > 0 || attachedFiles.length > 0 || attachedPdfs.length > 0) ? 'rgba(166,133,90,0.18)' : t.clipBtnBg, border: `1.5px solid ${(attachedImages.length > 0 || attachedFiles.length > 0 || attachedPdfs.length > 0) ? '#A6855A' : t.clipBtnBorder.replace('1.5px solid ', '')}`, color: (attachedImages.length > 0 || attachedFiles.length > 0 || attachedPdfs.length > 0) ? '#A6855A' : '#888' }}>
           📎
         </button>
         <textarea ref={taRef} value={input}
           onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px' }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
-          placeholder={(attachedImages.length > 0 || attachedFiles.length > 0) ? 'Añadí un comentario (opcional)…' : 'Escribí un mensaje…'} rows={1}
+          placeholder={(attachedImages.length > 0 || attachedFiles.length > 0 || attachedPdfs.length > 0) ? 'Añadí un comentario (opcional)…' : 'Escribí un mensaje…'} rows={1}
           className="flex-1 rounded-xl px-3.5 py-3 text-sm outline-none resize-none font-medium"
           style={{ background: t.inputFieldBg, border: t.inputFieldBorder, color: t.inputColor, maxHeight: 80, lineHeight: 1.4 }}
           onFocus={e => e.target.style.borderColor = t.inputFocusBorder}
           onBlur={e => e.target.style.borderColor = lightTheme ? '#ECEAE4' : 'rgba(255,255,255,0.08)'} />
         <button onClick={() => send(input)}
           className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0"
-          style={{ background: (input.trim() || attachedImages.length > 0 || attachedFiles.length > 0) ? '#A6855A' : t.noSendBg, color: (input.trim() || attachedImages.length > 0 || attachedFiles.length > 0) ? '#14110C' : (lightTheme ? '#888' : '#fff') }}>↑</button>
+          style={{ background: (input.trim() || attachedImages.length > 0 || attachedFiles.length > 0 || attachedPdfs.length > 0) ? '#A6855A' : t.noSendBg, color: (input.trim() || attachedImages.length > 0 || attachedFiles.length > 0 || attachedPdfs.length > 0) ? '#14110C' : (lightTheme ? '#888' : '#fff') }}>↑</button>
       </div>
 
       {/* Edit sheet */}
