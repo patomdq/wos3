@@ -1297,7 +1297,7 @@ export default function MercadoPage() {
                   </div>
                   <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5">
                     <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                    {['en_estudio', 'ofertado', 'en_arras'].includes(item.estado) && (() => {
+                    {['sin_analizar', 'en_estudio', 'ofertado', 'en_arras'].includes(item.estado) && (() => {
                       const alertas = getAlertasConfirmadas(item.checklist_documentacion)
                       const pendientes = getBloqueantesPendientes(item.checklist_documentacion)
                       if (alertas.length > 0) return <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.9)', color: '#fff', backdropFilter: 'blur(4px)' }}>🔴 {alertas.length} alerta{alertas.length>1?'s':''}</span>

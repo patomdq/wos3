@@ -1298,7 +1298,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
 
       const pendientes = checklistDoc ? getBloqueantesPendientes(checklistDoc) : []
       const pregunta = pendientes.length > 0
-        ? `⚠️ Hay ${pendientes.length} punto(s) del checklist sin resolver — no lo doy de alta en Mercado hasta que confirmes. ¿Lo paso a En Estudio igual (con el checklist marcado y pendiente de completar) o lo descarto?`
+        ? `⚠️ Hay ${pendientes.length} punto(s) del checklist sin resolver — no lo doy de alta en Mercado hasta que confirmes. ¿Lo paso a Radar igual (marcado, pendiente de documentación) o lo descarto?`
         : '¿Lo doy de alta en Mercado o lo descarto?'
 
       return {
@@ -1316,13 +1316,12 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (resolved.resolved.estado !== 'borrador') {
         return { result: `"${resolved.resolved.titulo || resolved.resolved.direccion}" ya está dado de alta en Mercado (estado: ${resolved.resolved.estado}).` }
       }
-      // Si ya se hizo la revisión del checklist de documentación (preanálisis profundo), entra directo a En Estudio
-      // en vez de Radar — el checklist ya es trabajo de estudio, no de triage.
-      const tieneChecklist = !!(resolved.resolved.checklist_documentacion?.items && Object.keys(resolved.resolved.checklist_documentacion.items).length > 0)
-      const estadoDestino = tieneChecklist ? 'en_estudio' : 'sin_analizar'
+      // Radar es el buzón rápido de entrada — el checklist se marca ahí mismo (pendiente de documentación).
+      // Pasar a En Estudio queda como decisión manual del usuario (mover_radar_a_estudio / mover_edificio_a_estudio),
+      // no automática por tener el checklist cargado.
       const { data, error } = await supabaseAdmin
         .from('inmuebles')
-        .update({ estado: estadoDestino })
+        .update({ estado: 'sin_analizar' })
         .eq('id', resolved.resolved.id)
         .eq('estado', 'borrador')
         .select()
@@ -1330,7 +1329,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       if (error || !data) return { result: `Error al confirmar el alta: ${error?.message}` }
       const nombre = data.titulo || data.direccion
       return {
-        result: `📦 "${nombre}" dado de alta en Mercado${estadoDestino === 'en_estudio' ? ' — En Estudio' : ''}.`,
+        result: `📦 "${nombre}" dado de alta en Mercado.`,
         table: 'inmuebles',
         recordId: data.id,
         label: nombre,
@@ -2492,7 +2491,7 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
       const checklistTexto = checklistResumenTexto(checklistDoc)
       const pendientes = checklistDoc ? getBloqueantesPendientes(checklistDoc) : []
       const pregunta = pendientes.length > 0
-        ? `⚠️ Hay ${pendientes.length} punto(s) del checklist sin resolver — no lo doy de alta en Mercado hasta que confirmes. ¿Lo paso a En Estudio igual (con el checklist marcado y pendiente de completar) o lo descarto?`
+        ? `⚠️ Hay ${pendientes.length} punto(s) del checklist sin resolver — no lo doy de alta en Mercado hasta que confirmes. ¿Lo paso a Radar igual (marcado, pendiente de documentación) o lo descarto?`
         : '¿Lo doy de alta en Mercado o lo descarto?'
       return {
         result: `✅ Edificio agregado al radar — ${nombre}${data.ciudad ? ', ' + data.ciudad : ''} (${data.precio_compra?.toLocaleString('es-ES')}€).${checklistTexto ? `\n\n${checklistTexto}` : ''}\n\n${pregunta}`,
@@ -2701,7 +2700,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
 - INMUEBLES MERCADO: para agregar un inmueble nuevo a seguimiento usá insert_radar (guarda en Mercado con estado sin_analizar). Para editar, eliminar o mover un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para pasar a análisis profundo usá analizar_inmueble o mover_radar_a_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR usá delete_radar (Mercado) o delete_estudio (En Estudio).
 - EDIFICIOS (fincas completas, bloques de pisos): viven en la MISMA tabla inmuebles que los pisos individuales, distinguidos por tipologia='edificio'. Para agregar un edificio usá insert_edificio_radar (inserta en inmuebles con tipologia='edificio', estado='borrador' — pendiente de confirmación, igual que analizar_inmueble). Para editar usá update_edificio. Para eliminar/descartar usá delete_edificio. Para mover de Radar (sin_analizar) a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — usá siempre las herramientas específicas de edificio para que queden marcados con tipologia='edificio'. UNIDADES: cuando el usuario mencione pisos, unidades, inquilinos o información por planta, llamá insert_edificio_unidades (en la tabla inmueble_unidades). Si ya hay info de unidades en el mismo mensaje donde se crea el edificio, llamá insert_edificio_radar e insert_edificio_unidades juntos en el mismo turno. Campos clave: planta (ej: "1ª DCHA"), ocupacion ("libre" o "alquilado"), renta_mensual, notas (inquilino + fechas de contrato). IMPORTANTE al cargar edificios: (1) num_plantas: extraélo siempre del texto — "PB+3"=4 plantas, "3 alturas"=3, "planta baja y dos pisos"=3, etc. (2) notas: copiá el texto completo literal del usuario sin resumir ni acortar — ni una palabra menos.
-- CHECKLIST DE DOCUMENTACIÓN (due diligence) — CRÍTICO, una operación real se complicó por no chequear esto a tiempo: cuando el usuario describa un inmueble o edificio y mencione (aunque sea de pasada) documentación o estado legal/posesorio — nota simple, licencia de primera ocupación, licencia de final de obra, cédula de habitabilidad, cargas registrales/servidumbres, posesión, okupación, ITE, obra nueva en construcción, vandalismo, certificado energético, IBI, deuda de comunidad — extraé esas menciones y pasalas en checklist_alertas (problema confirmado, ej. "no tiene posesión", "sin LPO", "nota simple parcial") o checklist_ok (confirmado en orden) al llamar analizar_inmueble o insert_edificio_radar. NUNCA inventes ni asumas un ítem que el usuario no mencionó — dejalo pendiente. Si detectás varios ítems bloqueantes (marcados [bloqueante] en la lista de claves), NO llames confirmar_alta_mercado por tu cuenta: mostrale el resumen (la herramienta ya te devuelve el bloque de alertas) y esperá que el usuario decida si avanza igual o descarta. Si el usuario da una descripción rica en riesgos pero sin precio de venta/reforma para calcular ROI, usá igual insert_edificio_radar (o pedí lo mínimo para analizar_inmueble) — el checklist es información valiosa aunque el ROI todavía no cierre.
+- CHECKLIST DE DOCUMENTACIÓN (due diligence) — CRÍTICO, una operación real se complicó por no chequear esto a tiempo: cuando el usuario describa un inmueble o edificio y mencione (aunque sea de pasada) documentación o estado legal/posesorio — nota simple, licencia de primera ocupación, licencia de final de obra, cédula de habitabilidad, cargas registrales/servidumbres, posesión, okupación, ITE, obra nueva en construcción, vandalismo, certificado energético, IBI, deuda de comunidad — extraé esas menciones y pasalas en checklist_alertas (problema confirmado, ej. "no tiene posesión", "sin LPO", "nota simple parcial") o checklist_ok (confirmado en orden) al llamar analizar_inmueble o insert_edificio_radar. NUNCA inventes ni asumas un ítem que el usuario no mencionó — dejalo pendiente. Si detectás varios ítems bloqueantes (marcados [bloqueante] en la lista de claves), NO llames confirmar_alta_mercado por tu cuenta: mostrale el resumen (la herramienta ya te devuelve el bloque de alertas) y esperá que el usuario decida si avanza igual o descarta. Si el usuario da una descripción rica en riesgos pero sin precio de venta/reforma para calcular ROI, usá igual insert_edificio_radar (o pedí lo mínimo para analizar_inmueble) — el checklist es información valiosa aunque el ROI todavía no cierre. IMPORTANTE: confirmar_alta_mercado SIEMPRE da de alta en Radar (sin_analizar), tenga o no checklist cargado — Radar es el buzón rápido de entrada (Pato sube varios por día) y el checklist se ve igual ahí con el badge de alertas. Pasar a En Estudio es SIEMPRE una decisión manual posterior del usuario (mover_radar_a_estudio o mover_edificio_a_estudio), nunca automática por tener el checklist marcado.
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
 - VISITAS A INMUEBLES RADAR: agenda visitas con agendar_visita_radar (→ crea evento GCal automáticamente), lista con listar_visitas_radar, registra resultado con registrar_resultado_visita (estados: descartado, sigue_en_radar, pasa_a_estudio → mueve automáticamente a En Estudio si corresponde). Comandos: "Agenda visita a Rulador 30 el martes a las 11, responsable Patricio", "Qué visitas hay esta tarde?", "Registra visita a Rulador 30: piso en buen estado, pasa a En Estudio".
 - COMERCIALIZACIÓN: prospectos por proyecto con estados (Contactado → Visita programada → Visita realizada → Oferta recibida → En negociación → Descartado) y log de interacciones (llamada, visita, mensaje, email, nota). Comandos: "Agrega prospecto [nombre], tel [X]", "[nombre] hizo oferta de [X]€", "Descarta a [nombre]", "¿Cuántos prospectos activos tiene [proyecto]?". Para registrar interacciones usá insert_interaccion_prospecto (necesitás el prospecto_id del contexto).
