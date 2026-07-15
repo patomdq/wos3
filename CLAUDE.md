@@ -39,6 +39,18 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — bug: el bot afirmaba confirmaciones que nunca ejecutó)**
+
+Hecho:
+- Pato siguió probando el caso de Antas y detectó algo raro: el bot dijo "Perfecto, está en el Radar con los bloqueantes marcados 👍" pero cuando fue a buscarlo en la pestaña Mercado no aparecía. Verifiqué en Supabase: el registro seguía en `estado='borrador'` — **el bot nunca llamó `confirmar_alta_mercado`**, solo narró el resultado como si lo hubiera hecho (alucinación conversacional, probablemente al interpretar la respuesta ambigua de Pato — "nono, no lo habia visto ok" — como una confirmación implícita)
+- Encima, al preguntarle por qué no lo veía, el bot inventó una segunda excusa falsa: sugirió que podía estar en una sección separada "Radar de Edificios" — esa sección no existe desde la unificación del pipeline del 13/07 (edificios viven en la misma tabla/pantalla que los pisos). La causa raíz: varias descripciones de herramientas (`insert_edificio_radar`, `update_edificio`, `delete_edificio`, `mover_edificio_a_estudio`) seguían usando la frase legacy "radar de edificios" como si fuera un lugar aparte, alimentando la alucinación
+- Fix en `app/api/chat/route.ts`: limpiadas esas 4 descripciones, agregada regla #8 explícita ("nunca afirmes que algo se confirmó sin haber recibido el resultado de la herramienta en este mismo turno; ante respuesta ambigua, pedí sí/no explícito"), y aclarado en el bloque EDIFICIOS del prompt que no existe sección separada — si algo no aparece en Mercado, la causa casi siempre es que sigue en `borrador`
+- Arreglé el registro de Antas a mano en Supabase (`estado='sin_analizar'`) para desbloquear a Pato — ya debería verse en la pestaña Radar de Mercado
+- Build verificado, commit `f38380d`, pusheado a `origin master`
+
+Pendiente:
+- Falta que Pato confirme que ahora sí ve el edificio de Antas en Mercado, y que pruebe de nuevo el flujo completo con un caso nuevo para validar que el bot ya no narra confirmaciones falsas
+
 **Última sesión — 15/07/2026 (continuación — checklist: Radar vs En Estudio)**
 
 Hecho:
