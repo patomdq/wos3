@@ -1441,35 +1441,6 @@ export default function MercadoPage() {
                             {item.analizado_en}
                           </div>
                         )}
-                        {/* Reparto JV */}
-                        {item.jv_jugadores && item.jv_jugadores.length > 0 && (() => {
-                          const jvRes = calcJvReparto(item.jv_jugadores, bens[1], item.duracion_meses || 0)
-                          const rolLabel = (r: JvJugador['rol']) => r === 'gestor' ? 'Gestor' : r === 'inversor' ? 'Inversor' : 'Mixto'
-                          const rolColor = (r: JvJugador['rol']) => r === 'gestor' ? '#F59E0B' : r === 'inversor' ? '#3B82F6' : '#A855F7'
-                          return (
-                            <div className="px-2.5 py-2" style={{ background: 'rgba(168,85,247,0.06)', borderTop: '1px solid rgba(168,85,247,0.15)' }}>
-                              <div className="text-[11px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#A855F7' }}>Reparto JV (escenario Realista)</div>
-                              <div className="grid grid-cols-[1fr_64px_64px] gap-x-2 pb-1 mb-1" style={{ borderBottom: '1px solid rgba(168,85,247,0.15)' }}>
-                                <div className="text-[10px] font-black uppercase" style={{ color: '#BBB' }}>Jugador</div>
-                                <div className="text-[10px] font-black uppercase text-right" style={{ color: '#BBB' }}>Capital</div>
-                                <div className="text-[10px] font-black uppercase text-right" style={{ color: '#BBB' }}>Beneficio</div>
-                              </div>
-                              {jvRes.map(j => (
-                                <div key={j.id} className="grid grid-cols-[1fr_64px_64px] gap-x-2 items-center py-1">
-                                  <div className="min-w-0">
-                                    <div className="text-[12px] font-bold truncate" style={{ color: '#333' }}>{j.nombre || '—'}</div>
-                                    <div className="text-[10px] font-black uppercase tracking-wide" style={{ color: rolColor(j.rol) }}>{rolLabel(j.rol)}{j.rol === 'mixto' ? ` ${(j.gestorPct ?? 50)}%` : ''}</div>
-                                  </div>
-                                  <div className="text-[12px] font-mono text-right" style={{ color: '#888' }}>{fmt(j.capital)}</div>
-                                  <div className="text-right">
-                                    <div className="text-[12px] font-mono font-black" style={{ color: '#7C3AED' }}>{j.beneficio !== null ? fmt(j.beneficio) : '—'}</div>
-                                    <div className="text-[10px] font-bold" style={{ color: '#A855F7' }}>{j.pctBeneficio.toFixed(0)}%</div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )
-                        })()}
                       </div>
                     )
                   })()}
@@ -1480,72 +1451,120 @@ export default function MercadoPage() {
                   </div>
                   {item.tipologia !== 'edificio' && item.notas && <div className="mt-2 text-xs leading-relaxed" style={{ color: '#888' }}>{item.notas}</div>}
 
-                  {/* Ver detalle (edificios) */}
-                  {item.tipologia === 'edificio' && (
-                    <button onClick={() => toggleDetalle(item.id)}
-                      className="mt-3 w-full py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-colors"
-                      style={{ background: expandedDetalle === item.id ? 'rgba(166,133,90,0.08)' : '#F5F4F0', color: expandedDetalle === item.id ? '#A6855A' : '#888', border: `1.5px solid ${expandedDetalle === item.id ? 'rgba(166,133,90,0.3)' : '#ECEAE4'}` }}>
-                      {expandedDetalle === item.id ? '▲ Cerrar detalle' : `▼ Ver detalle${unidades[item.id] ? ` · ${unidades[item.id].length} unidades` : ''}`}
-                    </button>
-                  )}
+                  {/* Ver detalle (edificios y/o JV) — colapsado por default para no alargar la card */}
+                  {(() => {
+                    const tieneUnidades = item.tipologia === 'edificio'
+                    const tieneJv = !!(item.jv_jugadores && item.jv_jugadores.length > 0)
+                    if (!tieneUnidades && !tieneJv) return null
+                    const partes = [
+                      tieneJv ? 'JV' : '',
+                      tieneUnidades && unidades[item.id] ? `${unidades[item.id].length} unidades` : '',
+                    ].filter(Boolean).join(' · ')
+                    return (
+                      <button onClick={() => toggleDetalle(item.id)}
+                        className="mt-3 w-full py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-colors"
+                        style={{ background: expandedDetalle === item.id ? 'rgba(166,133,90,0.08)' : '#F5F4F0', color: expandedDetalle === item.id ? '#A6855A' : '#888', border: `1.5px solid ${expandedDetalle === item.id ? 'rgba(166,133,90,0.3)' : '#ECEAE4'}` }}>
+                        {expandedDetalle === item.id ? '▲ Cerrar detalle' : `▼ Ver detalle${partes ? ` · ${partes}` : ''}`}
+                      </button>
+                    )
+                  })()}
 
-                  {/* Panel detalle expandido (edificios) — solo lectura */}
-                  {item.tipologia === 'edificio' && expandedDetalle === item.id && (
+                  {/* Panel detalle expandido — reparto JV + unidades (edificios), solo lectura */}
+                  {expandedDetalle === item.id && (
                     <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
-                      {item.notas && (
+                      {item.jv_jugadores && item.jv_jugadores.length > 0 && (() => {
+                        const gDet = item.gastos_json as Gastos | undefined
+                        const totalInvDet = gDet
+                          ? CONCEPTOS_GASTOS.reduce((sum, c) => {
+                              const gc = gDet[c.id] || { estimado: 0, real: 0 }
+                              const r = toNum(gc.real); const e = toNum(gc.estimado)
+                              return sum + (r > 0 ? r : e)
+                            }, 0)
+                          : null
+                        const benRealistaDet = (item.precio_venta_realista && totalInvDet) ? item.precio_venta_realista - totalInvDet : null
+                        const jvRes = calcJvReparto(item.jv_jugadores!, benRealistaDet, item.duracion_meses || 0)
+                        const rolLabel = (r: JvJugador['rol']) => r === 'gestor' ? 'Gestor' : r === 'inversor' ? 'Inversor' : 'Mixto'
+                        const rolColor = (r: JvJugador['rol']) => r === 'gestor' ? '#F59E0B' : r === 'inversor' ? '#3B82F6' : '#A855F7'
+                        return (
+                          <div className="px-3 py-2.5" style={{ background: 'rgba(168,85,247,0.06)', borderBottom: '1px solid rgba(168,85,247,0.15)' }}>
+                            <div className="text-[11px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#A855F7' }}>Reparto JV (escenario Realista)</div>
+                            <div className="grid grid-cols-[1fr_64px_64px] gap-x-2 pb-1 mb-1" style={{ borderBottom: '1px solid rgba(168,85,247,0.15)' }}>
+                              <div className="text-[10px] font-black uppercase" style={{ color: '#BBB' }}>Jugador</div>
+                              <div className="text-[10px] font-black uppercase text-right" style={{ color: '#BBB' }}>Capital</div>
+                              <div className="text-[10px] font-black uppercase text-right" style={{ color: '#BBB' }}>Beneficio</div>
+                            </div>
+                            {jvRes.map(j => (
+                              <div key={j.id} className="grid grid-cols-[1fr_64px_64px] gap-x-2 items-center py-1">
+                                <div className="min-w-0">
+                                  <div className="text-[12px] font-bold truncate" style={{ color: '#333' }}>{j.nombre || '—'}</div>
+                                  <div className="text-[10px] font-black uppercase tracking-wide" style={{ color: rolColor(j.rol) }}>{rolLabel(j.rol)}{j.rol === 'mixto' ? ` ${(j.gestorPct ?? 50)}%` : ''}</div>
+                                </div>
+                                <div className="text-[12px] font-mono text-right" style={{ color: '#888' }}>{fmt(j.capital)}</div>
+                                <div className="text-right">
+                                  <div className="text-[12px] font-mono font-black" style={{ color: '#7C3AED' }}>{j.beneficio !== null ? fmt(j.beneficio) : '—'}</div>
+                                  <div className="text-[10px] font-bold" style={{ color: '#A855F7' }}>{j.pctBeneficio.toFixed(0)}%</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()}
+                      {item.tipologia === 'edificio' && item.notas && (
                         <div className="px-3 pt-3 pb-2.5" style={{ borderBottom: '1px solid #F0EEE8' }}>
                           <div className="text-[11px] font-black uppercase tracking-wide mb-1.5" style={{ color: '#BBB' }}>Descripción</div>
                           <div className="text-[13px] leading-relaxed" style={{ color: '#555' }}>{item.notas}</div>
                         </div>
                       )}
-                      <div>
-                        <div className="px-3 py-2.5">
-                          <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#BBB' }}>
-                            Unidades{unidades[item.id] ? ` (${unidades[item.id].length})` : ''}
+                      {item.tipologia === 'edificio' && (
+                        <div>
+                          <div className="px-3 py-2.5">
+                            <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#BBB' }}>
+                              Unidades{unidades[item.id] ? ` (${unidades[item.id].length})` : ''}
+                            </div>
                           </div>
+                          {loadingUnidades[item.id] && (
+                            <div className="px-3 py-3 text-xs" style={{ color: '#AAA' }}>Cargando unidades...</div>
+                          )}
+                          {!loadingUnidades[item.id] && unidades[item.id] && unidades[item.id].length === 0 && (
+                            <div className="px-3 pb-3 text-xs" style={{ color: '#CCC' }}>Sin unidades. Ábrelo para agregar.</div>
+                          )}
+                          {!loadingUnidades[item.id] && unidades[item.id] && unidades[item.id].length > 0 && (
+                            <>
+                              <div className="grid px-3 py-1.5" style={{ gridTemplateColumns: '1fr 44px 68px 80px', background: '#FAFAF8', borderTop: '1px solid #F0EEE8' }}>
+                                {['Unidad','m²','Estado','Venta est.'].map((h,i) => (
+                                  <div key={i} className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</div>
+                                ))}
+                              </div>
+                              {unidades[item.id].map((u, ui) => {
+                                const isLibre = !u.ocupacion || u.ocupacion === 'libre' || u.ocupacion === 'Libre'
+                                return (
+                                  <div key={u.id} className="grid px-3 py-2 items-center" style={{ gridTemplateColumns: '1fr 44px 68px 80px', borderTop: '1px solid #F0EEE8' }}>
+                                    <div>
+                                      <div className="text-[13px] font-bold" style={{ color: '#222' }}>{u.tipo}{u.planta ? ` · ${u.planta}` : ''}</div>
+                                      {u.renta_mensual ? <div className="text-[12px]" style={{ color: '#AAA' }}>{fmt(u.renta_mensual)}/mes</div> : null}
+                                    </div>
+                                    <div className="text-[12px]" style={{ color: '#AAA' }}>{u.superficie ?? '—'}</div>
+                                    <div>
+                                      <span className="text-[11px] font-black px-1.5 py-0.5 rounded-full" style={{ background: isLibre ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)', color: isLibre ? '#16A34A' : '#D97706' }}>
+                                        {isLibre ? 'Libre' : 'Ocupado'}
+                                      </span>
+                                    </div>
+                                    <div className="text-[12px] font-bold text-right" style={{ color: u.precio_venta_est ? '#22C55E' : '#CCC' }}>
+                                      {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                              <div className="flex justify-between items-center px-3 py-2.5" style={{ borderTop: '1.5px solid #ECEAE4', background: '#F9F8F5' }}>
+                                <span className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#AAA' }}>Total venta estimado</span>
+                                <span className="text-[14px] font-black" style={{ color: '#22C55E' }}>
+                                  {fmt(unidades[item.id].reduce((acc, u) => acc + (u.precio_venta_est || 0), 0))}
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
-                        {loadingUnidades[item.id] && (
-                          <div className="px-3 py-3 text-xs" style={{ color: '#AAA' }}>Cargando unidades...</div>
-                        )}
-                        {!loadingUnidades[item.id] && unidades[item.id] && unidades[item.id].length === 0 && (
-                          <div className="px-3 pb-3 text-xs" style={{ color: '#CCC' }}>Sin unidades. Ábrelo para agregar.</div>
-                        )}
-                        {!loadingUnidades[item.id] && unidades[item.id] && unidades[item.id].length > 0 && (
-                          <>
-                            <div className="grid px-3 py-1.5" style={{ gridTemplateColumns: '1fr 44px 68px 80px', background: '#FAFAF8', borderTop: '1px solid #F0EEE8' }}>
-                              {['Unidad','m²','Estado','Venta est.'].map((h,i) => (
-                                <div key={i} className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</div>
-                              ))}
-                            </div>
-                            {unidades[item.id].map((u, ui) => {
-                              const isLibre = !u.ocupacion || u.ocupacion === 'libre' || u.ocupacion === 'Libre'
-                              return (
-                                <div key={u.id} className="grid px-3 py-2 items-center" style={{ gridTemplateColumns: '1fr 44px 68px 80px', borderTop: '1px solid #F0EEE8' }}>
-                                  <div>
-                                    <div className="text-[13px] font-bold" style={{ color: '#222' }}>{u.tipo}{u.planta ? ` · ${u.planta}` : ''}</div>
-                                    {u.renta_mensual ? <div className="text-[12px]" style={{ color: '#AAA' }}>{fmt(u.renta_mensual)}/mes</div> : null}
-                                  </div>
-                                  <div className="text-[12px]" style={{ color: '#AAA' }}>{u.superficie ?? '—'}</div>
-                                  <div>
-                                    <span className="text-[11px] font-black px-1.5 py-0.5 rounded-full" style={{ background: isLibre ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)', color: isLibre ? '#16A34A' : '#D97706' }}>
-                                      {isLibre ? 'Libre' : 'Ocupado'}
-                                    </span>
-                                  </div>
-                                  <div className="text-[12px] font-bold text-right" style={{ color: u.precio_venta_est ? '#22C55E' : '#CCC' }}>
-                                    {u.precio_venta_est ? fmt(u.precio_venta_est) : '—'}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                            <div className="flex justify-between items-center px-3 py-2.5" style={{ borderTop: '1.5px solid #ECEAE4', background: '#F9F8F5' }}>
-                              <span className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#AAA' }}>Total venta estimado</span>
-                              <span className="text-[14px] font-black" style={{ color: '#22C55E' }}>
-                                {fmt(unidades[item.id].reduce((acc, u) => acc + (u.precio_venta_est || 0), 0))}
-                              </span>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>
