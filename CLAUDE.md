@@ -39,6 +39,17 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — Mercado: cards más cortas, JV detrás de "Ver detalle")**
+
+Hecho:
+- Pato reportó cards muy largas en Mercado (ej. Calle Alhóndiga) — el reparto JV (tabla de jugadores, capital, beneficio) se mostraba siempre expandido debajo de la tabla de escenarios, alargando la card innecesariamente
+- `app/(app)/mercado/page.tsx`: movido el bloque "Reparto JV" del área siempre visible al panel colapsable "Ver detalle" (que antes solo existía para listar unidades de edificio) — ahora ese toggle aplica a cualquier inmueble con `jv_jugadores`, no solo edificios. El botón "Ver detalle" quedó posicionado antes del contenido oculto (como pidió Pato) y el label indica qué hay adentro (ej. "▼ Ver detalle · JV · 2 unidades")
+- Sin cambios en la lógica de cálculo (mismo `calcJvReparto()`), solo cambió dónde se renderiza — se recalcula el beneficio Realista de forma standalone en el nuevo lugar (mismo patrón ya usado 2 veces más en el archivo para los botones de WhatsApp/PDF)
+- Build + tsc verificados (mismos 2 errores preexistentes sin relación). Commit `c75e9f1`, pusheado a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión
+
 **Última sesión — 15/07/2026 (continuación — panel expandido como capa flotante)**
 
 Hecho:
