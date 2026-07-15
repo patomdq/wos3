@@ -39,6 +39,24 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — checklist de documentación en el preanálisis del chat)**
+
+Hecho:
+- Pato aclaró que el pedido anterior (checklist en Mercado) no era para que yo analice un caso puntual manualmente, sino para debatir cómo el WOS hace esa misma lectura automáticamente en el chat, en el momento del preanálisis (el paso que decide si un inmueble pasa a Mercado o se descarta)
+- Diagnóstico: `lib/analizarInmueble.ts` + los tools `analizar_inmueble`/`insert_edificio_radar` en `app/api/chat/route.ts` solo hacían ROI + comparables — el checklist de la sesión anterior vivía únicamente en la ficha de Mercado, invisible para el chat
+- Decisión con Pato (2 preguntas): (1) mismo criterio de 3 capas que "Comprado →" — alerta visual + freno + confirmación explícita antes de dar de alta; (2) en casos sin precio de venta/reforma (como el ejemplo real de un edificio en Antas: 6 viviendas, nota simple parcial, sin LPO, sin final de obra, sin posesión por estar adjudicado a un fondo con lanzamiento pendiente), igual se da de alta en Mercado como **En Estudio** con el checklist marcado y los números pendientes de completar
+- Implementado en `app/api/chat/route.ts`:
+  - Tools `analizar_inmueble` e `insert_edificio_radar` ahora aceptan `checklist_alertas`/`checklist_ok` (arrays de claves, `enum` restringido a las 13 claves de `lib/checklist-documentacion.ts` — misma fuente de verdad que la UI, sin segundo modelo de datos)
+  - Nuevos helpers `buildChecklistDoc()` y `checklistResumenTexto()` — arman el `checklist_documentacion` a insertar y el bloque de texto (🔴 alertas / 🔒 bloqueantes) que se muestra en la respuesta del chat, reusando `getBloqueantesPendientes`/`getAlertasConfirmadas` de la lib compartida
+  - Si hay bloqueantes sin resolver, la respuesta de la herramienta ya trae la pregunta explícita ("¿lo paso a En Estudio igual o lo descarto?") — el system prompt instruye a Claude a NO llamar `confirmar_alta_mercado` por su cuenta en ese caso, sino mostrar el resumen tal cual (regla de respuesta #7 ampliada) y esperar confirmación
+  - `confirmar_alta_mercado`: si el borrador tiene `checklist_documentacion.items` cargado (o sea, ya se hizo la revisión), aterriza directo en `en_estudio` en vez de `sin_analizar` (Radar) — el checklist ya es trabajo de estudio, no de triage liviano
+  - Nueva instrucción en el system prompt explicando cómo mapear menciones de texto libre a las claves del checklist, sin inventar ítems no mencionados
+  - **Bug preexistente detectado y corregido de paso**: el prompt instruía usar una herramienta `insert_estudio` que nunca existió (dead reference, probablemente resto de la unificación del pipeline del 13/07) — reemplazado por `analizar_inmueble` en las 2 menciones
+  - Build + `tsc --noEmit` verificados (2 errores preexistentes sin relación, confirmados con `git stash` antes/después). Commit `3e9efc8`, pusheado a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión — falta que Pato pruebe el flujo con un caso real por chat (ej. el edificio de Antas) y confirme si la detección de menciones funciona bien o si el prompt necesita ajuste
+
 **Última sesión — 15/07/2026 (Mercado: checklist de documentación/alertas)**
 
 Hecho:
@@ -666,3 +684,4 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Wallest Design System Fase 2 (geometría literal: radios 2px/26px/999px) | ⏳ pendiente |
 | Portal inversor / Dossier — tratamiento "dark-first" del design system | ⏳ pendiente de decisión de Pato |
 | Mercado — checklist de documentación/alertas (13 ítems, gating en "Comprado →") | ✅ producción |
+| Chat WOS3 — checklist de documentación en el preanálisis (analizar_inmueble/insert_edificio_radar), gating antes de dar de alta en Mercado | ✅ producción |
