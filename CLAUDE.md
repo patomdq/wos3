@@ -39,6 +39,17 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — fijar inmuebles en Mercado)**
+
+Hecho:
+- Con Radar empezando a recibir varios leads por día (Antas fue el primer caso real), Pato notó que el orden por fecha de creación descendente hacía que cada lead nuevo empujara hacia abajo las 3 operaciones importantes (en_arras, en_estudio). Pidió algo tipo "fijar post" de Instagram pero sin el límite de 3
+- `app/(app)/mercado/page.tsx`: botón 📌 nuevo en cada card (junto a ✎/🗑) para fijar/desfijar sin límite de cantidad. Orden final: fijados primero (más recién fijado arriba dentro del grupo), el resto del más viejo al más nuevo — así lo nuevo entra abajo de la lista, no al principio. Badge "📌 Fijado" visible en la card para reconocerlos de un vistazo. Es manual/discrecional (como Instagram) — no automático por estado
+- Columnas nuevas en Supabase `inmuebles`: `fijado` (bool, default false), `fijado_en` (timestamptz)
+- Build verificado, commit `97499bc`, pusheado a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión
+
 **Última sesión — 15/07/2026 (continuación — bug: el bot afirmaba confirmaciones que nunca ejecutó)**
 
 Hecho:
