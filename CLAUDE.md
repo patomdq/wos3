@@ -39,6 +39,17 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — botón limpiar chat en el panel lateral)**
+
+Hecho:
+- Pato mandó captura: el mensaje viejo de Castillo 3 se seguía viendo con `<br>`/`<strong>` literales — mensajes guardados en localStorage ANTES del fix de markdown de esta sesión tienen el HTML pre-convertido a mano incrustado en el texto, y ReactMarkdown los muestra como texto plano en vez de interpretarlos (es contenido viejo, no un bug nuevo). No encontraba cómo borrar ese historial
+- Causa: el botón "Limpiar" existe en `BotChat.tsx` pero solo se renderiza cuando NO se pasa `hideHeader` — y el panel lateral de `AppShell.tsx` sí pasa `hideHeader` (usa su propio header con título/expandir/cerrar), así que quedaba inaccesible ahí. Ese botón nunca se vio en el panel lateral, ni antes de esta sesión
+- Fix: `lib/bot-context.tsx` — nuevo `clearBotPanel()` (mismo patrón de evento que `openBotPanel`/`closeBotPanel`, `wos:clear-bot`). `BotChat.tsx` escucha ese evento y llama a `clearChat()`. `AppShell.tsx` — botón 🗑 nuevo en el header del panel (junto a expandir ⤢ y cerrar ✕), con `confirm()` antes de borrar
+- Build verificado, commit `ec54dbb`, pusheado a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión — Pato debería usar 🗑 para limpiar el chat viejo y probar de nuevo el análisis de PDF con historial limpio
+
 **Última sesión — 15/07/2026 (continuación — links de cualquier web inmobiliaria, no solo 14 portales)**
 
 Hecho:
