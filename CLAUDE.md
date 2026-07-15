@@ -39,6 +39,17 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — links de cualquier web inmobiliaria, no solo 14 portales)**
+
+Hecho:
+- Pato preguntó qué pasa si le pasan al bot el link de una inmobiliaria chica no listada, en vez de Idealista/Fotocasa. Revisando el código: `scrapeIdealista()` (en `lib/scrape-idealista.ts`) es en realidad un scraper GENÉRICO — Firecrawl + lector r.jina.ai + JSON-LD + meta tags OpenGraph + regex de precio/m²/habitaciones — no tiene nada hardcodeado específico de Idealista pese al nombre
+- El único límite era artificial en `app/api/chat/route.ts`: solo se llamaba a `scrapeIdealista()` si el dominio del link coincidía con una lista fija de ~14 portales conocidos (`PORTAL_NAMES`) — cualquier otra web (inmobiliaria regional, banco, particular) se ignoraba en silencio, sin ni siquiera pedir los datos a mano
+- Fix: se intenta el scraping con CUALQUIER URL que comparta el usuario, esté o no en la lista de portales conocidos (el nombre de fuente cae a "Web inmobiliaria" si no matchea ninguno). Se agregó una lista chica `NON_LISTING_DOMAINS` (Drive, Calendar, wa.me, YouTube, Maps, wos3.vercel.app/wallest.pro) para no disparar el scraper sobre links que obviamente no son un anuncio. Si el scraping falla, el mensaje aclara que puede ser porque la web bloquea el scraping o porque no es un inmueble, y solo pide los datos a mano si por contexto parece serlo (no fuerza la pregunta si el link era de otra cosa)
+- Build verificado, commit `977019d`, pusheado a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión — falta que Pato lo pruebe con un link real de una inmobiliaria no listada
+
 **Última sesión — 15/07/2026 (continuación — chat WOS3: render de markdown + expandir panel)**
 
 Hecho:
@@ -708,7 +719,7 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Bitácora via chat WOS3 | ✅ producción |
 | ROI anualizado | ✅ producción |
 | Morning Briefing automático (Telegram 8:00 AM) | ✅ producción |
-| Chat WOS3: scraping multi-portal (Fotocasa, Solvia, Habitaclia…) | ✅ producción |
+| Chat WOS3: scraping multi-portal — funciona con cualquier web inmobiliaria, no solo la lista de portales conocidos | ✅ producción |
 | Chat WOS3: calendario con invitados (Silvia, JL) | ✅ producción |
 | Audio bot Telegram (Whisper) | ⏳ bloqueado — sin créditos OpenAI |
 | Proyectos WOS3 alineado con tabla maestra HASU | ⏳ pendiente |
