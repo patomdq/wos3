@@ -2657,15 +2657,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Dominios que nunca son un listado de inmueble (evita que el scraper genérico dispare sobre links de Drive/Calendar/etc.)
+    const NON_LISTING_DOMAINS = ['drive.google.com', 'docs.google.com', 'calendar.google.com', 'wallest.pro', 'wos3.vercel.app', 'wa.me', 'youtube.com', 'youtu.be', 'maps.google.com', 'goo.gl']
+
     if (!portalCtx && anyUrlMatch) {
       const rawUrl = anyUrlMatch[0].replace(/[.,;:!?)'"]+$/, '') // trim trailing punctuation
       const lcUrl = rawUrl.toLowerCase()
-      const portalName = Object.entries(PORTAL_NAMES).find(([d]) => lcUrl.includes(d))?.[1]
-      if (portalName) {
+      // scrapeIdealista() es en realidad genérico (Firecrawl + JSON-LD + meta tags + regex), no específico de Idealista
+      // pese al nombre — se intenta con CUALQUIER link, no solo los ~14 portales reconocidos en PORTAL_NAMES.
+      if (!NON_LISTING_DOMAINS.some(d => lcUrl.includes(d))) {
+        const portalName = Object.entries(PORTAL_NAMES).find(([d]) => lcUrl.includes(d))?.[1] || 'Web inmobiliaria'
         const scraped = await scrapeIdealista(rawUrl)
         if ('error' in scraped) {
-          // Scraping failed — ask Claude to request details manually
-          portalCtx = `\n\n[${portalName}] El usuario compartió este link de ${portalName}: ${rawUrl}\nNo se pudieron extraer los datos automáticamente. Pedile amablemente que te diga: precio, dirección, ciudad, habitaciones y superficie. Cuando los tenga, usá insert_radar con fuente='${portalName}' y url='${rawUrl}'.`
+          // Scraping falló — puede ser que la web bloquee el scraping, o que el link no sea de un inmueble
+          portalCtx = `\n\n[LINK COMPARTIDO] El usuario compartió este link: ${rawUrl}\nNo se pudieron extraer los datos automáticamente (puede que la web bloquee el scraping, o que no sea un anuncio de inmueble). Si por el contexto parece ser un inmueble en venta, pedile amablemente que te diga: precio, dirección, ciudad, habitaciones y superficie — cuando los tenga, usá insert_radar con fuente='${portalName}' y url='${rawUrl}'. Si el link es de otra cosa (documento, calendario, etc.), ignorá esta instrucción y respondé normalmente a lo que haya pedido el usuario.`
         } else {
           const campos = [
             scraped.titulo       ? `Título: ${scraped.titulo}` : null,
