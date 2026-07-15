@@ -58,6 +58,8 @@ type Inmueble = {
   imagen_portada?: string
   notas?: string
   created_at: string
+  fijado?: boolean
+  fijado_en?: string | null
   // Multi-estrategia
   unidades_estimadas?: number
   costo_reforma_por_unidad?: number
@@ -491,6 +493,13 @@ export default function MercadoPage() {
     if (!confirm(`¿Eliminar "${item.titulo || item.direccion}"?`)) return
     const { error } = await supabase.from('inmuebles').delete().eq('id', item.id)
     if (!error) setInmuebles(prev => prev.filter(x => x.id !== item.id))
+  }
+
+  const toggleFijado = async (item: Inmueble) => {
+    const nuevoFijado = !item.fijado
+    const payload = { fijado: nuevoFijado, fijado_en: nuevoFijado ? new Date().toISOString() : null }
+    const { error } = await supabase.from('inmuebles').update(payload).eq('id', item.id)
+    if (!error) setInmuebles(prev => prev.map(x => x.id === item.id ? { ...x, ...payload } : x))
   }
 
   // ── Calculadora ─────────────────────────────────────────
@@ -956,7 +965,14 @@ export default function MercadoPage() {
     (filtroTipologia === 'todos' || x.tipologia === filtroTipologia) &&
     (filtroEstado === 'todos' || x.estado === filtroEstado) &&
     (buscarNorm === '' || [x.titulo, x.direccion, x.ciudad].filter(Boolean).some(v => (v as string).toLowerCase().includes(buscarNorm)))
-  )
+  ).sort((a, b) => {
+    // Fijados primero (más recién fijado arriba dentro del grupo, como Instagram pero sin límite de 3).
+    // Los no fijados van del más viejo al más nuevo — así lo nuevo entra abajo, no empuja lo importante.
+    if (a.fijado && !b.fijado) return -1
+    if (!a.fijado && b.fijado) return 1
+    if (a.fijado && b.fijado) return new Date(b.fijado_en || 0).getTime() - new Date(a.fijado_en || 0).getTime()
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
 
   const res = calcResultados(gastos, pvPes, pvReal, pvOpt, duracionMeses)
 
@@ -1289,6 +1305,7 @@ export default function MercadoPage() {
                     : <div className="flex items-center justify-center h-full text-5xl" style={{ color: '#D0CFC8' }}>{item.tipologia === 'edificio' ? '🏢' : item.tipologia === 'suelo' ? '🏗' : item.tipologia === 'nave' ? '🏭' : '🏠'}</div>
                   }
                   <div className="absolute top-2.5 left-2.5 flex gap-1.5">
+                    {item.fijado && <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background: '#A6855A', color: '#14110C', backdropFilter: 'blur(4px)' }}>📌 Fijado</span>}
                     <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', backdropFilter: 'blur(4px)' }}>{tipLabel}</span>
                     {item.fuente && <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,0,0,0.55)', color: '#ddd', backdropFilter: 'blur(4px)' }}>{item.fuente}</span>}
                     {item.jv_jugadores && item.jv_jugadores.length > 0 && (
@@ -1609,6 +1626,9 @@ export default function MercadoPage() {
                         </svg>
                       </button>
                       <button onClick={() => openEdit(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1.5px solid #ECEAE4' }}>✎</button>
+                      <button title={item.fijado ? 'Desfijar' : 'Fijar arriba'} onClick={() => toggleFijado(item)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
+                        style={{ background: item.fijado ? 'rgba(166,133,90,0.15)' : '#F5F4F0', color: item.fijado ? '#A6855A' : '#888', border: `1.5px solid ${item.fijado ? 'rgba(166,133,90,0.4)' : '#ECEAE4'}` }}>📌</button>
                       <button onClick={() => deleteInmueble(item)} className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: 'rgba(239,68,68,0.07)', color: '#EF4444', border: '1.5px solid rgba(239,68,68,0.18)' }}>🗑</button>
                     </div>
                   )
