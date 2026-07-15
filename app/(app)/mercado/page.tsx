@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
 import { generateReportePDF } from '@/lib/generateReportePDF'
+import { CHECKLIST_ITEMS, ChecklistDocumentacion, ChecklistItemEstado, getItemEstado, getBloqueantesPendientes, getAlertasConfirmadas } from '@/lib/checklist-documentacion'
 
 const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)
 const fmt2 = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n)
@@ -73,6 +74,7 @@ type Inmueble = {
   jv_bono_beneficio_ccp?: number
   jv_bono_beneficio_final?: number
   jv_bono_liquidacion?: string
+  checklist_documentacion?: ChecklistDocumentacion
 }
 
 type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor' | 'mixto'; gestorPct?: number; capital: number }
@@ -216,6 +218,7 @@ export default function MercadoPage() {
   const [creando, setCreando] = useState<string | null>(null)
   const [updatingEstado, setUpdatingEstado] = useState<string | null>(null)
   const [confirmandoCompra, setConfirmandoCompra] = useState<string | null>(null)
+  const [compraOverrideOk, setCompraOverrideOk] = useState(false)
 
   // Nuevo inmueble
   const [nuevoOpen, setNuevoOpen] = useState(false)
@@ -269,6 +272,7 @@ export default function MercadoPage() {
   const [jvBonoBeneficioCcp, setJvBonoBeneficioCcp] = useState(0)
   const [jvBonoBeneficioFinal, setJvBonoBeneficioFinal] = useState(0)
   const [jvBonoLiquidacion, setJvBonoLiquidacion] = useState('')
+  const [checklistDoc, setChecklistDoc] = useState<ChecklistDocumentacion>({})
 
   // Unidades (para edificios en calculadora)
   const [unidadesCalc, setUnidadesCalc] = useState<Unidad[]>([])
@@ -524,6 +528,7 @@ export default function MercadoPage() {
     setJvBonoBeneficioCcp(item?.jv_bono_beneficio_ccp ?? 0)
     setJvBonoBeneficioFinal(item?.jv_bono_beneficio_final ?? 0)
     setJvBonoLiquidacion(item?.jv_bono_liquidacion || '')
+    setChecklistDoc(item?.checklist_documentacion || {})
     setUnidadesCalc([])
     setUnidadesOpen(false)
     // Cargar unidades si es edificio
@@ -567,6 +572,19 @@ export default function MercadoPage() {
     }))
     setSavedId(null)
   }
+  const setChecklistItem = (key: string, estado: ChecklistItemEstado | 'pendiente') => {
+    setChecklistDoc(prev => {
+      const items = { ...(prev.items || {}) }
+      if (estado === 'pendiente') delete items[key]
+      else items[key] = estado
+      return { ...prev, items }
+    })
+    setSavedId(null)
+  }
+  const setChecklistNota = (key: string, nota: string) => {
+    setChecklistDoc(prev => ({ ...prev, notas: { ...(prev.notas || {}), [key]: nota } }))
+    setSavedId(null)
+  }
 
   const guardar = async () => {
     if (!res) return
@@ -600,6 +618,7 @@ export default function MercadoPage() {
       jv_bono_beneficio_ccp: jvModo === 'jv' ? (jvBonoBeneficioCcp || null) : null,
       jv_bono_beneficio_final: jvModo === 'jv' ? (jvBonoBeneficioFinal || null) : null,
       jv_bono_liquidacion: jvModo === 'jv' ? (jvBonoLiquidacion || null) : null,
+      checklist_documentacion: checklistDoc,
     }
     let data: Inmueble | null = null, error: unknown = null
     if (calcInmuebleId) {
@@ -625,7 +644,9 @@ export default function MercadoPage() {
   }
 
   const crearProyecto = async (item: Inmueble) => {
-    if (confirmandoCompra !== item.id) { setConfirmandoCompra(item.id); return }
+    if (confirmandoCompra !== item.id) { setConfirmandoCompra(item.id); setCompraOverrideOk(false); return }
+    const pendientesChecklist = getBloqueantesPendientes(item.checklist_documentacion)
+    if (pendientesChecklist.length > 0 && !compraOverrideOk) return
     setConfirmandoCompra(null)
     setCreando(item.id)
     const { data: proyecto, error } = await supabase.from('proyectos').insert([{
@@ -658,8 +679,12 @@ export default function MercadoPage() {
       }
       if (itemsRows.length > 0) await supabase.from('items_partida').insert(itemsRows)
     }
-    await supabase.from('inmuebles').update({ estado: 'comprado' }).eq('id', item.id)
-    setInmuebles(prev => prev.map(x => x.id === item.id ? { ...x, estado: 'comprado' } : x))
+    const checklistUpdate = pendientesChecklist.length > 0
+      ? { ...(item.checklist_documentacion || {}), overrideNota: `Avanzado a Comprado con ${pendientesChecklist.length} punto(s) sin resolver: ${pendientesChecklist.map(p => p.label).join(', ')}`, overrideAt: new Date().toISOString() }
+      : item.checklist_documentacion
+    await supabase.from('inmuebles').update({ estado: 'comprado', checklist_documentacion: checklistUpdate }).eq('id', item.id)
+    setInmuebles(prev => prev.map(x => x.id === item.id ? { ...x, estado: 'comprado', checklist_documentacion: checklistUpdate } : x))
+    setCompraOverrideOk(false)
     setCreando(null)
     router.push('/proyectos')
   }
@@ -1270,8 +1295,15 @@ export default function MercadoPage() {
                       <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(168,85,247,0.85)', color: '#fff', backdropFilter: 'blur(4px)' }}>JV · {item.jv_jugadores.length}</span>
                     )}
                   </div>
-                  <div className="absolute top-2.5 right-2.5">
+                  <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5">
                     <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                    {['en_estudio', 'ofertado', 'en_arras'].includes(item.estado) && (() => {
+                      const alertas = getAlertasConfirmadas(item.checklist_documentacion)
+                      const pendientes = getBloqueantesPendientes(item.checklist_documentacion)
+                      if (alertas.length > 0) return <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.9)', color: '#fff', backdropFilter: 'blur(4px)' }}>🔴 {alertas.length} alerta{alertas.length>1?'s':''}</span>
+                      if (pendientes.length > 0) return <span className="text-[12px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.9)', color: '#fff', backdropFilter: 'blur(4px)' }}>⚠ {pendientes.length} por verificar</span>
+                      return null
+                    })()}
                   </div>
                 </div>
 
@@ -1583,29 +1615,44 @@ export default function MercadoPage() {
                 })()}
 
                 {/* Estado */}
-                {item.estado !== 'sin_analizar' && item.estado !== 'comprado' && (
-                  <div className="flex gap-2 px-3 py-2 flex-wrap" style={{ borderTop: '1px solid #F0EEE8' }}>
-                    <span className="text-[12px] font-bold self-center flex-shrink-0 uppercase tracking-wide" style={{ color: '#BBB' }}>Estado:</span>
-                    {(['ofertado', 'en_arras'] as const).map(s => {
-                      const c = SUBESTADO_CFG[s]; const activo = item.estado === s
-                      return (
-                        <button key={s} onClick={() => updateEstado(item.id, activo ? 'en_estudio' : s)} disabled={!!updatingEstado}
-                          className="text-[12px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50"
-                          style={{ background: activo ? c.bg : '#F3F2EE', color: activo ? c.color : '#888', border: `1.5px solid ${activo ? c.color+'50' : '#ECEAE4'}` }}>
-                          {updatingEstado === item.id+'_'+(activo?'en_estudio':s) ? '...' : c.label}
-                        </button>
-                      )
-                    })}
-                    {confirmandoCompra === item.id ? (
-                      <div className="flex gap-1.5 ml-auto">
-                        <button onClick={() => crearProyecto(item)} disabled={creando === item.id} className="text-[12px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.15)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.4)' }}>{creando === item.id ? '...' : '✓ Confirmar'}</button>
-                        <button onClick={() => setConfirmandoCompra(null)} className="text-[12px] font-black px-2 py-1 rounded-lg" style={{ background: '#F3F2EE', color: '#888' }}>✕</button>
+                {item.estado !== 'sin_analizar' && item.estado !== 'comprado' && (() => {
+                  const pendientesChecklist = getBloqueantesPendientes(item.checklist_documentacion)
+                  return (
+                  <div style={{ borderTop: '1px solid #F0EEE8' }}>
+                    {confirmandoCompra === item.id && pendientesChecklist.length > 0 && (
+                      <div className="mx-3 mt-2 rounded-lg p-2.5" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                        <div className="text-[12px] font-black mb-1" style={{ color: '#B45309' }}>⚠ Checklist sin cerrar — falta verificar:</div>
+                        <div className="text-[12px] font-medium mb-2" style={{ color: '#92400E', lineHeight: 1.4 }}>{pendientesChecklist.map(p => p.label).join(' · ')}</div>
+                        <label className="flex items-center gap-1.5 text-[12px] font-bold" style={{ color: '#92400E' }}>
+                          <input type="checkbox" checked={compraOverrideOk} onChange={e => setCompraOverrideOk(e.target.checked)} />
+                          Confirmo que avanzo igual aunque falten estos puntos
+                        </label>
                       </div>
-                    ) : (
-                      <button onClick={() => crearProyecto(item)} disabled={creando === item.id} className="text-[12px] font-black px-2.5 py-1 rounded-lg ml-auto disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.3)' }}>{creando === item.id ? '...' : 'Comprado →'}</button>
                     )}
+                    <div className="flex gap-2 px-3 py-2 flex-wrap">
+                      <span className="text-[12px] font-bold self-center flex-shrink-0 uppercase tracking-wide" style={{ color: '#BBB' }}>Estado:</span>
+                      {(['ofertado', 'en_arras'] as const).map(s => {
+                        const c = SUBESTADO_CFG[s]; const activo = item.estado === s
+                        return (
+                          <button key={s} onClick={() => updateEstado(item.id, activo ? 'en_estudio' : s)} disabled={!!updatingEstado}
+                            className="text-[12px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50"
+                            style={{ background: activo ? c.bg : '#F3F2EE', color: activo ? c.color : '#888', border: `1.5px solid ${activo ? c.color+'50' : '#ECEAE4'}` }}>
+                            {updatingEstado === item.id+'_'+(activo?'en_estudio':s) ? '...' : c.label}
+                          </button>
+                        )
+                      })}
+                      {confirmandoCompra === item.id ? (
+                        <div className="flex gap-1.5 ml-auto">
+                          <button onClick={() => crearProyecto(item)} disabled={creando === item.id || (pendientesChecklist.length > 0 && !compraOverrideOk)} className="text-[12px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.15)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.4)' }}>{creando === item.id ? '...' : '✓ Confirmar'}</button>
+                          <button onClick={() => { setConfirmandoCompra(null); setCompraOverrideOk(false) }} className="text-[12px] font-black px-2 py-1 rounded-lg" style={{ background: '#F3F2EE', color: '#888' }}>✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => crearProyecto(item)} disabled={creando === item.id} className="text-[12px] font-black px-2.5 py-1 rounded-lg ml-auto disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.3)' }}>{creando === item.id ? '...' : 'Comprado →'}</button>
+                      )}
+                    </div>
                   </div>
-                )}
+                  )
+                })()}
                 {item.estado === 'comprado' && (
                   <div className="flex items-center gap-2 px-3 py-2" style={{ borderTop: '1px solid #F0EEE8', background: 'rgba(34,197,94,0.05)' }}>
                     <span className="text-[12px] font-bold" style={{ color: '#16A34A' }}>✓ Proyecto creado</span>
@@ -2714,6 +2761,51 @@ export default function MercadoPage() {
                     </div>
                   </>
                 )}
+              </div>
+
+              {/* Checklist de documentación */}
+              <div className="rounded-xl p-4 mb-4" style={{ background: '#fff', border: '1px solid #ECEAE4' }}>
+                <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                  <div className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#B45309' }}>📋 Checklist de documentación</div>
+                  <div className="flex gap-1.5">
+                    {getAlertasConfirmadas(checklistDoc).length > 0 && (
+                      <span className="text-[11px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}>🔴 {getAlertasConfirmadas(checklistDoc).length} alerta(s)</span>
+                    )}
+                    {getBloqueantesPendientes(checklistDoc).length > 0 && (
+                      <span className="text-[11px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.12)', color: '#B45309' }}>⚠ {getBloqueantesPendientes(checklistDoc).length} por verificar</span>
+                    )}
+                    {getAlertasConfirmadas(checklistDoc).length === 0 && getBloqueantesPendientes(checklistDoc).length === 0 && (
+                      <span className="text-[11px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: '#16A34A' }}>✓ Todo verificado</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-[12px] font-medium mb-3" style={{ color: '#999', lineHeight: 1.4 }}>
+                  Marcá cada ítem antes de pasar a Comprado. Los ítems con 🔒 frenan la compra hasta que estén en OK o N/A.
+                </div>
+                <div className="flex flex-col gap-1">
+                  {CHECKLIST_ITEMS.map(it => {
+                    const estado = getItemEstado(checklistDoc, it.key)
+                    const BTN = (activo: boolean, color: string, bg: string) => ({ background: activo ? bg : '#F5F4F0', color: activo ? color : '#AAA', border: `1.5px solid ${activo ? color+'50' : '#ECEAE4'}` })
+                    return (
+                      <div key={it.key} className="py-1.5" style={{ borderBottom: '1px solid #F5F4F0' }}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-[13px] font-bold flex items-center gap-1" style={{ color: '#333' }}>
+                            {it.bloqueante && <span title="Frena el paso a Comprado" style={{ fontSize: 11 }}>🔒</span>}
+                            {it.label}
+                          </div>
+                          <div className="flex gap-1 flex-shrink-0">
+                            <button onClick={() => setChecklistItem(it.key, estado === 'ok' ? 'pendiente' : 'ok')} className="text-[11px] font-black px-2 py-1 rounded-lg" style={BTN(estado === 'ok', '#16A34A', 'rgba(34,197,94,0.15)')}>OK</button>
+                            <button onClick={() => setChecklistItem(it.key, estado === 'alerta' ? 'pendiente' : 'alerta')} className="text-[11px] font-black px-2 py-1 rounded-lg" style={BTN(estado === 'alerta', '#EF4444', 'rgba(239,68,68,0.15)')}>Alerta</button>
+                            <button onClick={() => setChecklistItem(it.key, estado === 'no_aplica' ? 'pendiente' : 'no_aplica')} className="text-[11px] font-black px-2 py-1 rounded-lg" style={BTN(estado === 'no_aplica', '#888', '#ECEAE4')}>N/A</button>
+                          </div>
+                        </div>
+                        {estado === 'alerta' && (
+                          <input type="text" value={checklistDoc.notas?.[it.key] || ''} onChange={e => setChecklistNota(it.key, e.target.value)} placeholder="Detalle de la alerta (opcional)" className="w-full mt-1.5 rounded-lg px-2 py-1.5 text-xs outline-none font-medium" style={{ background: '#FEF2F2', border: '1px solid rgba(239,68,68,0.25)', color: '#333' }} />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Vista comparativa 4 escenarios */}
