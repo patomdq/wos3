@@ -39,6 +39,15 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — fix de contraste en burbuja de chat)**
+
+Hecho:
+- Pato mandó captura: la burbuja de mensaje enviado en `BotChat.tsx` seguía en bronce (`#A6855A`) + texto oscuro (`#14110C`) — quedó afuera de la pasada de contraste de la sesión anterior porque esa pasada cubrió botones/CTAs y no las burbujas de mensaje. Es la misma superficie grande de la regla ya fijada (bronce+oscuro solo para UI chica). Fix: `background: '#14110C', color: '#F8F3E9'` en la burbuja de usuario (línea ~373). Barrido rápido confirmó que el resto de usos de bronce+oscuro en la app son badges/botones chicos, no superficies grandes — no hay más pendientes de este tipo
+- Build verificado, commit `85a9239`, pusheado a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión
+
 **Última sesión — 15/07/2026 (continuación — checklist de documentación en el preanálisis del chat)**
 
 Hecho:
