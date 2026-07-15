@@ -294,10 +294,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
-        {/* Bot panel */}
-        <div style={{
-          width: botOpen ? (botExpanded ? 'min(860px, 78vw)' : 380) : 0,
-          minWidth: botOpen ? (botExpanded ? 'min(860px, 78vw)' : 380) : 0,
+        {/* Backdrop — solo cuando el panel está expandido, para que se sienta como una capa por encima del WOS */}
+        {botOpen && botExpanded && (
+          <div onClick={() => setBotExpanded(false)} style={{
+            position: 'fixed', inset: 0, background: 'rgba(20,17,12,0.35)', zIndex: 190,
+          }} />
+        )}
+
+        {/* Bot panel — expandido flota por encima (position fixed) en vez de empujar/achicar el contenido principal */}
+        <div style={botExpanded ? {
+          position: 'fixed', top: 0, right: 0,
+          width: 'min(860px, 78vw)', minWidth: 'min(860px, 78vw)',
+          height: '100vh',
+          background: '#fff',
+          borderLeft: '1px solid #ECEAE4',
+          boxShadow: '-12px 0 40px rgba(20,17,12,0.25)',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+          zIndex: 200,
+        } : {
+          width: botOpen ? 380 : 0,
+          minWidth: botOpen ? 380 : 0,
           height: '100vh',
           background: '#fff',
           borderLeft: '1px solid #ECEAE4',
