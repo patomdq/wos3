@@ -39,6 +39,18 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — checklist: Radar vs En Estudio)**
+
+Hecho:
+- Probé en vivo el caso real de Antas por el chat WOS3: funcionó — `insert_edificio_radar` se disparó (tipologia='edificio', no cayó en insert_radar), `checklist_documentacion.items` quedó con las 4 alertas exactas (`nota_simple`, `licencia_primera_ocupacion`, `licencia_final_obra`, `sin_posesion`), y el gate mostró "8 sin resolver" (4 confirmadas + 4 bloqueantes nunca mencionados, correcto) preguntando antes de dar de alta. Verificado directo en Supabase
+- Pato notó una inconsistencia semántica al revisarlo: la sub-sesión anterior había decidido que si el checklist ya estaba cargado, `confirmar_alta_mercado` aterrizaba directo en **En Estudio** en vez de Radar — pero "En Estudio" implica que ya se hizo el análisis, y acá puede no haber ni ROI calculado (como Antas, que no tiene precio de venta ni reforma todavía)
+- Corrección del modelo con Pato: **Radar es el buzón rápido de entrada** (sube varios por día, tiene que ser liviano) — el checklist se carga y se ve ahí mismo, con alertas y todo. **Pasar a En Estudio es siempre una decisión manual posterior**, nunca automática por tener el checklist marcado. Revertido: `confirmar_alta_mercado` vuelve a aterrizar siempre en `sin_analizar` (Radar)
+- El badge de alertas del checklist (🔴 alertas / ⚠ por verificar) en la card de la lista de Mercado (`app/(app)/mercado/page.tsx`) ahora también se muestra en la pestaña Radar, no solo En Estudio/Ofertado/En Arras — antes quedaba invisible ahí, que es justo donde más falta hacía verlo
+- Build verificado, commit `574b90b`, pusheado a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión
+
 **Última sesión — 15/07/2026 (continuación — fix de contraste en burbuja de chat)**
 
 Hecho:
