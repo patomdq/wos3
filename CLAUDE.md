@@ -39,6 +39,20 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — chat WOS3: PDFs + modo análisis libre)**
+
+Hecho:
+- Pato mostró un informe de normativa/habitabilidad que había generado en un chat de Claude aparte (no en WOS3) — motivo: "el bot se queda a medias, algunas cosas las hago en un lugar otras en otro" y necesita "literalmente un chat de Claude" dentro de WOS3
+- Diagnóstico de por qué el chat de WOS3 no daba ese nivel: (1) el input de adjuntos solo aceptaba imágenes y HTML/texto, nunca PDF — no podía compartir el plano; (2) `max_tokens: 1024` en las dos llamadas a la API de chat — techo bajo que hubiera truncado cualquier análisis largo; (3) el system prompt empuja fuerte a respuestas cortas y tool calls ("máximo 3 párrafos"), sin permiso para razonar en profundidad sobre algo sin tool asociada
+- Fix en `components/BotChat.tsx`: soporte de adjuntar PDF (nuevo tipo `AttachedPdf`, chip 📕, se manda como `body.pdfs` en base64)
+- Fix en `app/api/chat/route.ts`: bloque de contenido `type: 'document'` (Claude lee PDF nativo, sin OCR propio) inyectado junto a imágenes en el último mensaje de usuario; `max_tokens` subido de 1024 a 4096 en ambas llamadas; nueva sección de prompt "MODO ANÁLISIS LIBRE" — si el pedido no encaja en ninguna tool, no forzarlo ni rechazarlo, responder en profundidad sin el límite de 3 párrafos, igual que cualquier otra conversación de Claude
+- Las tools operativas existentes (insert_radar, analizar_inmueble, etc.) siguen intactas para el uso diario rápido — esto solo agrega el modo libre como fallback cuando no hay tool que aplique
+- Build + `tsc --noEmit` verificados (mismos 2 errores preexistentes sin relación). Commit `7df4188`, pusheado a `origin master`
+
+Pendiente:
+- Falta que Pato pruebe adjuntando un PDF real (ej. el anteproyecto de Castillo 3) y confirme que el análisis libre funciona bien
+- Quedó mencionado en el prompt un tool `generar_informe_personalizado` como gancho a futuro (para guardar el análisis libre linkeado a un proyecto/inmueble con el diseño correcto) pero NO se implementó — si el modo análisis libre funciona bien en texto, evaluar si vale la pena construir esa persistencia o alcanza con la respuesta en el chat
+
 **Última sesión — 15/07/2026 (continuación — fijar inmuebles en Mercado)**
 
 Hecho:
@@ -729,3 +743,5 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Portal inversor / Dossier — tratamiento "dark-first" del design system | ⏳ pendiente de decisión de Pato |
 | Mercado — checklist de documentación/alertas (13 ítems, gating en "Comprado →") | ✅ producción |
 | Chat WOS3 — checklist de documentación en el preanálisis (analizar_inmueble/insert_edificio_radar), gating antes de dar de alta en Mercado | ✅ producción |
+| Chat WOS3 — adjuntar PDF (planos, contratos, anteproyectos) | ✅ producción |
+| Chat WOS3 — modo análisis libre (razonamiento profundo sin límite de 3 párrafos cuando no hay tool aplicable) | ✅ producción |
