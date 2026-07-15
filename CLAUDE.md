@@ -39,6 +39,18 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (continuación — chat WOS3: render de markdown + expandir panel)**
+
+Hecho:
+- Pato probó el modo análisis libre con un PDF real (anteproyecto Castillo 3/Proyecto Cervantes) — funcionó (Claude leyó el PDF, cruzó superficies contra normativa de habitabilidad de Andalucía, dio opinión técnica estructurada), pero la respuesta se veía "muy cortada": headers (`#`/`##`), tablas (`|col|col|`) y separadores (`---`) aparecían como texto literal en vez de renderizarse
+- Causa raíz: `components/BotChat.tsx` solo convertía `**bold**` y `[links](url)` a mano con regex antes de esta sesión — nunca interpretó markdown real (tablas, headers, listas)
+- Fix: `react-markdown` + `remark-gfm` (soporta tablas estilo GitHub), con componentes de render a medida con el estilo del WDS — tablas con header bronce y scroll horizontal propio (no rompen el panel angosto), headers/listas/hr con espaciado consistente. `send()` ya no pre-convierte a HTML a mano, guarda el texto crudo tal cual
+- Pato también notó que el panel del chat es angosto y vertical, "muy cortado" para reportes largos — dudaba entre ensanchar fijo o volver al formato de página completa de antes. 3 opciones presentadas, eligió la recomendada: botón expandir. `components/AppShell.tsx`: nuevo botón ⤢ en el header del panel que lo expande a `min(860px, 78vw)` bajo demanda (⤡ para volver a 380px) — el angosto sigue siendo el default para el uso diario, no se sacrifica espacio de Proyectos/Mercado todo el tiempo
+- Build + tsc verificados en cada paso. Commits `415af35` (markdown) y `33340f1` (expandir), pusheados a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sub-sesión — falta que Pato confirme en el deploy que el reporte de Castillo 3 ahora se lee bien con el botón expandir
+
 **Última sesión — 15/07/2026 (continuación — chat WOS3: PDFs + modo análisis libre)**
 
 Hecho:
@@ -745,3 +757,5 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Chat WOS3 — checklist de documentación en el preanálisis (analizar_inmueble/insert_edificio_radar), gating antes de dar de alta en Mercado | ✅ producción |
 | Chat WOS3 — adjuntar PDF (planos, contratos, anteproyectos) | ✅ producción |
 | Chat WOS3 — modo análisis libre (razonamiento profundo sin límite de 3 párrafos cuando no hay tool aplicable) | ✅ producción |
+| Chat WOS3 — render de markdown real (react-markdown + remark-gfm, tablas/headers/listas) | ✅ producción |
+| Chat WOS3 — botón expandir panel (⤢ 380px → ~860px bajo demanda) | ✅ producción |
