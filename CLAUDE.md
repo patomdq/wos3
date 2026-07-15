@@ -39,6 +39,20 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 15/07/2026 (Mercado: checklist de documentación/alertas)**
+
+Hecho:
+- **Checklist de documentación en la ficha de análisis de Mercado** — Pato reportó que una operación se complicó porque no se tuvieron en cuenta algunos documentos antes de comprar (faltaba un checklist de alertas tipo obra nueva en construcción, sin posesión, LPO, licencia de final de obra, vandalizado, okupado, nota simple, ITE)
+  - `lib/checklist-documentacion.ts` (nuevo) — 13 ítems canónicos, cada uno marcado `bloqueante: true/false`: bloqueantes = Nota simple, Licencia de primera ocupación, Licencia de final de obra, Cédula de habitabilidad, Cargas registrales/servidumbres, Sin posesión, Okupado, ITE. Informativos (no bloquean) = Obra nueva en construcción, Vandalizado, Certificado energético, IBI al día, Deuda de comunidad
+  - Nueva sección "📋 Checklist de documentación" dentro de la ficha de análisis (`app/(app)/mercado/page.tsx`, modal "Editar análisis"), debajo de la card JV/Gestor: cada ítem con 3 estados (OK / Alerta / N/A, default pendiente) + nota de texto libre si se marca Alerta
+  - Badge en la card del pipeline (visible en En estudio/Ofertado/En arras): 🔴 N alertas si hay ítems marcados Alerta, ⚠ N por verificar si hay bloqueantes sin resolver (ni OK ni N/A)
+  - **Gating en el botón "Comprado →"**: si quedan ítems bloqueantes sin resolver, el paso de confirmación muestra la lista + exige tildar "Confirmo que avanzo igual aunque falten estos puntos" antes de habilitar "✓ Confirmar" — no impide comprar (decisión de negocio de Pato), pero no deja que pase desapercibido. Si se avanza con el override, queda registrado en `checklist_documentacion.overrideNota`/`overrideAt`
+  - Columna nueva en Supabase `inmuebles`: `checklist_documentacion` (jsonb, default `{}`)
+  - Build verificado, commit `8e310ff`, pusheado a `origin master`
+
+Pendiente:
+- Ninguno abierto de esta sesión — falta que Pato lo pruebe en el deploy de Vercel y confirme si la lista de 13 ítems es suficiente o si hay que sumar más (ej. algo específico del caso que se complicó)
+
 **Última sesión — 14/07/2026 (continuación — corrección de contraste/tipografía + fichas de Deuda)**
 
 Hecho:
@@ -651,3 +665,4 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Wallest Design System — bronce + Marcellus/Hanken en toda la app (fondo claro mantenido) | ✅ producción |
 | Wallest Design System Fase 2 (geometría literal: radios 2px/26px/999px) | ⏳ pendiente |
 | Portal inversor / Dossier — tratamiento "dark-first" del design system | ⏳ pendiente de decisión de Pato |
+| Mercado — checklist de documentación/alertas (13 ítems, gating en "Comprado →") | ✅ producción |
