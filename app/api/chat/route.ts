@@ -178,14 +178,14 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'insert_radar',
-    description: 'Agrega un inmueble a Mercado para seguimiento. Usalo cuando el usuario pida agregar, guardar o meter un piso/inmueble/propiedad a mercado, a seguimiento, o a vigilar.',
+    description: 'Guarda un inmueble como BORRADOR — todavía no queda visible en Mercado hasta que el usuario confirme. Usalo cuando el usuario describa o comparta un piso/inmueble/propiedad para agregar a seguimiento (típicamente sin precio de venta pedido, o sin suficientes datos para analizar_inmueble). Después de mostrarle el resumen, preguntale si lo subís a Radar o lo descartás, y usá confirmar_alta_mercado o descartar_analisis según responda — igual que con analizar_inmueble.',
     input_schema: {
       type: 'object' as const,
       properties: {
         titulo: { type: 'string', description: 'Título o nombre corto del inmueble (ej: "Piso Rulador", "Oportunidad Vera")' },
         direccion: { type: 'string', description: 'Dirección del inmueble' },
         ciudad: { type: 'string', description: 'Ciudad o municipio' },
-        precio: { type: 'number', description: 'Precio de venta pedido en euros' },
+        precio: { type: 'number', description: 'Precio de venta pedido en euros. Opcional — puede no haber precio todavía (ej. NPL, deuda sin tasar).' },
         habitaciones: { type: 'number', description: 'Número de habitaciones' },
         superficie: { type: 'number', description: 'Superficie en m²' },
         url: { type: 'string', description: 'Link de Idealista u otra fuente (pegar URL completa)' },
@@ -193,7 +193,7 @@ const TOOLS: Anthropic.Tool[] = [
         fuente: { type: 'string', enum: ['WhatsApp', 'Idealista', 'API', 'otro'], description: 'Fuente del inmueble. Default: otro' },
         notas: { type: 'string', description: 'Notas u observaciones' },
       },
-      required: ['direccion', 'precio'],
+      required: ['direccion'],
     },
   },
   {
@@ -220,11 +220,11 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'confirmar_alta_mercado',
-    description: 'Confirma un análisis en borrador y lo da de alta en Mercado (pasa de estado borrador a sin_analizar, queda visible en la UI). Usalo cuando el usuario responda que sí quiere guardarlo, después de analizar_inmueble.',
+    description: 'Confirma un inmueble guardado en borrador y lo da de alta en Mercado (pasa de estado borrador a sin_analizar, queda visible en la UI). Usalo cuando el usuario responda que sí, después de insert_radar, analizar_inmueble o insert_edificio_radar.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        id: { type: 'string', description: 'UUID del inmueble en borrador (del contexto, devuelto por analizar_inmueble). Opcional si se usa busqueda.' },
+        id: { type: 'string', description: 'UUID del inmueble en borrador (del contexto, devuelto por insert_radar/analizar_inmueble/insert_edificio_radar). Opcional si se usa busqueda.' },
         busqueda: { type: 'string', description: 'Nombre o dirección parcial del borrador a confirmar, si no tenés el ID.' },
       },
       required: [],
@@ -232,11 +232,11 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'descartar_analisis',
-    description: 'Descarta (elimina) un análisis guardado como borrador. Usalo cuando el usuario responda que no quiere guardar el análisis, después de analizar_inmueble.',
+    description: 'Descarta (elimina) un inmueble guardado como borrador. Usalo cuando el usuario responda que no, después de insert_radar, analizar_inmueble o insert_edificio_radar.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        id: { type: 'string', description: 'UUID del inmueble en borrador (del contexto, devuelto por analizar_inmueble). Opcional si se usa busqueda.' },
+        id: { type: 'string', description: 'UUID del inmueble en borrador (del contexto, devuelto por insert_radar/analizar_inmueble/insert_edificio_radar). Opcional si se usa busqueda.' },
         busqueda: { type: 'string', description: 'Nombre o dirección parcial del borrador a descartar, si no tenés el ID.' },
       },
       required: [],
@@ -1220,23 +1220,24 @@ async function executeTool(name: string, input: Record<string, any>): Promise<{ 
         titulo: input.titulo || null,
         direccion: input.direccion,
         ciudad: input.ciudad || null,
-        precio_compra: input.precio,
+        precio_compra: input.precio || null,
         habitaciones: input.habitaciones || null,
         superficie: input.superficie || null,
         fuente: input.fuente || 'manual',
         tipologia: input.tipologia || 'piso',
-        estado: 'sin_analizar',
+        estado: 'borrador',
         notas: input.notas || null,
       }
       if (input.url) mercadoRow.url = input.url
       if (input.drive_url) mercadoRow.drive_url = input.drive_url
       const { data, error } = await supabaseAdmin.from('inmuebles').insert([mercadoRow]).select().single()
-      if (error) return { result: `Error al guardar en Mercado: ${error.message}` }
+      if (error) return { result: `Error al guardar: ${error.message}` }
+      const precioTxt = data.precio_compra ? `${data.precio_compra}€` : 'sin precio definido'
       return {
-        result: `✅ Agregado a Mercado. ID: ${data.id}. Dirección: "${data.direccion}", Precio: ${data.precio_compra}€, Ciudad: ${data.ciudad || 'sin especificar'}.`,
+        result: `Guardado como borrador (todavía no visible en Mercado). ID: ${data.id}. Dirección: "${data.direccion}", Precio: ${precioTxt}, Ciudad: ${data.ciudad || 'sin especificar'}.\n\n¿Lo subo al Radar o lo descarto?`,
         table: 'inmuebles',
         recordId: data.id,
-        label: `${data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''} · ${data.precio_compra}€`,
+        label: `${data.direccion}${data.ciudad ? ' · ' + data.ciudad : ''}${data.precio_compra ? ' · ' + data.precio_compra + '€' : ''}`,
       }
     }
     if (name === 'analizar_inmueble') {
@@ -2704,7 +2705,7 @@ CAPACIDADES — podés CREAR, EDITAR y ELIMINAR:
 - TAREAS DE AGENDA (Personal/Trabajo, sin proyecto): insert_agenda_tarea, update_agenda_tarea, delete_agenda_tarea, listar_agenda_tareas. Son las tareas que aparecen en HASU → Calendario. Distintas de las tareas de proyecto. Cuando el usuario pregunte por tareas generales (no de un proyecto), usá listar_agenda_tareas directamente SIN preguntar — ya no hace falta la pregunta de aclaración.
 - ANÁLISIS DE INVERSIÓN: cuando el usuario quiera analizar una operación nueva, calcular ROI o saber cuánto puede pagar, usá analizar_inversion. Siempre etiquetar como HASU o JV desde el inicio. Preguntar tipo de operación si no se indica.
 - TRAZABILIDAD DE ACTIVOS: cuando el usuario diga que un inmueble "está comprado", "se compró" o quiera "pasarlo a proyectos", usá convertir_estudio_a_proyecto. Pipeline de venta: venta → reservado → con_oferta (oferta recibida) → en_arras → vendido. Para marcar vendido usá update_proyecto con estado="vendido".
-- INMUEBLES MERCADO: para agregar un inmueble nuevo a seguimiento usá insert_radar (guarda en Mercado con estado sin_analizar). Para editar, eliminar o mover un inmueble, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para pasar a análisis profundo usá analizar_inmueble o mover_radar_a_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR usá delete_radar (Mercado) o delete_estudio (En Estudio).
+- INMUEBLES MERCADO: para agregar un inmueble nuevo a seguimiento usá insert_radar — guarda como BORRADOR, todavía no visible en Mercado. Igual que con analizar_inmueble, después de insert_radar preguntale al usuario si lo sube al Radar o lo descarta, y usá confirmar_alta_mercado o descartar_analisis según responda — nunca lo des por confirmado sin que la herramienta correspondiente se haya ejecutado en este mismo turno (ver regla de respuesta #8). Para editar, eliminar o mover un inmueble YA confirmado, SIEMPRE usá el campo "busqueda" con la dirección parcial. Para pasar a análisis profundo usá analizar_inmueble o mover_radar_a_estudio. Para editar precio, ROI, superficie u otros datos de un inmueble en estudio usá update_estudio. Para ELIMINAR un inmueble ya confirmado usá delete_radar (Mercado) o delete_estudio (En Estudio); para descartar un borrador pendiente de confirmación usá descartar_analisis.
 - EDIFICIOS (fincas completas, bloques de pisos): viven en la MISMA tabla inmuebles y se ven en la MISMA pantalla de Mercado que los pisos individuales (mismas pestañas Radar/En Estudio/Ofertado/etc), distinguidos únicamente por tipologia='edificio' y el badge "Edificio" en la card. NO EXISTE una sección separada de "Radar de Edificios" ni "Estudio de Edificios" — si el usuario dice que no ve un edificio en Mercado, NUNCA le sugieras que busque en una sección aparte; el motivo real es casi siempre que el registro sigue en estado='borrador' (todavía no confirmado con confirmar_alta_mercado). Para agregar un edificio usá insert_edificio_radar (inserta en inmuebles con tipologia='edificio', estado='borrador' — pendiente de confirmación, igual que analizar_inmueble). Para editar usá update_edificio. Para eliminar/descartar usá delete_edificio. Para mover de Radar (sin_analizar) a en estudio usá mover_edificio_a_estudio. Para listar usá listar_edificios. NUNCA uses insert_radar para edificios — usá siempre las herramientas específicas de edificio para que queden marcados con tipologia='edificio'. UNIDADES: cuando el usuario mencione pisos, unidades, inquilinos o información por planta, llamá insert_edificio_unidades (en la tabla inmueble_unidades). Si ya hay info de unidades en el mismo mensaje donde se crea el edificio, llamá insert_edificio_radar e insert_edificio_unidades juntos en el mismo turno. Campos clave: planta (ej: "1ª DCHA"), ocupacion ("libre" o "alquilado"), renta_mensual, notas (inquilino + fechas de contrato). IMPORTANTE al cargar edificios: (1) num_plantas: extraélo siempre del texto — "PB+3"=4 plantas, "3 alturas"=3, "planta baja y dos pisos"=3, etc. (2) notas: copiá el texto completo literal del usuario sin resumir ni acortar — ni una palabra menos.
 - CHECKLIST DE DOCUMENTACIÓN (due diligence) — CRÍTICO, una operación real se complicó por no chequear esto a tiempo: cuando el usuario describa un inmueble o edificio y mencione (aunque sea de pasada) documentación o estado legal/posesorio — nota simple, licencia de primera ocupación, licencia de final de obra, cédula de habitabilidad, cargas registrales/servidumbres, posesión, okupación, ITE, obra nueva en construcción, vandalismo, certificado energético, IBI, deuda de comunidad — extraé esas menciones y pasalas en checklist_alertas (problema confirmado, ej. "no tiene posesión", "sin LPO", "nota simple parcial") o checklist_ok (confirmado en orden) al llamar analizar_inmueble o insert_edificio_radar. NUNCA inventes ni asumas un ítem que el usuario no mencionó — dejalo pendiente. Si detectás varios ítems bloqueantes (marcados [bloqueante] en la lista de claves), NO llames confirmar_alta_mercado por tu cuenta: mostrale el resumen (la herramienta ya te devuelve el bloque de alertas) y esperá que el usuario decida si avanza igual o descarta. Si el usuario da una descripción rica en riesgos pero sin precio de venta/reforma para calcular ROI, usá igual insert_edificio_radar (o pedí lo mínimo para analizar_inmueble) — el checklist es información valiosa aunque el ROI todavía no cierre. IMPORTANTE: confirmar_alta_mercado SIEMPRE da de alta en Radar (sin_analizar), tenga o no checklist cargado — Radar es el buzón rápido de entrada (Pato sube varios por día) y el checklist se ve igual ahí con el badge de alertas. Pasar a En Estudio es SIEMPRE una decisión manual posterior del usuario (mover_radar_a_estudio o mover_edificio_a_estudio), nunca automática por tener el checklist marcado.
 - INVERSORES/JV: para registrar un nuevo socio inversor usá insert_inversor (crea el inversor y lo vincula al proyecto). Para editar datos o porcentaje usá update_inversor. Los datos del inversor ya vinculado están en el contexto del proyecto. CRÍTICO: si el usuario dice "ambos", "los dos", "todos", "en el orden que están", "todos los que hay" → usá todos=true y ejecutá SIN hacer más preguntas. No preguntes cuál primero ni cuál segundo. NUNCA pidas el ID. El sistema resuelve la búsqueda automáticamente con ILIKE. Si hay varios resultados, el sistema te devuelve la lista para que preguntes al usuario cuál. Si hay uno solo, procede directamente.
