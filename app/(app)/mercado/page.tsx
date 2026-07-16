@@ -1356,21 +1356,19 @@ export default function MercadoPage() {
                     <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: item.num_plantas ? '#666' : '#CCC' }}>{item.num_plantas ? `${item.num_plantas} plantas` : '— plantas'}</span>
                   </div>
 
-                  {/* Para edificios: grid métricas compacto */}
-                  {item.tipologia === 'edificio' && (
-                    <div className="grid grid-cols-3 mt-3 rounded-xl overflow-hidden" style={{ background: '#ECEAE4' }}>
-                      {[
-                        { label: 'Precio', val: fmt(item.precio_compra || 0) },
-                        { label: 'Unidades', val: unidades[item.id] ? String(unidades[item.id].length) : '—' },
-                        { label: 'm²', val: item.superficie ? String(item.superficie) : '—' },
-                      ].map((m, i) => (
-                        <div key={m.label} className="text-center py-2.5" style={{ background: '#F9F8F5', borderLeft: i > 0 ? '1px solid #ECEAE4' : 'none' }}>
-                          <div className="text-[11px] font-bold uppercase tracking-wide mb-0.5" style={{ color: '#AAA' }}>{m.label}</div>
-                          <div className="text-[13px] font-black" style={{ color: '#222' }}>{m.val}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Grid métricas compacto — todas las tipologías, con — donde no aplique */}
+                  <div className="grid grid-cols-3 mt-3 rounded-xl overflow-hidden" style={{ background: '#ECEAE4' }}>
+                    {[
+                      { label: 'Precio', val: fmt(item.precio_compra || 0) },
+                      { label: 'Unidades', val: unidades[item.id] ? String(unidades[item.id].length) : '—' },
+                      { label: 'm²', val: item.superficie ? String(item.superficie) : '—' },
+                    ].map((m, i) => (
+                      <div key={m.label} className="text-center py-2.5" style={{ background: '#F9F8F5', borderLeft: i > 0 ? '1px solid #ECEAE4' : 'none' }}>
+                        <div className="text-[11px] font-bold uppercase tracking-wide mb-0.5" style={{ color: '#AAA' }}>{m.label}</div>
+                        <div className="text-[13px] font-black" style={{ color: '#222' }}>{m.val}</div>
+                      </div>
+                    ))}
+                  </div>
 
                   {/* Tabla de resultados si analizado (todos los tipos) */}
                   {isAnalizado && (() => {
