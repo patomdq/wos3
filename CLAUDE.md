@@ -39,6 +39,17 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 16/07/2026 (chat WOS3: Mercado no se refrescaba solo + insert_radar sin confirmar)**
+
+Hecho:
+- Pato reportó 2 problemas sobre un caso real (Dúplex Calle Clavel 3, NPL sin precio, cargado por el chat lateral): (1) tenía que reiniciar el WOS para ver el inmueble reflejado en Mercado; (2) el chat daba por hecho que había que subirlo a Mercado, sin preguntar — a diferencia de Telegram, que siempre pregunta "¿lo subo al Radar o se descarta?" con botones
+- **Fix 1 — refresco automático**: `app/(app)/mercado/page.tsx` solo hacía fetch de `inmuebles` una vez al montar (`useEffect` con deps `[]`), sin ninguna suscripción a cambios — si el panel de chat (montado en `AppShell`, persiste entre páginas) insertaba/editaba/borraba mientras Mercado ya estaba abierto, quedaba desactualizado hasta recargar. `components/BotChat.tsx` ahora emite `window.dispatchEvent('wos:record-changed', { detail: { table } })` cada vez que el resultado de una tool toca una tabla (y también al borrar un registro desde el chip del chat); `mercado/page.tsx` escucha ese evento y refetchea si `table === 'inmuebles'`. No se usó Supabase Realtime (se verificó vía MCP que `inmuebles` no está en la publication `supabase_realtime` — solo `answers/players/rooms` de otro proyecto — habría requerido una migración de más alcance)
+- **Fix 2 — insert_radar sin confirmar**: `app/api/chat/route.ts` — la tool `insert_radar` (la que se usa cuando se describe un inmueble sin datos suficientes para `analizar_inmueble`, típicamente sin precio) insertaba directo con `estado: 'sin_analizar'`, visible al toque en Mercado — inconsistente con Telegram (siempre `borrador` + botones Subir/Descartar) y con las otras dos tools del mismo chat (`analizar_inmueble`, `insert_edificio_radar`, que sí guardan como `borrador` y preguntan antes de confirmar). Alineado: ahora `insert_radar` inserta como `borrador`, devuelve "¿Lo subo al Radar o lo descarto?" y espera `confirmar_alta_mercado`/`descartar_analisis` — mismo patrón que las otras dos vías. `precio` pasó de requerido a opcional en el schema de la tool (el caso real que disparó esto era justamente un NPL sin precio todavía)
+- Build verificado en cada fix. Commits `c7990a7` (refresco automático) y `40d42cc` (confirmación insert_radar), pusheados a `origin master`
+
+Pendiente:
+- Falta que Pato pruebe el flujo completo con un caso nuevo: describir un inmueble por el chat, confirmar que pregunta antes de subirlo, y confirmar que aparece en Mercado sin recargar
+
 **Última sesión — 15/07/2026 (continuación — Mercado: cards más cortas, JV detrás de "Ver detalle")**
 
 Hecho:
@@ -802,3 +813,5 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Chat WOS3 — modo análisis libre (razonamiento profundo sin límite de 3 párrafos cuando no hay tool aplicable) | ✅ producción |
 | Chat WOS3 — render de markdown real (react-markdown + remark-gfm, tablas/headers/listas) | ✅ producción |
 | Chat WOS3 — botón expandir panel (⤢ 380px → ~860px bajo demanda) | ✅ producción |
+| Mercado — refresco automático cuando el chat lateral toca `inmuebles` (sin recargar el navegador) | ✅ producción |
+| Chat WOS3 — insert_radar guarda como borrador y pide confirmar/descartar (igual que Telegram) | ✅ producción |
