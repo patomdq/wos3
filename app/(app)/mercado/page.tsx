@@ -1351,9 +1351,9 @@ export default function MercadoPage() {
                   </div>
 
                   <div className="flex gap-1.5 mt-2 flex-wrap">
-                    {item.superficie && <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: '#666' }}>{item.superficie} m²</span>}
-                    {item.habitaciones && <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: '#666' }}>{item.habitaciones} hab</span>}
-                    {item.num_plantas && <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: '#666' }}>{item.num_plantas} plantas</span>}
+                    <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: item.superficie ? '#666' : '#CCC' }}>{item.superficie ? `${item.superficie} m²` : '— m²'}</span>
+                    <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: item.habitaciones ? '#666' : '#CCC' }}>{item.habitaciones ? `${item.habitaciones} hab` : '— hab'}</span>
+                    <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#F3F2EE', color: item.num_plantas ? '#666' : '#CCC' }}>{item.num_plantas ? `${item.num_plantas} plantas` : '— plantas'}</span>
                   </div>
 
                   {/* Para edificios: grid métricas compacto */}
