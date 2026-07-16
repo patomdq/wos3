@@ -295,6 +295,8 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
 
       if (toolResults?.length) {
         loadContext().catch(() => {})
+        const tables = new Set(toolResults.map((t: ToolData) => t.table).filter(Boolean))
+        tables.forEach(table => window.dispatchEvent(new CustomEvent('wos:record-changed', { detail: { table } })))
       }
     } catch {
       setTyping(false)
@@ -325,6 +327,7 @@ export default function BotChat({ proyectoId, storageKeySuffix, hideHeader, ligh
         if (i !== msgIdx) return m
         return { ...m, toolData: m.toolData?.filter(t => t.id !== td.id) }
       }))
+      window.dispatchEvent(new CustomEvent('wos:record-changed', { detail: { table: td.table } }))
     }
   }
 

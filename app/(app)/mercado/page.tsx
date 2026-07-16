@@ -301,15 +301,30 @@ export default function MercadoPage() {
   const [savingBitacora, setSavingBitacora] = useState(false)
   const [editingBitacoraId, setEditingBitacoraId] = useState<string | null>(null)
 
+  const fetchInmuebles = () =>
+    supabase.from('inmuebles').select('*').neq('estado', 'borrador').order('created_at', { ascending: false })
+      .then(({ data }) => setInmuebles(data || []))
+
   useEffect(() => {
     Promise.all([
-      supabase.from('inmuebles').select('*').neq('estado', 'borrador').order('created_at', { ascending: false }),
+      fetchInmuebles(),
       supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre'),
-    ]).then(([i, p]) => {
-      setInmuebles(i.data || [])
+    ]).then(([, p]) => {
       setProveedores(p.data || [])
       setLoading(false)
     })
+  }, [])
+
+  // El chat WOS (panel lateral) puede insertar/editar/borrar en `inmuebles` sin que
+  // esta página se entere — refresca la lista cuando el chat avisa que tocó esa tabla,
+  // para no depender de recargar el navegador.
+  useEffect(() => {
+    const onRecordChanged = (e: Event) => {
+      const table = (e as CustomEvent<{ table?: string }>).detail?.table
+      if (table === 'inmuebles') fetchInmuebles()
+    }
+    window.addEventListener('wos:record-changed', onRecordChanged)
+    return () => window.removeEventListener('wos:record-changed', onRecordChanged)
   }, [])
 
   // Auto-abrir calculadora si viene ?estudio=ID en la URL
