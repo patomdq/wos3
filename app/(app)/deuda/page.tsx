@@ -118,7 +118,10 @@ export default function DeudaPage() {
   }
 
   const provincias = useMemo(() => unicos(posiciones.map(p => p.provincia)), [posiciones])
-  const ciudades = useMemo(() => unicos(posiciones.map(p => p.ciudad)), [posiciones])
+  const ciudades = useMemo(() => {
+    const base = filtros.provincia ? posiciones.filter(p => p.provincia === filtros.provincia) : posiciones
+    return unicos(base.map(p => p.ciudad))
+  }, [posiciones, filtros.provincia])
   const brokers = useMemo(() => unicos(posiciones.map(p => p.broker_origen)), [posiciones])
   const tiposColateral = useMemo(() => unicos(posiciones.map(p => p.tipo_colateral)), [posiciones])
   const subtiposColateral = useMemo(() => unicos(posiciones.map(p => p.subtipo_colateral)), [posiciones])

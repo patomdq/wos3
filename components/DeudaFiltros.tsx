@@ -96,7 +96,7 @@ export default function DeudaFiltros({
             placeholder="Buscar por contrato, dirección, titular..."
             className="w-full rounded-xl pl-3 pr-3 py-2.5 text-sm outline-none font-medium" style={INP} />
         </div>
-        <select value={filtros.provincia} onChange={e => set('provincia', e.target.value)}
+        <select value={filtros.provincia} onChange={e => setFiltros(f => ({ ...f, provincia: e.target.value, ciudad: 'todos' }))}
           className="rounded-xl px-3 py-2.5 text-sm font-bold outline-none" style={SEL}>
           <option value="todos">Provincia: todas</option>
           {provincias.map(p => <option key={p} value={p}>{p}</option>)}
