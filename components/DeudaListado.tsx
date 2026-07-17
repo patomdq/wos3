@@ -84,7 +84,10 @@ export default function DeudaListado({
                   <div className="font-black text-[15px] truncate" style={{ color: '#111' }}>{g.ciudad || 'Sin ciudad'}</div>
                   <div className="text-[12px] font-bold truncate" style={{ color: '#999' }}>{g.provincia || 'Sin provincia'}</div>
                 </div>
-                {g.tieneAlerta && <span className="flex-shrink-0 text-base" title="Cargas previas superan el asking price">🔴</span>}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {g.esFavorito && <span className="text-base" title="Favorito">⭐</span>}
+                  {g.tieneAlerta && <span className="text-base" title="Cargas previas superan el asking price">🔴</span>}
+                </div>
               </div>
               <div className="text-[12px] font-mono truncate mb-2" style={{ color: '#BBB' }}>{g.contractId}</div>
               <div className="flex flex-wrap items-center gap-1.5 mb-2">

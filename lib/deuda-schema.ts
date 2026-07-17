@@ -331,6 +331,8 @@ export type DeudaPosicion = {
   estrategia_prevista: string | null
   coste_fiscal_estimado: string | null
   cargas_detalle: CargaDetalle[] | null
+  favorito: boolean
+  resumen_ia: string | null
   created_at: string
   updated_at: string
 }
@@ -350,6 +352,7 @@ export type GrupoDeuda = {
   imagenUrl: string | null | undefined
   tieneAlerta: boolean
   sinPrecio: boolean
+  esFavorito: boolean
 }
 
 // Agrupa posiciones por contract_id (un contrato puede tener varias garantías/inmuebles)
@@ -376,5 +379,6 @@ export function agruparPorContrato(posiciones: DeudaPosicion[]): GrupoDeuda[] {
     imagenUrl: items.find(i => i.imagen_url)?.imagen_url,
     tieneAlerta: items.some(i => calcRatioRiesgoCargas(i.cargas_previas, i.asking_price).alerta),
     sinPrecio: items.every(i => i.asking_price == null || i.asking_price <= 0),
+    esFavorito: items.some(i => i.favorito),
   }))
 }

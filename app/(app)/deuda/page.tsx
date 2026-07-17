@@ -22,6 +22,7 @@ export default function DeudaPage() {
   const [loading, setLoading] = useState(true)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [filtroEstado, setFiltroEstado] = useState('todos')
+  const [soloFavoritos, setSoloFavoritos] = useState(false)
   const [filtros, setFiltros] = useState<DeudaFiltrosState>(FILTROS_INICIALES)
   const [vista, setVista] = useState<'lista' | 'mapa'>('lista')
   const [contratoAbierto, setContratoAbierto] = useState<string | null>(null)
@@ -128,8 +129,8 @@ export default function DeudaPage() {
   )
 
   const filtradas = useMemo(
-    () => porEstado.filter(p => pasaFiltros(p, filtros)),
-    [porEstado, filtros]
+    () => porEstado.filter(p => pasaFiltros(p, filtros) && (!soloFavoritos || p.favorito)),
+    [porEstado, filtros, soloFavoritos]
   )
 
   const grupos = useMemo(() => agruparPorContrato(filtradas), [filtradas])
@@ -189,6 +190,16 @@ export default function DeudaPage() {
                 </button>
               )
             })}
+            {/* Favoritos — toggle, no es un estado sino un filtro transversal */}
+            <button onClick={() => setSoloFavoritos(v => !v)}
+              className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap"
+              style={{
+                background: soloFavoritos ? 'rgba(245,158,11,0.15)' : '#fff',
+                color: soloFavoritos ? '#B45309' : '#888',
+                border: `1.5px solid ${soloFavoritos ? 'rgba(245,158,11,0.5)' : '#E2E0D8'}`,
+              }}>
+              ⭐ Favoritos ({posiciones.filter(p => p.favorito).length})
+            </button>
           </div>
 
           <div className="flex rounded-xl p-1 flex-shrink-0" style={{ background: '#fff', border: '1.5px solid #ECEAE4' }}>

@@ -58,6 +58,11 @@ export default function DeudaFichaModal({
     setUbicandoId(null)
   }
 
+  const toggleFavorito = () => {
+    const nuevoValor = !grupo.esFavorito
+    grupo.items.forEach(p => onUpdateCampo(p.id, { favorito: nuevoValor }))
+  }
+
   return (
     <>
       <div className="fixed inset-x-0 top-0 z-40" style={{ bottom: 70, background: 'rgba(0,0,0,0.45)' }} onClick={onClose} />
@@ -78,7 +83,15 @@ export default function DeudaFichaModal({
                 </div>
                 <div className="text-[12px] mt-0.5 font-mono truncate" style={{ color: '#999' }}>{grupo.contractId} · {grupo.broker || 'Sin broker'}</div>
               </div>
-              <button onClick={onClose} className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button onClick={toggleFavorito}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-base"
+                  title={grupo.esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                  style={{ background: grupo.esFavorito ? 'rgba(245,158,11,0.15)' : '#F5F4F0', border: `1px solid ${grupo.esFavorito ? 'rgba(245,158,11,0.4)' : '#ECEAE4'}` }}>
+                  {grupo.esFavorito ? '⭐' : '☆'}
+                </button>
+                <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
+              </div>
             </div>
           </div>
 
@@ -132,6 +145,26 @@ function PosicionCard({
   })
 
   const [mostrarExtra, setMostrarExtra] = useState(false)
+  const [resumen, setResumen] = useState<string | null>(p.resumen_ia ?? null)
+  const [generandoResumen, setGenerandoResumen] = useState(false)
+
+  const generarResumen = async () => {
+    setGenerandoResumen(true)
+    try {
+      const res = await fetch('/api/deuda/resumen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: p.id }),
+      })
+      const data = await res.json()
+      if (data.resumen) {
+        setResumen(data.resumen)
+        onUpdateCampo({ resumen_ia: data.resumen })
+      }
+    } catch {}
+    setGenerandoResumen(false)
+  }
   const camposAdicionalesConValor = CAMPOS_ADICIONALES_IDS.filter(id => {
     const v = (p as any)[id]
     return v !== null && v !== undefined && v !== ''
@@ -163,6 +196,26 @@ function PosicionCard({
 
   return (
     <div className="px-5 py-4" style={{ borderTop: '1px solid #F5F4F0' }}>
+
+      {/* Resumen IA — preanálisis generado por Claude con todos los datos disponibles */}
+      <div className="rounded-xl px-3 py-2.5 mb-3" style={{ background: 'rgba(166,133,90,0.07)', border: '1px solid rgba(166,133,90,0.25)' }}>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#A6855A' }}>✨ Resumen IA</div>
+          <button onClick={generarResumen} disabled={generandoResumen}
+            className="px-2 py-1 rounded-lg text-[11px] font-black disabled:opacity-50"
+            style={{ background: '#14110C', color: '#F8F3E9' }}>
+            {generandoResumen ? 'Generando...' : resumen ? '↺ Regenerar' : 'Generar'}
+          </button>
+        </div>
+        {resumen ? (
+          <p className="text-[12.5px] leading-relaxed" style={{ color: '#444' }}>{resumen}</p>
+        ) : (
+          <p className="text-[12px] italic" style={{ color: '#BBB' }}>
+            Todavía no hay resumen. Hacé clic en "Generar" para que Claude analice esta posición con todos los datos disponibles.
+          </p>
+        )}
+      </div>
+
       {/* Imagen del inmueble — igual que la portada en Mercado */}
       <label className="block relative rounded-xl overflow-hidden mb-3 cursor-pointer"
         style={{ height: 120, background: p.imagen_url ? undefined : '#F9F8F5', border: p.imagen_url ? 'none' : '1.5px dashed #DCDAD4' }}>
@@ -374,7 +427,8 @@ function PosicionCard({
         <Ficha titulo="Colateral">
           <Field label="Tipo" value={p.tipo_colateral} />
           <Field label="Subtipo" value={p.subtipo_colateral} />
-          <Field label="Referencia catastral" value={p.ref_catastral} mono />
+          <Field label="Referencia catastral" value={p.ref_catastral} mono
+            href={p.ref_catastral ? `https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?del=&mun=&RefC=${encodeURIComponent(p.ref_catastral)}&pest=rc` : undefined} />
           <Field label="Nº Registro" value={p.n_registro} mono />
           <Field label="CCAA" value={p.ccaa} />
           <Field label="Provincia" value={p.provincia} />
@@ -449,12 +503,19 @@ function Ficha({ titulo, children }: { titulo: string; children: React.ReactNode
 // Label arriba / valor abajo (en vez de label-valor en la misma línea con truncate) — con
 // referencias catastrales, contract IDs largos o titulares con nombre completo, la versión en
 // una sola línea los cortaba con "..." y no había forma de leerlos sin copiar el HTML.
-function Field({ label, value, mono, danger }: { label: string; value: string | null | undefined; mono?: boolean; danger?: boolean }) {
+function Field({ label, value, mono, danger, href }: { label: string; value: string | null | undefined; mono?: boolean; danger?: boolean; href?: string }) {
   return (
     <div>
       <div className="text-[11px] font-semibold" style={{ color: '#999' }}>{label}</div>
-      <div className={`text-[12.5px] font-bold break-words ${mono ? 'font-mono' : ''}`} style={{ color: danger ? '#EF4444' : '#333' }}>
-        {value || '—'}
+      <div className={`text-[12.5px] font-bold break-words flex items-start gap-1.5 ${mono ? 'font-mono' : ''}`} style={{ color: danger ? '#EF4444' : '#333' }}>
+        <span>{value || '—'}</span>
+        {href && value && (
+          <a href={href} target="_blank" rel="noopener noreferrer"
+            className="flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black inline-flex items-center gap-0.5 mt-0.5"
+            style={{ background: 'rgba(166,133,90,0.15)', color: '#A6855A', textDecoration: 'none' }}>
+            ↗ Catastro
+          </a>
+        )}
       </div>
     </div>
   )

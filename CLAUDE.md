@@ -39,6 +39,24 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 17/07/2026 (Deuda: expansión de schema + import GES-JUL01 + pre-descarte IA)**
+
+Hecho:
+- **Expansión de schema Deuda** — 47 campos canónicos nuevos agregados en `lib/deuda-schema.ts` (tipo `CampoCanonico` + `CAMPOS_CANONICOS` + `DeudaPosicion`), en `app/api/deuda/import/route.ts` (numericFields + textFields + return del map), y en base de datos (migración previa ya aplicada). Campos nuevos: portfolio, bucket, contract_id_secundario, id_bien, juzgado, num_autos, num_procedimiento, tipo_procedimiento, tipo_via, numero_via, n_finca_registral, fecha_subasta, fecha_cobro, estado_subasta, resultado_subasta, flag_nuevo, flag_eliminado, vpo, planta, parcela, comarca, id_portal_subasta, fecha_cesion_remate, fecha_precio_referencia, dev_id, subfase, ocupacion_broker, status_final, estado_colateral, registro, fr, connection, afectado_terceros, motivo_paralizacion, fecha_solicitud_adjudicacion, fecha_cdr, fecha_firma_cdr_closing, propuesta_formalizada_closing, fecha_firma_closing, estado_broker, estado_proc_flag, principal, precio_subasta, importe_adjudicacion, superficie_m2, deuda_responsabilidad_hipotecaria, n_contratos_activos
+- **Backfill de 4 imports previos** (191 filas) con los nuevos campos, usando mapeos reconstruidos vía reverse-engineering de raw_data vs campos_extra. Script `backfill_deuda.mjs` ejecutado y eliminado (throwaway)
+- **Import de GES-JUL01.xlsx** (71 filas, broker INMUBI, `NEW!-Andalucia-CDR-GES-JUL01.xlsx`) que nunca había sido importado. Fix especial: CONTRACT_ID era tipo número en Excel → SheetJS en modo `raw:false` lo truncaba en notación científica → se leyó el sheet dos veces (raw:false para todo + raw:true solo para CONTRACT_ID). importacion_id=`287108dd-cd42-4258-a80d-2d3ddb725a1c`
+- **UI: sección "Datos adicionales del broker"** en `components/DeudaFichaModal.tsx` — panel colapsable que muestra los 47 campos nuevos que tengan valor, con label legible. No modifica el layout existente de la ficha
+- Build + tsc verificados, commit `ef2e37c`, pusheado a `origin master`
+
+- **Aclaración billing API**: la variable `ANTHROPIC_API_KEY` en Vercel es una cuenta de API separada de claude.ai (suscripción mensual). Al importar Excels con estados judiciales nuevos, WOS3 llama a Claude API (costo real en $). Pasar planillas directamente en el chat de claude.ai no consume esa API key — va contra la suscripción mensual ya pagada
+
+Pendiente (a implementar en próxima sesión):
+- **Pre-descarte automático al importar** (diseño cerrado con Pato):
+  - Capa 0 (math only, gratis): si descuento sobre deuda_tot < 30% O cargas_previas > asking_price → `estado_interno='descartado'` automático con `motivo_descarte` pre-cargado. Si asking_price es null → no descartar, badge "sin precio para evaluar"
+  - Pestaña "Descartados" en `app/(app)/deuda/page.tsx` con botón "Volver a activo" (reversible — las posiciones pueden "volver a la vida" si cambia algo)
+  - Backfill de posiciones ya importadas con la misma lógica
+  - NO incluir Capa 1 (AI para ocupación/expediente) en esta fase — agregar solo si la matemática sola no es suficiente después de probar
+
 **Última sesión — 16/07/2026 (chat WOS3: Mercado no se refrescaba solo + insert_radar sin confirmar)**
 
 Hecho:
@@ -804,6 +822,9 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Deuda — mapa con pines (OpenStreetMap + Leaflet, geocoding vía Nominatim, sin API key) | ✅ producción |
 | Deuda — imagen por posición (mismo patrón que portada de Mercado) | ✅ producción |
 | Deuda — banner de transparencia cuando el filtro de riesgo oculta contratos | ✅ producción |
+| Deuda — 47 campos canónicos nuevos (portfolio, juzgado, principal, superficie_m2, etc.) en schema + DB + import + ficha modal | ✅ producción |
+| Deuda — import GES-JUL01.xlsx (71 filas INMUBI, fix precision CONTRACT_ID numérico) | ✅ producción |
+| Deuda — pre-descarte automático al importar (Capa 0: descuento < 30% o cargas > asking_price → descartado reversible) | ⏳ pendiente |
 | Wallest Design System — bronce + Marcellus/Hanken en toda la app (fondo claro mantenido) | ✅ producción |
 | Wallest Design System Fase 2 (geometría literal: radios 2px/26px/999px) | ⏳ pendiente |
 | Portal inversor / Dossier — tratamiento "dark-first" del design system | ⏳ pendiente de decisión de Pato |
