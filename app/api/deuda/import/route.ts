@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 1. Normalizar cada fila usando el mapeo confirmado
-  const numericFields = new Set<CampoCanonico>(['n_loans', 'deuda_ob', 'deuda_tot', 'cargas_previas', 'cargas_posteriores', 'asking_price'])
+  const numericFields = new Set<CampoCanonico>(['n_loans', 'deuda_ob', 'deuda_tot', 'cargas_previas', 'cargas_posteriores', 'asking_price', 'valor_colateral'])
   const textFields = new Set<CampoCanonico>(['contract_id', 'tipo_colateral', 'subtipo_colateral', 'ccaa', 'provincia', 'ciudad', 'zip', 'direccion', 'n_registro', 'ref_catastral', 'estado_judicial_raw', 'titular_deuda'])
 
   const normalizados = rows.map((row) => {
@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
       cargas_previas: obj.cargas_previas ?? null,
       cargas_posteriores: obj.cargas_posteriores ?? null,
       asking_price: obj.asking_price ?? null,
+      valor_colateral: obj.valor_colateral ?? null,
       campos_extra: camposExtra,
       raw_data: rawRow,
     }

@@ -1,12 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { GrupoDeuda, ESTADO_JUDICIAL_LABEL, ESTADO_JUDICIAL_COLOR } from '@/lib/deuda-schema'
+import { GrupoDeuda, ESTADO_JUDICIAL_LABEL, ESTADO_JUDICIAL_COLOR, calcRatioColateral, calcDescuentoDeuda } from '@/lib/deuda-schema'
 
 const fmt = (n: number | null | undefined) => {
   if (n === null || n === undefined) return '—'
   if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k€`
   return `${n.toLocaleString('es-ES')}€`
 }
+const pct = (n: number | null) => n === null ? '—' : `${(n * 100).toFixed(0)}%`
 
 const PAGINA_KEY = 'deuda_por_pagina'
 const TAMANOS_PAGINA = [50, 100] as const
@@ -66,7 +67,10 @@ export default function DeudaListado({
       </div>
 
       <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-        {gruposPagina.map(g => (
+        {gruposPagina.map(g => {
+          const ratioColateral = calcRatioColateral(g.deudaTotTotal, g.valorColateralTotal)
+          const descuentoDeuda = calcDescuentoDeuda(g.deudaTotTotal, g.askingTotal)
+          return (
           <button key={g.contractId} onClick={() => onAbrir(g.contractId)}
             className="text-left rounded-2xl overflow-hidden flex flex-col" style={{ background: '#fff', border: '1.5px solid #ECEAE4' }}>
             {g.imagenUrl && (
@@ -94,6 +98,20 @@ export default function DeudaListado({
                     {ESTADO_JUDICIAL_LABEL[g.estadoJudicial]}
                   </span>
                 )}
+                {!ratioColateral.sinValor && (
+                  <span className="inline-block px-1.5 py-0.5 rounded-md text-[12px] font-black"
+                    style={{ background: ratioColateral.bueno ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)', color: ratioColateral.bueno ? '#16A34A' : '#EF4444' }}
+                    title="Deuda total / Valor del colateral">
+                    {ratioColateral.bueno ? '🟢' : '🔴'} {pct(ratioColateral.ratio)} deuda/colateral
+                  </span>
+                )}
+                {descuentoDeuda !== null && (
+                  <span className="inline-block px-1.5 py-0.5 rounded-md text-[12px] font-black"
+                    style={{ background: descuentoDeuda >= 0.3 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)', color: descuentoDeuda >= 0.3 ? '#16A34A' : '#EF4444' }}
+                    title="Descuento sobre la deuda total">
+                    {descuentoDeuda >= 0.3 ? '🟢' : '🔴'} {pct(descuentoDeuda)} desc.
+                  </span>
+                )}
               </div>
               {g.titular && <div className="text-[12px] font-bold truncate" style={{ color: '#666' }}>Titular: {g.titular}</div>}
               <div className="text-[12px] font-bold truncate" style={{ color: '#888' }}>{g.broker || 'Sin broker'}</div>
@@ -109,7 +127,8 @@ export default function DeudaListado({
               </div>
             </div>
           </button>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

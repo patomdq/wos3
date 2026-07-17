@@ -1,6 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { ESTADOS_JUDICIALES_NORMALIZADOS, ESTADO_JUDICIAL_LABEL, EstadoJudicialNormalizado, DeudaPosicion, calcRatioRiesgoCargas } from '@/lib/deuda-schema'
+import {
+  ESTADOS_JUDICIALES_NORMALIZADOS, ESTADO_JUDICIAL_LABEL, EstadoJudicialNormalizado, DeudaPosicion,
+  calcRatioRiesgoCargas, calcDescuentoDeuda, OCUPACION_ESTADOS, OCUPACION_LABEL, OcupacionEstado,
+} from '@/lib/deuda-schema'
 
 export type DeudaFiltrosState = {
   buscar: string
@@ -15,6 +18,8 @@ export type DeudaFiltrosState = {
   obMax: string
   estadosJudiciales: EstadoJudicialNormalizado[]
   ocultarRiesgoCargas: boolean
+  ocupacion: string
+  descuentoDeudaMin: string
 }
 
 export const FILTROS_INICIALES: DeudaFiltrosState = {
@@ -22,6 +27,7 @@ export const FILTROS_INICIALES: DeudaFiltrosState = {
   tipoColateral: 'todos', subtipoColateral: 'todos',
   precioMin: '', precioMax: '', obMin: '', obMax: '',
   estadosJudiciales: [], ocultarRiesgoCargas: true,
+  ocupacion: 'todos', descuentoDeudaMin: '',
 }
 
 // Predicado compartido — usado por la página tanto para el filtrado real como para calcular
@@ -44,6 +50,11 @@ export function pasaFiltros(p: DeudaPosicion, filtros: DeudaFiltrosState, opts?:
   if (filtros.obMax && (p.deuda_ob ?? Infinity) > Number(filtros.obMax)) return false
   if (filtros.estadosJudiciales.length > 0 && (!p.estado_judicial_normalizado || !filtros.estadosJudiciales.includes(p.estado_judicial_normalizado))) return false
   if (!opts?.ignorarRiesgo && filtros.ocultarRiesgoCargas && calcRatioRiesgoCargas(p.cargas_previas, p.asking_price).alerta) return false
+  if (filtros.ocupacion !== 'todos' && p.ocupacion_estado !== filtros.ocupacion) return false
+  if (filtros.descuentoDeudaMin) {
+    const d = calcDescuentoDeuda(p.deuda_tot, p.asking_price)
+    if (d === null || d < Number(filtros.descuentoDeudaMin) / 100) return false
+  }
   return true
 }
 
@@ -74,6 +85,7 @@ export default function DeudaFiltros({
 
   const masFiltrosActivos = filtros.broker !== 'todos' || filtros.tipoColateral !== 'todos' || filtros.subtipoColateral !== 'todos'
     || filtros.obMin || filtros.obMax || filtros.estadosJudiciales.length > 0 || !filtros.ocultarRiesgoCargas
+    || filtros.ocupacion !== 'todos' || filtros.descuentoDeudaMin
 
   return (
     <div className="mb-4">
@@ -151,6 +163,18 @@ export default function DeudaFiltros({
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Ocupación</label>
+            <select value={filtros.ocupacion} onChange={e => set('ocupacion', e.target.value)} className="w-full rounded-xl px-3 py-2 text-xs font-bold outline-none" style={SEL}>
+              <option value="todos">Todas</option>
+              {OCUPACION_ESTADOS.map(o => <option key={o} value={o}>{OCUPACION_LABEL[o]}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#888' }}>Descuento mín. sobre deuda total (%)</label>
+            <input type="number" value={filtros.descuentoDeudaMin} onChange={e => set('descuentoDeudaMin', e.target.value)}
+              placeholder="ej. 30" className="w-full rounded-xl px-2.5 py-2 text-xs font-mono font-bold outline-none" style={INP} />
           </div>
           <div className="sm:col-span-2 lg:col-span-2 flex items-center">
             <button onClick={() => set('ocultarRiesgoCargas', !filtros.ocultarRiesgoCargas)}

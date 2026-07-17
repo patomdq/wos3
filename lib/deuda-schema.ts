@@ -5,7 +5,7 @@ export type CampoCanonico =
   | 'contract_id' | 'n_loans' | 'tipo_colateral' | 'subtipo_colateral' | 'ccaa'
   | 'provincia' | 'ciudad' | 'zip' | 'direccion' | 'n_registro' | 'ref_catastral'
   | 'estado_judicial_raw' | 'deuda_ob' | 'deuda_tot' | 'titular_deuda'
-  | 'cargas_previas' | 'cargas_posteriores' | 'asking_price' | 'ignorar'
+  | 'cargas_previas' | 'cargas_posteriores' | 'asking_price' | 'valor_colateral' | 'ignorar'
 
 export const CAMPOS_CANONICOS: { id: CampoCanonico; label: string; tipo: 'texto' | 'numero' }[] = [
   { id: 'contract_id',          label: 'Contract ID (identificador del contrato)', tipo: 'texto' },
@@ -21,11 +21,12 @@ export const CAMPOS_CANONICOS: { id: CampoCanonico; label: string; tipo: 'texto'
   { id: 'ref_catastral',         label: 'Referencia catastral',                     tipo: 'texto' },
   { id: 'estado_judicial_raw',   label: 'Estado judicial (texto del broker)',       tipo: 'texto' },
   { id: 'deuda_ob',              label: 'Deuda OB (outstanding balance)',           tipo: 'numero' },
-  { id: 'deuda_tot',             label: 'Deuda total',                              tipo: 'numero' },
+  { id: 'deuda_tot',             label: 'Deuda total (con intereses y costas)',     tipo: 'numero' },
   { id: 'titular_deuda',         label: 'Titular de la deuda',                      tipo: 'texto' },
   { id: 'cargas_previas',        label: 'Cargas previas',                           tipo: 'numero' },
   { id: 'cargas_posteriores',    label: 'Cargas posteriores',                       tipo: 'numero' },
   { id: 'asking_price',          label: 'Asking price',                             tipo: 'numero' },
+  { id: 'valor_colateral',       label: 'Valor del colateral (tasación)',           tipo: 'numero' },
   { id: 'ignorar',               label: '— No importar esta columna —',             tipo: 'texto' },
 ]
 
@@ -83,6 +84,72 @@ export function calcDescuento(deudaOb: number | null | undefined, askingPrice: n
 
 export const BROKER_ORIGEN_DEFAULT = 'Sin especificar'
 
+// Ocupación del inmueble — punto 4 del criterio del experto NPL: saber si está ocupado, por quién,
+// y si hace falta visita de campo para confirmar. 'con_titulo' = alquilado/con derecho legal a estar,
+// 'sin_titulo' = ocupa/okupa sin derecho — la estrategia y el riesgo son muy distintos entre ambos.
+export const OCUPACION_ESTADOS = ['libre', 'con_titulo', 'sin_titulo', 'desconocido'] as const
+export type OcupacionEstado = typeof OCUPACION_ESTADOS[number]
+export const OCUPACION_LABEL: Record<OcupacionEstado, string> = {
+  libre: 'Libre',
+  con_titulo: 'Ocupado con título (alquiler)',
+  sin_titulo: 'Ocupado sin título (okupa)',
+  desconocido: 'Desconocido — pendiente visita',
+}
+export const OCUPACION_COLOR: Record<OcupacionEstado, { color: string; bg: string }> = {
+  libre:        { color: '#22C55E', bg: 'rgba(34,197,94,0.15)'  },
+  con_titulo:   { color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+  sin_titulo:   { color: '#EF4444', bg: 'rgba(239,68,68,0.12)'  },
+  desconocido:  { color: '#888',    bg: 'rgba(136,136,136,0.12)' },
+}
+
+// Motivo de descarte rápido — punto 1: ~90% de las NPL se descartan en 30-40 min, es lo normal,
+// no un fallo. Un motivo de 1 click deja el criterio registrado sin obligar a escribir nada.
+export const MOTIVOS_DESCARTE = [
+  'ratio_colateral_insuficiente', 'descuento_insuficiente', 'ocupacion_compleja',
+  'expediente_muy_largo', 'cargas_excesivas', 'fuera_zona', 'otro',
+] as const
+export type MotivoDescarte = typeof MOTIVOS_DESCARTE[number]
+export const MOTIVO_DESCARTE_LABEL: Record<MotivoDescarte, string> = {
+  ratio_colateral_insuficiente: 'Deuda / colateral insuficiente',
+  descuento_insuficiente: 'Descuento sobre deuda insuficiente (<30%)',
+  ocupacion_compleja: 'Ocupación compleja',
+  expediente_muy_largo: 'Expediente judicial muy largo',
+  cargas_excesivas: 'Cargas previas excesivas',
+  fuera_zona: 'Fuera de zona de interés',
+  otro: 'Otro',
+}
+
+// Un ítem de carga detallado (punto 5: valorar cada carga por separado, no solo el agregado)
+export type CargaDetalle = {
+  id: string
+  concepto: string
+  importe: number | null
+  tipo: 'previa' | 'posterior'
+  notas?: string
+}
+
+// Ratio 2A del criterio NPL — deuda existente (con intereses/costas) vs valor de tasación del
+// colateral. Relevante cuando la estrategia es quedarse con el inmueble y negociar con el deudor
+// (ej. dación en pago): la deuda debería ser cercana, igual o mayor al valor del colateral —
+// cuanto más alta la deuda respecto al colateral, más fuerza de negociación.
+export function calcRatioColateral(deudaTot: number | null | undefined, valorColateral: number | null | undefined) {
+  if (!valorColateral || valorColateral <= 0) {
+    return { ratio: null as number | null, sinValor: true, bueno: false }
+  }
+  const dt = deudaTot ?? 0
+  const ratio = dt / valorColateral
+  return { ratio, sinValor: false, bueno: ratio >= 1 }
+}
+
+// Ratio 2B del criterio NPL — descuento sobre la deuda total (no el asking price sobre el OB):
+// cuánto se paga por comprar la deuda respecto a lo que esa deuda vale en total con intereses/costas.
+// Mínimo aceptable de Pato: 30% de descuento. Reemplaza el uso de calcDescuento() en la ficha de Deuda
+// (que seguía comparando contra deuda_ob) — se mantiene calcDescuento() genérica para otros usos.
+export function calcDescuentoDeuda(deudaTot: number | null | undefined, askingPrice: number | null | undefined) {
+  if (!deudaTot || deudaTot <= 0 || askingPrice === null || askingPrice === undefined) return null
+  return (deudaTot - askingPrice) / deudaTot
+}
+
 export type DeudaPosicion = {
   id: string
   contract_id: string
@@ -104,6 +171,7 @@ export type DeudaPosicion = {
   cargas_previas: number | null
   cargas_posteriores: number | null
   asking_price: number | null
+  valor_colateral: number | null
   campos_extra: Record<string, any> | null
   broker_origen: string | null
   archivo_origen: string | null
@@ -113,6 +181,17 @@ export type DeudaPosicion = {
   imagen_url: string | null
   estado_interno: string
   raw_data: Record<string, any> | null
+  // Campos de due diligence NPL (criterio del experto, cargados a mano en la ficha) —
+  // ninguno viene del Excel del broker salvo valor_colateral (arriba, opcional en el mapeo).
+  motivo_descarte: MotivoDescarte | null
+  tiempo_estimado_meses: number | null
+  ocupacion_estado: OcupacionEstado | null
+  visita_realizada: boolean | null
+  visita_fecha: string | null
+  visita_notas: string | null
+  estrategia_prevista: string | null
+  coste_fiscal_estimado: string | null
+  cargas_detalle: CargaDetalle[] | null
   created_at: string
   updated_at: string
 }
@@ -122,6 +201,8 @@ export type GrupoDeuda = {
   items: DeudaPosicion[]
   askingTotal: number
   obTotal: number
+  deudaTotTotal: number
+  valorColateralTotal: number | null
   ciudad: string | null | undefined
   provincia: string | null | undefined
   broker: string | null | undefined
@@ -145,6 +226,8 @@ export function agruparPorContrato(posiciones: DeudaPosicion[]): GrupoDeuda[] {
     items,
     askingTotal: items.reduce((s, i) => s + (i.asking_price || 0), 0),
     obTotal: items.reduce((s, i) => s + (i.deuda_ob || 0), 0),
+    deudaTotTotal: items.reduce((s, i) => s + (i.deuda_tot || 0), 0),
+    valorColateralTotal: items.some(i => i.valor_colateral != null) ? items.reduce((s, i) => s + (i.valor_colateral || 0), 0) : null,
     ciudad: items[0]?.ciudad,
     provincia: items[0]?.provincia,
     broker: items[0]?.broker_origen,

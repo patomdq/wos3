@@ -42,6 +42,14 @@ export default function DeudaPage() {
     await supabase.from('deuda_posiciones').update({ estado_interno: estado }).eq('id', id)
   }
 
+  // Genérico para los campos nuevos de due diligence NPL (valor_colateral, ocupación, visita,
+  // estrategia, fiscal, cargas_detalle, motivo_descarte, etc.) — mismo patrón optimista que
+  // onUpdateEstado, pero acepta cualquier subconjunto de columnas en un solo round-trip.
+  const onUpdateCampo = async (id: string, patch: Partial<DeudaPosicion>) => {
+    setPosiciones(ps => ps.map(p => p.id === id ? { ...p, ...patch } : p))
+    await supabase.from('deuda_posiciones').update(patch).eq('id', id)
+  }
+
   const onUpdateImagen = async (id: string, file: File) => {
     const ext = file.name.split('.').pop() || 'jpg'
     const fileName = `deuda_${id}_${Date.now()}.${ext}`
@@ -251,6 +259,7 @@ export default function DeudaPage() {
           onUpdateEstado={onUpdateEstado}
           onUpdateImagen={onUpdateImagen}
           onGeocodear={onGeocodear}
+          onUpdateCampo={onUpdateCampo}
         />
       )}
 

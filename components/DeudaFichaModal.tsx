@@ -1,8 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
-  GrupoDeuda, ESTADO_INTERNO_CFG, ESTADO_JUDICIAL_LABEL, ESTADO_JUDICIAL_COLOR,
-  calcRatioRiesgoCargas, calcDescuento,
+  GrupoDeuda, DeudaPosicion, ESTADO_INTERNO_CFG, ESTADO_JUDICIAL_LABEL, ESTADO_JUDICIAL_COLOR,
+  calcRatioRiesgoCargas, calcRatioColateral, calcDescuentoDeuda,
+  OCUPACION_ESTADOS, OCUPACION_LABEL, OCUPACION_COLOR, OcupacionEstado,
+  MOTIVOS_DESCARTE, MOTIVO_DESCARTE_LABEL, MotivoDescarte, CargaDetalle,
 } from '@/lib/deuda-schema'
 
 const fmt = (n: number | null | undefined) => {
@@ -13,13 +15,14 @@ const fmt = (n: number | null | undefined) => {
 const pct = (n: number | null) => n === null ? '—' : `${(n * 100).toFixed(0)}%`
 
 export default function DeudaFichaModal({
-  grupo, onClose, onUpdateEstado, onUpdateImagen, onGeocodear,
+  grupo, onClose, onUpdateEstado, onUpdateImagen, onGeocodear, onUpdateCampo,
 }: {
   grupo: GrupoDeuda
   onClose: () => void
   onUpdateEstado: (id: string, estado: string) => void
   onUpdateImagen: (id: string, file: File) => Promise<void>
   onGeocodear: (id: string) => Promise<void>
+  onUpdateCampo: (id: string, patch: Partial<DeudaPosicion>) => void
 }) {
   const [subiendoId, setSubiendoId] = useState<string | null>(null)
   const [ubicandoId, setUbicandoId] = useState<string | null>(null)
@@ -61,105 +64,18 @@ export default function DeudaFichaModal({
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {grupo.items.map(p => {
-              const riesgo = calcRatioRiesgoCargas(p.cargas_previas, p.asking_price)
-              const descuento = calcDescuento(p.deuda_ob, p.asking_price)
-              const estCfg = ESTADO_INTERNO_CFG[p.estado_interno] || ESTADO_INTERNO_CFG.nuevo
-              const judCfg = p.estado_judicial_normalizado ? ESTADO_JUDICIAL_COLOR[p.estado_judicial_normalizado] : null
-              const tieneCoords = p.lat != null && p.lng != null
-              return (
-                <div key={p.id} className="px-5 py-4" style={{ borderTop: '1px solid #F5F4F0' }}>
-                  {/* Imagen del inmueble — igual que la portada en Mercado */}
-                  <label className="block relative rounded-xl overflow-hidden mb-3 cursor-pointer"
-                    style={{ height: 120, background: p.imagen_url ? undefined : '#F9F8F5', border: p.imagen_url ? 'none' : '1.5px dashed #DCDAD4' }}>
-                    <input type="file" accept="image/*" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) subirImagen(p.id, f) }} />
-                    {p.imagen_url ? (
-                      <>
-                        <img src={p.imagen_url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 flex items-end justify-end p-2" style={{ background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.45) 100%)' }}>
-                          <span className="px-2 py-1 rounded-lg text-[12px] font-black" style={{ background: 'rgba(255,255,255,0.85)', color: '#111' }}>
-                            {subiendoId === p.id ? 'Subiendo...' : '📷 Cambiar'}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[12px] font-bold" style={{ color: '#AAA' }}>
-                        {subiendoId === p.id ? 'Subiendo...' : '📷 Agregar imagen del inmueble'}
-                      </div>
-                    )}
-                  </label>
-
-                  {/* Cabecera: dirección + tipo + badges + estado interno */}
-                  <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
-                    <div className="min-w-[220px]">
-                      <div className="text-[14px] font-bold" style={{ color: '#333' }}>{p.direccion || '(sin dirección)'}</div>
-                      <div className="text-[12px] mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: '#999' }}>
-                        <span>{[p.tipo_colateral, p.subtipo_colateral].filter(Boolean).join(' · ') || 'Sin tipo'}</span>
-                        {judCfg && p.estado_judicial_normalizado && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: judCfg.bg, color: judCfg.color }}>
-                            {ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado]}
-                          </span>
-                        )}
-                        {riesgo.alerta && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }} title="Cargas previas superan el asking price">
-                            🔴 Riesgo cargas
-                          </span>
-                        )}
-                        {!tieneCoords && p.direccion && (
-                          <button onClick={() => geocodear(p.id)} disabled={ubicandoId === p.id}
-                            className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: '#F0EEE8', color: '#888' }}>
-                            {ubicandoId === p.id ? 'Ubicando...' : '📍 Ubicar en mapa'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <select value={p.estado_interno} onChange={e => onUpdateEstado(p.id, e.target.value)}
-                      className="rounded-lg px-2 py-1.5 text-[12px] font-black outline-none flex-shrink-0" style={{ background: estCfg.bg, color: estCfg.color, border: 'none', appearance: 'none' as const }}>
-                      {Object.entries(ESTADO_INTERNO_CFG).map(([k, cfg]) => <option key={k} value={k}>{cfg.label}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Resumen económico — estilo ficha de deuda (FENCIA) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                    <Kpi label="Deuda OB" value={fmt(p.deuda_ob)} />
-                    <Kpi label="Deuda total" value={fmt(p.deuda_tot)} />
-                    <Kpi label="Asking price" value={fmt(p.asking_price)} highlight />
-                    <Kpi label="Descuento" value={pct(descuento)} />
-                  </div>
-
-                  {/* Ficha detallada: Colateral / Deuda y titular / Estado judicial */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Ficha titulo="Colateral">
-                      <Field label="Tipo" value={p.tipo_colateral} />
-                      <Field label="Subtipo" value={p.subtipo_colateral} />
-                      <Field label="Referencia catastral" value={p.ref_catastral} mono />
-                      <Field label="Nº Registro" value={p.n_registro} mono />
-                      <Field label="CCAA" value={p.ccaa} />
-                      <Field label="Provincia" value={p.provincia} />
-                      <Field label="Ciudad" value={p.ciudad} />
-                      <Field label="Código postal" value={p.zip} />
-                    </Ficha>
-
-                    <Ficha titulo="Deuda">
-                      <Field label="Titular de la deuda" value={p.titular_deuda} />
-                      <Field label="Contract ID" value={p.contract_id} mono />
-                      <Field label="Nº préstamos" value={p.n_loans != null ? String(p.n_loans) : null} />
-                      <Field label="Cargas previas" value={fmt(p.cargas_previas)} />
-                      <Field label="Cargas posteriores" value={fmt(p.cargas_posteriores)} />
-                      <Field label="Broker de origen" value={p.broker_origen} />
-                    </Ficha>
-
-                    <Ficha titulo="Estado judicial">
-                      <Field label="Estado normalizado" value={p.estado_judicial_normalizado ? ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado] : null} />
-                      <Field label="Estado (texto original del broker)" value={p.estado_judicial_raw} />
-                      <Field label="Ratio cargas / precio" value={riesgo.sinPrecio ? 'Sin precio' : pct(riesgo.ratio)}
-                        danger={riesgo.alerta} />
-                    </Ficha>
-                  </div>
-                </div>
-              )
-            })}
+            {grupo.items.map(p => (
+              <PosicionCard
+                key={p.id}
+                p={p}
+                subiendo={subiendoId === p.id}
+                ubicando={ubicandoId === p.id}
+                onSubirImagen={f => subirImagen(p.id, f)}
+                onGeocodear={() => geocodear(p.id)}
+                onUpdateEstado={estado => onUpdateEstado(p.id, estado)}
+                onUpdateCampo={patch => onUpdateCampo(p.id, patch)}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -167,11 +83,292 @@ export default function DeudaFichaModal({
   )
 }
 
-function Kpi({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function PosicionCard({
+  p, subiendo, ubicando, onSubirImagen, onGeocodear, onUpdateEstado, onUpdateCampo,
+}: {
+  p: DeudaPosicion
+  subiendo: boolean
+  ubicando: boolean
+  onSubirImagen: (f: File) => void
+  onGeocodear: () => void
+  onUpdateEstado: (estado: string) => void
+  onUpdateCampo: (patch: Partial<DeudaPosicion>) => void
+}) {
+  const riesgo = calcRatioRiesgoCargas(p.cargas_previas, p.asking_price)
+  const ratioColateral = calcRatioColateral(p.deuda_tot, p.valor_colateral)
+  const descuentoDeuda = calcDescuentoDeuda(p.deuda_tot, p.asking_price)
+  const estCfg = ESTADO_INTERNO_CFG[p.estado_interno] || ESTADO_INTERNO_CFG.nuevo
+  const judCfg = p.estado_judicial_normalizado ? ESTADO_JUDICIAL_COLOR[p.estado_judicial_normalizado] : null
+  const ocupCfg = p.ocupacion_estado ? OCUPACION_COLOR[p.ocupacion_estado] : null
+  const tieneCoords = p.lat != null && p.lng != null
+
+  // Buffer local para inputs de texto/número — se persiste recién al perder foco, para no
+  // disparar un write a Supabase por cada tecla (mismo criterio que la ficha de análisis de Mercado).
+  const [buf, setBuf] = useState({
+    valor_colateral: p.valor_colateral != null ? String(p.valor_colateral) : '',
+    tiempo_estimado_meses: p.tiempo_estimado_meses != null ? String(p.tiempo_estimado_meses) : '',
+    estrategia_prevista: p.estrategia_prevista || '',
+    coste_fiscal_estimado: p.coste_fiscal_estimado || '',
+    visita_notas: p.visita_notas || '',
+  })
+
+  const [cargas, setCargas] = useState<CargaDetalle[]>(p.cargas_detalle || [])
+  const cargasTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const persistCargas = (next: CargaDetalle[]) => {
+    if (cargasTimer.current) clearTimeout(cargasTimer.current)
+    cargasTimer.current = setTimeout(() => onUpdateCampo({ cargas_detalle: next }), 600)
+  }
+  const addCarga = () => setCargas(prev => {
+    const next = [...prev, { id: crypto.randomUUID(), concepto: '', importe: null, tipo: 'previa' as const, notas: '' }]
+    persistCargas(next)
+    return next
+  })
+  const updateCarga = (id: string, patch: Partial<CargaDetalle>) => setCargas(prev => {
+    const next = prev.map(c => c.id === id ? { ...c, ...patch } : c)
+    persistCargas(next)
+    return next
+  })
+  const removeCarga = (id: string) => setCargas(prev => {
+    const next = prev.filter(c => c.id !== id)
+    persistCargas(next)
+    return next
+  })
+  const sumaPrevias = cargas.filter(c => c.tipo === 'previa').reduce((s, c) => s + (c.importe || 0), 0)
+  const sumaPosteriores = cargas.filter(c => c.tipo === 'posterior').reduce((s, c) => s + (c.importe || 0), 0)
+
   return (
-    <div className="rounded-xl px-3 py-2" style={{ background: highlight ? 'rgba(166,133,90,0.1)' : '#F9F8F5', border: highlight ? '1px solid rgba(166,133,90,0.3)' : '1px solid #ECEAE4' }}>
+    <div className="px-5 py-4" style={{ borderTop: '1px solid #F5F4F0' }}>
+      {/* Imagen del inmueble — igual que la portada en Mercado */}
+      <label className="block relative rounded-xl overflow-hidden mb-3 cursor-pointer"
+        style={{ height: 120, background: p.imagen_url ? undefined : '#F9F8F5', border: p.imagen_url ? 'none' : '1.5px dashed #DCDAD4' }}>
+        <input type="file" accept="image/*" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) onSubirImagen(f) }} />
+        {p.imagen_url ? (
+          <>
+            <img src={p.imagen_url} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 flex items-end justify-end p-2" style={{ background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.45) 100%)' }}>
+              <span className="px-2 py-1 rounded-lg text-[12px] font-black" style={{ background: 'rgba(255,255,255,0.85)', color: '#111' }}>
+                {subiendo ? 'Subiendo...' : '📷 Cambiar'}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[12px] font-bold" style={{ color: '#AAA' }}>
+            {subiendo ? 'Subiendo...' : '📷 Agregar imagen del inmueble'}
+          </div>
+        )}
+      </label>
+
+      {/* Cabecera: dirección + tipo + badges + estado interno */}
+      <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+        <div className="min-w-[220px]">
+          <div className="text-[14px] font-bold" style={{ color: '#333' }}>{p.direccion || '(sin dirección)'}</div>
+          <div className="text-[12px] mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: '#999' }}>
+            <span>{[p.tipo_colateral, p.subtipo_colateral].filter(Boolean).join(' · ') || 'Sin tipo'}</span>
+            {judCfg && p.estado_judicial_normalizado && (
+              <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: judCfg.bg, color: judCfg.color }}>
+                {ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado]}
+              </span>
+            )}
+            {ocupCfg && p.ocupacion_estado && (
+              <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: ocupCfg.bg, color: ocupCfg.color }}>
+                {OCUPACION_LABEL[p.ocupacion_estado]}
+              </span>
+            )}
+            {riesgo.alerta && (
+              <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }} title="Cargas previas superan el asking price">
+                🔴 Riesgo cargas
+              </span>
+            )}
+            {!tieneCoords && p.direccion && (
+              <button onClick={onGeocodear} disabled={ubicando}
+                className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: '#F0EEE8', color: '#888' }}>
+                {ubicando ? 'Ubicando...' : '📍 Ubicar en mapa'}
+              </button>
+            )}
+          </div>
+        </div>
+        <select value={p.estado_interno} onChange={e => onUpdateEstado(e.target.value)}
+          className="rounded-lg px-2 py-1.5 text-[12px] font-black outline-none flex-shrink-0" style={{ background: estCfg.bg, color: estCfg.color, border: 'none', appearance: 'none' as const }}>
+          {Object.entries(ESTADO_INTERNO_CFG).map(([k, cfg]) => <option key={k} value={k}>{cfg.label}</option>)}
+        </select>
+      </div>
+
+      {/* Motivo de descarte — solo si el estado interno es "descartado" (punto 1: ~90% se descartan rápido, es normal) */}
+      {p.estado_interno === 'descartado' && (
+        <div className="rounded-xl px-3 py-2.5 mb-3" style={{ background: '#F9F8F5', border: '1px solid #ECEAE4' }}>
+          <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#999' }}>Motivo del descarte</div>
+          <select value={p.motivo_descarte || ''} onChange={e => onUpdateCampo({ motivo_descarte: (e.target.value || null) as MotivoDescarte | null })}
+            className="w-full rounded-lg px-2.5 py-1.5 text-[12.5px] font-bold outline-none" style={SEL}>
+            <option value="">— Sin especificar —</option>
+            {MOTIVOS_DESCARTE.map(m => <option key={m} value={m}>{MOTIVO_DESCARTE_LABEL[m]}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Resumen económico — estilo ficha de deuda (FENCIA) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+        <Kpi label="Deuda OB" value={fmt(p.deuda_ob)} />
+        <Kpi label="Deuda total" value={fmt(p.deuda_tot)} />
+        <Kpi label="Asking price" value={fmt(p.asking_price)} highlight />
+        <Kpi label="Descuento s/ deuda" value={pct(descuentoDeuda)} semaforo={descuentoDeuda === null ? undefined : descuentoDeuda >= 0.3} />
+      </div>
+
+      {/* Due diligence NPL — puntos 2A/2B/3/4/6 del criterio del experto */}
+      <div className="rounded-xl p-3 mb-3" style={{ background: '#FAFAF8', border: '1px solid #F0EEE8' }}>
+        <div className="text-[11px] font-black uppercase tracking-wide mb-2" style={{ color: '#A6855A' }}>Due diligence NPL</div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="block text-[11px] font-semibold mb-1" style={{ color: '#999' }}>Valor del colateral (tasación)</label>
+            <input type="number" value={buf.valor_colateral}
+              onChange={e => setBuf(b => ({ ...b, valor_colateral: e.target.value }))}
+              onBlur={() => onUpdateCampo({ valor_colateral: buf.valor_colateral === '' ? null : Number(buf.valor_colateral) })}
+              placeholder="€" className="w-full rounded-lg px-2.5 py-1.5 text-[12.5px] font-mono font-bold outline-none" style={INP} />
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold mb-1" style={{ color: '#999' }}>Ratio Deuda total / Colateral</div>
+            <div className="rounded-lg px-2.5 py-1.5 text-[12.5px] font-black" style={{
+              background: ratioColateral.sinValor ? '#F0EEE8' : (ratioColateral.bueno ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)'),
+              color: ratioColateral.sinValor ? '#999' : (ratioColateral.bueno ? '#16A34A' : '#EF4444'),
+            }}>
+              {ratioColateral.sinValor ? 'Sin valor de colateral' : `${ratioColateral.bueno ? '🟢' : '🔴'} ${pct(ratioColateral.ratio)}`}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="block text-[11px] font-semibold mb-1" style={{ color: '#999' }}>Ocupación</label>
+            <select value={p.ocupacion_estado || ''} onChange={e => onUpdateCampo({ ocupacion_estado: (e.target.value || null) as OcupacionEstado | null })}
+              className="w-full rounded-lg px-2.5 py-1.5 text-[12.5px] font-bold outline-none" style={SEL}>
+              <option value="">— Sin verificar —</option>
+              {OCUPACION_ESTADOS.map(o => <option key={o} value={o}>{OCUPACION_LABEL[o]}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold mb-1" style={{ color: '#999' }}>Tiempo estimado del expediente (meses)</label>
+            <input type="number" value={buf.tiempo_estimado_meses}
+              onChange={e => setBuf(b => ({ ...b, tiempo_estimado_meses: e.target.value }))}
+              onBlur={() => onUpdateCampo({ tiempo_estimado_meses: buf.tiempo_estimado_meses === '' ? null : Number(buf.tiempo_estimado_meses) })}
+              placeholder="meses" className="w-full rounded-lg px-2.5 py-1.5 text-[12.5px] font-mono font-bold outline-none" style={INP} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mb-2">
+          <button onClick={() => onUpdateCampo({ visita_realizada: !p.visita_realizada })}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-black"
+            style={{ background: p.visita_realizada ? 'rgba(34,197,94,0.12)' : '#fff', color: p.visita_realizada ? '#16A34A' : '#666', border: '1.5px solid #ECEAE4' }}>
+            {p.visita_realizada ? '✅ Visita realizada' : '⬜ Visita realizada'}
+          </button>
+          {p.visita_realizada && (
+            <input type="date" value={p.visita_fecha ? p.visita_fecha.slice(0, 10) : ''}
+              onChange={e => onUpdateCampo({ visita_fecha: e.target.value || null })}
+              className="rounded-lg px-2.5 py-1.5 text-[12px] font-bold outline-none" style={INP} />
+          )}
+        </div>
+        <textarea value={buf.visita_notas} onChange={e => setBuf(b => ({ ...b, visita_notas: e.target.value }))}
+          onBlur={() => onUpdateCampo({ visita_notas: buf.visita_notas || null })}
+          placeholder="Notas de la visita / inteligencia de campo (quién ocupa, estado real del inmueble, vecinos, etc.)"
+          rows={2} className="w-full rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium outline-none resize-none" style={INP} />
+      </div>
+
+      {/* Cargas detalladas — punto 5: valorar cada carga por separado, no solo el agregado */}
+      <div className="rounded-xl p-3 mb-3" style={{ background: '#FAFAF8', border: '1px solid #F0EEE8' }}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#A6855A' }}>Cargas detalladas</div>
+          <button onClick={addCarga} className="px-2 py-1 rounded-lg text-[12px] font-black" style={{ background: '#A6855A', color: '#14110C' }}>+ Agregar</button>
+        </div>
+        {cargas.length === 0 ? (
+          <div className="text-[12px] font-semibold py-1" style={{ color: '#AAA' }}>Sin cargas cargadas individualmente — se usa el total de Cargas previas/posteriores del import.</div>
+        ) : (
+          <div className="space-y-1.5">
+            {cargas.map(c => (
+              <div key={c.id} className="flex items-center gap-1.5 flex-wrap">
+                <input type="text" value={c.concepto} placeholder="Concepto"
+                  onChange={e => updateCarga(c.id, { concepto: e.target.value })}
+                  className="flex-1 min-w-[120px] rounded-lg px-2 py-1.5 text-[12px] font-medium outline-none" style={INP} />
+                <select value={c.tipo} onChange={e => updateCarga(c.id, { tipo: e.target.value as 'previa' | 'posterior' })}
+                  className="rounded-lg px-2 py-1.5 text-[12px] font-bold outline-none" style={SEL}>
+                  <option value="previa">Previa</option>
+                  <option value="posterior">Posterior</option>
+                </select>
+                <input type="number" value={c.importe ?? ''} placeholder="€"
+                  onChange={e => updateCarga(c.id, { importe: e.target.value === '' ? null : Number(e.target.value) })}
+                  className="w-[100px] rounded-lg px-2 py-1.5 text-[12px] font-mono font-bold outline-none" style={INP} />
+                <button onClick={() => removeCarga(c.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-[12px] font-black flex-shrink-0" style={{ background: '#F5F4F0', color: '#999' }}>✕</button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
+              <div className="text-[12px] font-bold" style={{ color: '#888' }}>Previas: {fmt(sumaPrevias)} · Posteriores: {fmt(sumaPosteriores)}</div>
+              <div className="flex gap-1.5">
+                <button onClick={() => onUpdateCampo({ cargas_previas: sumaPrevias })} className="px-2 py-1 rounded-lg text-[11px] font-black" style={{ background: '#F0EEE8', color: '#666' }}>Aplicar a Cargas previas</button>
+                <button onClick={() => onUpdateCampo({ cargas_posteriores: sumaPosteriores })} className="px-2 py-1 rounded-lg text-[11px] font-black" style={{ background: '#F0EEE8', color: '#666' }}>Aplicar a Cargas posteriores</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Estrategia y coste fiscal — punto 6: el coste fiscal depende de qué estrategia se elija */}
+      <div className="rounded-xl p-3 mb-3" style={{ background: '#FAFAF8', border: '1px solid #F0EEE8' }}>
+        <div className="text-[11px] font-black uppercase tracking-wide mb-2" style={{ color: '#A6855A' }}>Estrategia y fiscalidad</div>
+        <label className="block text-[11px] font-semibold mb-1" style={{ color: '#999' }}>Estrategia prevista</label>
+        <input type="text" value={buf.estrategia_prevista} onChange={e => setBuf(b => ({ ...b, estrategia_prevista: e.target.value }))}
+          onBlur={() => onUpdateCampo({ estrategia_prevista: buf.estrategia_prevista || null })}
+          placeholder="ej. dación en pago, subasta, negociación con deudor..."
+          className="w-full rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium outline-none mb-2" style={INP} />
+        <label className="block text-[11px] font-semibold mb-1" style={{ color: '#999' }}>Coste fiscal estimado</label>
+        <textarea value={buf.coste_fiscal_estimado} onChange={e => setBuf(b => ({ ...b, coste_fiscal_estimado: e.target.value }))}
+          onBlur={() => onUpdateCampo({ coste_fiscal_estimado: buf.coste_fiscal_estimado || null })}
+          placeholder="Notas libres sobre el coste fiscal según la estrategia elegida (varía si es dación, subasta, cesión de remate, etc.)"
+          rows={2} className="w-full rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium outline-none resize-none" style={INP} />
+      </div>
+
+      {/* Ficha detallada: Colateral / Deuda y titular / Estado judicial */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Ficha titulo="Colateral">
+          <Field label="Tipo" value={p.tipo_colateral} />
+          <Field label="Subtipo" value={p.subtipo_colateral} />
+          <Field label="Referencia catastral" value={p.ref_catastral} mono />
+          <Field label="Nº Registro" value={p.n_registro} mono />
+          <Field label="CCAA" value={p.ccaa} />
+          <Field label="Provincia" value={p.provincia} />
+          <Field label="Ciudad" value={p.ciudad} />
+          <Field label="Código postal" value={p.zip} />
+        </Ficha>
+
+        <Ficha titulo="Deuda">
+          <Field label="Titular de la deuda" value={p.titular_deuda} />
+          <Field label="Contract ID" value={p.contract_id} mono />
+          <Field label="Nº préstamos" value={p.n_loans != null ? String(p.n_loans) : null} />
+          <Field label="Cargas previas" value={fmt(p.cargas_previas)} />
+          <Field label="Cargas posteriores" value={fmt(p.cargas_posteriores)} />
+          <Field label="Broker de origen" value={p.broker_origen} />
+        </Ficha>
+
+        <Ficha titulo="Estado judicial">
+          <Field label="Estado normalizado" value={p.estado_judicial_normalizado ? ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado] : null} />
+          <Field label="Estado (texto original del broker)" value={p.estado_judicial_raw} />
+          <Field label="Ratio cargas / precio" value={riesgo.sinPrecio ? 'Sin precio' : pct(riesgo.ratio)}
+            danger={riesgo.alerta} />
+        </Ficha>
+      </div>
+    </div>
+  )
+}
+
+const SEL = { background: '#F9F8F5', border: '1.5px solid #ECEAE4', color: '#333', appearance: 'none' as const }
+const INP = { background: '#F9F8F5', border: '1.5px solid #ECEAE4', color: '#333' }
+
+function Kpi({ label, value, highlight, semaforo }: { label: string; value: string; highlight?: boolean; semaforo?: boolean }) {
+  const color = semaforo === undefined ? (highlight ? '#A6855A' : '#111') : (semaforo ? '#16A34A' : '#EF4444')
+  const bg = semaforo === undefined ? (highlight ? 'rgba(166,133,90,0.1)' : '#F9F8F5') : (semaforo ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.08)')
+  const border = semaforo === undefined ? (highlight ? '1px solid rgba(166,133,90,0.3)' : '1px solid #ECEAE4') : `1px solid ${semaforo ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.25)'}`
+  return (
+    <div className="rounded-xl px-3 py-2" style={{ background: bg, border }}>
       <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#999' }}>{label}</div>
-      <div className="text-[15px] font-black mt-0.5" style={{ color: highlight ? '#A6855A' : '#111' }}>{value}</div>
+      <div className="text-[15px] font-black mt-0.5" style={{ color }}>{value}</div>
     </div>
   )
 }
