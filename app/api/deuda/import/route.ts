@@ -72,6 +72,44 @@ function toTextOrNull(v: unknown): string | null {
   return fixMojibake(String(v).trim())
 }
 
+// Los brokers mandan nombres geográficos en mayúsculas, minúsculas o mixto según la herramienta
+// que generó el Excel ("ALMERÍA", "Almería", "almería" → "Almería"). Se aplica solo a los campos
+// de ubicación (ccaa, provincia, ciudad) para no tocar textos libres como titulares o estados judiciales.
+// Las provincias españolas con acento se normalizan por lookup (toTitleCase no preserva acentos
+// si el broker los omitió en su Export — "ALMERIA" sin tilde no se puede reparar solo con capitalizar).
+const PROVINCIAS_CANONICAS: Record<string, string> = {
+  'alava': 'Álava', 'albacete': 'Albacete', 'alicante': 'Alicante', 'almeria': 'Almería', 'almería': 'Almería',
+  'asturias': 'Asturias', 'avila': 'Ávila', 'ávila': 'Ávila', 'badajoz': 'Badajoz', 'baleares': 'Baleares',
+  'illes balears': 'Illes Balears', 'barcelona': 'Barcelona', 'burgos': 'Burgos', 'caceres': 'Cáceres', 'cáceres': 'Cáceres',
+  'cadiz': 'Cádiz', 'cádiz': 'Cádiz', 'cantabria': 'Cantabria', 'castellon': 'Castellón', 'castellón': 'Castellón',
+  'ceuta': 'Ceuta', 'ciudad real': 'Ciudad Real', 'cordoba': 'Córdoba', 'córdoba': 'Córdoba',
+  'cuenca': 'Cuenca', 'girona': 'Girona', 'granada': 'Granada', 'guadalajara': 'Guadalajara',
+  'guipuzcoa': 'Guipúzcoa', 'guipúzcoa': 'Guipúzcoa', 'gipuzkoa': 'Gipuzkoa',
+  'huelva': 'Huelva', 'huesca': 'Huesca', 'jaen': 'Jaén', 'jaén': 'Jaén',
+  'la rioja': 'La Rioja', 'las palmas': 'Las Palmas', 'leon': 'León', 'león': 'León',
+  'lleida': 'Lleida', 'lugo': 'Lugo', 'madrid': 'Madrid', 'malaga': 'Málaga', 'málaga': 'Málaga',
+  'melilla': 'Melilla', 'murcia': 'Murcia', 'navarra': 'Navarra', 'ourense': 'Ourense',
+  'palencia': 'Palencia', 'pontevedra': 'Pontevedra', 'salamanca': 'Salamanca',
+  'santa cruz de tenerife': 'Santa Cruz de Tenerife', 'segovia': 'Segovia', 'sevilla': 'Sevilla',
+  'soria': 'Soria', 'tarragona': 'Tarragona', 'teruel': 'Teruel', 'toledo': 'Toledo',
+  'valencia': 'Valencia', 'valladolid': 'Valladolid', 'vizcaya': 'Vizcaya', 'bizkaia': 'Bizkaia',
+  'zamora': 'Zamora', 'zaragoza': 'Zaragoza',
+}
+
+function toTitleCase(s: string): string {
+  return s.toLowerCase().replace(/(?:^|\s|-)(\p{L})/gu, (_, c) => c.toUpperCase())
+}
+
+function toGeoOrNull(v: unknown, type: 'provincia' | 'ciudad' | 'ccaa' = 'ciudad'): string | null {
+  const s = toTextOrNull(v)
+  if (!s) return null
+  if (type === 'provincia') {
+    const key = s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+    return PROVINCIAS_CANONICAS[key] ?? PROVINCIAS_CANONICAS[s.toLowerCase()] ?? toTitleCase(s)
+  }
+  return toTitleCase(s)
+}
+
 export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req)
   if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -136,6 +174,8 @@ export async function POST(req: NextRequest) {
         return
       }
       if (numericFields.has(campo)) obj[campo] = toNumOrNull(valor)
+      else if (campo === 'provincia') obj[campo] = toGeoOrNull(valor, 'provincia')
+      else if (campo === 'ccaa' || campo === 'ciudad') obj[campo] = toGeoOrNull(valor)
       else if (textFields.has(campo)) obj[campo] = toTextOrNull(valor)
     })
 
