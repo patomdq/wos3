@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyAuth } from '@/lib/api-auth'
 import Anthropic from '@anthropic-ai/sdk'
-import { CampoCanonico, ESTADOS_JUDICIALES_NORMALIZADOS } from '@/lib/deuda-schema'
+import { CampoCanonico, ESTADOS_JUDICIALES_NORMALIZADOS, calcPreDescarte } from '@/lib/deuda-schema'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -279,13 +279,20 @@ Devolvé SOLO un JSON object { "texto_exacto": "bucket" }, usando el texto EXACT
 
   if (errImportacion) return NextResponse.json({ error: errImportacion.message }, { status: 500 })
 
-  // 4. Insertar posiciones
-  const posiciones = normalizados.map(r => ({
-    ...r,
-    broker_origen,
-    archivo_origen: archivo_nombre || null,
-    importacion_id: importacion.id,
-  }))
+  // 4. Insertar posiciones — con pre-descarte automático (Capa 0, matemática pura):
+  //    descuento < 30% sobre deuda_tot O cargas_previas > asking_price → descartado automático.
+  //    Sin asking_price → queda activo (badge "sin precio" en la UI), no se puede evaluar.
+  const posiciones = normalizados.map(r => {
+    const pd = calcPreDescarte(r.deuda_tot, r.asking_price, r.cargas_previas)
+    return {
+      ...r,
+      broker_origen,
+      archivo_origen: archivo_nombre || null,
+      importacion_id: importacion.id,
+      estado_interno: pd.descartar ? 'descartado' : 'nuevo',
+      motivo_descarte: pd.descartar ? pd.motivo : null,
+    }
+  })
 
   const { data: insertadas, error: errInsert } = await supabase
     .from('deuda_posiciones')
@@ -299,10 +306,15 @@ Devolvé SOLO un JSON object { "texto_exacto": "bucket" }, usando el texto EXACT
     .from('deuda_mapeos_broker')
     .upsert({ broker_origen, mapeo, confirmado_por: confirmado_por || auth.email, updated_at: new Date().toISOString() }, { onConflict: 'broker_origen' })
 
+  const nDescartados = posiciones.filter(p => p.estado_interno === 'descartado').length
+  const nSinPrecio = posiciones.filter(p => (p.asking_price == null || p.asking_price <= 0) && p.estado_interno !== 'descartado').length
+
   return NextResponse.json({
     importacion_id: importacion.id,
     n_filas_procesadas: rows.length,
     n_filas_insertadas: insertadas?.length || 0,
     n_filas_omitidas: rows.length - normalizados.length,
+    n_descartados: nDescartados,
+    n_sin_precio: nSinPrecio,
   })
 }

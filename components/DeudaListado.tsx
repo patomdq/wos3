@@ -93,6 +93,11 @@ export default function DeudaListado({
                     {g.items.length} garantías
                   </span>
                 )}
+                {g.sinPrecio && (
+                  <span className="inline-block px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: 'rgba(245,158,11,0.15)', color: '#B45309' }}>
+                    ⚠ Sin precio
+                  </span>
+                )}
                 {g.estadoJudicial && (
                   <span className="inline-block px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: ESTADO_JUDICIAL_COLOR[g.estadoJudicial].bg, color: ESTADO_JUDICIAL_COLOR[g.estadoJudicial].color }}>
                     {ESTADO_JUDICIAL_LABEL[g.estadoJudicial]}

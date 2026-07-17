@@ -27,7 +27,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
   const [cargando, setCargando] = useState(false)
   const [importando, setImportando] = useState(false)
   const [error, setError] = useState('')
-  const [resultado, setResultado] = useState<{ n_filas_insertadas: number; n_filas_omitidas: number } | null>(null)
+  const [resultado, setResultado] = useState<{ n_filas_insertadas: number; n_filas_omitidas: number; n_descartados: number; n_sin_precio: number } | null>(null)
   const [avisoDuplicado, setAvisoDuplicado] = useState<{ n_filas: number; created_at: string; importado_por: string } | null>(null)
 
   const parsearYProponerMapeo = async () => {
@@ -91,7 +91,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
         setAvisoDuplicado(json.importacion_previa)
         return
       }
-      setResultado({ n_filas_insertadas: json.n_filas_insertadas, n_filas_omitidas: json.n_filas_omitidas })
+      setResultado({ n_filas_insertadas: json.n_filas_insertadas, n_filas_omitidas: json.n_filas_omitidas, n_descartados: json.n_descartados || 0, n_sin_precio: json.n_sin_precio || 0 })
       setStep('resultado')
       onImported()
     } catch (err: any) {
@@ -222,13 +222,36 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
             )}
 
             {step === 'resultado' && resultado && (
-              <div className="text-center py-6">
-                <div className="text-4xl mb-3">✅</div>
-                <div className="font-black text-base mb-1" style={{ color: '#111' }}>Importación completa</div>
-                <div className="text-sm" style={{ color: '#666' }}>
-                  {resultado.n_filas_insertadas} posiciones insertadas
-                  {resultado.n_filas_omitidas > 0 ? ` · ${resultado.n_filas_omitidas} filas omitidas (sin Contract ID)` : ''}
+              <div className="py-6 px-2">
+                <div className="text-center mb-4">
+                  <div className="text-4xl mb-3">✅</div>
+                  <div className="font-black text-base mb-1" style={{ color: '#111' }}>Importación completa</div>
+                  <div className="text-sm" style={{ color: '#666' }}>
+                    {resultado.n_filas_insertadas} posiciones insertadas
+                    {resultado.n_filas_omitidas > 0 ? ` · ${resultado.n_filas_omitidas} omitidas (sin Contract ID)` : ''}
+                  </div>
                 </div>
+                {(resultado.n_descartados > 0 || resultado.n_sin_precio > 0) && (
+                  <div className="rounded-xl p-3 text-[13px]" style={{ background: '#F9F8F5', border: '1px solid #ECEAE4' }}>
+                    <div className="font-black mb-1.5" style={{ color: '#555' }}>Pre-descarte automático (Capa 0)</div>
+                    {resultado.n_descartados > 0 && (
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span style={{ color: '#EF4444' }}>⛔</span>
+                        <span style={{ color: '#666' }}>
+                          <strong style={{ color: '#111' }}>{resultado.n_descartados}</strong> descartadas automáticamente (descuento &lt; 30% o cargas &gt; precio)
+                        </span>
+                      </div>
+                    )}
+                    {resultado.n_sin_precio > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <span style={{ color: '#B45309' }}>⚠</span>
+                        <span style={{ color: '#666' }}>
+                          <strong style={{ color: '#111' }}>{resultado.n_sin_precio}</strong> sin precio para evaluar — quedan activas
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

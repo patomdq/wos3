@@ -212,6 +212,35 @@ export function calcDescuentoDeuda(deudaTot: number | null | undefined, askingPr
   return (deudaTot - askingPrice) / deudaTot
 }
 
+// Capa 0 de pre-descarte automático al importar — matemática pura, sin IA, sin coste.
+// Reglas (diseñadas con Pato, 17/07/2026):
+//   · asking_price null → no descartar, queda activo con badge "sin precio para evaluar"
+//   · cargas_previas > asking_price → descartar (cargas_excesivas)
+//   · descuento sobre deuda_tot < 30% → descartar (descuento_insuficiente)
+// El descarte es REVERSIBLE — "Volver a activo" desde la ficha.
+export type PreDescarteResult =
+  | { descartar: true; motivo: 'descuento_insuficiente' | 'cargas_excesivas' }
+  | { descartar: false; sinPrecio: boolean }
+
+export function calcPreDescarte(
+  deudaTot: number | null | undefined,
+  askingPrice: number | null | undefined,
+  cargasPrevias: number | null | undefined,
+): PreDescarteResult {
+  if (askingPrice === null || askingPrice === undefined || askingPrice <= 0) {
+    return { descartar: false, sinPrecio: true }
+  }
+  const cp = cargasPrevias ?? 0
+  if (cp > askingPrice) {
+    return { descartar: true, motivo: 'cargas_excesivas' }
+  }
+  const descuento = calcDescuentoDeuda(deudaTot, askingPrice)
+  if (descuento !== null && descuento < 0.30) {
+    return { descartar: true, motivo: 'descuento_insuficiente' }
+  }
+  return { descartar: false, sinPrecio: false }
+}
+
 export type DeudaPosicion = {
   id: string
   contract_id: string
@@ -320,6 +349,7 @@ export type GrupoDeuda = {
   estadoJudicial: EstadoJudicialNormalizado | undefined
   imagenUrl: string | null | undefined
   tieneAlerta: boolean
+  sinPrecio: boolean
 }
 
 // Agrupa posiciones por contract_id (un contrato puede tener varias garantías/inmuebles)
@@ -345,5 +375,6 @@ export function agruparPorContrato(posiciones: DeudaPosicion[]): GrupoDeuda[] {
     estadoJudicial: items.find(i => i.estado_judicial_normalizado)?.estado_judicial_normalizado as EstadoJudicialNormalizado | undefined,
     imagenUrl: items.find(i => i.imagen_url)?.imagen_url,
     tieneAlerta: items.some(i => calcRatioRiesgoCargas(i.cargas_previas, i.asking_price).alerta),
+    sinPrecio: items.every(i => i.asking_price == null || i.asking_price <= 0),
   }))
 }

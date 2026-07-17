@@ -219,6 +219,25 @@ function PosicionCard({
         </select>
       </div>
 
+      {/* Banner auto-descarte: aparece cuando el sistema descartó automáticamente al importar por matemática pura */}
+      {p.estado_interno === 'descartado' && (p.motivo_descarte === 'descuento_insuficiente' || p.motivo_descarte === 'cargas_excesivas') && (
+        <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center justify-between gap-3" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
+          <div>
+            <div className="text-[12px] font-black" style={{ color: '#92400E' }}>
+              ⚡ Auto-descartado al importar
+            </div>
+            <div className="text-[11.5px] font-bold mt-0.5" style={{ color: '#B45309' }}>
+              {p.motivo_descarte === 'descuento_insuficiente' ? 'Descuento sobre deuda total < 30%' : 'Cargas previas superan el asking price'}
+            </div>
+          </div>
+          <button onClick={() => onUpdateEstado('nuevo')}
+            className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[12px] font-black"
+            style={{ background: '#14110C', color: '#F8F3E9' }}>
+            ↩ Volver a activo
+          </button>
+        </div>
+      )}
+
       {/* Motivo de descarte — solo si el estado interno es "descartado" (punto 1: ~90% se descartan rápido, es normal) */}
       {p.estado_interno === 'descartado' && (
         <div className="rounded-xl px-3 py-2.5 mb-3" style={{ background: '#F9F8F5', border: '1px solid #ECEAE4' }}>
