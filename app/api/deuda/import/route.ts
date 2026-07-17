@@ -42,17 +42,35 @@ export async function POST(req: NextRequest) {
   const auth = await verifyAuth(req)
   if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { broker_origen, archivo_nombre, headers, rows, mapeo, confirmado_por } = await req.json() as {
+  const { broker_origen, archivo_nombre, headers, rows, mapeo, confirmado_por, forzar } = await req.json() as {
     broker_origen: string
     archivo_nombre: string
     headers: string[]
     rows: any[][]
     mapeo: Record<string, CampoCanonico>
     confirmado_por: string
+    forzar?: boolean
   }
 
   if (!broker_origen || !Array.isArray(headers) || !Array.isArray(rows) || !mapeo) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
+  }
+
+  // No hay clave única confiable entre brokers para bloquear duplicados automáticamente
+  // (ver nota en lib/deuda-schema.ts), pero un mismo broker+nombre de archivo ya importado
+  // antes es una señal fuerte de re-subida accidental — avisamos y pedimos confirmar.
+  if (!forzar && archivo_nombre) {
+    const { data: previas } = await supabase
+      .from('deuda_importaciones')
+      .select('id, n_filas, created_at, importado_por')
+      .eq('broker_origen', broker_origen)
+      .eq('archivo_nombre', archivo_nombre)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (previas && previas.length > 0) {
+      return NextResponse.json({ duplicado: true, importacion_previa: previas[0] })
+    }
   }
 
   // 1. Normalizar cada fila usando el mapeo confirmado

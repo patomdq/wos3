@@ -28,6 +28,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
   const [importando, setImportando] = useState(false)
   const [error, setError] = useState('')
   const [resultado, setResultado] = useState<{ n_filas_insertadas: number; n_filas_omitidas: number } | null>(null)
+  const [avisoDuplicado, setAvisoDuplicado] = useState<{ n_filas: number; created_at: string; importado_por: string } | null>(null)
 
   const parsearYProponerMapeo = async () => {
     if (!brokerOrigen.trim() || !archivo) { setError('Completá el nombre del broker y elegí un archivo'); return }
@@ -63,7 +64,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
     setMapeo(m => ({ ...m, [header]: { campo, confianza: m[header]?.confianza || 'baja' } }))
   }
 
-  const confirmarImport = async () => {
+  const confirmarImport = async (forzar = false) => {
     const mapeoFinal: Mapeo = {}
     headers.forEach(h => { mapeoFinal[h] = mapeo[h]?.campo || 'ignorar' })
     const faltantes = CAMPOS_OBLIGATORIOS.filter(c => !Object.values(mapeoFinal).includes(c))
@@ -71,7 +72,7 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
       setError(`Faltan mapear campos obligatorios: ${faltantes.join(', ')}`)
       return
     }
-    setError(''); setImportando(true)
+    setError(''); setAvisoDuplicado(null); setImportando(true)
     try {
       const res = await authFetch('/api/deuda/import', {
         method: 'POST',
@@ -81,10 +82,15 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
           archivo_nombre: archivo?.name,
           headers, rows, mapeo: mapeoFinal,
           confirmado_por: user?.email || user?.nombre || 'WOS3',
+          forzar,
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Error al importar')
+      if (json.duplicado) {
+        setAvisoDuplicado(json.importacion_previa)
+        return
+      }
       setResultado({ n_filas_insertadas: json.n_filas_insertadas, n_filas_omitidas: json.n_filas_omitidas })
       setStep('resultado')
       onImported()
@@ -154,6 +160,15 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
 
             {step === 'mapeo' && (
               <div>
+                {avisoDuplicado && (
+                  <div className="mb-3 rounded-xl p-3 text-xs" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <div className="font-black mb-1" style={{ color: '#EF4444' }}>⚠ Este archivo ya se importó antes</div>
+                    <div style={{ color: '#666' }}>
+                      "{archivo?.name}" para el broker <b>{brokerOrigen}</b> ya se importó el {new Date(avisoDuplicado.created_at).toLocaleString('es-ES')}
+                      {avisoDuplicado.importado_por ? ` (por ${avisoDuplicado.importado_por})` : ''} — {avisoDuplicado.n_filas} filas. Si lo importás de nuevo, esas posiciones quedan duplicadas.
+                    </div>
+                  </div>
+                )}
                 <div className="mb-3 rounded-xl p-3 text-xs font-bold flex items-center gap-2"
                   style={{ background: mapeoOrigen === 'guardado' ? 'rgba(34,197,94,0.1)' : 'rgba(96,165,250,0.1)', color: mapeoOrigen === 'guardado' ? '#22C55E' : '#60A5FA' }}>
                   {mapeoOrigen === 'guardado'
@@ -227,11 +242,18 @@ export default function DeudaImportWizard({ onClose, onImported }: { onClose: ()
             )}
             {step === 'mapeo' && (
               <>
-                <button onClick={() => setStep('archivo')} className="py-3 px-5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666' }}>Atrás</button>
-                <button onClick={confirmarImport} disabled={importando}
-                  className="flex-1 py-3 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#14110C', color: '#F8F3E9' }}>
-                  {importando ? 'Importando...' : 'Confirmar e importar'}
-                </button>
+                <button onClick={() => { setStep('archivo'); setAvisoDuplicado(null) }} className="py-3 px-5 rounded-xl text-sm font-black" style={{ background: '#F5F4F0', color: '#666' }}>Atrás</button>
+                {avisoDuplicado ? (
+                  <button onClick={() => confirmarImport(true)} disabled={importando}
+                    className="flex-1 py-3 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#EF4444', color: '#fff' }}>
+                    {importando ? 'Importando...' : 'Importar de todas formas'}
+                  </button>
+                ) : (
+                  <button onClick={() => confirmarImport(false)} disabled={importando}
+                    className="flex-1 py-3 rounded-xl text-sm font-black disabled:opacity-50" style={{ background: '#14110C', color: '#F8F3E9' }}>
+                    {importando ? 'Importando...' : 'Confirmar e importar'}
+                  </button>
+                )}
               </>
             )}
             {step === 'resultado' && (
