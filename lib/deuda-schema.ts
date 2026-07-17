@@ -5,7 +5,21 @@ export type CampoCanonico =
   | 'contract_id' | 'n_loans' | 'tipo_colateral' | 'subtipo_colateral' | 'ccaa'
   | 'provincia' | 'ciudad' | 'zip' | 'direccion' | 'n_registro' | 'ref_catastral'
   | 'estado_judicial_raw' | 'deuda_ob' | 'deuda_tot' | 'titular_deuda'
-  | 'cargas_previas' | 'cargas_posteriores' | 'asking_price' | 'valor_colateral' | 'ignorar'
+  | 'cargas_previas' | 'cargas_posteriores' | 'asking_price' | 'valor_colateral'
+  // Campos agregados 17/07/2026 al revisar 5 planillas reales de INMUBI (ANDALUCIA-CDR) —
+  // texto/numero adicionales de brokers que no encajaban en ningún campo de arriba y antes
+  // quedaban solo en campos_extra (jsonb, no filtrable/consultable en la UI).
+  | 'portfolio' | 'bucket' | 'contract_id_secundario' | 'id_bien' | 'juzgado' | 'num_autos'
+  | 'num_procedimiento' | 'tipo_procedimiento' | 'tipo_via' | 'numero_via' | 'n_finca_registral'
+  | 'fecha_subasta' | 'fecha_cobro' | 'estado_subasta' | 'resultado_subasta' | 'flag_nuevo'
+  | 'flag_eliminado' | 'vpo' | 'planta' | 'parcela' | 'comarca' | 'id_portal_subasta'
+  | 'fecha_cesion_remate' | 'fecha_precio_referencia' | 'dev_id' | 'subfase' | 'ocupacion_broker'
+  | 'status_final' | 'estado_colateral' | 'registro' | 'fr' | 'connection' | 'afectado_terceros'
+  | 'motivo_paralizacion' | 'fecha_solicitud_adjudicacion' | 'fecha_cdr' | 'fecha_firma_cdr_closing'
+  | 'propuesta_formalizada_closing' | 'fecha_firma_closing' | 'estado_broker' | 'estado_proc_flag'
+  | 'principal' | 'precio_subasta' | 'importe_adjudicacion' | 'superficie_m2'
+  | 'deuda_responsabilidad_hipotecaria' | 'n_contratos_activos'
+  | 'ignorar'
 
 export const CAMPOS_CANONICOS: { id: CampoCanonico; label: string; tipo: 'texto' | 'numero' }[] = [
   { id: 'contract_id',          label: 'Contract ID (identificador del contrato)', tipo: 'texto' },
@@ -27,6 +41,54 @@ export const CAMPOS_CANONICOS: { id: CampoCanonico; label: string; tipo: 'texto'
   { id: 'cargas_posteriores',    label: 'Cargas posteriores',                       tipo: 'numero' },
   { id: 'asking_price',          label: 'Asking price',                             tipo: 'numero' },
   { id: 'valor_colateral',       label: 'Valor del colateral (tasación)',           tipo: 'numero' },
+  // --- agregados 17/07/2026 ---
+  { id: 'portfolio',                          label: 'Portfolio / cartera',                        tipo: 'texto' },
+  { id: 'bucket',                             label: 'Bucket',                                     tipo: 'texto' },
+  { id: 'contract_id_secundario',             label: 'Contract ID secundario',                     tipo: 'texto' },
+  { id: 'id_bien',                            label: 'ID del bien/activo',                         tipo: 'texto' },
+  { id: 'juzgado',                            label: 'Juzgado',                                    tipo: 'texto' },
+  { id: 'num_autos',                          label: 'Nº de autos',                                tipo: 'texto' },
+  { id: 'num_procedimiento',                  label: 'Nº de procedimiento',                        tipo: 'texto' },
+  { id: 'tipo_procedimiento',                 label: 'Tipo de procedimiento',                      tipo: 'texto' },
+  { id: 'tipo_via',                           label: 'Tipo de vía',                                tipo: 'texto' },
+  { id: 'numero_via',                         label: 'Número de vía',                              tipo: 'texto' },
+  { id: 'n_finca_registral',                  label: 'Nº finca registral (IDUFIR)',                tipo: 'texto' },
+  { id: 'fecha_subasta',                      label: 'Fecha de subasta',                           tipo: 'texto' },
+  { id: 'fecha_cobro',                        label: 'Fecha de cobro',                             tipo: 'texto' },
+  { id: 'estado_subasta',                     label: 'Estado de la subasta',                       tipo: 'texto' },
+  { id: 'resultado_subasta',                  label: 'Resultado de la subasta',                    tipo: 'texto' },
+  { id: 'flag_nuevo',                         label: 'Marca "nuevo" del broker',                   tipo: 'texto' },
+  { id: 'flag_eliminado',                     label: 'Marca "eliminado" del broker',               tipo: 'texto' },
+  { id: 'vpo',                                label: 'VPO',                                        tipo: 'texto' },
+  { id: 'planta',                             label: 'Planta',                                     tipo: 'texto' },
+  { id: 'parcela',                            label: 'Parcela',                                    tipo: 'texto' },
+  { id: 'comarca',                            label: 'Comarca',                                    tipo: 'texto' },
+  { id: 'id_portal_subasta',                  label: 'ID portal de subasta',                       tipo: 'texto' },
+  { id: 'fecha_cesion_remate',                label: 'Fecha cesión de remate',                     tipo: 'texto' },
+  { id: 'fecha_precio_referencia',            label: 'Fecha precio de referencia',                 tipo: 'texto' },
+  { id: 'dev_id',                             label: 'Dev ID',                                     tipo: 'texto' },
+  { id: 'subfase',                            label: 'Subfase',                                    tipo: 'texto' },
+  { id: 'ocupacion_broker',                   label: 'Ocupación (texto del broker)',               tipo: 'texto' },
+  { id: 'status_final',                       label: 'Status final',                               tipo: 'texto' },
+  { id: 'estado_colateral',                   label: 'Estado del colateral',                       tipo: 'texto' },
+  { id: 'registro',                           label: 'Registro',                                   tipo: 'texto' },
+  { id: 'fr',                                 label: 'FR',                                         tipo: 'texto' },
+  { id: 'connection',                         label: 'Connection',                                 tipo: 'texto' },
+  { id: 'afectado_terceros',                  label: 'Afectado por terceros',                      tipo: 'texto' },
+  { id: 'motivo_paralizacion',                label: 'Motivo de paralización',                     tipo: 'texto' },
+  { id: 'fecha_solicitud_adjudicacion',       label: 'Fecha solicitud adjudicación',               tipo: 'texto' },
+  { id: 'fecha_cdr',                          label: 'Fecha CDR',                                  tipo: 'texto' },
+  { id: 'fecha_firma_cdr_closing',            label: 'Fecha firma CdR closing',                    tipo: 'texto' },
+  { id: 'propuesta_formalizada_closing',      label: 'Propuesta formalizada closing',              tipo: 'texto' },
+  { id: 'fecha_firma_closing',                label: 'Fecha firma closing',                        tipo: 'texto' },
+  { id: 'estado_broker',                      label: 'Estado (texto del broker)',                  tipo: 'texto' },
+  { id: 'estado_proc_flag',                   label: 'Flag de estado de procedimiento',            tipo: 'texto' },
+  { id: 'principal',                          label: 'Principal',                                  tipo: 'numero' },
+  { id: 'precio_subasta',                     label: 'Precio de subasta',                          tipo: 'numero' },
+  { id: 'importe_adjudicacion',               label: 'Importe de adjudicación',                    tipo: 'numero' },
+  { id: 'superficie_m2',                      label: 'Superficie (m²)',                            tipo: 'numero' },
+  { id: 'deuda_responsabilidad_hipotecaria',  label: 'Deuda por responsabilidad hipotecaria',      tipo: 'numero' },
+  { id: 'n_contratos_activos',                label: 'Nº de contratos activos',                    tipo: 'numero' },
   { id: 'ignorar',               label: '— No importar esta columna —',             tipo: 'texto' },
 ]
 
@@ -172,6 +234,54 @@ export type DeudaPosicion = {
   cargas_posteriores: number | null
   asking_price: number | null
   valor_colateral: number | null
+  // --- agregados 17/07/2026 ---
+  portfolio: string | null
+  bucket: string | null
+  contract_id_secundario: string | null
+  id_bien: string | null
+  juzgado: string | null
+  num_autos: string | null
+  num_procedimiento: string | null
+  tipo_procedimiento: string | null
+  tipo_via: string | null
+  numero_via: string | null
+  n_finca_registral: string | null
+  fecha_subasta: string | null
+  fecha_cobro: string | null
+  estado_subasta: string | null
+  resultado_subasta: string | null
+  flag_nuevo: string | null
+  flag_eliminado: string | null
+  vpo: string | null
+  planta: string | null
+  parcela: string | null
+  comarca: string | null
+  id_portal_subasta: string | null
+  fecha_cesion_remate: string | null
+  fecha_precio_referencia: string | null
+  dev_id: string | null
+  subfase: string | null
+  ocupacion_broker: string | null
+  status_final: string | null
+  estado_colateral: string | null
+  registro: string | null
+  fr: string | null
+  connection: string | null
+  afectado_terceros: string | null
+  motivo_paralizacion: string | null
+  fecha_solicitud_adjudicacion: string | null
+  fecha_cdr: string | null
+  fecha_firma_cdr_closing: string | null
+  propuesta_formalizada_closing: string | null
+  fecha_firma_closing: string | null
+  estado_broker: string | null
+  estado_proc_flag: string | null
+  principal: number | null
+  precio_subasta: number | null
+  importe_adjudicacion: number | null
+  superficie_m2: number | null
+  deuda_responsabilidad_hipotecaria: number | null
+  n_contratos_activos: number | null
   campos_extra: Record<string, any> | null
   broker_origen: string | null
   archivo_origen: string | null

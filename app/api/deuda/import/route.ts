@@ -108,8 +108,19 @@ export async function POST(req: NextRequest) {
   }
 
   // 1. Normalizar cada fila usando el mapeo confirmado
-  const numericFields = new Set<CampoCanonico>(['n_loans', 'deuda_ob', 'deuda_tot', 'cargas_previas', 'cargas_posteriores', 'asking_price', 'valor_colateral'])
-  const textFields = new Set<CampoCanonico>(['contract_id', 'tipo_colateral', 'subtipo_colateral', 'ccaa', 'provincia', 'ciudad', 'zip', 'direccion', 'n_registro', 'ref_catastral', 'estado_judicial_raw', 'titular_deuda'])
+  const numericFields = new Set<CampoCanonico>([
+    'n_loans', 'deuda_ob', 'deuda_tot', 'cargas_previas', 'cargas_posteriores', 'asking_price', 'valor_colateral',
+    'principal', 'precio_subasta', 'importe_adjudicacion', 'superficie_m2', 'deuda_responsabilidad_hipotecaria', 'n_contratos_activos',
+  ])
+  const textFields = new Set<CampoCanonico>([
+    'contract_id', 'tipo_colateral', 'subtipo_colateral', 'ccaa', 'provincia', 'ciudad', 'zip', 'direccion', 'n_registro', 'ref_catastral', 'estado_judicial_raw', 'titular_deuda',
+    'portfolio', 'bucket', 'contract_id_secundario', 'id_bien', 'juzgado', 'num_autos', 'num_procedimiento', 'tipo_procedimiento',
+    'tipo_via', 'numero_via', 'n_finca_registral', 'fecha_subasta', 'fecha_cobro', 'estado_subasta', 'resultado_subasta',
+    'flag_nuevo', 'flag_eliminado', 'vpo', 'planta', 'parcela', 'comarca', 'id_portal_subasta', 'fecha_cesion_remate',
+    'fecha_precio_referencia', 'dev_id', 'subfase', 'ocupacion_broker', 'status_final', 'estado_colateral', 'registro', 'fr',
+    'connection', 'afectado_terceros', 'motivo_paralizacion', 'fecha_solicitud_adjudicacion', 'fecha_cdr', 'fecha_firma_cdr_closing',
+    'propuesta_formalizada_closing', 'fecha_firma_closing', 'estado_broker', 'estado_proc_flag',
+  ])
 
   const normalizados = rows.map((row) => {
     const obj: Record<string, any> = {}
@@ -148,6 +159,53 @@ export async function POST(req: NextRequest) {
       cargas_posteriores: obj.cargas_posteriores ?? null,
       asking_price: obj.asking_price ?? null,
       valor_colateral: obj.valor_colateral ?? null,
+      portfolio: obj.portfolio ?? null,
+      bucket: obj.bucket ?? null,
+      contract_id_secundario: obj.contract_id_secundario ?? null,
+      id_bien: obj.id_bien ?? null,
+      juzgado: obj.juzgado ?? null,
+      num_autos: obj.num_autos ?? null,
+      num_procedimiento: obj.num_procedimiento ?? null,
+      tipo_procedimiento: obj.tipo_procedimiento ?? null,
+      tipo_via: obj.tipo_via ?? null,
+      numero_via: obj.numero_via ?? null,
+      n_finca_registral: obj.n_finca_registral ?? null,
+      fecha_subasta: obj.fecha_subasta ?? null,
+      fecha_cobro: obj.fecha_cobro ?? null,
+      estado_subasta: obj.estado_subasta ?? null,
+      resultado_subasta: obj.resultado_subasta ?? null,
+      flag_nuevo: obj.flag_nuevo ?? null,
+      flag_eliminado: obj.flag_eliminado ?? null,
+      vpo: obj.vpo ?? null,
+      planta: obj.planta ?? null,
+      parcela: obj.parcela ?? null,
+      comarca: obj.comarca ?? null,
+      id_portal_subasta: obj.id_portal_subasta ?? null,
+      fecha_cesion_remate: obj.fecha_cesion_remate ?? null,
+      fecha_precio_referencia: obj.fecha_precio_referencia ?? null,
+      dev_id: obj.dev_id ?? null,
+      subfase: obj.subfase ?? null,
+      ocupacion_broker: obj.ocupacion_broker ?? null,
+      status_final: obj.status_final ?? null,
+      estado_colateral: obj.estado_colateral ?? null,
+      registro: obj.registro ?? null,
+      fr: obj.fr ?? null,
+      connection: obj.connection ?? null,
+      afectado_terceros: obj.afectado_terceros ?? null,
+      motivo_paralizacion: obj.motivo_paralizacion ?? null,
+      fecha_solicitud_adjudicacion: obj.fecha_solicitud_adjudicacion ?? null,
+      fecha_cdr: obj.fecha_cdr ?? null,
+      fecha_firma_cdr_closing: obj.fecha_firma_cdr_closing ?? null,
+      propuesta_formalizada_closing: obj.propuesta_formalizada_closing ?? null,
+      fecha_firma_closing: obj.fecha_firma_closing ?? null,
+      estado_broker: obj.estado_broker ?? null,
+      estado_proc_flag: obj.estado_proc_flag ?? null,
+      principal: obj.principal ?? null,
+      precio_subasta: obj.precio_subasta ?? null,
+      importe_adjudicacion: obj.importe_adjudicacion ?? null,
+      superficie_m2: obj.superficie_m2 ?? null,
+      deuda_responsabilidad_hipotecaria: obj.deuda_responsabilidad_hipotecaria ?? null,
+      n_contratos_activos: obj.n_contratos_activos ?? null,
       campos_extra: camposExtra,
       raw_data: rawRow,
     }

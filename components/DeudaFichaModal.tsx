@@ -5,7 +5,26 @@ import {
   calcRatioRiesgoCargas, calcRatioColateral, calcDescuentoDeuda,
   OCUPACION_ESTADOS, OCUPACION_LABEL, OCUPACION_COLOR, OcupacionEstado,
   MOTIVOS_DESCARTE, MOTIVO_DESCARTE_LABEL, MotivoDescarte, CargaDetalle,
+  CAMPOS_CANONICOS,
 } from '@/lib/deuda-schema'
+
+// Campos agregados 17/07/2026 (mapeo ampliado de brokers) — se muestran dinámicamente en una
+// sección colapsable "Datos adicionales del broker", solo los que tengan valor cargado en esta
+// posición puntual, para no ensuciar la ficha con 47 campos vacíos cuando el broker no los manda.
+const CAMPOS_ADICIONALES_IDS = [
+  'portfolio', 'bucket', 'contract_id_secundario', 'id_bien', 'juzgado', 'num_autos',
+  'num_procedimiento', 'tipo_procedimiento', 'tipo_via', 'numero_via', 'n_finca_registral',
+  'fecha_subasta', 'fecha_cobro', 'estado_subasta', 'resultado_subasta', 'flag_nuevo',
+  'flag_eliminado', 'vpo', 'planta', 'parcela', 'comarca', 'id_portal_subasta',
+  'fecha_cesion_remate', 'fecha_precio_referencia', 'dev_id', 'subfase', 'ocupacion_broker',
+  'status_final', 'estado_colateral', 'registro', 'fr', 'connection', 'afectado_terceros',
+  'motivo_paralizacion', 'fecha_solicitud_adjudicacion', 'fecha_cdr', 'fecha_firma_cdr_closing',
+  'propuesta_formalizada_closing', 'fecha_firma_closing', 'estado_broker', 'estado_proc_flag',
+  'principal', 'precio_subasta', 'importe_adjudicacion', 'superficie_m2',
+  'deuda_responsabilidad_hipotecaria', 'n_contratos_activos',
+] as const
+const CAMPO_LABEL = Object.fromEntries(CAMPOS_CANONICOS.map(c => [c.id, c.label])) as Record<string, string>
+const CAMPO_TIPO = Object.fromEntries(CAMPOS_CANONICOS.map(c => [c.id, c.tipo])) as Record<string, 'texto' | 'numero'>
 
 const fmt = (n: number | null | undefined) => {
   if (n === null || n === undefined) return '—'
@@ -110,6 +129,12 @@ function PosicionCard({
     estrategia_prevista: p.estrategia_prevista || '',
     coste_fiscal_estimado: p.coste_fiscal_estimado || '',
     visita_notas: p.visita_notas || '',
+  })
+
+  const [mostrarExtra, setMostrarExtra] = useState(false)
+  const camposAdicionalesConValor = CAMPOS_ADICIONALES_IDS.filter(id => {
+    const v = (p as any)[id]
+    return v !== null && v !== undefined && v !== ''
   })
 
   const [cargas, setCargas] = useState<CargaDetalle[]>(p.cargas_detalle || [])
@@ -354,6 +379,26 @@ function PosicionCard({
             danger={riesgo.alerta} />
         </Ficha>
       </div>
+
+      {/* Datos adicionales del broker — 47 campos agregados 17/07/2026 al ampliar el mapeo de
+          columnas de INMUBI/ANDALUCIA-CDR; solo se listan los que esta posición trae cargados. */}
+      {camposAdicionalesConValor.length > 0 && (
+        <div className="mt-3">
+          <button onClick={() => setMostrarExtra(v => !v)}
+            className="text-[12px] font-black px-2.5 py-1.5 rounded-lg" style={{ background: '#F0EEE8', color: '#666' }}>
+            {mostrarExtra ? '▲' : '▼'} Datos adicionales del broker · {camposAdicionalesConValor.length}
+          </button>
+          {mostrarExtra && (
+            <div className="rounded-xl p-3 mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ background: '#FAFAF8', border: '1px solid #F0EEE8' }}>
+              {camposAdicionalesConValor.map(id => {
+                const raw = (p as any)[id]
+                const value = CAMPO_TIPO[id] === 'numero' ? fmt(raw as number) : String(raw)
+                return <Field key={id} label={CAMPO_LABEL[id] || id} value={value} />
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
