@@ -26,10 +26,44 @@ function fixMojibake(s: string): string {
   }
 }
 
+// Los 14 brokers/fondos no usan el mismo formato de número: unos mandan "135.000,00" (España,
+// punto de miles + coma decimal) y otros "135,000.00" (formato inglés/US, coma de miles + punto
+// decimal) — a veces incluso mezclados dentro del mismo Excel según qué herramienta lo generó.
+// Antes se asumía SIEMPRE formato español, lo que rompía en silencio los números en formato inglés
+// (ej. " 135,000 € " se leía como 135 en vez de 135.000). Ahora se detecta el separador decimal
+// mirando cuál de los dos símbolos aparece último y cuántos dígitos lo siguen (1-2 dígitos = decimal,
+// si no, es separador de miles y se descarta).
 function toNumOrNull(v: unknown): number | null {
   if (v === null || v === undefined || v === '') return null
   if (typeof v === 'number') return isNaN(v) || !isFinite(v) ? null : v
-  const n = parseFloat(String(v).replace(/€/g, '').replace(/\s/g, '').replace(/\./g, '').replace(/,/g, '.'))
+
+  const s = String(v).replace(/€|\$/g, '').replace(/\s/g, '').trim()
+  if (s === '') return null
+
+  const lastComma = s.lastIndexOf(',')
+  const lastDot = s.lastIndexOf('.')
+
+  let normalized: string
+  if (lastComma > lastDot) {
+    // la coma es el símbolo más a la derecha — decimal si le siguen 1-2 dígitos (ej. "135,5"),
+    // si no es separador de miles inglés (ej. "135,000")
+    const decimales = s.length - lastComma - 1
+    normalized = decimales >= 1 && decimales <= 2
+      ? s.replace(/\./g, '').replace(',', '.')
+      : s.replace(/[.,]/g, '')
+  } else if (lastDot > lastComma) {
+    // el punto es el símbolo más a la derecha — decimal si le siguen 1-2 dígitos (ej. "135.5"),
+    // si no es separador de miles español (ej. "135.000")
+    const decimales = s.length - lastDot - 1
+    normalized = decimales >= 1 && decimales <= 2
+      ? s.replace(/,/g, '')
+      : s.replace(/[.,]/g, '')
+  } else {
+    // ni coma ni punto (o ninguno de los dos apareció)
+    normalized = s.replace(/[.,]/g, '')
+  }
+
+  const n = parseFloat(normalized)
   return isNaN(n) || !isFinite(n) ? null : n
 }
 
