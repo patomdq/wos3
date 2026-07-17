@@ -1,5 +1,6 @@
 'use client'
 import { useRef, useState } from 'react'
+import { authFetch } from '@/lib/auth-fetch'
 import {
   GrupoDeuda, DeudaPosicion, ESTADO_INTERNO_CFG, ESTADO_JUDICIAL_LABEL, ESTADO_JUDICIAL_COLOR,
   calcRatioRiesgoCargas, calcRatioColateral, calcDescuentoDeuda,
@@ -130,7 +131,12 @@ function PosicionCard({
   const ratioColateral = calcRatioColateral(p.deuda_tot, p.valor_colateral)
   const descuentoDeuda = calcDescuentoDeuda(p.deuda_tot, p.asking_price)
   const estCfg = ESTADO_INTERNO_CFG[p.estado_interno] || ESTADO_INTERNO_CFG.nuevo
-  const judCfg = p.estado_judicial_normalizado ? ESTADO_JUDICIAL_COLOR[p.estado_judicial_normalizado] : null
+
+  // Si el broker no mandó estado judicial pero sí datos de subasta, inferimos que hay subasta en curso.
+  // Evita el contradictorio "Sin estado" + "ID portal de subasta: XXX" que confundía al leer la ficha.
+  const estadoJudicialEfectivo = p.estado_judicial_normalizado
+    ?? (p.id_portal_subasta || p.fecha_subasta || p.estado_subasta ? 'subasta_pendiente' : null)
+  const judCfg = estadoJudicialEfectivo ? ESTADO_JUDICIAL_COLOR[estadoJudicialEfectivo] : null
   const ocupCfg = p.ocupacion_estado ? OCUPACION_COLOR[p.ocupacion_estado] : null
   const tieneCoords = p.lat != null && p.lng != null
 
@@ -151,10 +157,9 @@ function PosicionCard({
   const generarResumen = async () => {
     setGenerandoResumen(true)
     try {
-      const res = await fetch('/api/deuda/resumen', {
+      const res = await authFetch('/api/deuda/resumen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ id: p.id }),
       })
       const data = await res.json()
@@ -243,9 +248,10 @@ function PosicionCard({
           <div className="text-[14px] font-bold" style={{ color: '#333' }}>{p.direccion || '(sin dirección)'}</div>
           <div className="text-[12px] mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: '#999' }}>
             <span>{[p.tipo_colateral, p.subtipo_colateral].filter(Boolean).join(' · ') || 'Sin tipo'}</span>
-            {judCfg && p.estado_judicial_normalizado && (
+            {judCfg && estadoJudicialEfectivo && (
               <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: judCfg.bg, color: judCfg.color }}>
-                {ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado]}
+                {ESTADO_JUDICIAL_LABEL[estadoJudicialEfectivo]}
+                {!p.estado_judicial_normalizado && ' (inferido)'}
               </span>
             )}
             {ocupCfg && p.ocupacion_estado && (
@@ -427,8 +433,20 @@ function PosicionCard({
         <Ficha titulo="Colateral">
           <Field label="Tipo" value={p.tipo_colateral} />
           <Field label="Subtipo" value={p.subtipo_colateral} />
-          <Field label="Referencia catastral" value={p.ref_catastral} mono
-            href={p.ref_catastral ? `https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?del=&mun=&RefC=${encodeURIComponent(p.ref_catastral)}&pest=rc` : undefined} />
+          <div>
+            <div className="text-[11px] font-semibold mb-0.5" style={{ color: '#999' }}>Referencia catastral</div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[12.5px] font-bold font-mono break-all" style={{ color: '#333' }}>{p.ref_catastral || '—'}</span>
+              {p.ref_catastral && (
+                <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?del=&mun=&RefC=${encodeURIComponent(p.ref_catastral)}&pest=rc`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex-shrink-0 px-2 py-0.5 rounded-lg text-[11px] font-black"
+                  style={{ background: '#14110C', color: '#F8F3E9', textDecoration: 'none' }}>
+                  ↗ Ver en Catastro
+                </a>
+              )}
+            </div>
+          </div>
           <Field label="Nº Registro" value={p.n_registro} mono />
           <Field label="CCAA" value={p.ccaa} />
           <Field label="Provincia" value={p.provincia} />
@@ -446,7 +464,10 @@ function PosicionCard({
         </Ficha>
 
         <Ficha titulo="Estado judicial">
-          <Field label="Estado normalizado" value={p.estado_judicial_normalizado ? ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado] : null} />
+          <Field label="Estado normalizado"
+            value={estadoJudicialEfectivo
+              ? ESTADO_JUDICIAL_LABEL[estadoJudicialEfectivo] + (!p.estado_judicial_normalizado ? ' (inferido de datos de subasta)' : '')
+              : null} />
           <Field label="Estado (texto original del broker)" value={p.estado_judicial_raw} />
           <Field label="Ratio cargas / precio" value={riesgo.sinPrecio ? 'Sin precio' : pct(riesgo.ratio)}
             danger={riesgo.alerta} />
@@ -503,19 +524,12 @@ function Ficha({ titulo, children }: { titulo: string; children: React.ReactNode
 // Label arriba / valor abajo (en vez de label-valor en la misma línea con truncate) — con
 // referencias catastrales, contract IDs largos o titulares con nombre completo, la versión en
 // una sola línea los cortaba con "..." y no había forma de leerlos sin copiar el HTML.
-function Field({ label, value, mono, danger, href }: { label: string; value: string | null | undefined; mono?: boolean; danger?: boolean; href?: string }) {
+function Field({ label, value, mono, danger }: { label: string; value: string | null | undefined; mono?: boolean; danger?: boolean }) {
   return (
     <div>
       <div className="text-[11px] font-semibold" style={{ color: '#999' }}>{label}</div>
-      <div className={`text-[12.5px] font-bold break-words flex items-start gap-1.5 ${mono ? 'font-mono' : ''}`} style={{ color: danger ? '#EF4444' : '#333' }}>
-        <span>{value || '—'}</span>
-        {href && value && (
-          <a href={href} target="_blank" rel="noopener noreferrer"
-            className="flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black inline-flex items-center gap-0.5 mt-0.5"
-            style={{ background: 'rgba(166,133,90,0.15)', color: '#A6855A', textDecoration: 'none' }}>
-            ↗ Catastro
-          </a>
-        )}
+      <div className={`text-[12.5px] font-bold break-words ${mono ? 'font-mono' : ''}`} style={{ color: danger ? '#EF4444' : '#333' }}>
+        {value || '—'}
       </div>
     </div>
   )
