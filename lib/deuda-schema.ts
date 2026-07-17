@@ -29,7 +29,9 @@ export const CAMPOS_CANONICOS: { id: CampoCanonico; label: string; tipo: 'texto'
   { id: 'ignorar',               label: '— No importar esta columna —',             tipo: 'texto' },
 ]
 
-export const CAMPOS_OBLIGATORIOS: CampoCanonico[] = ['contract_id', 'asking_price']
+// Cada broker/fondo/banco manda un Excel distinto — algunos no traen precio, otros no traen
+// municipio. Solo contract_id es imprescindible (es lo único que identifica la posición al importar).
+export const CAMPOS_OBLIGATORIOS: CampoCanonico[] = ['contract_id']
 
 export type Mapeo = Record<string, CampoCanonico> // { columna_excel: campo_canonico }
 
