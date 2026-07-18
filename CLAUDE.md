@@ -39,6 +39,29 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
+**Última sesión — 18/07/2026 (Mercado: REOs + import wizard + filtros provincia/origen)**
+
+Hecho:
+- **Fix ciudades duplicadas en filtros de Deuda** — mismo fix que provincias: `unicos()` en `app/(app)/deuda/page.tsx` ahora normaliza a lowercase para deduplicar pero muestra capitalizado. Las comparaciones de filtro en `components/DeudaFiltros.tsx` también se hacen en lowercase. Commit `a5c3b54`
+
+- **Nuevo tipo de origen en Mercado: REO** — campo `origen: 'directo' | 'reo'` en tabla `inmuebles` (migración aplicada). Los inserts manuales que antes usaban `'existente'` ahora usan `'directo'`. Nuevas columnas en `inmuebles`: `provincia`, `ccaa`, `asset_id_servicer`, `portfolio_reo`, `estado_judicial_reo`, `fase_desahucio`, `reo_datos_extra` (jsonb con datos brutos del servicer)
+
+- **Wizard de import REO en Mercado** (`components/MercadoReoWizard.tsx`) — 3 pasos: (1) nombre del servicer + Excel, (2) Claude propone mapeo de columnas + selects para corregir, (3) resultado con conteo de insertados/sin precio/con alertas. Cargado con `next/dynamic({ ssr: false })` desde `mercado/page.tsx`. Botón "+ Importar REOs" en la fila de filtros de origen
+
+- **API `/api/mercado/mapeo-reo`** — Claude analiza headers + muestra de filas y propone mapeo a campos canónicos REO (tipologia, ciudad, provincia, precio, asset_id_servicer, estado_ocupacion, fase_desahucio, etc.)
+
+- **API `/api/mercado/import-reo`** — normaliza tipología (RESIDENTIAL/UNIFAMILIAR → 'casa', etc.), genera título automático, auto-marca checklist: "Si.Okupado" → `{okupado: 'alerta'}`, "Pending Possession" → `{sin_posesion: 'alerta'}`. Guarda todo el Excel en `reo_datos_extra`
+
+- **Filtros en Mercado**: nueva fila de pills "Todos los orígenes / 📋 Directo / 🏦 REO·Servicer" + select de provincia (aparece solo cuando hay inmuebles con provincia cargada, i.e. REOs). Provincia también incluida en la búsqueda por texto
+
+- **REO de prueba cargado directo desde chat** — Casa Vera, Almería (XC14734095), portfolio CENTAURO, 99.45m², 204.000€, desahucio verbal INICIAL. `provincia='Almería'` y `ccaa='Andalucía'` actualizados vía SQL tras agregar las columnas
+
+- Commits: `a5c3b54` (fix ciudades deuda), `a5458f5` (REO wizard + APIs + filtros), `3d1e7aa` (provincia/ccaa en inmuebles + filtro). Build verificado en cada uno, pusheados a `origin master`
+
+Pendiente:
+- Pato probó import del Excel completo de Alemaria (Reos Okupados Alemaria.xlsx, 26 REOs) — pendiente de confirmar que el wizard mapea bien las columnas del servicer
+- Pendiente de sesión anterior: pre-descarte automático en Deuda (Capa 0 matemática)
+
 **Última sesión — 17/07/2026 (Deuda: expansión de schema + import GES-JUL01 + pre-descarte IA)**
 
 Hecho:
@@ -825,6 +848,9 @@ El Telegram es el escáner de campo (móvil, rápido). El WOS3 es el hub operati
 | Deuda — 47 campos canónicos nuevos (portfolio, juzgado, principal, superficie_m2, etc.) en schema + DB + import + ficha modal | ✅ producción |
 | Deuda — import GES-JUL01.xlsx (71 filas INMUBI, fix precision CONTRACT_ID numérico) | ✅ producción |
 | Deuda — pre-descarte automático al importar (Capa 0: descuento < 30% o cargas > asking_price → descartado reversible) | ⏳ pendiente |
+| Mercado — campo `origen` ('directo' / 'reo') + columnas `provincia`, `ccaa`, `asset_id_servicer`, `portfolio_reo`, `estado_judicial_reo`, `fase_desahucio`, `reo_datos_extra` | ✅ producción |
+| Mercado — wizard import REO desde Excel (Claude propone mapeo, auto-checklist ocupación/posesión) | ✅ producción |
+| Mercado — filtros por origen (Directo / REO·Servicer) y por provincia (select dinámico) | ✅ producción |
 | Wallest Design System — bronce + Marcellus/Hanken en toda la app (fondo claro mantenido) | ✅ producción |
 | Wallest Design System Fase 2 (geometría literal: radios 2px/26px/999px) | ⏳ pendiente |
 | Portal inversor / Dossier — tratamiento "dark-first" del design system | ⏳ pendiente de decisión de Pato |
