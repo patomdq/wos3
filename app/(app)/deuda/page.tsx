@@ -14,8 +14,12 @@ const DeudaMapa = dynamic(() => import('@/components/DeudaMapa'), { ssr: false, 
 
 const ESTADO_TABS = ['todos', ...Object.keys(ESTADO_INTERNO_CFG)]
 
-const unicos = (arr: (string | null | undefined)[]) =>
-  Array.from(new Set(arr.filter((v): v is string => !!v && v.trim() !== ''))).sort((a, b) => a.localeCompare(b, 'es'))
+const capitalizar = (s: string) => s.trim().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase())
+const unicos = (arr: (string | null | undefined)[]) => {
+  const map = new Map<string, string>()
+  arr.forEach(v => { if (v && v.trim()) { const k = v.trim().toLowerCase(); if (!map.has(k)) map.set(k, capitalizar(v)) } })
+  return Array.from(map.values()).sort((a, b) => a.localeCompare(b, 'es'))
+}
 
 export default function DeudaPage() {
   const [posiciones, setPosiciones] = useState<DeudaPosicion[]>([])
@@ -119,7 +123,7 @@ export default function DeudaPage() {
 
   const provincias = useMemo(() => unicos(posiciones.map(p => p.provincia)), [posiciones])
   const ciudades = useMemo(() => {
-    const base = filtros.provincia ? posiciones.filter(p => p.provincia === filtros.provincia) : posiciones
+    const base = filtros.provincia && filtros.provincia !== 'todos' ? posiciones.filter(p => p.provincia?.trim().toLowerCase() === filtros.provincia.trim().toLowerCase()) : posiciones
     return unicos(base.map(p => p.ciudad))
   }, [posiciones, filtros.provincia])
   const brokers = useMemo(() => unicos(posiciones.map(p => p.broker_origen)), [posiciones])
