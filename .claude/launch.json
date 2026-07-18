@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "wos3",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
       "name": "mockup",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "public", "-p", "4321", "--no-clipboard"],

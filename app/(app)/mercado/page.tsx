@@ -1,7 +1,10 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+
+const MercadoReoWizard = dynamic(() => import('@/components/MercadoReoWizard'), { ssr: false })
 import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
 import { generateReportePDF } from '@/lib/generateReportePDF'
 import { CHECKLIST_ITEMS, ChecklistDocumentacion, ChecklistItemEstado, getItemEstado, getBloqueantesPendientes, getAlertasConfirmadas } from '@/lib/checklist-documentacion'
@@ -77,6 +80,11 @@ type Inmueble = {
   jv_bono_beneficio_final?: number
   jv_bono_liquidacion?: string
   checklist_documentacion?: ChecklistDocumentacion
+  origen?: string
+  asset_id_servicer?: string
+  portfolio_reo?: string
+  estado_judicial_reo?: string
+  fase_desahucio?: string
 }
 
 type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor' | 'mixto'; gestorPct?: number; capital: number }
@@ -202,6 +210,8 @@ export default function MercadoPage() {
   const [inmuebles, setInmuebles] = useState<Inmueble[]>([])
   const [filtroTipologia, setFiltroTipologia] = useState('todos')
   const [filtroEstado, setFiltroEstado] = useState('todos')
+  const [filtroOrigen, setFiltroOrigen] = useState('todos')
+  const [reoWizardOpen, setReoWizardOpen] = useState(false)
   const [buscar, setBuscar] = useState('')
   const [loading, setLoading] = useState(true)
   const [unidades, setUnidades] = useState<Record<string, Unidad[]>>({})
@@ -378,7 +388,7 @@ export default function MercadoPage() {
           planta: u.planta || null,
           superficie: typeof u.superficie === 'number' ? u.superficie : null,
           ocupacion: u.ocupacion === 'ocupado' ? 'ocupado' : 'libre',
-          origen: 'existente',
+          origen: 'directo',
           renta_mensual: typeof u.renta_mensual === 'number' ? u.renta_mensual : null,
           precio_venta_est: typeof u.precio_venta_est === 'number' ? u.precio_venta_est : null,
           reforma_estimada: typeof u.reforma_estimada === 'number' ? u.reforma_estimada : null,
@@ -735,7 +745,7 @@ export default function MercadoPage() {
       planta: nuevaUnidad.planta || null,
       superficie: nuevaUnidad.superficie ? parseFloat(nuevaUnidad.superficie) : null,
       ocupacion: nuevaUnidad.ocupacion,
-      origen: 'existente',
+      origen: 'directo',
       renta_mensual: nuevaUnidad.renta_mensual ? parseFloat(nuevaUnidad.renta_mensual) : null,
       precio_venta_est: nuevaUnidad.precio_venta_est ? parseFloat(nuevaUnidad.precio_venta_est) : null,
       reforma_estimada: nuevaUnidad.reforma_estimada ? parseFloat(nuevaUnidad.reforma_estimada) : null,
@@ -979,6 +989,7 @@ export default function MercadoPage() {
   const inmueblesFiltrados = inmuebles.filter(x =>
     (filtroTipologia === 'todos' || x.tipologia === filtroTipologia) &&
     (filtroEstado === 'todos' || x.estado === filtroEstado) &&
+    (filtroOrigen === 'todos' || (x.origen || 'directo') === filtroOrigen) &&
     (buscarNorm === '' || [x.titulo, x.direccion, x.ciudad].filter(Boolean).some(v => (v as string).toLowerCase().includes(buscarNorm)))
   ).sort((a, b) => {
     // Fijados primero (más recién fijado arriba dentro del grupo, como Instagram pero sin límite de 3).
@@ -1287,7 +1298,7 @@ export default function MercadoPage() {
       </div>
 
       {/* Filtros por tipología */}
-      <div className="flex gap-2 mb-8 overflow-x-auto -mx-5 px-5">
+      <div className="flex gap-2 mb-3 overflow-x-auto -mx-5 px-5">
         {FILTROS.map(f => (
           <button key={f} onClick={() => setFiltroTipologia(f)}
             className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap"
@@ -1295,6 +1306,26 @@ export default function MercadoPage() {
             {FILTRO_LABELS[f]}{f !== 'todos' ? ` (${inmuebles.filter(x => x.tipologia === f).length})` : ` (${inmuebles.length})`}
           </button>
         ))}
+      </div>
+
+      {/* Filtros por origen */}
+      <div className="flex gap-2 mb-8 overflow-x-auto -mx-5 px-5">
+        {(['todos', 'directo', 'reo'] as const).map(o => {
+          const count = o === 'todos' ? inmuebles.length : inmuebles.filter(x => (x.origen || 'directo') === o).length
+          const label = o === 'todos' ? 'Todos los orígenes' : o === 'reo' ? '🏦 REO / Servicer' : '📋 Directo'
+          return (
+            <button key={o} onClick={() => setFiltroOrigen(o)}
+              className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap"
+              style={{ background: filtroOrigen === o ? '#14110C' : '#F0EEE8', color: filtroOrigen === o ? '#F8F3E9' : '#555', border: filtroOrigen === o ? '1px solid #14110C' : '1px solid #DCDCDC' }}>
+              {label} ({count})
+            </button>
+          )
+        })}
+        <button onClick={() => setReoWizardOpen(true)}
+          className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap ml-auto"
+          style={{ background: '#A6855A', color: '#14110C', border: '1px solid #A6855A' }}>
+          + Importar REOs
+        </button>
       </div>
 
       {/* Grid */}
@@ -2915,6 +2946,12 @@ export default function MercadoPage() {
             </div>
           </div>
         </div>
+      )}
+      {reoWizardOpen && (
+        <MercadoReoWizard
+          onClose={() => setReoWizardOpen(false)}
+          onImported={() => { setReoWizardOpen(false); fetchInmuebles() }}
+        />
       )}
     </div>
   )
