@@ -81,6 +81,8 @@ type Inmueble = {
   jv_bono_liquidacion?: string
   checklist_documentacion?: ChecklistDocumentacion
   origen?: string
+  provincia?: string
+  ccaa?: string
   asset_id_servicer?: string
   portfolio_reo?: string
   estado_judicial_reo?: string
@@ -211,6 +213,7 @@ export default function MercadoPage() {
   const [filtroTipologia, setFiltroTipologia] = useState('todos')
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [filtroOrigen, setFiltroOrigen] = useState('todos')
+  const [filtroProvincia, setFiltroProvincia] = useState('todos')
   const [reoWizardOpen, setReoWizardOpen] = useState(false)
   const [buscar, setBuscar] = useState('')
   const [loading, setLoading] = useState(true)
@@ -986,11 +989,13 @@ export default function MercadoPage() {
 
   // ── Derived ─────────────────────────────────────────────
   const buscarNorm = buscar.trim().toLowerCase()
+  const provinciasDisponibles = Array.from(new Set(inmuebles.map(x => x.provincia).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, 'es'))
   const inmueblesFiltrados = inmuebles.filter(x =>
     (filtroTipologia === 'todos' || x.tipologia === filtroTipologia) &&
     (filtroEstado === 'todos' || x.estado === filtroEstado) &&
     (filtroOrigen === 'todos' || (x.origen || 'directo') === filtroOrigen) &&
-    (buscarNorm === '' || [x.titulo, x.direccion, x.ciudad].filter(Boolean).some(v => (v as string).toLowerCase().includes(buscarNorm)))
+    (filtroProvincia === 'todos' || x.provincia === filtroProvincia) &&
+    (buscarNorm === '' || [x.titulo, x.direccion, x.ciudad, x.provincia].filter(Boolean).some(v => (v as string).toLowerCase().includes(buscarNorm)))
   ).sort((a, b) => {
     // Fijados primero (más recién fijado arriba dentro del grupo, como Instagram pero sin límite de 3).
     // Los no fijados van del más viejo al más nuevo — así lo nuevo entra abajo, no empuja lo importante.
@@ -1321,6 +1326,14 @@ export default function MercadoPage() {
             </button>
           )
         })}
+        {provinciasDisponibles.length > 0 && (
+          <select value={filtroProvincia} onChange={e => setFiltroProvincia(e.target.value)}
+            className="flex-shrink-0 text-sm font-bold rounded-full px-3 py-1.5"
+            style={{ background: filtroProvincia !== 'todos' ? '#14110C' : '#F0EEE8', color: filtroProvincia !== 'todos' ? '#F8F3E9' : '#555', border: filtroProvincia !== 'todos' ? '1px solid #14110C' : '1px solid #DCDCDC', cursor: 'pointer' }}>
+            <option value="todos">Todas las provincias</option>
+            {provinciasDisponibles.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        )}
         <button onClick={() => setReoWizardOpen(true)}
           className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap ml-auto"
           style={{ background: '#A6855A', color: '#14110C', border: '1px solid #A6855A' }}>
