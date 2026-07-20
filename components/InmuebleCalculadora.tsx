@@ -120,10 +120,12 @@ interface Props {
   inmuebleId: string
   tipologia: string
   onSaved?: () => void
+  /** 'all' = todo (default/Mercado) | 'calculadora' = sin JV | 'jv' = solo JV/Gestor */
+  mode?: 'all' | 'calculadora' | 'jv'
 }
 
 // ─── Componente ───────────────────────────────────────────
-export default function InmuebleCalculadora({ inmuebleId, tipologia: tipologiaProp, onSaved }: Props) {
+export default function InmuebleCalculadora({ inmuebleId, tipologia: tipologiaProp, onSaved, mode = 'all' }: Props) {
   const [loading, setLoading] = useState(true)
 
   // Estado de la calculadora
@@ -396,7 +398,8 @@ export default function InmuebleCalculadora({ inmuebleId, tipologia: tipologiaPr
           </div>
         </div>
 
-        {/* Gastos */}
+        {/* Gastos — oculto en modo JV */}
+        <div style={{ display: mode === 'jv' ? 'none' : undefined }}>
         <div className="text-[12px] font-bold uppercase tracking-[1px] mb-2" style={{ color: '#888' }}>Gastos estimados y reales</div>
         <div className="rounded-xl overflow-hidden mb-5" style={{ border: '1px solid #ECEAE4' }}>
           <div className="grid grid-cols-[1fr_80px_80px] px-3 py-2" style={{ background: '#ECEAE4', borderBottom: '1px solid #E2E0D8' }}>
@@ -585,9 +588,12 @@ export default function InmuebleCalculadora({ inmuebleId, tipologia: tipologiaPr
               </div>
             </div>
           </div>
+        </div>
 
-          {/* JV / Gestor */}
-          <div className="rounded-xl p-4 mb-4" style={{ background: '#fff', border: '1px solid #ECEAE4' }}>
+        </div>{/* fin bloque no-JV */}
+
+        {/* JV / Gestor — oculto en modo calculadora */}
+        {mode !== 'calculadora' && <div className="rounded-xl p-4 mb-4" style={{ background: '#fff', border: '1px solid #ECEAE4' }}>
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#A855F7' }}>JV / Gestor — Reparto entre partes</div>
               <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #ECEAE4' }}>
@@ -747,10 +753,10 @@ export default function InmuebleCalculadora({ inmuebleId, tipologia: tipologiaPr
                 </div>
               </>
             )}
-          </div>
+          </div>}
 
-          {/* Checklist de documentación */}
-          <div className="rounded-xl p-4 mb-4" style={{ background: '#fff', border: '1px solid #ECEAE4' }}>
+          {/* Checklist de documentación — oculto en modo JV */}
+          <div className="rounded-xl p-4 mb-4" style={{ background: '#fff', border: '1px solid #ECEAE4', display: mode === 'jv' ? 'none' : undefined }}>
             <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
               <div className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#B45309' }}>📋 Checklist de documentación</div>
               <div className="flex gap-1.5">
@@ -838,7 +844,6 @@ export default function InmuebleCalculadora({ inmuebleId, tipologia: tipologiaPr
               </div>
             </div>
           )}
-        </div>
 
         {/* Botón guardar */}
         <div className="flex gap-2">

@@ -1182,31 +1182,11 @@ export default function ProyectoDetalle() {
         </div>
       )}
 
-      {/* ═══ Tab: INVERSOR ═══ */}
+      {/* ═══ Tab: INVERSOR — JV / Gestor ═══ */}
       {tab === 4 && (
-        <div>
-          {!inversor ? (
-            <div className="text-center py-12 text-sm" style={{ color:'#999999' }}>Sin inversor asociado</div>
-          ) : (
-            <>
-              <div className="rounded-2xl p-4 mb-3" style={CARD}>
-                <div className="font-black text-base mb-0.5" style={{ color:'#1A1A1A' }}>{inversor.inversores?.nombre||'—'}</div>
-                <div className="text-xs font-medium mb-4" style={{ color:'#999999' }}>Portal inversor · {inversor.participacion}% participación</div>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5 mb-3">
-                <div className="rounded-xl p-3.5" style={CARD}>
-                  <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Capital invertido</div>
-                  <div className="font-black text-[22px]" style={{ color:'#1A1A1A' }}>{fmtK(inversor.capital_invertido||0)}</div>
-                </div>
-                <div className="rounded-xl p-3.5" style={CARD}>
-                  <div className="text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color:'#888' }}>Retorno est.</div>
-                  <div className="font-black text-[22px]" style={{ color:'#22C55E' }}>{fmtK(inversor.retorno_estimado||0)}</div>
-                  <div className="text-xs font-bold mt-1" style={{ color:'#999999' }}>ROI {inversor.roi||0}%</div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        inmueble
+          ? <InmuebleCalculadora inmuebleId={inmueble.id} tipologia={inmueble.tipologia || 'piso'} mode="jv" />
+          : <div className="text-center py-12 text-sm" style={{ color:'#999999' }}>Sin inmueble vinculado — JV no disponible</div>
       )}
 
       {/* ═══ Tab: DOCS ═══ */}
@@ -1872,7 +1852,7 @@ export default function ProyectoDetalle() {
       {/* ═══ Tab: ANÁLISIS (JV + Calculadora + Checklist desde inmueble vinculado) ═══ */}
       {tab === 7 && (
         inmueble
-          ? <InmuebleCalculadora inmuebleId={inmueble.id} tipologia={inmueble.tipologia || 'piso'} />
+          ? <InmuebleCalculadora inmuebleId={inmueble.id} tipologia={inmueble.tipologia || 'piso'} mode="calculadora" />
           : <div className="rounded-2xl p-6 text-center" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
               <div className="text-3xl mb-3 opacity-30">🔗</div>
               <div className="font-bold text-sm" style={{ color:'#999' }}>Sin inmueble vinculado desde Mercado.</div>
