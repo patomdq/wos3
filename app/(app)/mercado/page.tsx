@@ -694,8 +694,13 @@ export default function MercadoPage() {
     setCreando(item.id)
     // 1. Cambiar estado del inmueble a en_arras
     await supabase.from('inmuebles').update({ estado: 'en_arras' }).eq('id', item.id)
-    // 2. Crear proyecto con estado en_arras
+    // 2. Calcular siguiente código OP-XXX
+    const { data: codigos } = await supabase.from('proyectos').select('codigo').order('codigo', { ascending: false }).limit(1)
+    const ultimoNum = codigos?.[0]?.codigo ? parseInt(codigos[0].codigo.replace('OP-', ''), 10) : 0
+    const nuevoCodigo = `OP-${String(ultimoNum + 1).padStart(3, '0')}`
+    // 3. Crear proyecto con estado en_arras
     const { data: proyecto, error } = await supabase.from('proyectos').insert([{
+      codigo: nuevoCodigo,
       nombre: item.titulo || item.direccion,
       direccion: item.direccion,
       ciudad: item.ciudad || null,
