@@ -128,7 +128,7 @@ async function loadContext(): Promise<string> {
     supabase
       .from('proyectos')
       .select('id, nombre, estado, precio_compra, precio_venta_real, precio_venta_realista, valor_total_operacion, superficie, habitaciones, ciudad, porcentaje_hasu')
-      .not('estado', 'in', '("vendido","patrimonial")')
+      .not('estado', 'in', '("vendido","patrimonial","cerrado")')
       .order('created_at', { ascending: false }),
     supabase
       .from('movimientos')
