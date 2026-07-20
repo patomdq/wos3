@@ -303,7 +303,7 @@ export default function ProyectosPage() {
               <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em' }}>PROYECTOS ACTIVOS</div>
               <button onClick={() => openBotPanel()} style={{ fontSize: 13, fontWeight: 800, color: '#A6855A', background: 'none', border: 'none', cursor: 'pointer' }}>+ Nuevo vía bot</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48, alignItems: 'start' }}>
               {activos.map(p => {
                 const isExp     = expanded.has(p.id)
                 const gastos    = gastosMap[p.id] || 0
