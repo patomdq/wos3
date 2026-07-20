@@ -1075,120 +1075,135 @@ export default function MercadoPage() {
   const TIPO_ICON: Record<string, string> = { nota: '📝', llamada: '📞', email: '✉️', visita: '🏠', documento: '📄', api: '🤝' }
 
   // JSX helpers
-  const renderBitacora = (item: Inmueble) => (
-    <>
-      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid #F0EEE8', background: '#FAFAF8' }}>
-        <span className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8' }}>
-          Bitácora{bitacora[item.id] ? ` (${(bitacora[item.id] || []).length})` : ''}
-        </span>
-        <button onClick={() => toggleBitacora(item.id)}
-          className="text-[12px] font-black px-2.5 py-1 rounded-lg"
-          style={{ background: openBitacoraId === item.id ? 'rgba(166,133,90,0.09)' : '#ECEAE4', color: openBitacoraId === item.id ? '#A6855A' : '#888', border: `1.5px solid ${openBitacoraId === item.id ? 'rgba(166,133,90,0.25)' : '#E2E0D8'}` }}>
-          {openBitacoraId === item.id ? '▲ Cerrar' : '▼ Bitácora'}
-        </button>
-      </div>
-      {openBitacoraId === item.id && (
-        <div className="px-4 py-3" style={{ borderTop: '1px solid #F0EEE8', background: '#F9F8F5' }}>
-          <div className="mb-4 rounded-xl p-3" style={{ background: '#fff', border: '1.5px solid #ECEAE4' }}>
-            <div className="text-[12px] font-black uppercase tracking-wide mb-2" style={{ color: '#888' }}>
-              {editingBitacoraId ? 'Editar entrada' : 'Nueva entrada'}
-            </div>
-            <textarea value={bitacoraForm.contenido} onChange={ev => setBitacoraForm(f => ({ ...f, contenido: ev.target.value }))}
-              placeholder="Visita realizada, llamada con API, precio negociable..." rows={2}
-              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none mb-2"
-              style={INP_L}
-              onFocus={ev => ev.target.style.borderColor='#A6855A'} onBlur={ev => ev.target.style.borderColor='#ECEAE4'} />
-            <div className="grid grid-cols-2 gap-2 mb-2">
+  const renderBitacora = (item: Inmueble) => null
+
+  const renderBitacoraModal = () => {
+    if (!openBitacoraId) return null
+    const item = inmuebles.find(x => x.id === openBitacoraId)
+    if (!item) return null
+    const entradas = bitacora[item.id] || []
+    return (
+      <>
+        <div className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => { setOpenBitacoraId(null); setBitacoraForm({ contenido: '', tipo: 'nota', autor: '', url: '', proveedor_id: '' }); setEditingBitacoraId(null) }} />
+        <div className="fixed inset-x-4 top-[5vh] bottom-[5vh] z-50 flex items-start justify-center pointer-events-none">
+          <div className="w-full max-w-[600px] rounded-2xl flex flex-col pointer-events-auto" style={{ background: '#fff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '90vh' }}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid #F0EEE8' }}>
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Tipo</label>
-                <select value={bitacoraForm.tipo} onChange={ev => setBitacoraForm(f => ({ ...f, tipo: ev.target.value }))}
-                  className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
-                  style={{ ...INP_L, appearance: 'none' as const }}>
-                  <option value="nota">📝 Nota</option>
-                  <option value="llamada">📞 Llamada</option>
-                  <option value="email">✉️ Email</option>
-                  <option value="visita">🏠 Visita</option>
-                  <option value="documento">📄 Documento</option>
-                  <option value="api">🤝 API</option>
-                </select>
+                <div className="font-black text-[16px]" style={{ color: '#111' }}>📋 Bitácora</div>
+                <div className="text-[12px] font-medium mt-0.5" style={{ color: '#999' }}>{item.titulo || item.direccion}</div>
               </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Autor</label>
-                <input type="text" value={bitacoraForm.autor} onChange={ev => setBitacoraForm(f => ({ ...f, autor: ev.target.value }))}
-                  placeholder="Patricio"
+              <button onClick={() => { setOpenBitacoraId(null); setBitacoraForm({ contenido: '', tipo: 'nota', autor: '', url: '', proveedor_id: '' }); setEditingBitacoraId(null) }}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-[14px] font-black" style={{ background: '#F0EEE8', color: '#888' }}>✕</button>
+            </div>
+
+            {/* Formulario nueva entrada */}
+            <div className="px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid #F0EEE8' }}>
+              <div className="text-[11px] font-black uppercase tracking-wide mb-2" style={{ color: '#A6855A' }}>
+                {editingBitacoraId ? 'Editar entrada' : 'Nueva entrada'}
+              </div>
+              <textarea value={bitacoraForm.contenido} onChange={ev => setBitacoraForm(f => ({ ...f, contenido: ev.target.value }))}
+                placeholder="Visita realizada, llamada con API, precio negociable..." rows={4}
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium resize-none mb-3"
+                style={INP_L}
+                onFocus={ev => ev.target.style.borderColor='#A6855A'} onBlur={ev => ev.target.style.borderColor='#ECEAE4'} />
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Tipo</label>
+                  <select value={bitacoraForm.tipo} onChange={ev => setBitacoraForm(f => ({ ...f, tipo: ev.target.value }))}
+                    className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
+                    style={{ ...INP_L, appearance: 'none' as const }}>
+                    <option value="nota">📝 Nota</option>
+                    <option value="llamada">📞 Llamada</option>
+                    <option value="email">✉️ Email</option>
+                    <option value="visita">🏠 Visita</option>
+                    <option value="documento">📄 Documento</option>
+                    <option value="api">🤝 API</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Autor</label>
+                  <input type="text" value={bitacoraForm.autor} onChange={ev => setBitacoraForm(f => ({ ...f, autor: ev.target.value }))}
+                    placeholder="Patricio"
+                    className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
+                    style={INP_L}
+                    onFocus={ev => ev.target.style.borderColor='#A6855A'} onBlur={ev => ev.target.style.borderColor='#ECEAE4'} />
+                </div>
+              </div>
+              <div className="mb-3">
+                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Link externo</label>
+                <input type="url" value={bitacoraForm.url} onChange={ev => setBitacoraForm(f => ({ ...f, url: ev.target.value }))} placeholder="https://..."
                   className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
                   style={INP_L}
                   onFocus={ev => ev.target.style.borderColor='#A6855A'} onBlur={ev => ev.target.style.borderColor='#ECEAE4'} />
               </div>
-            </div>
-            <div className="mb-2">
-              <label className="block text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Link externo</label>
-              <input type="url" value={bitacoraForm.url} onChange={ev => setBitacoraForm(f => ({ ...f, url: ev.target.value }))} placeholder="https://..."
-                className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
-                style={INP_L}
-                onFocus={ev => ev.target.style.borderColor='#A6855A'} onBlur={ev => ev.target.style.borderColor='#ECEAE4'} />
-            </div>
-            {proveedores.length > 0 && (
-              <div className="mb-2">
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Proveedor</label>
-                <select value={bitacoraForm.proveedor_id} onChange={ev => setBitacoraForm(f => ({ ...f, proveedor_id: ev.target.value }))}
-                  className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
-                  style={{ ...INP_L, appearance: 'none' as const }}>
-                  <option value="">— Sin proveedor —</option>
-                  {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </select>
-              </div>
-            )}
-            <div className="flex gap-2">
-              {editingBitacoraId && (
-                <button onClick={() => { setBitacoraForm({ contenido: '', tipo: 'nota', autor: '', url: '', proveedor_id: '' }); setEditingBitacoraId(null) }}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-black" style={{ background: '#F0EEE8', color: '#888', border: '1px solid #ECEAE4' }}>Cancelar</button>
+              {proveedores.length > 0 && (
+                <div className="mb-3">
+                  <label className="block text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#888' }}>Proveedor</label>
+                  <select value={bitacoraForm.proveedor_id} onChange={ev => setBitacoraForm(f => ({ ...f, proveedor_id: ev.target.value }))}
+                    className="w-full rounded-lg px-2 py-2 text-xs outline-none font-medium"
+                    style={{ ...INP_L, appearance: 'none' as const }}>
+                    <option value="">— Sin proveedor —</option>
+                    {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </select>
+                </div>
               )}
-              <button onClick={() => saveBitacoraEntry(item.id)} disabled={savingBitacora || !bitacoraForm.contenido.trim()}
-                className="flex-1 py-2.5 rounded-xl text-xs font-black disabled:opacity-40" style={{ background: '#14110C', color: '#F8F3E9' }}>
-                {savingBitacora ? '...' : editingBitacoraId ? 'Guardar' : '+ Agregar'}
-              </button>
+              <div className="flex gap-2">
+                {editingBitacoraId && (
+                  <button onClick={() => { setBitacoraForm({ contenido: '', tipo: 'nota', autor: '', url: '', proveedor_id: '' }); setEditingBitacoraId(null) }}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-black" style={{ background: '#F0EEE8', color: '#888', border: '1px solid #ECEAE4' }}>Cancelar</button>
+                )}
+                <button onClick={() => saveBitacoraEntry(item.id)} disabled={savingBitacora || !bitacoraForm.contenido.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black disabled:opacity-40" style={{ background: '#14110C', color: '#F8F3E9' }}>
+                  {savingBitacora ? '...' : editingBitacoraId ? 'Guardar cambios' : '+ Agregar entrada'}
+                </button>
+              </div>
+            </div>
+
+            {/* Timeline de entradas — scrolleable */}
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {loadingBitacora === item.id ? (
+                <div className="py-8 text-center text-sm" style={{ color: '#BBB' }}>Cargando...</div>
+              ) : !entradas.length ? (
+                <div className="py-8 text-center text-sm" style={{ color: '#BBB' }}>Sin entradas todavía. Escribí la primera arriba.</div>
+              ) : (
+                <div className="pl-5 relative">
+                  <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#E5E3DE' }} />
+                  {entradas.map((b: unknown) => {
+                    const entry = b as Record<string, unknown>
+                    return (
+                      <div key={entry.id as string} className="relative mb-5">
+                        <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background: '#A6855A', border: '2px solid #fff' }} />
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="text-[12px] font-bold font-mono tracking-wide" style={{ color: '#AAA' }}>
+                            {new Date(entry.created_at as string).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
+                            {' · '}{TIPO_ICON[entry.tipo as string] || '📝'} {((entry.tipo as string) || 'nota').toUpperCase()}
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={() => openEditBitacora(entry)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: '#ECEAE4', color: '#666' }}>✎</button>
+                            <button onClick={() => deleteBitacoraEntry(entry.id as string, item.id)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>✕</button>
+                          </div>
+                        </div>
+                        <div className="text-[14px] font-medium leading-relaxed" style={{ color: '#1a1a1a' }}>{entry.contenido as string}</div>
+                        {entry.url && (
+                          <a href={entry.url as string} target="_blank" rel="noopener noreferrer" className="text-xs font-bold inline-flex items-center gap-1 mt-1" style={{ color: '#60A5FA' }}>🔗 Ver link</a>
+                        )}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {entry.autor && <div className="text-xs font-bold" style={{ color: '#A6855A' }}>{entry.autor as string}</div>}
+                          {(entry.proveedores as {nombre:string})?.nombre && <div className="text-xs font-medium" style={{ color: '#888' }}>· {(entry.proveedores as {nombre:string}).nombre}</div>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
-          {loadingBitacora === item.id ? (
-            <div className="py-4 text-center text-xs" style={{ color: '#555' }}>Cargando...</div>
-          ) : !(bitacora[item.id] || []).length ? (
-            <div className="py-3 text-center text-xs" style={{ color: '#555' }}>Sin entradas todavía.</div>
-          ) : (
-            <div className="pl-5 relative">
-              <div className="absolute left-1.5 top-1 bottom-1 w-[1.5px]" style={{ background: '#E5E3DE' }} />
-              {(bitacora[item.id] || []).map((b: unknown) => {
-                const entry = b as Record<string, unknown>
-                return (
-                  <div key={entry.id as string} className="relative mb-4">
-                    <div className="absolute -left-[15px] top-1 w-2.5 h-2.5 rounded-full" style={{ background: '#A6855A', border: '2px solid #F9F8F5' }} />
-                    <div className="flex items-center justify-between mb-0.5">
-                      <div className="text-[12px] font-bold font-mono tracking-wide" style={{ color: '#AAA' }}>
-                        {new Date(entry.created_at as string).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
-                        {' · '}{TIPO_ICON[entry.tipo as string] || '📝'} {((entry.tipo as string) || 'nota').toUpperCase()}
-                      </div>
-                      <div className="flex gap-1">
-                        <button onClick={() => openEditBitacora(entry)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: '#ECEAE4', color: '#666' }}>✎</button>
-                        <button onClick={() => deleteBitacoraEntry(entry.id as string, item.id)} className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444' }}>✕</button>
-                      </div>
-                    </div>
-                    <div className="text-sm font-bold leading-relaxed" style={{ color: '#1a1a1a' }}>{entry.contenido as string}</div>
-                    {entry.url && (
-                      <a href={entry.url as string} target="_blank" rel="noopener noreferrer" className="text-xs font-bold inline-flex items-center gap-1 mt-1" style={{ color: '#60A5FA' }}>🔗 Ver link</a>
-                    )}
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {entry.autor && <div className="text-xs font-bold" style={{ color: '#A6855A' }}>{entry.autor as string}</div>}
-                      {(entry.proveedores as {nombre:string})?.nombre && <div className="text-xs font-medium" style={{ color: '#888' }}>· {(entry.proveedores as {nombre:string}).nombre}</div>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
-      )}
-    </>
-  )
+      </>
+    )
+  }
 
   const renderVisitas = (item: Inmueble) => (
     <>
@@ -1249,6 +1264,7 @@ export default function MercadoPage() {
 
   return (
     <div style={{ background: '#F4F4F4', minHeight: '100vh' }}>
+      {renderBitacoraModal()}
       {/* ── Banner cabecera ── */}
       <div style={{ padding: '20px 20px 0' }}>
         <div style={{ position: 'relative', height: 160, overflow: 'hidden', borderRadius: 20 }}>
@@ -1757,7 +1773,16 @@ export default function MercadoPage() {
                 )}
 
                 {renderVisitas(item)}
-                {renderBitacora(item)}
+                <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid #F0EEE8', background: '#FAFAF8' }}>
+                  <span className="text-[12px] font-black uppercase tracking-wide" style={{ color: '#C0BEB8' }}>
+                    Bitácora{bitacora[item.id] ? ` (${(bitacora[item.id] || []).length})` : ''}
+                  </span>
+                  <button onClick={() => toggleBitacora(item.id)}
+                    className="text-[12px] font-black px-2.5 py-1 rounded-lg"
+                    style={{ background: '#ECEAE4', color: '#888', border: '1.5px solid #E2E0D8' }}>
+                    📋 Abrir bitácora
+                  </button>
+                </div>
               </div>
             )
           })}
