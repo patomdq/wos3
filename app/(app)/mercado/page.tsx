@@ -1711,7 +1711,7 @@ export default function MercadoPage() {
                 })()}
 
                 {/* Estado */}
-                {item.estado !== 'sin_analizar' && item.estado !== 'comprado' && item.estado === 'en_arras' && (() => {
+                {item.estado !== 'sin_analizar' && item.estado !== 'comprado' && (() => {
                   const pendientesChecklist = getBloqueantesPendientes(item.checklist_documentacion)
                   return (
                   <div style={{ borderTop: '1px solid #F0EEE8' }}>
@@ -1737,14 +1737,14 @@ export default function MercadoPage() {
                           </button>
                         )
                       })}
-                      {confirmandoCompra === item.id ? (
+                      {item.estado === 'en_arras' && (confirmandoCompra === item.id ? (
                         <div className="flex gap-1.5 ml-auto">
                           <button onClick={() => crearProyecto(item)} disabled={creando === item.id || (pendientesChecklist.length > 0 && !compraOverrideOk)} className="text-[12px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.15)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.4)' }}>{creando === item.id ? '...' : '✓ Confirmar'}</button>
                           <button onClick={() => { setConfirmandoCompra(null); setCompraOverrideOk(false) }} className="text-[12px] font-black px-2 py-1 rounded-lg" style={{ background: '#F3F2EE', color: '#888' }}>✕</button>
                         </div>
                       ) : (
                         <button onClick={() => crearProyecto(item)} disabled={creando === item.id} className="text-[12px] font-black px-2.5 py-1 rounded-lg ml-auto disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.3)' }}>{creando === item.id ? '...' : 'Comprado →'}</button>
-                      )}
+                      ))}
                     </div>
                   </div>
                   )
