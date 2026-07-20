@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { GrupoDeuda, ESTADO_JUDICIAL_LABEL, ESTADO_JUDICIAL_COLOR, calcRatioColateral, calcDescuentoDeuda } from '@/lib/deuda-schema'
+import { GrupoDeuda, ESTADO_JUDICIAL_LABEL, ESTADO_JUDICIAL_COLOR, calcRatioColateral, calcDescuentoDeuda, inferirRatingsCesion, RATING_COLOR, RatingDificultad } from '@/lib/deuda-schema'
 
 const fmt = (n: number | null | undefined) => {
   if (n === null || n === undefined) return '—'
@@ -87,6 +87,33 @@ export default function DeudaListado({
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {g.esFavorito && <span className="text-base" title="Favorito">⭐</span>}
                   {g.tieneAlerta && <span className="text-base" title="Cargas previas superan el asking price">🔴</span>}
+                  {/* Ratings de dificultad Master IN+ — usa guardado si existe, si no infiere */}
+                  {(() => {
+                    const p0 = g.items[0]
+                    const saved = p0?.analisis_cesion
+                    const inf = inferirRatingsCesion(p0 || {})
+                    const ratings: { label: string; val: RatingDificultad | null }[] = [
+                      { label: 'D', val: (saved?.rating_deudor ?? inf.rating_deudor) },
+                      { label: 'P', val: (saved?.rating_posesion ?? inf.rating_posesion) },
+                      { label: 'J', val: (saved?.rating_juzgado ?? inf.rating_juzgado) },
+                      { label: 'Pr', val: (saved?.rating_procedimiento ?? inf.rating_procedimiento) },
+                    ]
+                    const conValor = ratings.filter(r => r.val !== null)
+                    if (conValor.length === 0) return null
+                    return (
+                      <div className="flex gap-0.5" title="Ratings: Deudor · Posesión · Juzgado · Procedimiento">
+                        {conValor.map(r => {
+                          const cfg = RATING_COLOR[r.val!]
+                          return (
+                            <span key={r.label} className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-black"
+                              style={{ background: cfg.bg, color: cfg.color }}>
+                              {r.val}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
               <div className="text-[12px] font-mono truncate mb-2" style={{ color: '#BBB' }}>{g.contractId}</div>

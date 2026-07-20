@@ -146,6 +146,112 @@ export function calcDescuento(deudaOb: number | null | undefined, askingPrice: n
 
 export const BROKER_ORIGEN_DEFAULT = 'Sin especificar'
 
+// ─── Análisis Cesión de Crédito (metodología Master IN+) ─────────────────────
+
+// Rating de dificultad: escala 1-5 (1=muy fácil, 5=muy difícil).
+// Se infiere automáticamente desde los datos disponibles y se puede ajustar a mano.
+export type RatingDificultad = 1 | 2 | 3 | 4 | 5
+
+export type AnalisisCesion = {
+  // 4 ratings de dificultad (Master IN+)
+  rating_deudor: RatingDificultad | null        // Perfil del deudor: ¿es cooperativo?
+  rating_posesion: RatingDificultad | null      // Obtener posesión: libre/alquilado/okupa
+  rating_juzgado: RatingDificultad | null       // Velocidad y predictibilidad del juzgado
+  rating_procedimiento: RatingDificultad | null // Fase del proceso judicial
+
+  // Flags críticos que cambian la estrategia
+  novada_hipoteca: boolean | null               // ¿Se ha novado la hipoteca? Complica la deuda
+  vivienda_habitual: boolean | null             // Protección adicional al deudor en juicio
+  hay_que_pagar_deudor: boolean | null          // ¿Hay deuda activa con el deudor?
+  importe_pago_deudor: number | null            // Cuánto habría que pagarle
+
+  // P&L completo de la cesión
+  valor_mercado_garantia: number | null         // Valor de mercado estimado del inmueble
+  precio_cesion: number | null                  // Lo que se paga por comprar el crédito
+  gastos_inscripcion: number | null
+  impuestos_cesion: number | null               // ITP u otros sobre la cesión
+  comisiones: number | null
+  impuestos_adjudicacion: number | null         // Impuestos si termina en adjudicación
+
+  // Notas libres del análisis
+  notas_analisis: string | null
+}
+
+export const RATING_LABEL: Record<RatingDificultad, string> = {
+  1: 'Muy fácil',
+  2: 'Fácil',
+  3: 'Medio',
+  4: 'Difícil',
+  5: 'Muy difícil',
+}
+
+export const RATING_COLOR: Record<RatingDificultad, { color: string; bg: string }> = {
+  1: { color: '#16a34a', bg: 'rgba(22,163,74,0.12)' },
+  2: { color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
+  3: { color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
+  4: { color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
+  5: { color: '#991b1b', bg: 'rgba(153,27,27,0.15)' },
+}
+
+// Emoji compacto para mostrar en la card del listado
+export const RATING_EMOJI: Record<RatingDificultad, string> = {
+  1: '🟢', 2: '🟢', 3: '🟡', 4: '🔴', 5: '🔴',
+}
+
+// Inferencia automática de ratings desde los datos existentes.
+// Devuelve null cuando no hay suficiente info para inferir — el usuario lo rellena a mano.
+export function inferirRatingsCesion(p: {
+  ocupacion_estado?: string | null
+  estado_judicial_normalizado?: string | null
+  juzgado?: string | null
+  fase_desahucio?: string | null  // campo del schema de inmuebles, no de deuda — si aplica
+  id_portal_subasta?: string | null
+  fecha_subasta?: string | null
+  cargas_previas?: number | null
+  asking_price?: number | null
+  titular_deuda?: string | null
+}): Pick<AnalisisCesion, 'rating_deudor' | 'rating_posesion' | 'rating_juzgado' | 'rating_procedimiento'> {
+  // POSESIÓN — desde ocupacion_estado
+  let rating_posesion: RatingDificultad | null = null
+  if (p.ocupacion_estado === 'libre') rating_posesion = 1
+  else if (p.ocupacion_estado === 'con_titulo') rating_posesion = 3
+  else if (p.ocupacion_estado === 'sin_titulo') rating_posesion = 5
+  else if (p.ocupacion_estado === 'desconocido') rating_posesion = 3
+
+  // JUZGADO — desde si hay juzgado conocido y estado de subasta
+  let rating_juzgado: RatingDificultad | null = null
+  if (p.estado_judicial_normalizado === 'resuelto') rating_juzgado = 1
+  else if (p.estado_judicial_normalizado === 'subasta_señalada') rating_juzgado = 2
+  else if (p.estado_judicial_normalizado === 'subasta_pendiente') rating_juzgado = 3
+  else if (p.estado_judicial_normalizado === 'oposicion') rating_juzgado = 4
+  else if (p.estado_judicial_normalizado === 'prejudicial') rating_juzgado = 4
+
+  // PROCEDIMIENTO — desde la fase del proceso
+  let rating_procedimiento: RatingDificultad | null = null
+  if (p.estado_judicial_normalizado === 'resuelto') rating_procedimiento = 1
+  else if (p.id_portal_subasta || p.fecha_subasta) rating_procedimiento = 2
+  else if (p.estado_judicial_normalizado === 'subasta_pendiente') rating_procedimiento = 3
+  else if (p.estado_judicial_normalizado === 'oposicion') rating_procedimiento = 4
+  else if (p.estado_judicial_normalizado === 'prejudicial') rating_procedimiento = 5
+
+  // DEUDOR — heurístico desde cargas y ocupación (sin datos directos del deudor, inferencia débil)
+  let rating_deudor: RatingDificultad | null = null
+  const riesgoCargas = calcRatioRiesgoCargas(p.cargas_previas, p.asking_price)
+  if (p.ocupacion_estado === 'libre' && !riesgoCargas.alerta) rating_deudor = 2
+  else if (p.ocupacion_estado === 'sin_titulo') rating_deudor = 4
+  else if (riesgoCargas.alerta) rating_deudor = 4
+
+  return { rating_deudor, rating_posesion, rating_juzgado, rating_procedimiento }
+}
+
+// Beneficio estimado de la cesión = valor_mercado - precio_cesion - todos los gastos
+export function calcBeneficioCesion(a: Partial<AnalisisCesion>): number | null {
+  if (!a.valor_mercado_garantia || !a.precio_cesion) return null
+  const gastos = (a.gastos_inscripcion || 0) + (a.impuestos_cesion || 0)
+    + (a.comisiones || 0) + (a.impuestos_adjudicacion || 0) + (a.importe_pago_deudor || 0)
+  return a.valor_mercado_garantia - a.precio_cesion - gastos
+}
+
 // Ocupación del inmueble — punto 4 del criterio del experto NPL: saber si está ocupado, por quién,
 // y si hace falta visita de campo para confirmar. 'con_titulo' = alquilado/con derecho legal a estar,
 // 'sin_titulo' = ocupa/okupa sin derecho — la estrategia y el riesgo son muy distintos entre ambos.
@@ -333,6 +439,7 @@ export type DeudaPosicion = {
   cargas_detalle: CargaDetalle[] | null
   favorito: boolean
   resumen_ia: string | null
+  analisis_cesion: AnalisisCesion | null
   created_at: string
   updated_at: string
 }

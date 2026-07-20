@@ -7,6 +7,7 @@ import {
   OCUPACION_ESTADOS, OCUPACION_LABEL, OCUPACION_COLOR, OcupacionEstado,
   MOTIVOS_DESCARTE, MOTIVO_DESCARTE_LABEL, MotivoDescarte, CargaDetalle,
   CAMPOS_CANONICOS,
+  AnalisisCesion, RatingDificultad, RATING_LABEL, RATING_COLOR, inferirRatingsCesion, calcBeneficioCesion,
 } from '@/lib/deuda-schema'
 
 // Campos agregados 17/07/2026 (mapeo ampliado de brokers) — se muestran dinámicamente en una
@@ -152,6 +153,32 @@ function PosicionCard({
 
   const [mostrarExtra, setMostrarExtra] = useState(false)
   const [resumen, setResumen] = useState<string | null>(p.resumen_ia ?? null)
+
+  // Análisis cesión — se inicializa mergeando inferencia automática con lo guardado a mano
+  const inferido = inferirRatingsCesion(p)
+  const [cesion, setCesion] = useState<AnalisisCesion>({
+    rating_deudor: p.analisis_cesion?.rating_deudor ?? inferido.rating_deudor,
+    rating_posesion: p.analisis_cesion?.rating_posesion ?? inferido.rating_posesion,
+    rating_juzgado: p.analisis_cesion?.rating_juzgado ?? inferido.rating_juzgado,
+    rating_procedimiento: p.analisis_cesion?.rating_procedimiento ?? inferido.rating_procedimiento,
+    novada_hipoteca: p.analisis_cesion?.novada_hipoteca ?? null,
+    vivienda_habitual: p.analisis_cesion?.vivienda_habitual ?? null,
+    hay_que_pagar_deudor: p.analisis_cesion?.hay_que_pagar_deudor ?? null,
+    importe_pago_deudor: p.analisis_cesion?.importe_pago_deudor ?? null,
+    valor_mercado_garantia: p.analisis_cesion?.valor_mercado_garantia ?? null,
+    precio_cesion: p.analisis_cesion?.precio_cesion ?? p.asking_price ?? null,
+    gastos_inscripcion: p.analisis_cesion?.gastos_inscripcion ?? null,
+    impuestos_cesion: p.analisis_cesion?.impuestos_cesion ?? null,
+    comisiones: p.analisis_cesion?.comisiones ?? null,
+    impuestos_adjudicacion: p.analisis_cesion?.impuestos_adjudicacion ?? null,
+    notas_analisis: p.analisis_cesion?.notas_analisis ?? null,
+  })
+  const persistCesion = (next: AnalisisCesion) => {
+    setCesion(next)
+    onUpdateCampo({ analisis_cesion: next })
+  }
+  const beneficioCesion = calcBeneficioCesion(cesion)
+  const [mostrarCesion, setMostrarCesion] = useState(false)
   const [generandoResumen, setGenerandoResumen] = useState(false)
 
   const generarResumen = async () => {
@@ -426,6 +453,139 @@ function PosicionCard({
           onBlur={() => onUpdateCampo({ coste_fiscal_estimado: buf.coste_fiscal_estimado || null })}
           placeholder="Notas libres sobre el coste fiscal según la estrategia elegida (varía si es dación, subasta, cesión de remate, etc.)"
           rows={2} className="w-full rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium outline-none resize-none" style={INP} />
+      </div>
+
+      {/* Análisis Cesión de Crédito (metodología Master IN+) */}
+      <div className="mb-3">
+        <button onClick={() => setMostrarCesion(v => !v)}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-black"
+          style={{ background: 'rgba(166,133,90,0.08)', border: '1px solid rgba(166,133,90,0.25)', color: '#A6855A' }}>
+          <span>📋 Análisis Cesión de Crédito (Master IN+)</span>
+          <span>{mostrarCesion ? '▲' : '▼'}</span>
+        </button>
+
+        {mostrarCesion && (
+          <div className="rounded-xl p-3 mt-2 space-y-4" style={{ background: '#FAFAF8', border: '1px solid #F0EEE8' }}>
+
+            {/* 4 ratings de dificultad */}
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wide mb-2" style={{ color: '#A6855A' }}>Rating de dificultad</div>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { key: 'rating_deudor', label: 'Deudor', infAuto: inferido.rating_deudor },
+                  { key: 'rating_posesion', label: 'Posesión', infAuto: inferido.rating_posesion },
+                  { key: 'rating_juzgado', label: 'Juzgado', infAuto: inferido.rating_juzgado },
+                  { key: 'rating_procedimiento', label: 'Procedimiento', infAuto: inferido.rating_procedimiento },
+                ] as { key: keyof AnalisisCesion; label: string; infAuto: RatingDificultad | null }[]).map(({ key, label, infAuto }) => {
+                  const val = cesion[key] as RatingDificultad | null
+                  const cfg = val ? RATING_COLOR[val] : null
+                  const isInferido = val !== null && val === infAuto && p.analisis_cesion?.[key] == null
+                  return (
+                    <div key={key} className="rounded-lg p-2" style={{ background: cfg?.bg || 'rgba(0,0,0,0.04)', border: `1px solid ${cfg ? cfg.color + '44' : '#ECEAE4'}` }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#888' }}>{label}</span>
+                        {isInferido && <span className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(166,133,90,0.15)', color: '#A6855A' }}>auto</span>}
+                      </div>
+                      <div className="flex gap-1">
+                        {([1, 2, 3, 4, 5] as RatingDificultad[]).map(n => {
+                          const active = val === n
+                          const nCfg = RATING_COLOR[n]
+                          return (
+                            <button key={n} title={RATING_LABEL[n]}
+                              onClick={() => persistCesion({ ...cesion, [key]: active ? null : n })}
+                              className="flex-1 py-1 rounded text-[11px] font-black transition-all"
+                              style={{ background: active ? nCfg.color : '#F0EEE8', color: active ? '#fff' : '#AAA', border: 'none' }}>
+                              {n}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {val && <div className="text-[11px] mt-1 font-semibold" style={{ color: cfg?.color }}>{RATING_LABEL[val]}</div>}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Flags críticos */}
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wide mb-2" style={{ color: '#A6855A' }}>Flags críticos</div>
+              <div className="space-y-2">
+                {([
+                  { key: 'novada_hipoteca', label: 'Novada la hipoteca' },
+                  { key: 'vivienda_habitual', label: 'Vivienda habitual del deudor' },
+                  { key: 'hay_que_pagar_deudor', label: 'Hay que pagar al deudor' },
+                ] as { key: keyof AnalisisCesion; label: string }[]).map(({ key, label }) => {
+                  const val = cesion[key] as boolean | null
+                  return (
+                    <div key={key} className="flex items-center justify-between gap-2">
+                      <span className="text-[12px] font-semibold" style={{ color: '#555' }}>{label}</span>
+                      <div className="flex gap-1">
+                        {(['Sí', 'No'] as const).map(opt => {
+                          const isActive = opt === 'Sí' ? val === true : val === false
+                          return (
+                            <button key={opt}
+                              onClick={() => persistCesion({ ...cesion, [key]: opt === 'Sí' ? (val === true ? null : true) : (val === false ? null : false) })}
+                              className="px-3 py-1 rounded-lg text-[11px] font-black"
+                              style={{ background: isActive ? (opt === 'Sí' ? '#EF4444' : '#22C55E') : '#F0EEE8', color: isActive ? '#fff' : '#888' }}>
+                              {opt}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+                {cesion.hay_que_pagar_deudor && (
+                  <div className="flex items-center gap-2 pl-2">
+                    <span className="text-[11px] font-semibold" style={{ color: '#999' }}>Importe a pagar al deudor (€)</span>
+                    <input type="number" value={cesion.importe_pago_deudor ?? ''}
+                      onChange={e => persistCesion({ ...cesion, importe_pago_deudor: e.target.value === '' ? null : Number(e.target.value) })}
+                      className="w-[110px] rounded-lg px-2 py-1 text-[12px] font-mono font-bold outline-none" style={INP} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* P&L de la cesión */}
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wide mb-2" style={{ color: '#A6855A' }}>P&L de la cesión</div>
+              <div className="space-y-1.5">
+                {([
+                  { key: 'valor_mercado_garantia', label: 'Valor de mercado garantía (€)' },
+                  { key: 'precio_cesion', label: 'Precio de cesión (€)' },
+                  { key: 'gastos_inscripcion', label: 'Gastos de inscripción (€)' },
+                  { key: 'impuestos_cesion', label: 'Impuestos cesión (€)' },
+                  { key: 'comisiones', label: 'Comisiones (€)' },
+                  { key: 'impuestos_adjudicacion', label: 'Impuestos adjudicación (€)' },
+                ] as { key: keyof AnalisisCesion; label: string }[]).map(({ key, label }) => (
+                  <div key={key} className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-semibold" style={{ color: '#666' }}>{label}</span>
+                    <input type="number" value={(cesion[key] as number | null) ?? ''}
+                      onChange={e => persistCesion({ ...cesion, [key]: e.target.value === '' ? null : Number(e.target.value) })}
+                      className="w-[120px] rounded-lg px-2 py-1.5 text-[12px] font-mono font-bold outline-none text-right" style={INP} />
+                  </div>
+                ))}
+                <div className="flex items-center justify-between gap-2 pt-2 mt-1" style={{ borderTop: '1.5px solid #E8E6E0' }}>
+                  <span className="text-[13px] font-black" style={{ color: '#333' }}>Beneficio estimado</span>
+                  <span className="text-[15px] font-black font-mono"
+                    style={{ color: beneficioCesion === null ? '#BBB' : beneficioCesion >= 0 ? '#16a34a' : '#EF4444' }}>
+                    {beneficioCesion === null ? '—' : `${beneficioCesion >= 0 ? '+' : ''}${beneficioCesion.toLocaleString('es-ES')}€`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Notas de análisis */}
+            <div>
+              <label className="block text-[11px] font-black uppercase tracking-wide mb-1" style={{ color: '#A6855A' }}>Notas del análisis</label>
+              <textarea value={cesion.notas_analisis || ''}
+                onChange={e => persistCesion({ ...cesion, notas_analisis: e.target.value || null })}
+                placeholder="Observaciones del análisis, acuerdos verbales con el broker, aspectos a verificar..."
+                rows={3} className="w-full rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium outline-none resize-none" style={INP} />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Ficha detallada: Colateral / Deuda y titular / Estado judicial */}
