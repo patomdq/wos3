@@ -722,6 +722,8 @@ REGLAS:
 - Fórmula ROI = (venta - compra - reforma - gastos - impuestos) / (compra + reforma + gastos + impuestos). ROI mínimo aceptable: 30%.
 - ITP: 2% sobre precio de compra. Notaría+Registro: ~1.000€.
 - No mezcles datos HASU con JV.
+- Para buscar proyectos: usa coincidencia parcial e insensible a mayúsculas/acentos. "Alhóndiga" matchea "Calle Alhóndiga - HO", "cervantes" matchea "Proyecto Cervantes". Si hay un único match claro, úsalo directamente sin preguntar. Solo pide aclaración si hay 2+ matches ambiguos o ninguno.
+- Si no hay ningún proyecto que coincida con lo que dice el usuario, responde directamente "No existe ese proyecto en WOS3" sin listar opciones.
 
 CONTEXTO ACTUAL:
 ${context}
