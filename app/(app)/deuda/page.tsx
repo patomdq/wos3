@@ -15,9 +15,16 @@ const DeudaMapa = dynamic(() => import('@/components/DeudaMapa'), { ssr: false, 
 const ESTADO_TABS = ['todos', ...Object.keys(ESTADO_INTERNO_CFG)]
 
 const capitalizar = (s: string) => s.trim().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase())
+const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
 const unicos = (arr: (string | null | undefined)[]) => {
   const map = new Map<string, string>()
-  arr.forEach(v => { if (v && v.trim()) { const k = v.trim().toLowerCase(); if (!map.has(k)) map.set(k, capitalizar(v)) } })
+  arr.forEach(v => {
+    if (v && v.trim()) {
+      const k = sinTildes(v.trim().toLowerCase())
+      // Si ya existe una versión con tilde, la preferimos (más completa)
+      if (!map.has(k) || sinTildes(map.get(k)!) === map.get(k)!) map.set(k, capitalizar(v))
+    }
+  })
   return Array.from(map.values()).sort((a, b) => a.localeCompare(b, 'es'))
 }
 

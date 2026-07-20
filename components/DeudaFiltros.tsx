@@ -39,8 +39,9 @@ export function pasaFiltros(p: DeudaPosicion, filtros: DeudaFiltrosState, opts?:
     const haystack = [p.contract_id, p.direccion, p.titular_deuda, p.ciudad].filter(Boolean).join(' ').toLowerCase()
     if (!haystack.includes(buscar)) return false
   }
-  if (filtros.provincia !== 'todos' && p.provincia?.trim().toLowerCase() !== filtros.provincia.trim().toLowerCase()) return false
-  if (filtros.ciudad !== 'todos' && p.ciudad?.trim().toLowerCase() !== filtros.ciudad.trim().toLowerCase()) return false
+  const norm = (s?: string | null) => s ? s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') : ''
+  if (filtros.provincia !== 'todos' && norm(p.provincia) !== norm(filtros.provincia)) return false
+  if (filtros.ciudad !== 'todos' && norm(p.ciudad) !== norm(filtros.ciudad)) return false
   if (filtros.broker !== 'todos' && p.broker_origen !== filtros.broker) return false
   if (filtros.tipoColateral !== 'todos' && p.tipo_colateral !== filtros.tipoColateral) return false
   if (filtros.subtipoColateral !== 'todos' && p.subtipo_colateral !== filtros.subtipoColateral) return false
