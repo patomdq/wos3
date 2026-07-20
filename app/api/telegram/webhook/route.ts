@@ -37,6 +37,14 @@ interface TgVoice {
   file_size?: number
 }
 
+interface TgDocument {
+  file_id: string
+  file_unique_id: string
+  mime_type?: string
+  file_name?: string
+  file_size?: number
+}
+
 interface TgMessage {
   message_id: number
   from?: { id: number; first_name: string; last_name?: string; username?: string }
@@ -46,6 +54,7 @@ interface TgMessage {
   photo?: TgPhoto[]
   voice?: TgVoice
   audio?: TgVoice
+  document?: TgDocument
 }
 
 interface TgCallbackQuery {
@@ -800,6 +809,149 @@ async function handleEdificioCRUD(chatId: number, text: string): Promise<boolean
   return false
 }
 
+// ── PDF movimientos bancarios ─────────────────────────────────────────────────
+
+function normIban(iban: string): string {
+  return iban.replace(/\s+/g, '').toUpperCase()
+}
+
+function inferCategoria(concepto: string): string {
+  const c = concepto.toUpperCase()
+  if (/ARRAS/.test(c))                             return 'compra'
+  if (/REFOR|OBRA|REMODEL/.test(c))               return 'reforma'
+  if (/NOTAR|REGISTR|ITP|GESTOR|IMPUEST/.test(c)) return 'tramites'
+  if (/ARQUITECT|PROYECTO|LICEN/.test(c))         return 'tramites'
+  if (/^COP-/.test(c))                             return 'compra'
+  return 'gasto'
+}
+
+async function handleBankPDF(chatId: number, fileId: string): Promise<boolean> {
+  await sendMessage(chatId, '🔍 Leyendo extracto bancario...')
+
+  const tgApi = `https://api.telegram.org/bot${BOT_TOKEN}`
+
+  // Descargar PDF de Telegram
+  const fileRes = await fetch(`${tgApi}/getFile?file_id=${fileId}`)
+  const fileJson = await fileRes.json()
+  if (!fileJson.ok) {
+    await sendMessage(chatId, '❌ No pude descargar el PDF.')
+    return true
+  }
+  const pdfRes = await fetch(`${TG_FILE_API}/${fileJson.result.file_path}`)
+  const pdfBuffer = await pdfRes.arrayBuffer()
+  const pdfBase64 = Buffer.from(pdfBuffer).toString('base64')
+
+  // Claude extrae los datos del extracto
+  let extracted: { iban_origen?: string; iban_destino?: string; importe?: number; fecha?: string; concepto?: string; beneficiario?: string } = {}
+  try {
+    const res = await anthropic.messages.create({
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
+      max_tokens: 400,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 },
+          } as Parameters<typeof anthropic.messages.create>[0]['messages'][0]['content'][0],
+          {
+            type: 'text',
+            text: 'Extrae del extracto bancario: iban_origen (IBAN de la cuenta que envía, sin espacios), iban_destino (IBAN de la cuenta destino, sin espacios), importe (número, negativo si es salida), fecha (YYYY-MM-DD), concepto (concepto específico o concepto informado), beneficiario (nombre del beneficiario). Responde SOLO JSON válido sin texto extra.',
+          },
+        ],
+      }],
+    })
+    const c = res.content[0]
+    if (c.type === 'text') extracted = JSON.parse(c.text.match(/\{[\s\S]*\}/)?.[0] ?? '{}')
+  } catch (e) {
+    console.error('handleBankPDF extract error:', e)
+    await sendMessage(chatId, '❌ Error al procesar el PDF con IA.')
+    return true
+  }
+
+  if (!extracted.importe || !extracted.fecha) {
+    await sendMessage(chatId, '❌ No pude extraer importe o fecha del PDF. ¿Es un extracto CaixaBank?')
+    return true
+  }
+
+  // Buscar proyecto por IBAN origen
+  const ibanOrigen = normIban(extracted.iban_origen || '')
+  const { data: proyectos } = await supabase
+    .from('proyectos')
+    .select('id, nombre, iban')
+    .not('iban', 'is', null)
+
+  const proyecto = (proyectos || []).find(p => normIban(p.iban || '') === ibanOrigen)
+
+  if (!proyecto) {
+    await sendMessage(chatId,
+      `❌ No encontré ningún proyecto con el IBAN *${ibanOrigen}*.\n\nPodés asociarlo manualmente desde WOS3 → Proyectos → ficha del proyecto (campo IBAN pendiente de implementar en la UI).`
+    )
+    return true
+  }
+
+  const importe = Number(extracted.importe)
+  const esEgreso = importe < 0
+  const categoria = inferCategoria(extracted.concepto || '')
+
+  // Armar movimientos propuestos
+  const movs: Array<{ tipo: string; categoria: string; concepto: string; monto: number; proveedor?: string; observaciones?: string }> = []
+
+  movs.push({
+    tipo: esEgreso ? 'egreso' : 'ingreso',
+    categoria: esEgreso ? categoria : 'Aportación',
+    concepto: extracted.concepto || '',
+    monto: importe,
+    proveedor: extracted.beneficiario || '',
+    observaciones: extracted.iban_destino ? `Cuenta destino: ${extracted.iban_destino}` : '',
+  })
+
+  // Preview del texto
+  const fmt = (n: number) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2 }).format(Math.abs(n))
+  const signo = esEgreso ? '−' : '+'
+  const lines = [
+    `📄 *Extracto detectado*`,
+    ``,
+    `📁 Proyecto: *${proyecto.nombre}*`,
+    `📅 Fecha: ${extracted.fecha}`,
+    `💶 Importe: *${signo}${fmt(importe)} €*`,
+    `📝 Concepto: ${extracted.concepto || '—'}`,
+    `👤 Beneficiario: ${extracted.beneficiario || '—'}`,
+    ``,
+    `Movimiento propuesto:`,
+    ...movs.map(m => `• ${m.tipo === 'egreso' ? '🔴' : '🟢'} ${m.tipo.toUpperCase()} · ${m.categoria} · ${signo}${fmt(m.monto)} €`),
+    ``,
+    `¿Confirmo la carga?`,
+  ]
+
+  // Guardar borrador en telegram_pending
+  const pendingData = {
+    proyecto_id: proyecto.id,
+    proyecto_nombre: proyecto.nombre,
+    fecha: extracted.fecha,
+    movimientos: movs,
+  }
+  const { data: pending, error: pendingError } = await supabase
+    .from('telegram_pending')
+    .insert({ tipo: 'movimiento', data: pendingData })
+    .select('id')
+    .single()
+
+  if (pendingError || !pending) {
+    await sendMessage(chatId, '❌ Error al guardar borrador. Intenta de nuevo.')
+    return true
+  }
+
+  const replyMarkup = {
+    inline_keyboard: [[
+      { text: '✅ Confirmar', callback_data: `mov_confirm:${pending.id}` },
+      { text: '❌ Cancelar', callback_data: `mov_cancel:${pending.id}` },
+    ]],
+  }
+  await sendMessage(chatId, lines.join('\n'), replyMarkup)
+  return true
+}
+
 // ── Agenda helpers ────────────────────────────────────────────────────────────
 
 type TaskState = 'pendiente' | 'en_proceso' | 'hecho'
@@ -1114,6 +1266,52 @@ async function handleCallbackQuery(cb: TgCallbackQuery) {
       await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n🗑️ Descartado')
     }
   }
+
+  // Confirmar movimiento bancario
+  if (action === 'mov_confirm') {
+    const { data: pending, error: fetchErr } = await supabase
+      .from('telegram_pending')
+      .select('data')
+      .eq('id', actionId)
+      .single()
+
+    if (fetchErr || !pending) {
+      await answerCallbackQuery(cb.id, '❌ No encontré el borrador')
+      return
+    }
+
+    const d = pending.data as { proyecto_id: string; fecha: string; movimientos: Array<{ tipo: string; categoria: string; concepto: string; monto: number; proveedor?: string; observaciones?: string }> }
+
+    const movRows = d.movimientos.map(m => ({
+      proyecto_id: d.proyecto_id,
+      fecha: d.fecha,
+      tipo: m.tipo,
+      categoria: m.categoria,
+      concepto: m.concepto,
+      monto: m.monto,
+      forma_pago: 'transferencia',
+      proveedor: m.proveedor || null,
+      observaciones: m.observaciones || null,
+    }))
+
+    const { error: insErr } = await supabase.from('movimientos').insert(movRows)
+
+    if (insErr) {
+      await answerCallbackQuery(cb.id, '❌ Error al guardar')
+      return
+    }
+
+    await supabase.from('telegram_pending').delete().eq('id', actionId)
+    await answerCallbackQuery(cb.id, '✅ Movimiento guardado')
+    await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n✅ *Guardado en WOS3*')
+  }
+
+  // Cancelar movimiento bancario
+  if (action === 'mov_cancel') {
+    await supabase.from('telegram_pending').delete().eq('id', actionId)
+    await answerCallbackQuery(cb.id, '❌ Cancelado')
+    await editMessage(chatId, messageId, (cb.message?.text || '') + '\n\n❌ Cancelado')
+  }
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────────
@@ -1158,6 +1356,17 @@ export async function POST(req: NextRequest) {
   const urlMatch = text.match(/https?:\/\/[^\s]+(?:idealista\.com|fotocasa\.es|solvia\.es|habitaclia\.com|pisos\.com|inmobiliaria|kyero\.com|thinkspain\.com|yaencontre\.com|hogaria\.net|tecnocasa\.es|century21|remax\.es|engel|savills)[^\s]*/i)
     ?? text.match(/https?:\/\/[^\s]{20,}/i)
   const hasPhotos = !!(message.photo?.length)
+
+  // PDF extracto bancario
+  if (message.document?.mime_type === 'application/pdf') {
+    try {
+      await handleBankPDF(chatId, message.document.file_id)
+    } catch (e) {
+      console.error('handleBankPDF error:', e)
+      await sendMessage(chatId, '❌ Error procesando el PDF.')
+    }
+    return NextResponse.json({ ok: true })
+  }
 
   // Calendar events
   try {
