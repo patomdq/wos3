@@ -3,31 +3,10 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { authFetch } from '@/lib/auth-fetch'
-import { CHECKLIST_ITEMS, ChecklistDocumentacion, getItemEstado } from '@/lib/checklist-documentacion'
+import InmuebleCalculadora from '@/components/InmuebleCalculadora'
 
 const TABS = ['Finanzas','Reforma','Pendientes','Bitácora','Inversor','Docs','Comercialización','Análisis']
 
-// ─── JV / Análisis helpers ────────────────────────────────
-type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor' | 'mixto'; gestorPct?: number; capital: number }
-
-function calcJvReparto(jugadores: JvJugador[], beneficio: number | null, meses: number) {
-  const fracGestor = (j: JvJugador) => j.rol === 'gestor' ? 1 : j.rol === 'inversor' ? 0 : (j.gestorPct ?? 50) / 100
-  const fracInversor = (j: JvJugador) => 1 - fracGestor(j)
-  const capitalTotal = jugadores.reduce((s, j) => s + j.capital, 0)
-  const totalFracGestor = jugadores.reduce((s, j) => s + fracGestor(j), 0)
-  const capitalInversores = jugadores.reduce((s, j) => s + j.capital * fracInversor(j), 0)
-  return jugadores.map(j => {
-    const poolPctGestor = totalFracGestor > 0 ? 0.5 * (fracGestor(j) / totalFracGestor) : 0
-    const poolPctInversor = capitalInversores > 0 ? 0.5 * ((j.capital * fracInversor(j)) / capitalInversores) : 0
-    const poolPct = poolPctGestor + poolPctInversor
-    const jBeneficio = beneficio !== null ? poolPct * beneficio : null
-    const roi = (jBeneficio !== null && j.capital > 0) ? (jBeneficio / j.capital) * 100 : null
-    const roiAnual = (roi !== null && meses > 0) ? (Math.pow(1 + roi / 100, 12 / meses) - 1) * 100 : null
-    const pctCapital = capitalTotal > 0 ? (j.capital / capitalTotal) * 100 : null
-    const pctBeneficio = poolPct * 100
-    return { ...j, beneficio: jBeneficio, roi, roiAnual, pctCapital, pctBeneficio }
-  })
-}
 
 const ESTADOS_PROSPECTO = ['Contactado','Visita programada','Visita realizada','Oferta recibida','En negociación','Descartado']
 const ESTADO_PROSPECTO_COLOR: Record<string,string> = {
@@ -1891,198 +1870,15 @@ export default function ProyectoDetalle() {
       )}
 
       {/* ═══ Tab: ANÁLISIS (JV + Calculadora + Checklist desde inmueble vinculado) ═══ */}
-      {tab === 7 && (() => {
-        if (!inmueble) return (
-          <div className="rounded-2xl p-6 text-center" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
-            <div className="text-3xl mb-3 opacity-30">🔗</div>
-            <div className="font-bold text-sm" style={{ color:'#999' }}>Este proyecto no tiene un inmueble vinculado desde Mercado.</div>
-            <div className="text-sm mt-1" style={{ color:'#bbb' }}>Al pasar un inmueble de Mercado a "En arras", queda automáticamente enlazado aquí.</div>
-          </div>
-        )
-
-        const jvJugadores: JvJugador[] = inmueble.jv_jugadores || []
-        const jvModo = jvJugadores.length > 0 ? 'jv' : 'hasu'
-        const duracion = inmueble.duracion_meses || 12
-
-        // Calculadora CAAV — extraer el beneficio realista de gastos_json
-        const gastos = inmueble.gastos_json || {}
-        let totalInversion = 0
-        Object.values(gastos).forEach((g: any) => {
-          const r = parseFloat(String(g?.real || 0)) || 0
-          const e = parseFloat(String(g?.estimado || 0)) || 0
-          totalInversion += r > 0 ? r : e
-        })
-        const pvReal = parseFloat(String(inmueble.precio_venta_real || inmueble.precio_venta_estimado || 0)) || 0
-        const benRealista = totalInversion > 0 && pvReal > 0 ? pvReal - totalInversion : null
-        const roiRealista = benRealista !== null && totalInversion > 0 ? (benRealista / totalInversion) * 100 : null
-
-        const jvResultados = jvJugadores.length > 0 ? calcJvReparto(jvJugadores, benRealista, duracion) : []
-        const roiColor = (r: number | null) => r === null ? '#999' : r >= 30 ? '#16A34A' : r >= 15 ? '#D97706' : '#EF4444'
-
-        // Checklist
-        const checklist: ChecklistDocumentacion = inmueble.checklist_documentacion || {}
-        const estadoColor: Record<string, string> = { ok: '#16A34A', alerta: '#EF4444', no_aplica: '#999', pendiente: '#D97706' }
-        const estadoLabel: Record<string, string> = { ok: 'OK', alerta: 'Alerta', no_aplica: 'N/A', pendiente: 'Pendiente' }
-
-        return (
-          <div className="space-y-4">
-            {/* Link a Mercado */}
-            <button
-              onClick={() => router.push('/mercado')}
-              className="w-full text-sm font-bold py-2 rounded-xl"
-              style={{ background:'rgba(166,133,90,0.12)', color:'#A6855A', border:'1.5px solid rgba(166,133,90,0.25)' }}>
-              ✎ Editar en Mercado →
-            </button>
-
-            {/* Inmueble info */}
-            <div className="rounded-2xl p-4" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
-              <div className="font-black text-[15px] mb-1" style={{ color:'#111' }}>{inmueble.titulo}</div>
-              <div className="text-sm" style={{ color:'#888' }}>{inmueble.ciudad}{inmueble.provincia ? `, ${inmueble.provincia}` : ''}</div>
+      {tab === 7 && (
+        inmueble
+          ? <InmuebleCalculadora inmuebleId={inmueble.id} tipologia={inmueble.tipologia || 'piso'} />
+          : <div className="rounded-2xl p-6 text-center" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
+              <div className="text-3xl mb-3 opacity-30">🔗</div>
+              <div className="font-bold text-sm" style={{ color:'#999' }}>Sin inmueble vinculado desde Mercado.</div>
+              <div className="text-sm mt-1" style={{ color:'#bbb' }}>Al pasar un inmueble de Mercado a "En arras", queda automáticamente enlazado aquí.</div>
             </div>
-
-            {/* ─── Calculadora CAAV (snapshot) ─── */}
-            {totalInversion > 0 && (
-              <div className="rounded-2xl p-4" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
-                <div className="font-black text-[14px] mb-3" style={{ color:'#888' }}>CALCULADORA CAAV</div>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div className="rounded-xl p-3 text-center" style={{ background:'#F9F8F5' }}>
-                    <div className="text-[12px] font-bold uppercase tracking-wide mb-1" style={{ color:'#999' }}>Inversión total</div>
-                    <div className="font-black text-[18px]" style={{ color:'#111' }}>{fmtK(totalInversion)}</div>
-                  </div>
-                  <div className="rounded-xl p-3 text-center" style={{ background:'#F9F8F5' }}>
-                    <div className="text-[12px] font-bold uppercase tracking-wide mb-1" style={{ color:'#999' }}>Precio venta</div>
-                    <div className="font-black text-[18px]" style={{ color:'#111' }}>{pvReal > 0 ? fmtK(pvReal) : '—'}</div>
-                  </div>
-                </div>
-                {benRealista !== null && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl p-3 text-center" style={{ background: benRealista >= 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)' }}>
-                      <div className="text-[12px] font-bold uppercase tracking-wide mb-1" style={{ color:'#999' }}>Beneficio</div>
-                      <div className="font-black text-[18px]" style={{ color: benRealista >= 0 ? '#16A34A' : '#EF4444' }}>{fmtK(benRealista)}</div>
-                    </div>
-                    <div className="rounded-xl p-3 text-center" style={{ background:'rgba(166,133,90,0.08)' }}>
-                      <div className="text-[12px] font-bold uppercase tracking-wide mb-1" style={{ color:'#999' }}>ROI</div>
-                      <div className="font-black text-[18px]" style={{ color: roiColor(roiRealista) }}>{roiRealista !== null ? `${roiRealista.toFixed(1)}%` : '—'}</div>
-                    </div>
-                  </div>
-                )}
-                {!inmueble.precio_venta_real && !inmueble.precio_venta_estimado && (
-                  <div className="text-sm mt-2 text-center" style={{ color:'#bbb' }}>Sin precio de venta — completa en Mercado para ver beneficio.</div>
-                )}
-              </div>
-            )}
-
-            {/* ─── JV / Gestor ─── */}
-            <div className="rounded-2xl p-4" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="font-black text-[14px]" style={{ color:'#888' }}>JV / GESTOR</div>
-                <div className="text-sm font-bold px-2.5 py-1 rounded-lg"
-                  style={{ background: jvModo === 'jv' ? 'rgba(167,139,250,0.15)' : 'rgba(166,133,90,0.12)', color: jvModo === 'jv' ? '#7C3AED' : '#A6855A' }}>
-                  {jvModo === 'jv' ? '🤝 Joint Venture' : '🏢 Solo HASU'}
-                </div>
-              </div>
-
-              {jvModo === 'hasu' ? (
-                <div className="text-sm text-center py-4" style={{ color:'#bbb' }}>Operación 100% HASU — sin inversores externos.</div>
-              ) : (
-                <>
-                  {/* Tabla jugadores */}
-                  <div className="rounded-xl overflow-hidden mb-3" style={{ border:'1px solid #ECEAE4' }}>
-                    <div className="grid text-[12px] font-bold uppercase tracking-wide px-3 py-2" style={{ gridTemplateColumns:'1fr 80px 90px 80px', background:'#F9F8F5', color:'#999', gap:8 }}>
-                      <div>Jugador</div>
-                      <div className="text-right">Capital</div>
-                      <div className="text-right">Beneficio</div>
-                      <div className="text-right">ROI</div>
-                    </div>
-                    {jvResultados.map((j, i) => (
-                      <div key={j.id} className="grid items-center px-3 py-2.5 text-sm"
-                        style={{ gridTemplateColumns:'1fr 80px 90px 80px', gap:8, borderTop: i > 0 ? '1px solid #F5F4F0' : 'none' }}>
-                        <div>
-                          <div className="font-bold" style={{ color:'#111' }}>{j.nombre}</div>
-                          <div className="text-[11px]" style={{ color:'#bbb' }}>
-                            {j.rol === 'gestor' ? 'Gestor' : j.rol === 'inversor' ? 'Inversor' : `Mixto ${j.gestorPct ?? 50}%G`}
-                            {j.pctBeneficio !== undefined && ` · ${j.pctBeneficio.toFixed(0)}% benef.`}
-                          </div>
-                        </div>
-                        <div className="text-right font-bold text-[13px]" style={{ color:'#666' }}>{fmtK(j.capital)}</div>
-                        <div className="text-right font-black text-[13px]" style={{ color: j.beneficio !== null ? (j.beneficio >= 0 ? '#16A34A' : '#EF4444') : '#999' }}>
-                          {j.beneficio !== null ? fmtK(j.beneficio) : '—'}
-                        </div>
-                        <div className="text-right font-bold text-[13px]" style={{ color: roiColor(j.roi ?? null) }}>
-                          {j.roi !== null ? `${j.roi!.toFixed(1)}%` : '—'}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Bonus CCP */}
-                  {(inmueble.jv_bono_beneficio_ccp || inmueble.jv_bono_beneficio_final) && (() => {
-                    const ccp = parseFloat(String(inmueble.jv_bono_beneficio_ccp || 0)) || 0
-                    const final = parseFloat(String(inmueble.jv_bono_beneficio_final || 0)) || 0
-                    const excedente = final > ccp ? final - ccp : 0
-                    return (
-                      <div className="rounded-xl p-3 mt-1" style={{ background:'rgba(167,139,250,0.08)', border:'1px solid rgba(167,139,250,0.2)' }}>
-                        <div className="text-[12px] font-bold uppercase tracking-wide mb-2" style={{ color:'#7C3AED' }}>Bonus CCP</div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span style={{ color:'#888' }}>Acordado en CCP</span>
-                          <span className="font-bold" style={{ color:'#111' }}>{fmtK(ccp)}</span>
-                        </div>
-                        {final > 0 && (
-                          <>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span style={{ color:'#888' }}>Beneficio final</span>
-                              <span className="font-bold" style={{ color:'#111' }}>{fmtK(final)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span style={{ color:'#888' }}>Excedente</span>
-                              <span className="font-black" style={{ color: excedente > 0 ? '#16A34A' : '#999' }}>{excedente > 0 ? fmtK(excedente) : 'Sin excedente'}</span>
-                            </div>
-                          </>
-                        )}
-                        {inmueble.jv_bono_liquidacion && (
-                          <div className="mt-2 text-sm p-2 rounded-lg" style={{ background:'rgba(255,255,255,0.6)', color:'#666' }}>
-                            {inmueble.jv_bono_liquidacion}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()}
-                </>
-              )}
-            </div>
-
-            {/* ─── Checklist ─── */}
-            <div className="rounded-2xl p-4" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
-              <div className="font-black text-[14px] mb-3" style={{ color:'#888' }}>CHECKLIST DOCUMENTACIÓN</div>
-              <div className="space-y-1.5">
-                {CHECKLIST_ITEMS.map(item => {
-                  const estado = getItemEstado(checklist, item.key)
-                  const nota = checklist.notas?.[item.key]
-                  return (
-                    <div key={item.key} className="flex items-start gap-2.5 py-1.5 px-2.5 rounded-lg" style={{ background:'#F9F8F5' }}>
-                      <span className="text-[11px] font-black px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5"
-                        style={{ background: `${estadoColor[estado]}22`, color: estadoColor[estado] }}>
-                        {estadoLabel[estado]}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold" style={{ color:'#111' }}>
-                          {item.bloqueante && <span style={{ color:'#EF4444' }}>⚠ </span>}{item.label}
-                        </div>
-                        {nota && <div className="text-[12px] mt-0.5" style={{ color:'#888' }}>{nota}</div>}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              {checklist.overrideNota && (
-                <div className="mt-3 text-sm p-2.5 rounded-lg" style={{ background:'rgba(239,68,68,0.06)', color:'#EF4444', border:'1px solid rgba(239,68,68,0.2)' }}>
-                  Override: {checklist.overrideNota}
-                </div>
-              )}
-            </div>
-          </div>
-        )
-      })()}
+      )}
     </div>
   )
 }
