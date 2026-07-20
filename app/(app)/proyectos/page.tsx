@@ -512,42 +512,7 @@ export default function ProyectosPage() {
           </>
         )}
 
-        {/* ── PATRIMONIO (alquiler, fuera del funnel de venta) ── */}
-        {patrimoniales.length > 0 && (
-          <>
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em', marginBottom: 20 }}>PATRIMONIO · EN ALQUILER</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
-              {patrimoniales.map(p => (
-                <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div onClick={() => router.push(`/proyectos/${p.id}`)} style={{ cursor: 'pointer', flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>{p.nombre}</div>
-                      <div style={{ fontSize: 12, color: '#999', marginTop: 3 }}>📍 {p.ciudad || '—'}</div>
-                    </div>
-                    <button onClick={e => deleteProyecto(p, e)}
-                      style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: 'none', cursor: 'pointer', flexShrink: 0 }}>✕</button>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <select
-                      value={p.estado}
-                      disabled={saving[p.id]}
-                      onClick={e => e.stopPropagation()}
-                      onChange={e => { e.stopPropagation(); cambiarEstado(p.id, e.target.value) }}
-                      style={{ fontSize: 12, fontWeight: 800, padding: '3px 8px', borderRadius: 100, border: 'none', outline: 'none', cursor: 'pointer', background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888', WebkitAppearance: 'none', MozAppearance: 'none' } as React.CSSProperties}
-                    >
-                      {ESTADOS_TODOS.filter(e => e !== 'cerrado').map(e => (
-                        <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
-                      ))}
-                    </select>
-                    {p.precio_compra && (
-                      <span style={{ fontSize: 13, fontWeight: 900, color: '#111' }}>{fmt(p.precio_compra)}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+        {/* Patrimonio oculto en esta vista — gestionado desde HASU → pestaña Patrimonio */}
 
         {/* ── PIPELINE ── */}
         {pipeline.length > 0 && (
@@ -588,7 +553,7 @@ export default function ProyectosPage() {
 
 
         {/* Empty state */}
-        {!loading && activos.length === 0 && pipeline.length === 0 && patrimoniales.length === 0 && finalizados.length === 0 && (
+        {!loading && activos.length === 0 && pipeline.length === 0 && finalizados.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#BBB' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🏠</div>
             <div style={{ fontSize: 14, fontWeight: 700 }}>No hay proyectos todavía</div>

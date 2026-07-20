@@ -71,6 +71,8 @@ export default function ProyectoDetalle() {
   const [inversor, setInversor] = useState<any>(null)
   const [docs, setDocs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [ibanEdit, setIbanEdit] = useState<string | null>(null)
+  const [ibanSaving, setIbanSaving] = useState(false)
   const [inmueble, setInmueble] = useState<any>(null)
   const [savingInmueble, setSavingInmueble] = useState(false)
 
@@ -676,6 +678,52 @@ export default function ProyectoDetalle() {
               <div className="font-black text-[22px]" style={{ color: '#60A5FA' }}>{fmtK(capitalAportado)}</div>
               <div className="text-[12px] mt-0.5" style={{ color: '#999999' }}>socios · no es ingreso</div>
             </div>
+          </div>
+
+          {/* IBAN de la cuenta del proyecto */}
+          <div className="rounded-xl p-3.5 mb-3 flex items-center gap-3" style={CARD}>
+            <div style={{ color: '#888', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>IBAN cuenta</div>
+            {ibanEdit === null ? (
+              <>
+                <div className="flex-1 font-mono text-[13px]" style={{ color: proyecto?.iban ? '#1A1A1A' : '#BBB' }}>
+                  {proyecto?.iban ? proyecto.iban.replace(/(.{4})/g, '$1 ').trim() : 'Sin IBAN cargado'}
+                </div>
+                <button onClick={() => setIbanEdit(proyecto?.iban || '')}
+                  className="text-[12px] font-black px-2.5 py-1 rounded-lg"
+                  style={{ background: '#F2ECE0', color: '#A6855A', border: 'none', cursor: 'pointer' }}>
+                  ✎ Editar
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  value={ibanEdit}
+                  onChange={e => setIbanEdit(e.target.value.replace(/\s/g, '').toUpperCase())}
+                  placeholder="ES00 0000 0000 0000 0000 0000"
+                  className="flex-1 font-mono text-[13px] rounded-lg px-2.5 py-1 outline-none"
+                  style={{ border: '1.5px solid #A6855A', background: '#FAFAF8', color: '#1A1A1A' }}
+                />
+                <button
+                  disabled={ibanSaving}
+                  onClick={async () => {
+                    setIbanSaving(true)
+                    const clean = ibanEdit.replace(/\s/g, '')
+                    await supabase.from('proyectos').update({ iban: clean || null }).eq('id', proyecto.id)
+                    setProyecto((p: any) => ({ ...p, iban: clean || null }))
+                    setIbanEdit(null)
+                    setIbanSaving(false)
+                  }}
+                  className="text-[12px] font-black px-2.5 py-1 rounded-lg"
+                  style={{ background: '#14110C', color: '#F8F3E9', border: 'none', cursor: 'pointer' }}>
+                  {ibanSaving ? '...' : 'Guardar'}
+                </button>
+                <button onClick={() => setIbanEdit(null)}
+                  className="text-[12px] font-black px-2.5 py-1 rounded-lg"
+                  style={{ background: '#F2ECE0', color: '#888', border: 'none', cursor: 'pointer' }}>
+                  Cancelar
+                </button>
+              </>
+            )}
           </div>
 
           {/* Tabla movimientos */}
