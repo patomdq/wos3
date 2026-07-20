@@ -87,6 +87,7 @@ type Inmueble = {
   portfolio_reo?: string
   estado_judicial_reo?: string
   fase_desahucio?: string
+  proyecto_id?: string | null
 }
 
 type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor' | 'mixto'; gestorPct?: number; capital: number }
@@ -234,6 +235,7 @@ export default function MercadoPage() {
   const [updatingEstado, setUpdatingEstado] = useState<string | null>(null)
   const [confirmandoCompra, setConfirmandoCompra] = useState<string | null>(null)
   const [compraOverrideOk, setCompraOverrideOk] = useState(false)
+  const [confirmandoArras, setConfirmandoArras] = useState<string | null>(null)
 
   // Nuevo inmueble
   const [nuevoOpen, setNuevoOpen] = useState(false)
@@ -673,6 +675,13 @@ export default function MercadoPage() {
   }
 
   const updateEstado = async (id: string, nuevoEstado: string) => {
+    // Al marcar En Arras: mostrar confirmación para mover a Proyectos
+    if (nuevoEstado === 'en_arras') {
+      const item = inmuebles.find(x => x.id === id)
+      if (item && !item.proyecto_id) { setConfirmandoArras(id); return }
+    }
+    // Si se desmarca arras (vuelve a en_estudio): quitar confirmación si estaba abierta
+    if (confirmandoArras === id) setConfirmandoArras(null)
     setUpdatingEstado(id + '_' + nuevoEstado)
     const { error } = await supabase.from('inmuebles').update({ estado: nuevoEstado }).eq('id', id)
     setUpdatingEstado(null)
@@ -680,6 +689,51 @@ export default function MercadoPage() {
     setInmuebles(prev => prev.map(x => x.id === id ? { ...x, estado: nuevoEstado } : x))
   }
 
+  const moverArrasAProyectos = async (item: Inmueble) => {
+    setConfirmandoArras(null)
+    setCreando(item.id)
+    // 1. Cambiar estado del inmueble a en_arras
+    await supabase.from('inmuebles').update({ estado: 'en_arras' }).eq('id', item.id)
+    // 2. Crear proyecto con estado en_arras
+    const { data: proyecto, error } = await supabase.from('proyectos').insert([{
+      nombre: item.titulo || item.direccion,
+      direccion: item.direccion,
+      ciudad: item.ciudad || null,
+      tipo: item.tipologia || 'piso',
+      estado: 'en_arras',
+      precio_compra: item.precio_compra || null,
+      precio_venta_conservador: item.precio_venta_conservador || null,
+      precio_venta_realista:    item.precio_venta_realista    || null,
+      precio_venta_optimista:   item.precio_venta_optimista   || null,
+      precio_venta_estimado: item.precio_venta_realista || item.precio_venta_optimista || item.precio_venta_conservador || null,
+      porcentaje_hasu: 100,
+      fecha_compra: today(),
+    }]).select().single()
+    if (error) { alert(`Error: ${error.message}`); setCreando(null); return }
+    // 3. Guardar proyecto_id en el inmueble para no duplicar
+    await supabase.from('inmuebles').update({ proyecto_id: proyecto.id }).eq('id', item.id)
+    // 4. Crear partidas de reforma plantilla
+    const { data: partidasInsertadas } = await supabase.from('partidas_reforma')
+      .insert(PARTIDAS_PLANTILLA.map(p => ({
+        proyecto_id: proyecto.id, nombre: p.nombre, categoria: p.categoria,
+        orden: p.orden, presupuesto: 0, ejecutado: 0, estado: 'pendiente',
+      }))).select('id, nombre')
+    if (partidasInsertadas) {
+      const itemsRows: {partida_id:string;nombre:string;orden:number}[] = []
+      for (const partida of partidasInsertadas) {
+        const template = PARTIDAS_PLANTILLA.find(pt => pt.nombre === partida.nombre)
+        if (template?.items) {
+          for (const it of template.items) itemsRows.push({ partida_id: partida.id, nombre: it.nombre, orden: it.orden })
+        }
+      }
+      if (itemsRows.length > 0) await supabase.from('items_partida').insert(itemsRows)
+    }
+    setInmuebles(prev => prev.map(x => x.id === item.id ? { ...x, estado: 'en_arras', proyecto_id: proyecto.id } : x))
+    setCreando(null)
+    router.push('/proyectos')
+  }
+
+  // Mantenemos crearProyecto solo como fallback por si hay inmuebles legacy en estado comprado sin proyecto_id
   const crearProyecto = async (item: Inmueble) => {
     if (confirmandoCompra !== item.id) { setConfirmandoCompra(item.id); setCompraOverrideOk(false); return }
     const pendientesChecklist = getBloqueantesPendientes(item.checklist_documentacion)
@@ -716,11 +770,8 @@ export default function MercadoPage() {
       }
       if (itemsRows.length > 0) await supabase.from('items_partida').insert(itemsRows)
     }
-    const checklistUpdate = pendientesChecklist.length > 0
-      ? { ...(item.checklist_documentacion || {}), overrideNota: `Avanzado a Comprado con ${pendientesChecklist.length} punto(s) sin resolver: ${pendientesChecklist.map(p => p.label).join(', ')}`, overrideAt: new Date().toISOString() }
-      : item.checklist_documentacion
-    await supabase.from('inmuebles').update({ estado: 'comprado', checklist_documentacion: checklistUpdate }).eq('id', item.id)
-    setInmuebles(prev => prev.map(x => x.id === item.id ? { ...x, estado: 'comprado', checklist_documentacion: checklistUpdate } : x))
+    await supabase.from('inmuebles').update({ estado: 'comprado', proyecto_id: proyecto.id }).eq('id', item.id)
+    setInmuebles(prev => prev.map(x => x.id === item.id ? { ...x, estado: 'comprado', proyecto_id: proyecto.id } : x))
     setCompraOverrideOk(false)
     setCreando(null)
     router.push('/proyectos')
@@ -991,6 +1042,7 @@ export default function MercadoPage() {
   const buscarNorm = buscar.trim().toLowerCase()
   const provinciasDisponibles = Array.from(new Set(inmuebles.map(x => x.provincia).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, 'es'))
   const inmueblesFiltrados = inmuebles.filter(x =>
+    !x.proyecto_id &&  // ocultar los que ya pasaron a Proyectos
     (filtroTipologia === 'todos' || x.tipologia === filtroTipologia) &&
     (filtroEstado === 'todos' || x.estado === filtroEstado) &&
     (filtroOrigen === 'todos' || (x.origen || 'directo') === filtroOrigen) &&
@@ -1265,6 +1317,37 @@ export default function MercadoPage() {
   return (
     <div style={{ background: '#F4F4F4', minHeight: '100vh' }}>
       {renderBitacoraModal()}
+
+      {/* Modal confirmación mover a Proyectos desde En Arras */}
+      {confirmandoArras && (() => {
+        const item = inmuebles.find(x => x.id === confirmandoArras)
+        if (!item) return null
+        return (
+          <>
+            <div className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setConfirmandoArras(null)} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+              <div className="w-full max-w-sm rounded-2xl p-6 pointer-events-auto" style={{ background: '#fff', border: '1px solid #E8E6E0', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+                <div className="text-[18px] font-black mb-1" style={{ color: '#111' }}>¿Mover a Proyectos?</div>
+                <div className="text-[13px] font-medium mb-1" style={{ color: '#666' }}>{item.titulo || item.direccion}</div>
+                <div className="text-[12px] mb-5 leading-relaxed" style={{ color: '#999' }}>
+                  El inmueble desaparece de Mercado y entra a Proyectos con estado <strong style={{ color: '#a78bfa' }}>En arras</strong>. Cuando se firme la escritura cambiás la etiqueta a Comprado desde Proyectos.
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setConfirmandoArras(null)}
+                    className="flex-1 py-2.5 rounded-xl text-[13px] font-black" style={{ background: '#F0EEE8', color: '#888' }}>
+                    Cancelar
+                  </button>
+                  <button onClick={() => moverArrasAProyectos(item)} disabled={creando === item.id}
+                    className="flex-1 py-2.5 rounded-xl text-[13px] font-black disabled:opacity-50" style={{ background: '#14110C', color: '#F8F3E9' }}>
+                    {creando === item.id ? '...' : 'Mover a Proyectos →'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )
+      })()}
+
       {/* ── Banner cabecera ── */}
       <div style={{ padding: '20px 20px 0' }}>
         <div style={{ position: 'relative', height: 160, overflow: 'hidden', borderRadius: 20 }}>
@@ -1731,16 +1814,6 @@ export default function MercadoPage() {
                   const pendientesChecklist = getBloqueantesPendientes(item.checklist_documentacion)
                   return (
                   <div style={{ borderTop: '1px solid #F0EEE8' }}>
-                    {confirmandoCompra === item.id && pendientesChecklist.length > 0 && (
-                      <div className="mx-3 mt-2 rounded-lg p-2.5" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                        <div className="text-[12px] font-black mb-1" style={{ color: '#B45309' }}>⚠ Checklist sin cerrar — falta verificar:</div>
-                        <div className="text-[12px] font-medium mb-2" style={{ color: '#92400E', lineHeight: 1.4 }}>{pendientesChecklist.map(p => p.label).join(' · ')}</div>
-                        <label className="flex items-center gap-1.5 text-[12px] font-bold" style={{ color: '#92400E' }}>
-                          <input type="checkbox" checked={compraOverrideOk} onChange={e => setCompraOverrideOk(e.target.checked)} />
-                          Confirmo que avanzo igual aunque falten estos puntos
-                        </label>
-                      </div>
-                    )}
                     <div className="flex gap-2 px-3 py-2 flex-wrap">
                       <span className="text-[12px] font-bold self-center flex-shrink-0 uppercase tracking-wide" style={{ color: '#BBB' }}>Estado:</span>
                       {(['ofertado', 'en_arras'] as const).map(s => {
@@ -1753,24 +1826,10 @@ export default function MercadoPage() {
                           </button>
                         )
                       })}
-                      {item.estado === 'en_arras' && (confirmandoCompra === item.id ? (
-                        <div className="flex gap-1.5 ml-auto">
-                          <button onClick={() => crearProyecto(item)} disabled={creando === item.id || (pendientesChecklist.length > 0 && !compraOverrideOk)} className="text-[12px] font-black px-2.5 py-1 rounded-lg disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.15)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.4)' }}>{creando === item.id ? '...' : '✓ Confirmar'}</button>
-                          <button onClick={() => { setConfirmandoCompra(null); setCompraOverrideOk(false) }} className="text-[12px] font-black px-2 py-1 rounded-lg" style={{ background: '#F3F2EE', color: '#888' }}>✕</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => crearProyecto(item)} disabled={creando === item.id} className="text-[12px] font-black px-2.5 py-1 rounded-lg ml-auto disabled:opacity-50" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.3)' }}>{creando === item.id ? '...' : 'Comprado →'}</button>
-                      ))}
                     </div>
                   </div>
                   )
                 })()}
-                {item.estado === 'comprado' && (
-                  <div className="flex items-center gap-2 px-3 py-2" style={{ borderTop: '1px solid #F0EEE8', background: 'rgba(34,197,94,0.05)' }}>
-                    <span className="text-[12px] font-bold" style={{ color: '#16A34A' }}>✓ Proyecto creado</span>
-                    <button onClick={() => router.push('/proyectos')} className="text-[12px] font-black px-2.5 py-1 rounded-lg ml-auto" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1.5px solid rgba(34,197,94,0.3)' }}>Ver →</button>
-                  </div>
-                )}
 
                 {renderVisitas(item)}
                 <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid #F0EEE8', background: '#FAFAF8' }}>
