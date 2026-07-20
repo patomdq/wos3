@@ -1711,7 +1711,7 @@ export default function MercadoPage() {
                 })()}
 
                 {/* Estado */}
-                {item.estado !== 'sin_analizar' && item.estado !== 'comprado' && (() => {
+                {item.estado !== 'sin_analizar' && item.estado !== 'comprado' && item.estado === 'en_arras' && (() => {
                   const pendientesChecklist = getBloqueantesPendientes(item.checklist_documentacion)
                   return (
                   <div style={{ borderTop: '1px solid #F0EEE8' }}>
