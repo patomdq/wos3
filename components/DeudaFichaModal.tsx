@@ -231,9 +231,10 @@ export default function DeudaFichaModal({
 
   /* DASHBOARD */
   .dash{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
-  .hl-dark{background:#14110C!important;border-radius:14px;padding:16px 18px}
-  .hl-label{font-size:10px;color:rgba(199,168,119,0.85)!important;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
-  .hl-value{font-family:'Marcellus',serif;font-size:20px;color:#F8F3E9!important;line-height:1.1}
+  /* background-image data URI = se imprime como imagen, nunca lo bloquea el browser */
+  .hl-dark{background-color:#14110C;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%2314110C'/%3E%3C/svg%3E");background-size:cover;border-radius:14px;padding:16px 18px}
+  .hl-label{font-size:10px;color:#C7A877;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
+  .hl-value{font-family:'Marcellus',serif;font-size:20px;color:#F8F3E9;line-height:1.1}
   .hl-light{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:16px 18px}
   .hl-label-l{font-size:10px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
   .hl-value-l{font-family:'Marcellus',serif;font-size:20px;color:#1A1A1A;line-height:1.1}
@@ -313,10 +314,7 @@ export default function DeudaFichaModal({
     <div class="hl-label">Asking price</div>
     <div class="hl-value">${fmtK(askingTot)}</div>
   </div>
-  <div class="hl-dark" style="background:${descuento !== null && descuento > 0.4 ? '#1A3A14' : '#14110C'}">
-    <div class="hl-label">Descuento s/ deuda</div>
-    <div class="hl-value" style="color:${descuento !== null && descuento > 0.4 ? '#4ade80' : '#F8F3E9'}">${pctFmt(descuento)}</div>
-  </div>
+  ${(() => { const col = descuento !== null && descuento > 0.4 ? '#1A3A14' : '#14110C'; const enc = encodeURIComponent(col); return `<div class="hl-dark" style="background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='${enc}'/%3E%3C/svg%3E&quot;);background-size:cover"><div class="hl-label">Descuento s/ deuda</div><div class="hl-value" style="color:${descuento !== null && descuento > 0.4 ? '#4ade80' : '#F8F3E9'}">${pctFmt(descuento)}</div></div>` })()}
 </div>
 
 <!-- RATINGS CESIÓN -->
