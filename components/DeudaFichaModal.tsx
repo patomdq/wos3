@@ -48,10 +48,6 @@ export default function DeudaFichaModal({
 }) {
   const [subiendoId, setSubiendoId] = useState<string | null>(null)
   const [ubicandoId, setUbicandoId] = useState<string | null>(null)
-  const [catastroLoading, setCatastroLoading] = useState<string | null>(null)
-  const [catastroData, setCatastroData] = useState<Record<string, DatosCatastro>>(
-    Object.fromEntries(grupo.items.filter(i => i.datos_catastro).map(i => [i.id, i.datos_catastro!]))
-  )
 
   const subirImagen = async (id: string, file: File) => {
     setSubiendoId(id)
@@ -63,19 +59,6 @@ export default function DeudaFichaModal({
     setUbicandoId(id)
     await onGeocodear(id)
     setUbicandoId(null)
-  }
-
-  const fetchCatastro = async (id: string) => {
-    setCatastroLoading(id)
-    try {
-      const res = await authFetch(`/api/catastro/fetch?id=${id}`)
-      const json = await res.json()
-      if (json.ok && json.datos) {
-        setCatastroData(prev => ({ ...prev, [id]: json.datos }))
-        onUpdateCampo(id, { datos_catastro: json.datos } as any)
-      }
-    } catch { /* silencioso */ }
-    setCatastroLoading(null)
   }
 
   const toggleFavorito = () => {
@@ -432,6 +415,22 @@ function PosicionCard({
   onUpdateEstado: (estado: string) => void
   onUpdateCampo: (patch: Partial<DeudaPosicion>) => void
 }) {
+  const [catastroLoading, setCatastroLoading] = useState(false)
+  const [catastroData, setCatastroData] = useState<DatosCatastro | null>(p.datos_catastro ?? null)
+
+  const fetchCatastro = async () => {
+    setCatastroLoading(true)
+    try {
+      const res = await authFetch(`/api/catastro/fetch?id=${p.id}`)
+      const json = await res.json()
+      if (json.ok && json.datos) {
+        setCatastroData(json.datos)
+        onUpdateCampo({ datos_catastro: json.datos } as any)
+      }
+    } catch { /* silencioso */ }
+    setCatastroLoading(false)
+  }
+
   const riesgo = calcRatioRiesgoCargas(p.cargas_previas, p.asking_price)
   const ratioColateral = calcRatioColateral(p.deuda_tot, p.valor_colateral)
   const descuentoDeuda = calcDescuentoDeuda(p.deuda_tot, p.asking_price)
@@ -910,11 +909,11 @@ function PosicionCard({
                     ↗ Ver en Catastro
                   </a>
                   <button
-                    onClick={() => fetchCatastro(p.id)}
-                    disabled={catastroLoading === p.id}
+                    onClick={fetchCatastro}
+                    disabled={catastroLoading}
                     className="flex-shrink-0 px-2 py-0.5 rounded-lg text-[11px] font-black"
-                    style={{ background: catastroData[p.id] ? '#E8F5E9' : '#F0EEE8', color: catastroData[p.id] ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: catastroData[p.id] ? '#BBF7D0' : '#DDDAD2' }}>
-                    {catastroLoading === p.id ? '⟳ Cargando…' : catastroData[p.id] ? '✓ Actualizar datos' : '⬇ Obtener datos'}
+                    style={{ background: catastroData ? '#E8F5E9' : '#F0EEE8', color: catastroData ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: catastroData ? '#BBF7D0' : '#DDDAD2' }}>
+                    {catastroLoading ? '⟳ Cargando…' : catastroData ? '✓ Actualizar datos' : '⬇ Obtener datos'}
                   </button>
                 </>
               )}
@@ -948,35 +947,32 @@ function PosicionCard({
       </div>
 
       {/* Datos catastrales */}
-      {catastroData[p.id] && (() => {
-        const c = catastroData[p.id]
-        return (
-          <div className="mt-3 rounded-xl p-3" style={{ background: '#F0F7F0', border: '1px solid #BBF7D0' }}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#16A34A' }}>Datos Catastro</span>
-              <span className="text-[10px]" style={{ color: '#999' }}>· actualizado {new Date(c.obtenido_en).toLocaleDateString('es-ES')}</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
-              {c.direccion_completa && <div className="col-span-2 sm:col-span-4 text-[12px] font-semibold mb-1" style={{ color: '#1A1A1A' }}>{c.direccion_completa}</div>}
-              {c.uso && <Field label="Uso" value={c.uso} />}
-              {c.tipo_construccion && <Field label="Tipo" value={c.tipo_construccion} />}
-              {c.superficie_construida && <Field label="Superficie" value={`${c.superficie_construida} m²`} />}
-              {c.año_construccion && <Field label="Año construcción" value={String(c.año_construccion)} />}
-              {c.escalera && <Field label="Escalera" value={c.escalera} />}
-              {c.planta && <Field label="Planta" value={c.planta} />}
-              {c.puerta && <Field label="Puerta" value={c.puerta} />}
-              {c.cp && <Field label="CP" value={c.cp} />}
-            </div>
-            {c.url_mapa && (
-              <a href={c.url_mapa} target="_blank" rel="noopener noreferrer"
-                className="inline-block mt-2 text-[11px] font-bold px-2 py-1 rounded-lg"
-                style={{ background: '#14110C', color: '#F8F3E9', textDecoration: 'none' }}>
-                ↗ Ver mapa catastral
-              </a>
-            )}
+      {catastroData && (
+        <div className="mt-3 rounded-xl p-3" style={{ background: '#F0F7F0', border: '1px solid #BBF7D0' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#16A34A' }}>Datos Catastro</span>
+            <span className="text-[10px]" style={{ color: '#999' }}>· actualizado {new Date(catastroData.obtenido_en).toLocaleDateString('es-ES')}</span>
           </div>
-        )
-      })()}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
+            {catastroData.direccion_completa && <div className="col-span-2 sm:col-span-4 text-[12px] font-semibold mb-1" style={{ color: '#1A1A1A' }}>{catastroData.direccion_completa}</div>}
+            {catastroData.uso && <Field label="Uso" value={catastroData.uso} />}
+            {catastroData.tipo_construccion && <Field label="Tipo" value={catastroData.tipo_construccion} />}
+            {catastroData.superficie_construida && <Field label="Superficie" value={`${catastroData.superficie_construida} m²`} />}
+            {catastroData.año_construccion && <Field label="Año construcción" value={String(catastroData.año_construccion)} />}
+            {catastroData.escalera && <Field label="Escalera" value={catastroData.escalera} />}
+            {catastroData.planta && <Field label="Planta" value={catastroData.planta} />}
+            {catastroData.puerta && <Field label="Puerta" value={catastroData.puerta} />}
+            {catastroData.cp && <Field label="CP" value={catastroData.cp} />}
+          </div>
+          {catastroData.url_mapa && (
+            <a href={catastroData.url_mapa} target="_blank" rel="noopener noreferrer"
+              className="inline-block mt-2 text-[11px] font-bold px-2 py-1 rounded-lg"
+              style={{ background: '#14110C', color: '#F8F3E9', textDecoration: 'none' }}>
+              ↗ Ver mapa catastral
+            </a>
+          )}
+        </div>
+      )}
 
       {/* Datos adicionales del broker — 47 campos agregados 17/07/2026 al ampliar el mapeo de
           columnas de INMUBI/ANDALUCIA-CDR; solo se listan los que esta posición trae cargados. */}
