@@ -8,6 +8,7 @@ import {
   MOTIVOS_DESCARTE, MOTIVO_DESCARTE_LABEL, MotivoDescarte, CargaDetalle,
   CAMPOS_CANONICOS,
   AnalisisCesion, RatingDificultad, RATING_LABEL, RATING_COLOR, inferirRatingsCesion, calcBeneficioCesion,
+  DatosCatastro,
 } from '@/lib/deuda-schema'
 
 // Campos agregados 17/07/2026 (mapeo ampliado de brokers) — se muestran dinámicamente en una
@@ -47,6 +48,10 @@ export default function DeudaFichaModal({
 }) {
   const [subiendoId, setSubiendoId] = useState<string | null>(null)
   const [ubicandoId, setUbicandoId] = useState<string | null>(null)
+  const [catastroLoading, setCatastroLoading] = useState<string | null>(null)
+  const [catastroData, setCatastroData] = useState<Record<string, DatosCatastro>>(
+    Object.fromEntries(grupo.items.filter(i => i.datos_catastro).map(i => [i.id, i.datos_catastro!]))
+  )
 
   const subirImagen = async (id: string, file: File) => {
     setSubiendoId(id)
@@ -58,6 +63,19 @@ export default function DeudaFichaModal({
     setUbicandoId(id)
     await onGeocodear(id)
     setUbicandoId(null)
+  }
+
+  const fetchCatastro = async (id: string) => {
+    setCatastroLoading(id)
+    try {
+      const res = await authFetch(`/api/catastro/fetch?id=${id}`)
+      const json = await res.json()
+      if (json.ok && json.datos) {
+        setCatastroData(prev => ({ ...prev, [id]: json.datos }))
+        onUpdateCampo(id, { datos_catastro: json.datos } as any)
+      }
+    } catch { /* silencioso */ }
+    setCatastroLoading(null)
   }
 
   const toggleFavorito = () => {
@@ -130,14 +148,19 @@ export default function DeudaFichaModal({
       const cargaRow = (c: CargaDetalle) =>
         `<tr><td style="padding:4px 0;font-size:12px;color:#444;width:60%">${c.concepto||'—'}</td><td style="padding:4px 0;font-size:12px;font-weight:600;text-align:right;color:#1A1A1A">${c.importe != null ? c.importe.toLocaleString('es-ES') + ' €' : '—'}</td></tr>`
 
+      const cat = item.datos_catastro
+      // Dirección: priorizar datos catastrales si existen
+      const dirPrincipal = cat?.direccion_completa || item.direccion || item.municipio || '(sin dirección)'
+      const dirSub = cat ? null : (item.municipio && item.direccion ? [item.municipio, item.provincia].filter(Boolean).join(', ') : null)
+
       return `
       <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:20px;margin-bottom:14px;break-inside:avoid">
         <!-- colateral header -->
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
           <div>
             <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#A6855A;margin-bottom:4px">Colateral ${idx + 1} de ${grupo.items.length}</div>
-            <div style="font-size:15px;font-weight:800;color:#1A1A1A">${item.direccion || item.municipio || '(sin dirección)'}</div>
-            ${item.municipio && item.direccion ? `<div style="font-size:12px;color:#888;margin-top:2px">${[item.municipio, item.provincia].filter(Boolean).join(', ')}</div>` : ''}
+            <div style="font-size:15px;font-weight:800;color:#1A1A1A">${dirPrincipal}</div>
+            ${dirSub ? `<div style="font-size:12px;color:#888;margin-top:2px">${dirSub}</div>` : ''}
           </div>
           ${item.imagen_url ? `<img src="${item.imagen_url}" style="width:120px;height:80px;object-fit:cover;border-radius:10px;border:1px solid rgba(0,0,0,0.08);flex-shrink:0;margin-left:16px" alt="">` : ''}
         </div>
@@ -146,9 +169,12 @@ export default function DeudaFichaModal({
           <div>
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:8px">Inmueble</div>
             <table style="width:100%;border-collapse:collapse">
-              ${field('Tipo', [item.tipo_colateral, item.subtipo_colateral].filter(Boolean).join(' · '))}
+              ${field('Tipo', [cat?.tipo_construccion || item.tipo_colateral, item.subtipo_colateral].filter(Boolean).join(' · '))}
+              ${field('Uso', cat?.uso || null)}
               ${field('Ref. catastral', item.ref_catastral)}
-              ${field('Superficie', (item as any).superficie_m2 ? (item as any).superficie_m2 + ' m²' : null)}
+              ${field('Superficie', cat?.superficie_construida ? cat.superficie_construida + ' m²' : ((item as any).superficie_m2 ? (item as any).superficie_m2 + ' m²' : null))}
+              ${field('Año construcción', cat?.año_construccion ? String(cat.año_construccion) : null)}
+              ${field('Planta / Puerta', [cat?.planta, cat?.puerta].filter(Boolean).join(' / ') || null)}
               ${field('Ocupación', item.ocupacion_estado ? (OCUPACION_LABEL[item.ocupacion_estado as OcupacionEstado] ?? item.ocupacion_estado) : null)}
               ${field('Finca registral', (item as any).n_finca_registral)}
             </table>
@@ -876,12 +902,21 @@ function PosicionCard({
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[12.5px] font-bold font-mono break-all" style={{ color: '#333' }}>{p.ref_catastral || '—'}</span>
               {p.ref_catastral && (
-                <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?pest=rc&i=es&buscar=S&RefC=${encodeURIComponent(p.ref_catastral)}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="flex-shrink-0 px-2 py-0.5 rounded-lg text-[11px] font-black"
-                  style={{ background: '#14110C', color: '#F8F3E9', textDecoration: 'none' }}>
-                  ↗ Ver en Catastro
-                </a>
+                <>
+                  <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?pest=rc&i=es&buscar=S&RefC=${encodeURIComponent(p.ref_catastral)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex-shrink-0 px-2 py-0.5 rounded-lg text-[11px] font-black"
+                    style={{ background: '#14110C', color: '#F8F3E9', textDecoration: 'none' }}>
+                    ↗ Ver en Catastro
+                  </a>
+                  <button
+                    onClick={() => fetchCatastro(p.id)}
+                    disabled={catastroLoading === p.id}
+                    className="flex-shrink-0 px-2 py-0.5 rounded-lg text-[11px] font-black"
+                    style={{ background: catastroData[p.id] ? '#E8F5E9' : '#F0EEE8', color: catastroData[p.id] ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: catastroData[p.id] ? '#BBF7D0' : '#DDDAD2' }}>
+                    {catastroLoading === p.id ? '⟳ Cargando…' : catastroData[p.id] ? '✓ Actualizar datos' : '⬇ Obtener datos'}
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -911,6 +946,37 @@ function PosicionCard({
             danger={riesgo.alerta} />
         </Ficha>
       </div>
+
+      {/* Datos catastrales */}
+      {catastroData[p.id] && (() => {
+        const c = catastroData[p.id]
+        return (
+          <div className="mt-3 rounded-xl p-3" style={{ background: '#F0F7F0', border: '1px solid #BBF7D0' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#16A34A' }}>Datos Catastro</span>
+              <span className="text-[10px]" style={{ color: '#999' }}>· actualizado {new Date(c.obtenido_en).toLocaleDateString('es-ES')}</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
+              {c.direccion_completa && <div className="col-span-2 sm:col-span-4 text-[12px] font-semibold mb-1" style={{ color: '#1A1A1A' }}>{c.direccion_completa}</div>}
+              {c.uso && <Field label="Uso" value={c.uso} />}
+              {c.tipo_construccion && <Field label="Tipo" value={c.tipo_construccion} />}
+              {c.superficie_construida && <Field label="Superficie" value={`${c.superficie_construida} m²`} />}
+              {c.año_construccion && <Field label="Año construcción" value={String(c.año_construccion)} />}
+              {c.escalera && <Field label="Escalera" value={c.escalera} />}
+              {c.planta && <Field label="Planta" value={c.planta} />}
+              {c.puerta && <Field label="Puerta" value={c.puerta} />}
+              {c.cp && <Field label="CP" value={c.cp} />}
+            </div>
+            {c.url_mapa && (
+              <a href={c.url_mapa} target="_blank" rel="noopener noreferrer"
+                className="inline-block mt-2 text-[11px] font-bold px-2 py-1 rounded-lg"
+                style={{ background: '#14110C', color: '#F8F3E9', textDecoration: 'none' }}>
+                ↗ Ver mapa catastral
+              </a>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Datos adicionales del broker — 47 campos agregados 17/07/2026 al ampliar el mapeo de
           columnas de INMUBI/ANDALUCIA-CDR; solo se listan los que esta posición trae cargados. */}

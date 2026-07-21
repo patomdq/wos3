@@ -440,8 +440,29 @@ export type DeudaPosicion = {
   favorito: boolean
   resumen_ia: string | null
   analisis_cesion: AnalisisCesion | null
+  datos_catastro: DatosCatastro | null
   created_at: string
   updated_at: string
+}
+
+export type DatosCatastro = {
+  ref_catastral: string
+  direccion_completa: string | null
+  tipo_via: string | null
+  nombre_via: string | null
+  numero: string | null
+  escalera: string | null
+  planta: string | null
+  puerta: string | null
+  cp: string | null
+  municipio: string | null
+  provincia: string | null
+  uso: string | null
+  superficie_construida: number | null
+  año_construccion: number | null
+  tipo_construccion: string | null
+  url_mapa: string | null
+  obtenido_en: string
 }
 
 export type GrupoDeuda = {
