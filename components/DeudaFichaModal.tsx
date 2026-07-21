@@ -66,62 +66,127 @@ export default function DeudaFichaModal({
   }
 
   const descargarInforme = () => {
-    const p = grupo.items[0]
-    if (!p) return
+    if (!grupo.items.length) return
     const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
-    const inferido = inferirRatingsCesion(p)
-    const cesion: AnalisisCesion = {
-      rating_deudor: p.analisis_cesion?.rating_deudor ?? inferido.rating_deudor,
-      rating_posesion: p.analisis_cesion?.rating_posesion ?? inferido.rating_posesion,
-      rating_juzgado: p.analisis_cesion?.rating_juzgado ?? inferido.rating_juzgado,
-      rating_procedimiento: p.analisis_cesion?.rating_procedimiento ?? inferido.rating_procedimiento,
-      precio_cesion: p.analisis_cesion?.precio_cesion ?? p.asking_price ?? null,
-      valor_mercado_garantia: p.analisis_cesion?.valor_mercado_garantia ?? null,
-      gastos_inscripcion: p.analisis_cesion?.gastos_inscripcion ?? null,
-      impuestos_cesion: p.analisis_cesion?.impuestos_cesion ?? null,
-      comisiones: p.analisis_cesion?.comisiones ?? null,
-      impuestos_adjudicacion: p.analisis_cesion?.impuestos_adjudicacion ?? null,
-      novada_hipoteca: p.analisis_cesion?.novada_hipoteca ?? null,
-      vivienda_habitual: p.analisis_cesion?.vivienda_habitual ?? null,
-      hay_que_pagar_deudor: p.analisis_cesion?.hay_que_pagar_deudor ?? null,
-      importe_pago_deudor: p.analisis_cesion?.importe_pago_deudor ?? null,
-      notas_analisis: p.analisis_cesion?.notas_analisis ?? null,
-    }
-    const beneficio = calcBeneficioCesion(cesion)
-    const fmtN = (n: number | null | undefined) => {
+
+    // ── Helpers ──
+    const fmtN = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString('es-ES') + ' €'
+    const fmtK = (n: number | null | undefined) => {
       if (n == null) return '—'
-      return n.toLocaleString('es-ES') + ' €'
+      return Math.abs(n) >= 1000 ? (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k€' : n.toLocaleString('es-ES') + ' €'
     }
-    const estadoJudicial = p.estado_judicial_normalizado
-      ? (ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado] ?? p.estado_judicial_normalizado)
-      : (p.estado_judicial_raw || '—')
-    const ratingRow = (label: string, val: RatingDificultad | null) => {
-      if (!val) return ''
-      const colors: Record<string, string> = { bajo: '#16a34a', medio: '#d97706', alto: '#dc2626', muy_alto: '#7c2d12' }
-      const labels: Record<string, string> = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto', muy_alto: 'Muy alto' }
-      const col = colors[val] ?? '#999'
-      return `<tr><td style="padding:6px 0;color:#666;font-size:13px">${label}</td><td style="padding:6px 0;text-align:right"><span style="background:${col}20;color:${col};font-weight:700;font-size:12px;padding:2px 8px;border-radius:6px">${labels[val] ?? val}</span></td></tr>`
-    }
+    const pctFmt = (n: number | null) => n == null ? '—' : (n * 100).toFixed(0) + '%'
     const field = (label: string, val: string | number | null | undefined) =>
       val != null && val !== '' && val !== '—'
-        ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;width:45%">${label}</td><td style="padding:5px 0;font-weight:600;font-size:13px;color:#1A1A1A">${val}</td></tr>`
+        ? `<tr><td style="padding:5px 0;color:#888;font-size:12.5px;width:46%;padding-right:8px;vertical-align:top">${label}</td><td style="padding:5px 0;font-weight:600;font-size:12.5px;color:#1A1A1A;text-align:right;vertical-align:top">${val}</td></tr>`
         : ''
-    const cargas = p.cargas_detalle || []
-    const previas = cargas.filter(c => c.tipo === 'previa')
-    const posteriores = cargas.filter(c => c.tipo === 'posterior')
-    const cargaRow = (c: { concepto: string; importe: number | null; notas?: string }) =>
-      `<tr><td style="padding:5px 0;font-size:13px;color:#444">${c.concepto || '—'}</td><td style="padding:5px 0;font-weight:600;font-size:13px;text-align:right;color:#1A1A1A">${c.importe != null ? c.importe.toLocaleString('es-ES') + ' €' : '—'}</td></tr>`
-    const resumen = p.resumen_ia
-
-    const imgUrl = p.imagen_url || ''
-    const ubicacion = [grupo.ciudad, grupo.provincia].filter(Boolean).join(', ') || 'Sin ubicación'
-    const ratingColors: Record<string, string> = { bajo:'#16a34a', medio:'#d97706', alto:'#dc2626', muy_alto:'#7c2d12' }
-    const ratingLabels: Record<string, string> = { bajo:'Bajo', medio:'Medio', alto:'Alto', muy_alto:'Muy alto' }
+    const rC: Record<string, string> = { bajo:'#16a34a', medio:'#d97706', alto:'#dc2626', muy_alto:'#7c2d12' }
+    const rL: Record<string, string> = { bajo:'Bajo', medio:'Medio', alto:'Alto', muy_alto:'Muy alto' }
     const ratingBox = (label: string, val: RatingDificultad | null) => !val ? '' :
-      `<div style="flex:1;min-width:80px;text-align:center;padding:14px 8px;background:#F9F8F5;border-radius:12px;border:1px solid rgba(0,0,0,0.05)">
+      `<div style="flex:1;min-width:90px;text-align:center;padding:14px 8px;background:#F9F8F5;border-radius:12px;border:1px solid rgba(0,0,0,0.05)">
         <div style="font-size:10px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">${label}</div>
-        <div style="display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:800;background:${ratingColors[val]}18;color:${ratingColors[val]}">${ratingLabels[val] ?? val}</div>
+        <div style="display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:800;background:${rC[val]}18;color:${rC[val]}">${rL[val] ?? val}</div>
       </div>`
+
+    // ── Totales del grupo ──
+    const ubicacion = [grupo.ciudad, grupo.provincia].filter(Boolean).join(', ') || 'Sin ubicación'
+    const deudaTot   = grupo.deudaTotTotal || null
+    const deudaOB    = grupo.obTotal || null
+    const askingTot  = grupo.askingTotal || null
+    const descuento  = deudaTot && askingTot ? (1 - askingTot / deudaTot) : null
+    const imgUrl     = grupo.imagenUrl || grupo.items[0]?.imagen_url || ''
+
+    // Cesión del primer ítem que tenga análisis (o del primero)
+    const itemCesion = grupo.items.find(i => i.analisis_cesion) ?? grupo.items[0]
+    const inferido   = inferirRatingsCesion(itemCesion)
+    const cesion: AnalisisCesion = {
+      rating_deudor:        itemCesion.analisis_cesion?.rating_deudor        ?? inferido.rating_deudor,
+      rating_posesion:      itemCesion.analisis_cesion?.rating_posesion      ?? inferido.rating_posesion,
+      rating_juzgado:       itemCesion.analisis_cesion?.rating_juzgado       ?? inferido.rating_juzgado,
+      rating_procedimiento: itemCesion.analisis_cesion?.rating_procedimiento ?? inferido.rating_procedimiento,
+      precio_cesion:        itemCesion.analisis_cesion?.precio_cesion        ?? askingTot ?? null,
+      valor_mercado_garantia: itemCesion.analisis_cesion?.valor_mercado_garantia ?? null,
+      gastos_inscripcion:   itemCesion.analisis_cesion?.gastos_inscripcion   ?? null,
+      impuestos_cesion:     itemCesion.analisis_cesion?.impuestos_cesion     ?? null,
+      comisiones:           itemCesion.analisis_cesion?.comisiones           ?? null,
+      impuestos_adjudicacion: itemCesion.analisis_cesion?.impuestos_adjudicacion ?? null,
+      novada_hipoteca:      itemCesion.analisis_cesion?.novada_hipoteca      ?? null,
+      vivienda_habitual:    itemCesion.analisis_cesion?.vivienda_habitual    ?? null,
+      hay_que_pagar_deudor: itemCesion.analisis_cesion?.hay_que_pagar_deudor ?? null,
+      importe_pago_deudor:  itemCesion.analisis_cesion?.importe_pago_deudor  ?? null,
+      notas_analisis:       itemCesion.analisis_cesion?.notas_analisis       ?? null,
+    }
+    const beneficio = calcBeneficioCesion(cesion)
+
+    // ── HTML de cada colateral ──
+    const colateralHTML = grupo.items.map((item, idx) => {
+      const estadoJud = item.estado_judicial_normalizado
+        ? (ESTADO_JUDICIAL_LABEL[item.estado_judicial_normalizado] ?? item.estado_judicial_normalizado)
+        : (item.estado_judicial_raw || null)
+      const previas    = (item.cargas_detalle || []).filter(c => c.tipo === 'previa')
+      const posteriores = (item.cargas_detalle || []).filter(c => c.tipo === 'posterior')
+      const sumPrev    = previas.reduce((s, c) => s + (c.importe || 0), 0)
+      const sumPost    = posteriores.reduce((s, c) => s + (c.importe || 0), 0)
+      const cargaRow = (c: CargaDetalle) =>
+        `<tr><td style="padding:4px 0;font-size:12px;color:#444;width:60%">${c.concepto||'—'}</td><td style="padding:4px 0;font-size:12px;font-weight:600;text-align:right;color:#1A1A1A">${c.importe != null ? c.importe.toLocaleString('es-ES') + ' €' : '—'}</td></tr>`
+
+      return `
+      <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:20px;margin-bottom:14px;break-inside:avoid">
+        <!-- colateral header -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+          <div>
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#A6855A;margin-bottom:4px">Colateral ${idx + 1} de ${grupo.items.length}</div>
+            <div style="font-size:15px;font-weight:800;color:#1A1A1A">${item.direccion || item.municipio || '(sin dirección)'}</div>
+            ${item.municipio && item.direccion ? `<div style="font-size:12px;color:#888;margin-top:2px">${[item.municipio, item.provincia].filter(Boolean).join(', ')}</div>` : ''}
+          </div>
+          ${item.imagen_url ? `<img src="${item.imagen_url}" style="width:120px;height:80px;object-fit:cover;border-radius:10px;border:1px solid rgba(0,0,0,0.08);flex-shrink:0;margin-left:16px" alt="">` : ''}
+        </div>
+        <!-- datos en 2 cols -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:8px">Inmueble</div>
+            <table style="width:100%;border-collapse:collapse">
+              ${field('Tipo', [item.tipo_colateral, item.subtipo_colateral].filter(Boolean).join(' · '))}
+              ${field('Ref. catastral', item.ref_catastral)}
+              ${field('Superficie', (item as any).superficie_m2 ? (item as any).superficie_m2 + ' m²' : null)}
+              ${field('Ocupación', item.ocupacion_estado ? (OCUPACION_LABEL[item.ocupacion_estado as OcupacionEstado] ?? item.ocupacion_estado) : null)}
+              ${field('Finca registral', (item as any).n_finca_registral)}
+            </table>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:8px">Situación</div>
+            <table style="width:100%;border-collapse:collapse">
+              ${field('Estado judicial', estadoJud)}
+              ${field('Nº procedimiento', (item as any).num_procedimiento)}
+              ${field('Juzgado', (item as any).juzgado)}
+              ${field('Fecha subasta', (item as any).fecha_subasta)}
+              ${field('ID portal subasta', (item as any).id_portal_subasta)}
+              ${field('Deuda total', fmtN(item.deuda_tot))}
+              ${field('Asking price', fmtN(item.asking_price))}
+            </table>
+          </div>
+        </div>
+        <!-- cargas -->
+        ${(previas.length || posteriores.length) ? `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,0.06)">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:8px">Cargas</div>
+          <div style="display:grid;grid-template-columns:${previas.length && posteriores.length ? '1fr 1fr' : '1fr'};gap:16px">
+            ${previas.length ? `<div><div style="font-size:11px;color:#BBB;font-weight:600;margin-bottom:4px">Previas</div><table style="width:100%;border-collapse:collapse">${previas.map(cargaRow).join('')}</table>${previas.length>1?`<div style="text-align:right;font-size:12px;font-weight:800;margin-top:4px;color:#dc2626">Total: ${sumPrev.toLocaleString('es-ES')} €</div>`:''}</div>` : ''}
+            ${posteriores.length ? `<div><div style="font-size:11px;color:#BBB;font-weight:600;margin-bottom:4px">Posteriores</div><table style="width:100%;border-collapse:collapse">${posteriores.map(cargaRow).join('')}</table>${posteriores.length>1?`<div style="text-align:right;font-size:12px;font-weight:800;margin-top:4px;color:#555">Total: ${sumPost.toLocaleString('es-ES')} €</div>`:''}</div>` : ''}
+          </div>
+        </div>` : ''}
+        <!-- resumen IA de este ítem -->
+        ${item.resumen_ia ? `
+        <div style="margin-top:14px;padding:14px;background:#F9F8F5;border-radius:10px;border-left:3px solid #A6855A">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#A6855A;margin-bottom:8px">Reseña IA</div>
+          <div style="font-size:13px;line-height:1.8;color:#333">${item.resumen_ia.replace(/\n/g,'<br>')}</div>
+        </div>` : ''}
+      </div>`
+    }).join('')
+
+    // ── Ratings del grupo (del ítem que tenga análisis) ──
+    const tiposColateral = [...new Set(grupo.items.map(i => i.tipo_colateral).filter(Boolean))].join(' · ')
+    const brokerStr = grupo.broker || ''
 
     const html = `<!DOCTYPE html>
 <html lang="es">
@@ -135,7 +200,7 @@ export default function DeudaFichaModal({
   body{background:#F2F1ED;font-family:'Hanken Grotesk',sans-serif;color:#1A1A1A}
   .page{max-width:860px;margin:0 auto;padding:36px 40px 56px}
 
-  /* ── HEADER ── */
+  /* HEADER */
   .hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:18px;border-bottom:1px solid rgba(0,0,0,0.10);margin-bottom:28px}
   .hdr-logo{font-family:'Marcellus',serif;font-size:20px;color:#A6855A;letter-spacing:2px}
   .hdr-sub{font-size:11px;color:#AAA;font-weight:500;margin-top:2px}
@@ -144,45 +209,39 @@ export default function DeudaFichaModal({
   .hdr-fecha{font-size:13px;color:#555;font-weight:600;margin-top:2px}
   .hdr-id{font-family:monospace;font-size:11px;color:#BBB;margin-top:1px}
 
-  /* ── HERO: título + imagen ── */
-  .hero{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start;margin-bottom:24px}
-  .hero-left{}
-  .hero-titulo{font-family:'Marcellus',serif;font-size:30px;color:#1A1A1A;line-height:1.2;margin-bottom:6px}
-  .hero-dir{font-size:14px;color:#666;font-weight:500;margin-bottom:16px}
-  .hero-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
-  .badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(166,133,90,0.10);border:1px solid rgba(166,133,90,0.25);color:#A6855A}
-  .badge-estado{background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.10);color:#555}
+  /* HERO */
+  .hero{display:grid;grid-template-columns:1fr 280px;gap:24px;align-items:start;margin-bottom:24px}
+  .hero-titulo{font-family:'Marcellus',serif;font-size:28px;color:#1A1A1A;line-height:1.2;margin-bottom:6px}
+  .hero-sub{font-size:13px;color:#666;font-weight:500;margin-bottom:16px}
+  .badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(166,133,90,0.10);border:1px solid rgba(166,133,90,0.25);color:#A6855A;margin:0 4px 4px 0}
   .hero-img-wrap{border-radius:16px;overflow:hidden;border:1px solid rgba(0,0,0,0.08);background:#E8E6E0}
-  .hero-img{width:100%;height:240px;object-fit:cover;object-position:center;display:block}
-  .hero-img-empty{width:100%;height:240px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#E8E6E0,#D8D5CE);color:#BBB;font-size:13px;font-weight:600}
+  .hero-img{width:100%;height:200px;object-fit:cover;object-position:center;display:block}
+  .hero-img-empty{width:100%;height:200px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#E8E6E0,#D8D5CE);color:#BBB;font-size:13px;font-weight:600}
 
-  /* ── HIGHLIGHT ECONÓMICO ── */
-  .highlight{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
-  .hl-card{background:#14110C;border-radius:14px;padding:18px 20px}
-  .hl-label{font-size:11px;color:rgba(199,168,119,0.7);font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
-  .hl-value{font-family:'Marcellus',serif;font-size:22px;color:#F8F3E9}
-  .hl-card-light{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:18px 20px}
-  .hl-label-light{font-size:11px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
-  .hl-value-light{font-family:'Marcellus',serif;font-size:22px;color:#1A1A1A}
+  /* DASHBOARD */
+  .dash{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
+  .hl-dark{background:#14110C;border-radius:14px;padding:16px 18px}
+  .hl-label{font-size:10px;color:rgba(199,168,119,0.7);font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
+  .hl-value{font-family:'Marcellus',serif;font-size:20px;color:#F8F3E9;line-height:1.1}
+  .hl-light{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:16px 18px}
+  .hl-label-l{font-size:10px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
+  .hl-value-l{font-family:'Marcellus',serif;font-size:20px;color:#1A1A1A;line-height:1.1}
 
-  /* ── CARDS ── */
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-  .card{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:20px}
-  .card-full{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:20px;margin-bottom:16px}
+  /* CARDS */
+  .card{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:20px;margin-bottom:14px}
   .sec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#A6855A;margin-bottom:14px}
   table{width:100%;border-collapse:collapse}
-  .tr td{padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04);vertical-align:top}
+  .tr td{padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04);vertical-align:top}
   .tr:last-child td{border-bottom:none}
-  .td-l{color:#888;font-size:12.5px;width:48%;padding-right:8px}
-  .td-r{font-weight:600;font-size:12.5px;color:#1A1A1A;text-align:right}
-  .sep{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:14px 0}
-  .resena-txt{font-size:13.5px;line-height:1.85;color:#333}
+  .td-l{color:#888;font-size:12px;width:48%;padding-right:8px}
+  .td-r{font-weight:600;font-size:12px;color:#1A1A1A;text-align:right}
+  .sep{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:12px 0}
   .footer{text-align:center;font-size:11px;color:#CCC;padding:20px 40px 32px;border-top:1px solid rgba(0,0,0,0.06)}
   @media print{
     @page{size:A4;margin:12mm 10mm}
     body{background:#fff}
     .page{padding:0}
-    .card,.card-full,.hl-card,.hl-card-light{break-inside:avoid}
+    .card,.hl-dark,.hl-light{break-inside:avoid}
   }
 </style>
 </head>
@@ -196,141 +255,73 @@ export default function DeudaFichaModal({
     <div class="hdr-sub">HASU Activos Inmobiliarios SL</div>
   </div>
   <div class="hdr-right">
-    <div class="hdr-tipo">Informe de activo</div>
+    <div class="hdr-tipo">Informe de cesión de crédito</div>
     <div class="hdr-fecha">${fecha}</div>
-    <div class="hdr-id">${grupo.contractId}${p.broker ? ' · ' + p.broker : ''}</div>
+    <div class="hdr-id">${grupo.contractId}${brokerStr ? ' · ' + brokerStr : ''}</div>
   </div>
 </div>
 
-<!-- HERO: título izquierda + imagen derecha -->
+<!-- HERO -->
 <div class="hero">
-  <div class="hero-left">
+  <div>
     <div class="hero-titulo">${ubicacion}</div>
-    ${p.direccion ? `<div class="hero-dir">${p.direccion}</div>` : '<div style="margin-bottom:16px"></div>'}
-    <div class="hero-badges">
-      ${[p.tipo_colateral, p.subtipo_colateral].filter(Boolean).map(t => `<span class="badge">${t}</span>`).join('')}
-      ${estadoJudicial && estadoJudicial !== '—' ? `<span class="badge badge-estado">${estadoJudicial}</span>` : ''}
-      ${p.ocupacion_estado ? `<span class="badge badge-estado">${OCUPACION_LABEL[p.ocupacion_estado as OcupacionEstado] ?? p.ocupacion_estado}</span>` : ''}
+    <div class="hero-sub">${tiposColateral || 'Activo inmobiliario'} · ${grupo.items.length} colateral${grupo.items.length !== 1 ? 'es' : ''}</div>
+    <div style="margin-bottom:16px">
+      ${grupo.titular ? `<span class="badge">${grupo.titular}</span>` : ''}
+      ${tiposColateral ? tiposColateral.split(' · ').map((t: string) => `<span class="badge">${t}</span>`).join('') : ''}
     </div>
-    <!-- mini tabla ubicación bajo los badges -->
     <table>
-      ${field('Municipio', p.municipio)}
-      ${field('Provincia', p.provincia)}
-      ${field('CCAA', p.ccaa)}
-      ${field('Ref. catastral', p.ref_catastral)}
-      ${field('Superficie', (p as any).superficie_m2 ? (p as any).superficie_m2 + ' m²' : null)}
+      ${field('Titular', grupo.titular)}
+      ${field('Broker / Servicer', brokerStr)}
+      ${field('Nº colaterales', grupo.items.length.toString())}
     </table>
   </div>
   <div>
     <div class="hero-img-wrap">
-      ${imgUrl
-        ? `<img class="hero-img" src="${imgUrl}" alt="Imagen del inmueble">`
-        : `<div class="hero-img-empty">Sin imagen</div>`
-      }
+      ${imgUrl ? `<img class="hero-img" src="${imgUrl}" alt="">` : `<div class="hero-img-empty">Sin imagen</div>`}
     </div>
   </div>
 </div>
 
-<!-- HIGHLIGHT ECONÓMICO -->
-<div class="highlight">
-  <div class="hl-card">
+<!-- DASHBOARD ECONÓMICO -->
+<div class="dash">
+  <div class="hl-dark">
     <div class="hl-label">Deuda total</div>
-    <div class="hl-value">${fmtN(p.deuda_tot)}</div>
+    <div class="hl-value">${fmtK(deudaTot)}</div>
   </div>
-  <div class="hl-card">
-    <div class="hl-label">Precio cesión</div>
-    <div class="hl-value">${fmtN(cesion.precio_cesion)}</div>
+  <div class="hl-dark">
+    <div class="hl-label">Deuda OB</div>
+    <div class="hl-value">${fmtK(deudaOB)}</div>
   </div>
-  <div class="hl-card" style="background:${beneficio !== null ? (beneficio >= 0 ? '#14110C' : '#3B0A0A') : '#14110C'}">
-    <div class="hl-label">Beneficio estimado</div>
-    <div class="hl-value" style="color:${beneficio !== null ? (beneficio >= 0 ? '#4ade80' : '#f87171') : '#F8F3E9'}">${beneficio !== null ? (beneficio >= 0 ? '+' : '') + beneficio.toLocaleString('es-ES') + ' €' : '—'}</div>
+  <div class="hl-dark">
+    <div class="hl-label">Asking price</div>
+    <div class="hl-value">${fmtK(askingTot)}</div>
   </div>
-</div>
-
-<!-- ANÁLISIS ECONÓMICO + JUDICIAL -->
-<div class="grid2">
-  <div class="card">
-    <div class="sec">Desglose económico</div>
-    <table>
-      ${[
-        ['Deuda total', fmtN(p.deuda_tot)],
-        ['Valor colateral', fmtN(p.valor_colateral)],
-        ['Precio cesión', fmtN(cesion.precio_cesion)],
-        ['Valor mercado garantía', fmtN(cesion.valor_mercado_garantia)],
-        ['Gastos inscripción', fmtN(cesion.gastos_inscripcion)],
-        ['Impuestos cesión', fmtN(cesion.impuestos_cesion)],
-        ['Comisiones', fmtN(cesion.comisiones)],
-        ['Impuestos adjudicación', fmtN(cesion.impuestos_adjudicacion)],
-        ['Tiempo estimado', p.tiempo_estimado_meses ? p.tiempo_estimado_meses + ' meses' : null],
-      ].filter(([,v]) => v && v !== '—').map(([l,v]) =>
-        `<tr class="tr"><td class="td-l">${l}</td><td class="td-r">${v}</td></tr>`
-      ).join('')}
-    </table>
-    ${beneficio !== null ? `<hr class="sep"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:#888;font-weight:700">Beneficio estimado</span><span style="font-family:'Marcellus',serif;font-size:22px;color:${beneficio >= 0 ? '#16a34a' : '#dc2626'}">${beneficio >= 0 ? '+' : ''}${beneficio.toLocaleString('es-ES')} €</span></div>` : ''}
-  </div>
-  <div class="card">
-    <div class="sec">Situación judicial</div>
-    <table>
-      ${[
-        ['Estado judicial', estadoJudicial],
-        ['Estado texto broker', p.estado_judicial_raw],
-        ['Nº procedimiento', (p as any).num_procedimiento],
-        ['Tipo procedimiento', (p as any).tipo_procedimiento],
-        ['Juzgado', (p as any).juzgado],
-        ['Nº autos', (p as any).num_autos],
-        ['Fecha subasta', (p as any).fecha_subasta],
-        ['Estado subasta', (p as any).estado_subasta],
-        ['ID portal subasta', (p as any).id_portal_subasta],
-        ['Finca registral', (p as any).n_finca_registral],
-        ['Ocupación', p.ocupacion_estado ? (OCUPACION_LABEL[p.ocupacion_estado as OcupacionEstado] ?? p.ocupacion_estado) : null],
-      ].filter(([,v]) => v && v !== '—').map(([l,v]) =>
-        `<tr class="tr"><td class="td-l">${l}</td><td class="td-r">${v}</td></tr>`
-      ).join('')}
-    </table>
-    ${p.estrategia_prevista ? `<hr class="sep"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#A6855A;margin-bottom:8px">Estrategia prevista</div><div style="font-size:13px;color:#333;line-height:1.6">${p.estrategia_prevista}</div>` : ''}
-    ${p.visita_notas ? `<hr class="sep"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#A6855A;margin-bottom:8px">Notas de visita</div><div style="font-size:13px;color:#333;line-height:1.6">${p.visita_notas}</div>` : ''}
+  <div class="hl-dark" style="background:${descuento !== null && descuento > 0.4 ? '#1A3A14' : '#14110C'}">
+    <div class="hl-label">Descuento s/ deuda</div>
+    <div class="hl-value" style="color:${descuento !== null && descuento > 0.4 ? '#4ade80' : '#F8F3E9'}">${pctFmt(descuento)}</div>
   </div>
 </div>
 
 <!-- RATINGS CESIÓN -->
 ${(cesion.rating_deudor || cesion.rating_posesion || cesion.rating_juzgado || cesion.rating_procedimiento) ? `
-<div class="card-full">
+<div class="card">
   <div class="sec">Análisis de cesión — Ratings de dificultad</div>
-  <div style="display:flex;gap:12px;flex-wrap:wrap">
-    ${ratingBox('Deudor', cesion.rating_deudor)}
-    ${ratingBox('Posesión', cesion.rating_posesion)}
-    ${ratingBox('Juzgado', cesion.rating_juzgado)}
-    ${ratingBox('Procedimiento', cesion.rating_procedimiento)}
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:${cesion.notas_analisis ? '14px' : '0'}">
+    ${ratingBox('Deudor (D)', cesion.rating_deudor)}
+    ${ratingBox('Posesión (P)', cesion.rating_posesion)}
+    ${ratingBox('Juzgado (J)', cesion.rating_juzgado)}
+    ${ratingBox('Procedimiento (Pr)', cesion.rating_procedimiento)}
   </div>
-  ${cesion.notas_analisis ? `<div style="margin-top:16px;padding:14px;background:#F9F8F5;border-radius:10px;font-size:13px;color:#444;line-height:1.7;border-left:3px solid #A6855A">${cesion.notas_analisis}</div>` : ''}
+  ${cesion.notas_analisis ? `<div style="padding:12px 14px;background:#F9F8F5;border-radius:10px;font-size:13px;color:#444;line-height:1.7;border-left:3px solid #A6855A">${cesion.notas_analisis}</div>` : ''}
+  ${beneficio !== null ? `<hr class="sep"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:#888;font-weight:700">Beneficio estimado cesión</span><span style="font-family:'Marcellus',serif;font-size:22px;color:${beneficio >= 0 ? '#16a34a' : '#dc2626'}">${beneficio >= 0 ? '+' : ''}${beneficio.toLocaleString('es-ES')} €</span></div>` : ''}
 </div>` : ''}
 
-<!-- CARGAS -->
-${cargas.length > 0 ? `
-<div class="card-full">
-  <div class="sec">Cargas</div>
-  <div style="display:grid;grid-template-columns:${previas.length && posteriores.length ? '1fr 1fr' : '1fr'};gap:24px">
-    ${previas.length > 0 ? `
-    <div>
-      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Previas</div>
-      <table>${previas.map(cargaRow).join('')}</table>
-      ${previas.length > 1 ? `<div style="margin-top:8px;text-align:right;font-size:12px;font-weight:800;color:#1A1A1A">Total: ${previas.reduce((s,c)=>s+(c.importe||0),0).toLocaleString('es-ES')} €</div>` : ''}
-    </div>` : ''}
-    ${posteriores.length > 0 ? `
-    <div>
-      <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Posteriores</div>
-      <table>${posteriores.map(cargaRow).join('')}</table>
-      ${posteriores.length > 1 ? `<div style="margin-top:8px;text-align:right;font-size:12px;font-weight:800;color:#1A1A1A">Total: ${posteriores.reduce((s,c)=>s+(c.importe||0),0).toLocaleString('es-ES')} €</div>` : ''}
-    </div>` : ''}
-  </div>
-</div>` : ''}
-
-<!-- RESEÑA IA -->
-${resumen ? `
-<div class="card-full" style="border-left:3px solid #A6855A">
-  <div class="sec">Reseña del activo</div>
-  <p class="resena-txt">${resumen.replace(/\n/g, '<br>')}</p>
-</div>` : ''}
+<!-- DETALLE POR COLATERAL -->
+<div style="margin-top:4px">
+  <div class="sec" style="margin-bottom:12px">Detalle de colaterales</div>
+  ${colateralHTML}
+</div>
 
 </div><!-- /page -->
 
