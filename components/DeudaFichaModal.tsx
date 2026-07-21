@@ -184,14 +184,11 @@ export default function DeudaFichaModal({
             ${posteriores.length ? `<div><div style="font-size:11px;color:#BBB;font-weight:600;margin-bottom:4px">Posteriores</div><table style="width:100%;border-collapse:collapse">${posteriores.map(cargaRow).join('')}</table>${posteriores.length>1?`<div style="text-align:right;font-size:12px;font-weight:800;margin-top:4px;color:#555">Total: ${sumPost.toLocaleString('es-ES')} €</div>`:''}</div>` : ''}
           </div>
         </div>` : ''}
-        <!-- resumen IA de este ítem -->
-        ${item.resumen_ia ? `
-        <div style="margin-top:14px;padding:14px;background:#F9F8F5;border-radius:10px;border-left:3px solid #A6855A">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#A6855A;margin-bottom:8px">Reseña IA</div>
-          <div style="font-size:13px;line-height:1.8;color:#333">${item.resumen_ia.replace(/\n/g,'<br>')}</div>
-        </div>` : ''}
       </div>`
     }).join('')
+
+    // Reseña IA grupal — primer ítem que la tenga
+    const resumenIA = grupo.items.find(i => i.resumen_ia)?.resumen_ia ?? null
 
     // ── Ratings del grupo (del ítem que tenga análisis) ──
     const tiposColateral = [...new Set(grupo.items.map(i => i.tipo_colateral).filter(Boolean))].join(' · ')
@@ -341,6 +338,13 @@ ${(cesion.rating_deudor || cesion.rating_posesion || cesion.rating_juzgado || ce
   <div class="sec" style="margin-bottom:12px">Detalle de colaterales</div>
   ${colateralHTML}
 </div>
+
+<!-- RESEÑA IA — una sola para el grupo -->
+${resumenIA ? `
+<div class="card" style="border-left:3px solid #A6855A;margin-top:4px">
+  <div class="sec">Reseña del activo</div>
+  <div style="font-size:13.5px;line-height:1.85;color:#333">${resumenIA.replace(/\n/g,'<br>')}</div>
+</div>` : ''}
 
 </div><!-- /page -->
 
