@@ -31,6 +31,7 @@ const fmt = (n: number) => new Intl.NumberFormat('es-ES',{style:'currency',curre
 
 type Proyecto = {
   id: string; nombre: string; direccion?: string; ciudad: string; tipo: string; estado: string
+  tipo_op: 'propio' | 'participacion' | 'servicio'
   porcentaje_hasu: number; socio_nombre: string | null; avance_reforma: number
   precio_compra: number | null; precio_venta_estimado: number | null; precio_venta_real: number | null
   precio_venta_conservador: number | null; precio_venta_realista: number | null; precio_venta_optimista: number | null
@@ -84,7 +85,7 @@ export default function ProyectosPage() {
   useEffect(() => {
     Promise.all([
       supabase.from('proyectos')
-        .select('id,nombre,direccion,ciudad,tipo,estado,porcentaje_hasu,socio_nombre,avance_reforma,precio_compra,precio_venta_estimado,precio_venta_real,precio_venta_conservador,precio_venta_realista,precio_venta_optimista,valor_total_operacion,inversion_hasu,fecha_compra,fecha_salida_estimada,imagen_portada')
+        .select('id,nombre,direccion,ciudad,tipo,tipo_op,estado,porcentaje_hasu,socio_nombre,avance_reforma,precio_compra,precio_venta_estimado,precio_venta_real,precio_venta_conservador,precio_venta_realista,precio_venta_optimista,valor_total_operacion,inversion_hasu,fecha_compra,fecha_salida_estimada,imagen_portada')
         .order('created_at', { ascending: false }),
       supabase.from('movimientos').select('proyecto_id,monto,tipo'),
     ]).then(([p, m]) => {
@@ -196,13 +197,14 @@ export default function ProyectosPage() {
   }
 
   const visibles      = proyectos.filter(p => canAccessProject(user?.permisos ?? null, p.id))
-  const activos       = visibles.filter(p => ESTADOS_ACTIVOS.includes(p.estado))
-  const pipeline      = visibles.filter(p => ESTADOS_PIPELINE.includes(p.estado))
+  const activos         = visibles.filter(p => ESTADOS_ACTIVOS.includes(p.estado) && (p.tipo_op || 'propio') === 'propio')
+  const participaciones = visibles.filter(p => ESTADOS_ACTIVOS.includes(p.estado) && (p.tipo_op || 'propio') !== 'propio')
+  const pipeline        = visibles.filter(p => ESTADOS_PIPELINE.includes(p.estado))
   const patrimoniales = visibles.filter(p => ESTADOS_PATRIMONIALES.includes(p.estado))
   const finalizados   = visibles.filter(p => ESTADOS_VENDIDOS.includes(p.estado))
 
   // KPI calculations
-  const capitalTotal = activos.reduce((s, p) => s + getInv(p), 0)
+  const capitalTotal = activos.reduce((s, p) => s + getInvHasu(p), 0)
   const roisValidos  = activos.filter(p => getInvHasu(p) > 0 && getVenta(p) > 0)
   const benefTotal   = roisValidos.reduce((s, p) => s + getBenefHasu(p), 0)
   const roiMedio     = roisValidos.length > 0
@@ -232,7 +234,7 @@ export default function ProyectosPage() {
               Proyectos
             </div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4, fontWeight: 600 }}>
-              {activos.length} activos · {finalizados.length} vendidos · Inversión total {capitalTotal > 0 ? fmt(capitalTotal) : '—'}
+              {activos.length} activos · {finalizados.length} vendidos · Capital {capitalTotal > 0 ? fmt(capitalTotal) : '—'}
             </div>
           </div>
           <button
@@ -250,7 +252,7 @@ export default function ProyectosPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
           {[
             { icon: '🏠', val: String(activos.length), label: 'ACTIVOS', sub: pipeline.length > 0 ? `+ ${pipeline.length} en pipeline` : 'En cartera', color: '#A6855A' },
-            { icon: '💰', val: capitalTotal > 0 ? fmt(capitalTotal) : '—', label: 'INVERSIÓN TOTAL', sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`, color: '#60A5FA' },
+            { icon: '💰', val: capitalTotal > 0 ? fmt(capitalTotal) : '—', label: 'CAPITAL HASU', sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`, color: '#60A5FA' },
             { icon: '📈', val: benefTotal !== 0 ? fmt(benefTotal) : '—', label: 'BENEFICIO EST.', sub: 'Escenario realista', color: benefTotal >= 0 ? '#22C55E' : '#EF4444' },
             { icon: '⚡', val: roiMedio !== null ? `${roiMedio >= 0 ? '+' : ''}${roiMedio.toFixed(1)}%` : '—', label: 'ROI MEDIO', sub: 'Sobre inversión', color: '#a78bfa' },
           ].map(k => (
@@ -551,6 +553,44 @@ export default function ProyectosPage() {
           </>
         )}
 
+
+        {/* ── PARTICIPACIONES ── */}
+        {participaciones.length > 0 && (
+          <>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#111', letterSpacing: '-0.01em', marginBottom: 8 }}>PARTICIPACIONES</div>
+            <div style={{ fontSize: 13, color: '#999', marginBottom: 20 }}>Proyectos de terceros donde HASU co-invierte o presta servicio. No computan en los KPIs.</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28, marginBottom: 48 }}>
+              {participaciones.map(p => (
+                <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)', padding: 20, opacity: 0.85 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                    <div onClick={() => router.push(`/proyectos/${p.id}`)} style={{ cursor: 'pointer', flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: '#111' }}>{p.nombre}</div>
+                      <div style={{ fontSize: 12, color: '#999', marginTop: 3 }}>📍 {p.ciudad || '—'}</div>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 100, background: 'rgba(166,133,90,0.12)', color: '#A6855A' }}>
+                      {p.tipo_op === 'servicio' ? 'Servicio' : 'Co-inversión'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, padding: '3px 8px', borderRadius: 100, background: `${ESTADO_COLOR[p.estado] || '#888'}18`, color: ESTADO_COLOR[p.estado] || '#888' }}>
+                      {ESTADO_LABEL[p.estado]}
+                    </span>
+                    {p.inversion_hasu && (
+                      <span style={{ fontSize: 13, fontWeight: 900, color: '#111' }}>{fmt(p.inversion_hasu)} HASU</span>
+                    )}
+                    {p.porcentaje_hasu < 100 && (
+                      <span style={{ fontSize: 12, color: '#999' }}>{p.porcentaje_hasu}%</span>
+                    )}
+                  </div>
+                  <button onClick={() => router.push(`/proyectos/${p.id}`)}
+                    style={{ marginTop: 14, width: '100%', padding: '9px', borderRadius: 10, fontSize: 12, fontWeight: 900, background: '#F2F1ED', color: '#666', border: 'none', cursor: 'pointer' }}>
+                    Ver ficha →
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Empty state */}
         {!loading && activos.length === 0 && pipeline.length === 0 && finalizados.length === 0 && (
