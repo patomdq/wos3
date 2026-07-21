@@ -7,6 +7,7 @@ import DeudaFiltros, { FILTROS_INICIALES, DeudaFiltrosState, pasaFiltros } from 
 import DeudaListado from '@/components/DeudaListado'
 import DeudaFichaModal from '@/components/DeudaFichaModal'
 import DeudaImportWizard from '@/components/DeudaImportWizard'
+import DeudaCribaView from '@/components/DeudaCribaView'
 import { DeudaPosicion, ESTADO_INTERNO_CFG, agruparPorContrato } from '@/lib/deuda-schema'
 
 // Leaflet necesita `window` — no puede pasar por el render de servidor.
@@ -35,7 +36,7 @@ export default function DeudaPage() {
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [soloFavoritos, setSoloFavoritos] = useState(false)
   const [filtros, setFiltros] = useState<DeudaFiltrosState>(FILTROS_INICIALES)
-  const [vista, setVista] = useState<'lista' | 'mapa'>('lista')
+  const [vista, setVista] = useState<'lista' | 'mapa' | 'criba'>('lista')
   const [contratoAbierto, setContratoAbierto] = useState<string | null>(null)
   const [geocodificando, setGeocodificando] = useState(false)
   const [geocodProgreso, setGeocodProgreso] = useState({ hecho: 0, total: 0 })
@@ -217,11 +218,11 @@ export default function DeudaPage() {
           </div>
 
           <div className="flex rounded-xl p-1 flex-shrink-0" style={{ background: '#fff', border: '1.5px solid #ECEAE4' }}>
-            {(['lista', 'mapa'] as const).map(v => (
+            {(['lista', 'criba', 'mapa'] as const).map(v => (
               <button key={v} onClick={() => setVista(v)}
                 className="px-3.5 py-1.5 rounded-lg text-[13px] font-black"
                 style={{ background: vista === v ? '#A6855A' : 'transparent', color: vista === v ? '#14110C' : '#666' }}>
-                {v === 'lista' ? '☰ Lista' : '🗺️ Mapa'}
+                {v === 'lista' ? '☰ Lista' : v === 'criba' ? '🎯 Criba' : '🗺️ Mapa'}
               </button>
             ))}
           </div>
@@ -272,6 +273,8 @@ export default function DeudaPage() {
           </div>
         ) : vista === 'mapa' ? (
           <DeudaMapa grupos={grupos} onAbrir={setContratoAbierto} />
+        ) : vista === 'criba' ? (
+          <DeudaCribaView grupos={grupos} onAbrir={setContratoAbierto} />
         ) : (
           <DeudaListado grupos={grupos} onAbrir={setContratoAbierto} />
         )}

@@ -244,6 +244,55 @@ export function inferirRatingsCesion(p: {
   return { rating_deudor, rating_posesion, rating_juzgado, rating_procedimiento }
 }
 
+// Score 0-100 para screening masivo de activos de deuda.
+// Pesos: descuento (35%) + posesión (30%) + judicial/procedimiento (25%) + deudor (10%)
+// Descuento = (OB - asking) / OB. Posesión/judicial/procedimiento = invertir rating (1→100, 5→0).
+export function calcularScoreActivo(p: DeudaPosicion): number {
+  const ratings = inferirRatingsCesion(p)
+
+  // Descuento sobre OB (35 puntos)
+  let ptsDescuento = 0
+  if (p.deuda_ob && p.asking_price && p.deuda_ob > 0) {
+    const desc = (p.deuda_ob - p.asking_price) / p.deuda_ob
+    ptsDescuento = Math.min(35, Math.max(0, desc * 70)) // 50% descuento → 35 pts
+  }
+
+  // Posesión (30 puntos) — rating 1=30pts, 5=0pts
+  const ptsPosesion = ratings.rating_posesion != null
+    ? Math.round((5 - ratings.rating_posesion) / 4 * 30)
+    : 15 // sin datos → neutro
+
+  // Judicial + Procedimiento (25 puntos) — promedio de ambos ratings
+  let ptsJudicial = 12 // neutro
+  const rJ = ratings.rating_juzgado
+  const rP = ratings.rating_procedimiento
+  if (rJ != null && rP != null) {
+    ptsJudicial = Math.round(((5 - rJ) / 4 + (5 - rP) / 4) / 2 * 25)
+  } else if (rJ != null) {
+    ptsJudicial = Math.round((5 - rJ) / 4 * 25)
+  } else if (rP != null) {
+    ptsJudicial = Math.round((5 - rP) / 4 * 25)
+  }
+
+  // Deudor (10 puntos)
+  const ptsDeudor = ratings.rating_deudor != null
+    ? Math.round((5 - ratings.rating_deudor) / 4 * 10)
+    : 5
+
+  // Penalización por cargas previas que superan el asking
+  const { alerta } = calcRatioRiesgoCargas(p.cargas_previas, p.asking_price)
+  const penalizacion = alerta ? 20 : 0
+
+  return Math.max(0, Math.min(100, Math.round(ptsDescuento + ptsPosesion + ptsJudicial + ptsDeudor - penalizacion)))
+}
+
+// Semáforo global del activo: verde ≥ 65, amarillo 40-64, rojo < 40
+export function semaforo(score: number): 'verde' | 'amarillo' | 'rojo' {
+  if (score >= 65) return 'verde'
+  if (score >= 40) return 'amarillo'
+  return 'rojo'
+}
+
 // Beneficio estimado de la cesión = valor_mercado - precio_cesion - todos los gastos
 export function calcBeneficioCesion(a: Partial<AnalisisCesion>): number | null {
   if (!a.valor_mercado_garantia || !a.precio_cesion) return null
