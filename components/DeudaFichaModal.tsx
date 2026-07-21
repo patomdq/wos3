@@ -65,6 +65,175 @@ export default function DeudaFichaModal({
     grupo.items.forEach(p => onUpdateCampo(p.id, { favorito: nuevoValor }))
   }
 
+  const descargarInforme = () => {
+    const p = grupo.items[0]
+    if (!p) return
+    const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+    const inferido = inferirRatingsCesion(p)
+    const cesion: AnalisisCesion = {
+      rating_deudor: p.analisis_cesion?.rating_deudor ?? inferido.rating_deudor,
+      rating_posesion: p.analisis_cesion?.rating_posesion ?? inferido.rating_posesion,
+      rating_juzgado: p.analisis_cesion?.rating_juzgado ?? inferido.rating_juzgado,
+      rating_procedimiento: p.analisis_cesion?.rating_procedimiento ?? inferido.rating_procedimiento,
+      precio_cesion: p.analisis_cesion?.precio_cesion ?? p.asking_price ?? null,
+      valor_mercado_garantia: p.analisis_cesion?.valor_mercado_garantia ?? null,
+      gastos_inscripcion: p.analisis_cesion?.gastos_inscripcion ?? null,
+      impuestos_cesion: p.analisis_cesion?.impuestos_cesion ?? null,
+      comisiones: p.analisis_cesion?.comisiones ?? null,
+      impuestos_adjudicacion: p.analisis_cesion?.impuestos_adjudicacion ?? null,
+      novada_hipoteca: p.analisis_cesion?.novada_hipoteca ?? null,
+      vivienda_habitual: p.analisis_cesion?.vivienda_habitual ?? null,
+      hay_que_pagar_deudor: p.analisis_cesion?.hay_que_pagar_deudor ?? null,
+      importe_pago_deudor: p.analisis_cesion?.importe_pago_deudor ?? null,
+      notas_analisis: p.analisis_cesion?.notas_analisis ?? null,
+    }
+    const beneficio = calcBeneficioCesion(cesion)
+    const fmtN = (n: number | null | undefined) => {
+      if (n == null) return '—'
+      return n.toLocaleString('es-ES') + ' €'
+    }
+    const estadoJudicial = p.estado_judicial_normalizado
+      ? (ESTADO_JUDICIAL_LABEL[p.estado_judicial_normalizado] ?? p.estado_judicial_normalizado)
+      : (p.estado_judicial_raw || '—')
+    const ratingRow = (label: string, val: RatingDificultad | null) => {
+      if (!val) return ''
+      const colors: Record<string, string> = { bajo: '#16a34a', medio: '#d97706', alto: '#dc2626', muy_alto: '#7c2d12' }
+      const labels: Record<string, string> = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto', muy_alto: 'Muy alto' }
+      const col = colors[val] ?? '#999'
+      return `<tr><td style="padding:6px 0;color:#666;font-size:13px">${label}</td><td style="padding:6px 0;text-align:right"><span style="background:${col}20;color:${col};font-weight:700;font-size:12px;padding:2px 8px;border-radius:6px">${labels[val] ?? val}</span></td></tr>`
+    }
+    const field = (label: string, val: string | number | null | undefined) =>
+      val != null && val !== '' && val !== '—'
+        ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;width:45%">${label}</td><td style="padding:5px 0;font-weight:600;font-size:13px;color:#1A1A1A">${val}</td></tr>`
+        : ''
+    const cargas = p.cargas_detalle || []
+    const previas = cargas.filter(c => c.tipo === 'previa')
+    const posteriores = cargas.filter(c => c.tipo === 'posterior')
+    const cargaRow = (c: { concepto: string; importe: number | null; notas?: string }) =>
+      `<tr><td style="padding:5px 0;font-size:13px;color:#444">${c.concepto || '—'}</td><td style="padding:5px 0;font-weight:600;font-size:13px;text-align:right;color:#1A1A1A">${c.importe != null ? c.importe.toLocaleString('es-ES') + ' €' : '—'}</td></tr>`
+    const resumen = p.resumen_ia
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Informe · ${grupo.contractId}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#F2F1ED;font-family:'Hanken Grotesk',sans-serif;color:#1A1A1A;padding:32px;max-width:800px;margin:0 auto}
+  .logo{font-family:'Marcellus',serif;font-size:22px;color:#A6855A;letter-spacing:1px}
+  .logo-sub{font-size:11px;color:#999;font-weight:500;margin-top:1px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:2px solid #A6855A;margin-bottom:28px}
+  .title{font-family:'Marcellus',serif;font-size:26px;color:#1A1A1A;margin-bottom:4px}
+  .subtitle{font-size:13px;color:#666;font-weight:500}
+  .card{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:20px;margin-bottom:16px}
+  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#A6855A;margin-bottom:14px}
+  table{width:100%;border-collapse:collapse}
+  .divider{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:10px 0}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .beneficio{font-size:22px;font-weight:900;font-family:'Marcellus',serif}
+  .resena{font-size:13.5px;line-height:1.75;color:#333}
+  .footer{text-align:center;font-size:11px;color:#BBB;margin-top:32px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.06)}
+  @media print{body{padding:20px}@page{margin:15mm}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="logo">WALLEST</div>
+    <div class="logo-sub">HASU Activos Inmobiliarios SL</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:12px;color:#999">Informe de activo</div>
+    <div style="font-size:12px;color:#666;font-weight:600;margin-top:2px">${fecha}</div>
+    <div style="font-size:11px;color:#BBB;margin-top:2px;font-family:monospace">${grupo.contractId}</div>
+  </div>
+</div>
+
+<div class="title">${[grupo.ciudad, grupo.provincia].filter(Boolean).join(', ') || 'Sin ubicación'}</div>
+<div class="subtitle" style="margin-bottom:24px">${p.direccion || ''} ${p.broker ? '· ' + p.broker : ''}</div>
+
+<!-- DATOS DEL INMUEBLE -->
+<div class="card">
+  <div class="section-title">Inmueble</div>
+  <table>
+    ${field('Tipo', [p.tipo_colateral, p.subtipo_colateral].filter(Boolean).join(' · '))}
+    ${field('Referencia catastral', p.ref_catastral)}
+    ${field('Municipio', p.municipio)}
+    ${field('Provincia', p.provincia)}
+    ${field('CCAA', p.ccaa)}
+    ${field('Estado judicial', estadoJudicial)}
+    ${field('Ocupación', p.ocupacion_estado ? (OCUPACION_LABEL[p.ocupacion_estado as OcupacionEstado] ?? p.ocupacion_estado) : null)}
+    ${field('Superficie (m²)', (p as any).superficie_m2)}
+  </table>
+</div>
+
+<!-- ANÁLISIS ECONÓMICO -->
+<div class="card">
+  <div class="section-title">Análisis económico</div>
+  <table>
+    ${field('Deuda total', fmtN(p.deuda_tot))}
+    ${field('Precio de cesión', fmtN(cesion.precio_cesion))}
+    ${field('Valor de mercado garantía', fmtN(cesion.valor_mercado_garantia))}
+    ${field('Gastos inscripción', fmtN(cesion.gastos_inscripcion))}
+    ${field('Impuestos cesión', fmtN(cesion.impuestos_cesion))}
+    ${field('Comisiones', fmtN(cesion.comisiones))}
+    ${field('Impuestos adjudicación', fmtN(cesion.impuestos_adjudicacion))}
+  </table>
+  ${beneficio !== null ? `
+  <hr class="divider" style="margin-top:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px">
+    <span style="font-size:13px;color:#666;font-weight:600">Beneficio estimado</span>
+    <span class="beneficio" style="color:${beneficio >= 0 ? '#16a34a' : '#dc2626'}">${beneficio >= 0 ? '+' : ''}${beneficio.toLocaleString('es-ES')} €</span>
+  </div>` : ''}
+</div>
+
+<!-- RATINGS CESIÓN -->
+${(cesion.rating_deudor || cesion.rating_posesion || cesion.rating_juzgado || cesion.rating_procedimiento) ? `
+<div class="card">
+  <div class="section-title">Análisis de cesión — Ratings de dificultad</div>
+  <table>
+    ${ratingRow('Deudor', cesion.rating_deudor)}
+    ${ratingRow('Posesión', cesion.rating_posesion)}
+    ${ratingRow('Juzgado', cesion.rating_juzgado)}
+    ${ratingRow('Procedimiento', cesion.rating_procedimiento)}
+  </table>
+  ${cesion.notas_analisis ? `<div style="margin-top:12px;padding:12px;background:#F9F8F5;border-radius:10px;font-size:13px;color:#444;line-height:1.6">${cesion.notas_analisis}</div>` : ''}
+</div>` : ''}
+
+<!-- CARGAS -->
+${cargas.length > 0 ? `
+<div class="card">
+  <div class="section-title">Cargas</div>
+  ${previas.length > 0 ? `
+  <div style="font-size:12px;font-weight:700;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Previas</div>
+  <table>${previas.map(cargaRow).join('')}</table>` : ''}
+  ${posteriores.length > 0 ? `
+  <div style="font-size:12px;font-weight:700;color:#666;margin-top:14px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Posteriores</div>
+  <table>${posteriores.map(cargaRow).join('')}</table>` : ''}
+</div>` : ''}
+
+<!-- RESEÑA IA -->
+${resumen ? `
+<div class="card">
+  <div class="section-title">Reseña del activo</div>
+  <p class="resena">${resumen.replace(/\n/g, '<br>')}</p>
+</div>` : ''}
+
+<div class="footer">
+  Generado por WOS3 · HASU Activos Inmobiliarios SL · ${fecha}
+</div>
+
+<script>window.onload = () => window.print()</script>
+</body>
+</html>`
+
+    const win = window.open('', '_blank')
+    if (win) { win.document.write(html); win.document.close() }
+  }
+
   return (
     <>
       <div className="fixed inset-x-0 top-0 z-40" style={{ bottom: 70, background: 'rgba(0,0,0,0.45)' }} onClick={onClose} />
@@ -91,6 +260,12 @@ export default function DeudaFichaModal({
                   title={grupo.esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
                   style={{ background: grupo.esFavorito ? 'rgba(245,158,11,0.15)' : '#F5F4F0', border: `1px solid ${grupo.esFavorito ? 'rgba(245,158,11,0.4)' : '#ECEAE4'}` }}>
                   {grupo.esFavorito ? '⭐' : '☆'}
+                </button>
+                <button onClick={descargarInforme}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-sm"
+                  title="Descargar informe PDF"
+                  style={{ background: '#F5F4F0', color: '#A6855A', border: '1px solid #ECEAE4' }}>
+                  ↓
                 </button>
                 <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
