@@ -10,7 +10,8 @@ Documentación estructurada del máster para uso en análisis de oportunidades y
 | 01 | Análisis de Micromercado | [sesion-01-micromercado.md](sesion-01-micromercado.md) |
 | 01 | Modelos de Inversión Conjunta (4 estructuras) | [sesion-01-modelos-inversion.md](sesion-01-modelos-inversion.md) |
 | 01 | Presentación de oportunidades a inversores | [sesion-01-presentacion-inversores.md](sesion-01-presentacion-inversores.md) |
-| 02 | — pendiente | — |
+| 02 | Tipos de edificio (4), retos Tipo 4, gestión de obra | [sesion-02-edificios.md](sesion-02-edificios.md) |
+| 02 | Equipamiento para alquiler (15 claves) + checklist primera visita | [sesion-02-equipamiento-visita.md](sesion-02-equipamiento-visita.md) |
 | 03 | — pendiente | — |
 | 04 | — pendiente | — |
 | 05 | — pendiente | — |
