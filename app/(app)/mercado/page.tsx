@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 const MercadoReoWizard = dynamic(() => import('@/components/MercadoReoWizard'), { ssr: false })
+import RiesgosMatriz from '@/components/RiesgosMatriz'
 import { PARTIDAS_PLANTILLA } from '@/lib/reforma-template'
 import { generateReportePDF } from '@/lib/generateReportePDF'
 import { CHECKLIST_ITEMS, ChecklistDocumentacion, ChecklistItemEstado, getItemEstado, getBloqueantesPendientes, getAlertasConfirmadas } from '@/lib/checklist-documentacion'
@@ -3038,6 +3039,12 @@ export default function MercadoPage() {
                 </div>
               )}
             </div>
+
+            {calcInmuebleId && (
+              <div className="mt-2 mb-2">
+                <RiesgosMatriz inmuebleId={calcInmuebleId} />
+              </div>
+            )}
 
             <div className="flex gap-2">
               <button onClick={guardar} disabled={saving || !res || !!savedId}

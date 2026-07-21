@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { authFetch } from '@/lib/auth-fetch'
 import InmuebleCalculadora from '@/components/InmuebleCalculadora'
+import RiesgosMatriz from '@/components/RiesgosMatriz'
 
 const TABS = ['Finanzas','Reforma','Pendientes','Bitácora','Inversor','Docs','Comercialización','Análisis']
 
@@ -1899,13 +1900,17 @@ export default function ProyectoDetalle() {
 
       {/* ═══ Tab: ANÁLISIS (JV + Calculadora + Checklist desde inmueble vinculado) ═══ */}
       {tab === 7 && (
-        inmueble
-          ? <InmuebleCalculadora inmuebleId={inmueble.id} tipologia={inmueble.tipologia || 'piso'} mode="calculadora" />
-          : <div className="rounded-2xl p-6 text-center" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
-              <div className="text-3xl mb-3 opacity-30">🔗</div>
-              <div className="font-bold text-sm" style={{ color:'#999' }}>Sin inmueble vinculado desde Mercado.</div>
-              <div className="text-sm mt-1" style={{ color:'#bbb' }}>Al pasar un inmueble de Mercado a "En arras", queda automáticamente enlazado aquí.</div>
-            </div>
+        <div>
+          {inmueble
+            ? <InmuebleCalculadora inmuebleId={inmueble.id} tipologia={inmueble.tipologia || 'piso'} mode="calculadora" />
+            : <div className="rounded-2xl p-6 text-center" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
+                <div className="text-3xl mb-3 opacity-30">🔗</div>
+                <div className="font-bold text-sm" style={{ color:'#999' }}>Sin inmueble vinculado desde Mercado.</div>
+                <div className="text-sm mt-1" style={{ color:'#bbb' }}>Al pasar un inmueble de Mercado a "En arras", queda automáticamente enlazado aquí.</div>
+              </div>
+          }
+          <RiesgosMatriz proyectoId={proyecto?.id} />
+        </div>
       )}
     </div>
   )
