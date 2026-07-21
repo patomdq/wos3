@@ -598,7 +598,7 @@ function PosicionCard({
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[12.5px] font-bold font-mono break-all" style={{ color: '#333' }}>{p.ref_catastral || '—'}</span>
               {p.ref_catastral && (
-                <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?del=&mun=&RefC=${encodeURIComponent(p.ref_catastral)}&pest=rc`}
+                <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?pest=rc&i=es&buscar=S&RefC=${encodeURIComponent(p.ref_catastral)}`}
                   target="_blank" rel="noopener noreferrer"
                   className="flex-shrink-0 px-2 py-0.5 rounded-lg text-[11px] font-black"
                   style={{ background: '#14110C', color: '#F8F3E9', textDecoration: 'none' }}>
