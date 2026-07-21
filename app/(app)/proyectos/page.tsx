@@ -202,7 +202,7 @@ export default function ProyectosPage() {
   const finalizados   = visibles.filter(p => ESTADOS_VENDIDOS.includes(p.estado))
 
   // KPI calculations
-  const capitalTotal = activos.reduce((s, p) => s + getInvHasu(p), 0)
+  const capitalTotal = activos.reduce((s, p) => s + getInv(p), 0)
   const roisValidos  = activos.filter(p => getInvHasu(p) > 0 && getVenta(p) > 0)
   const benefTotal   = roisValidos.reduce((s, p) => s + getBenefHasu(p), 0)
   const roiMedio     = roisValidos.length > 0
@@ -232,7 +232,7 @@ export default function ProyectosPage() {
               Proyectos
             </div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4, fontWeight: 600 }}>
-              {activos.length} activos · {finalizados.length} vendidos · Capital {capitalTotal > 0 ? fmt(capitalTotal) : '—'}
+              {activos.length} activos · {finalizados.length} vendidos · Inversión total {capitalTotal > 0 ? fmt(capitalTotal) : '—'}
             </div>
           </div>
           <button
@@ -250,7 +250,7 @@ export default function ProyectosPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 28, marginBottom: 28 }}>
           {[
             { icon: '🏠', val: String(activos.length), label: 'ACTIVOS', sub: pipeline.length > 0 ? `+ ${pipeline.length} en pipeline` : 'En cartera', color: '#A6855A' },
-            { icon: '💰', val: capitalTotal > 0 ? fmt(capitalTotal) : '—', label: 'CAPITAL HASU', sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`, color: '#60A5FA' },
+            { icon: '💰', val: capitalTotal > 0 ? fmt(capitalTotal) : '—', label: 'INVERSIÓN TOTAL', sub: `${activos.length} proyecto${activos.length !== 1 ? 's' : ''}`, color: '#60A5FA' },
             { icon: '📈', val: benefTotal !== 0 ? fmt(benefTotal) : '—', label: 'BENEFICIO EST.', sub: 'Escenario realista', color: benefTotal >= 0 ? '#22C55E' : '#EF4444' },
             { icon: '⚡', val: roiMedio !== null ? `${roiMedio >= 0 ? '+' : ''}${roiMedio.toFixed(1)}%` : '—', label: 'ROI MEDIO', sub: 'Sobre inversión', color: '#a78bfa' },
           ].map(k => (
