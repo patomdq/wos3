@@ -102,8 +102,83 @@ Se emite cuando se venden algunos activos antes de finalizar la operación compl
 
 ---
 
+## 6. Las 4 fases de una operación de inversión en conjunto
+
+### FASE 1 — Definir el acuerdo
+Antes de firmar nada, definir con precisión las bases de la colaboración:
+1. Presentar la base de colaboración en reunión (Zoom)
+2. Facilitar el borrador con los aspectos esenciales definidos
+3. Abrir periodo de preguntas y propuestas
+4. Marcar fechas e hitos a los interesados
+5. Dar plazo para firma del contrato y aportación del capital
+6. Hasta la firma no hay vinculación — los interesados pueden salir o ser sustituidos
+7. Dar plazo para la firma y aportación
+8. Añadir al grupo de WhatsApp para notificaciones
+
+### FASE 2 — Crear la estructura de trabajo
+- **Carpeta en la nube** por proyecto (estructura para inversores)
+- **Cuenta bancaria exclusiva** del proyecto
+- Clasificar movimientos por mes desde el inicio
+
+### FASE 3 — Feedback a los inversores
+- Canal y periodicidad pactados en Fase 1
+- En inversiones de 1 año: **1 vez al mes**
+- Canal ideal: **Loom + videollamada**
+- Estructura de la comunicación:
+  1. Momento actual según el planning
+  2. Problemas vs Soluciones
+  3. Estado económico
+  4. "Otras cosas"
+
+### FASE 4 — La liquidación
+- Ver sección 3 (Hoja de Liquidación Parcial) para el proceso completo
+
+---
+
+## 7. Los 12 aspectos clave del CCP (checklist de revisión)
+
+| # | Aspecto | Notas clave |
+|---|---------|-------------|
+| 1 | Identificación de las partes | Persona física / jurídica + **residencia fiscal** |
+| 2 | Objeto del contrato | Describir detalladamente la actividad y los activos |
+| 3 | Duración | Desde compra hasta venta / hito pactado |
+| 4 | Obligaciones del Gestor | Inversión al destino pactado, ejecución, rendición de cuentas, liquidación, no transmisión del negocio |
+| 5 | — | (aportaciones y estructura de capital) |
+| 6 | Obligaciones del Partícipe | Respetar decisiones del Gestor; aportaciones iniciales y adicionales |
+| 7 | Derechos del Partícipe | Exigir rendición de cuentas + participar del resultado |
+| 8 | Responsabilidad frente a terceros | Solo el Gestor responde ante terceros |
+| 9 | Liquidación | Método, pérdidas, cláusulas abusivas, **fiscalidad/retención**, ingresos y gastos posteriores |
+| 10 | Causas de resolución | Mutuo acuerdo, muerte/incapacidad Gestor, concurso, impago, incumplimiento grave |
+| 11 | Cesión del contrato | Requiere acuerdo previo; derecho de tanteo del Gestor y otros Partícipes |
+| 12 | Confidencialidad, RGPD, normativa y jurisdicción | Aplicar CCom art.239 ss.; fijar juzgado competente |
+
+---
+
+## 8. Ficha Plan de Acción (por oportunidad)
+
+Plantilla del máster para estructurar cada oportunidad antes de tomar decisión:
+
+| Cuadrante | Contenido |
+|-----------|-----------|
+| **TEORÍA** | Marco teórico aplicable a la operación (tipo de activo, fiscalidad, estructura jurídica) |
+| **ANÁLISIS / ESTUDIO** | Números, comparables, ROI, escenarios, riesgos |
+| **OFERTA** | Precio objetivo, estrategia de oferta, argumentario |
+| **REUNIONES** | Registro de contactos, visitas, conversaciones con vendedor/agente |
+
+**Estados de avance:** Realizado al 100% (verde) / al 50% (amarillo) / al -50% (rojo)
+Supervisado por: [nombre del mentor/tutor]
+
+---
+
 ## Archivos originales (sesión 01)
+**Carpeta Entregables / Tablas y Contratos:**
 - `Contrato de cuentas en participación BASE.pdf`
 - `Hoja de Liquidación parcial.docx`
 - `Tabla de Liquidacion EJEMPLO VENTA SUEJA A IVA.xlsx`
 - `Tabla de Liquidacion EJEMPLO VENTA IVA NO DEDUCIBLE.xlsx`
+
+**Carpeta Oportunidades de inversión:**
+- `Ficha plan de Acción.pdf`
+- `Las fases clave de una operacion de inversion en conjunto.pptx`
+- `Los 12 aspectos clave que deber contener un contrato de cuentas en participacion.pptx`
+- `Tabla de Liquidacion EJEMPLO.xlsx`
