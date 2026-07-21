@@ -113,6 +113,9 @@ export default function DeudaFichaModal({
       `<tr><td style="padding:5px 0;font-size:13px;color:#444">${c.concepto || '—'}</td><td style="padding:5px 0;font-weight:600;font-size:13px;text-align:right;color:#1A1A1A">${c.importe != null ? c.importe.toLocaleString('es-ES') + ' €' : '—'}</td></tr>`
     const resumen = p.resumen_ia
 
+    const imgUrl = p.imagen_url || ''
+    const ubicacion = [grupo.ciudad, grupo.provincia].filter(Boolean).join(', ') || 'Sin ubicación'
+
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -122,111 +125,162 @@ export default function DeudaFichaModal({
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#F2F1ED;font-family:'Hanken Grotesk',sans-serif;color:#1A1A1A;padding:32px;max-width:800px;margin:0 auto}
-  .logo{font-family:'Marcellus',serif;font-size:22px;color:#A6855A;letter-spacing:1px}
-  .logo-sub{font-size:11px;color:#999;font-weight:500;margin-top:1px}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:2px solid #A6855A;margin-bottom:28px}
-  .title{font-family:'Marcellus',serif;font-size:26px;color:#1A1A1A;margin-bottom:4px}
-  .subtitle{font-size:13px;color:#666;font-weight:500}
-  .card{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:20px;margin-bottom:16px}
-  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#A6855A;margin-bottom:14px}
+  body{background:#F2F1ED;font-family:'Hanken Grotesk',sans-serif;color:#1A1A1A;min-height:100vh}
+  /* ── PORTADA ── */
+  .portada{position:relative;width:100%;height:${imgUrl ? '420px' : '200px'};overflow:hidden;background:#1A1A1A}
+  .portada-img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;opacity:0.75}
+  .portada-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.1) 60%,transparent 100%)}
+  .portada-no-img{width:100%;height:100%;background:linear-gradient(135deg,#14110C 0%,#2C2318 100%);display:flex;align-items:center;justify-content:center}
+  .portada-content{position:absolute;bottom:0;left:0;right:0;padding:32px 36px}
+  .portada-logo{font-family:'Marcellus',serif;font-size:13px;color:rgba(199,168,119,0.9);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px}
+  .portada-titulo{font-family:'Marcellus',serif;font-size:32px;color:#fff;line-height:1.2;margin-bottom:6px}
+  .portada-dir{font-size:14px;color:rgba(255,255,255,0.65);font-weight:500}
+  .portada-meta{display:flex;gap:16px;margin-top:14px;flex-wrap:wrap}
+  .portada-badge{background:rgba(166,133,90,0.25);border:1px solid rgba(166,133,90,0.5);color:#C7A877;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;backdrop-filter:blur(4px)}
+  .portada-fecha{position:absolute;top:24px;right:28px;text-align:right}
+  .portada-fecha-txt{font-size:12px;color:rgba(255,255,255,0.5);font-weight:500}
+  .portada-id{font-family:monospace;font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px}
+  /* ── CONTENIDO ── */
+  .body{padding:28px 32px 48px;max-width:820px;margin:0 auto}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .card{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:20px}
+  .card-full{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:20px;margin-bottom:16px}
+  .sec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#A6855A;margin-bottom:14px}
   table{width:100%;border-collapse:collapse}
-  .divider{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:10px 0}
-  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
-  .beneficio{font-size:22px;font-weight:900;font-family:'Marcellus',serif}
-  .resena{font-size:13.5px;line-height:1.75;color:#333}
-  .footer{text-align:center;font-size:11px;color:#BBB;margin-top:32px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.06)}
-  @media print{body{padding:20px}@page{margin:15mm}}
+  td{padding:5px 0;vertical-align:top}
+  td:first-child{color:#888;font-size:12.5px;width:48%;padding-right:8px}
+  td:last-child{font-weight:600;font-size:12.5px;color:#1A1A1A;text-align:right}
+  .sep{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:12px 0}
+  .beneficio-row{display:flex;justify-content:space-between;align-items:center;padding-top:12px}
+  .beneficio-num{font-family:'Marcellus',serif;font-size:26px}
+  .rating-badge{display:inline-block;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700}
+  .resena-txt{font-size:13.5px;line-height:1.8;color:#333}
+  .footer{text-align:center;font-size:11px;color:#BBB;padding:24px 32px;border-top:1px solid rgba(0,0,0,0.06)}
+  @media print{
+    @page{margin:0;size:A4}
+    body{background:#fff}
+    .portada{height:${imgUrl ? '360px' : '180px'} !important}
+    .body{padding:20px 28px 32px}
+    .card,.card-full{break-inside:avoid}
+  }
 </style>
 </head>
 <body>
-<div class="header">
-  <div>
-    <div class="logo">WALLEST</div>
-    <div class="logo-sub">HASU Activos Inmobiliarios SL</div>
+
+<!-- ── PORTADA ── -->
+<div class="portada">
+  ${imgUrl
+    ? `<img class="portada-img" src="${imgUrl}" alt="Imagen del inmueble">
+       <div class="portada-overlay"></div>`
+    : `<div class="portada-no-img"></div>`
+  }
+  <div class="portada-fecha">
+    <div class="portada-fecha-txt">${fecha}</div>
+    <div class="portada-id">${grupo.contractId}</div>
   </div>
-  <div style="text-align:right">
-    <div style="font-size:12px;color:#999">Informe de activo</div>
-    <div style="font-size:12px;color:#666;font-weight:600;margin-top:2px">${fecha}</div>
-    <div style="font-size:11px;color:#BBB;margin-top:2px;font-family:monospace">${grupo.contractId}</div>
+  <div class="portada-content">
+    <div class="portada-logo">WALLEST · HASU</div>
+    <div class="portada-titulo">${ubicacion}</div>
+    ${p.direccion ? `<div class="portada-dir">${p.direccion}</div>` : ''}
+    <div class="portada-meta">
+      ${[p.tipo_colateral, p.subtipo_colateral].filter(Boolean).map(t => `<span class="portada-badge">${t}</span>`).join('')}
+      ${estadoJudicial && estadoJudicial !== '—' ? `<span class="portada-badge">${estadoJudicial}</span>` : ''}
+      ${p.broker ? `<span class="portada-badge">${p.broker}</span>` : ''}
+    </div>
   </div>
 </div>
 
-<div class="title">${[grupo.ciudad, grupo.provincia].filter(Boolean).join(', ') || 'Sin ubicación'}</div>
-<div class="subtitle" style="margin-bottom:24px">${p.direccion || ''} ${p.broker ? '· ' + p.broker : ''}</div>
+<!-- ── CUERPO ── -->
+<div class="body">
 
-<!-- DATOS DEL INMUEBLE -->
-<div class="card">
-  <div class="section-title">Inmueble</div>
-  <table>
-    ${field('Tipo', [p.tipo_colateral, p.subtipo_colateral].filter(Boolean).join(' · '))}
-    ${field('Referencia catastral', p.ref_catastral)}
-    ${field('Municipio', p.municipio)}
-    ${field('Provincia', p.provincia)}
-    ${field('CCAA', p.ccaa)}
-    ${field('Estado judicial', estadoJudicial)}
-    ${field('Ocupación', p.ocupacion_estado ? (OCUPACION_LABEL[p.ocupacion_estado as OcupacionEstado] ?? p.ocupacion_estado) : null)}
-    ${field('Superficie (m²)', (p as any).superficie_m2)}
-  </table>
-</div>
+  <!-- Fila 1: Inmueble + Económico -->
+  <div class="grid2">
+    <div class="card">
+      <div class="sec">Inmueble</div>
+      <table>
+        ${field('Municipio', p.municipio)}
+        ${field('Provincia', p.provincia)}
+        ${field('Ref. catastral', p.ref_catastral)}
+        ${field('Superficie', (p as any).superficie_m2 ? (p as any).superficie_m2 + ' m²' : null)}
+        ${field('Ocupación', p.ocupacion_estado ? (OCUPACION_LABEL[p.ocupacion_estado as OcupacionEstado] ?? p.ocupacion_estado) : null)}
+      </table>
+    </div>
+    <div class="card">
+      <div class="sec">Económico</div>
+      <table>
+        ${field('Deuda total', fmtN(p.deuda_tot))}
+        ${field('Precio cesión', fmtN(cesion.precio_cesion))}
+        ${field('Valor garantía', fmtN(cesion.valor_mercado_garantia))}
+        ${field('Gastos inscripción', fmtN(cesion.gastos_inscripcion))}
+        ${field('Impuestos', fmtN(cesion.impuestos_cesion))}
+        ${field('Comisiones', fmtN(cesion.comisiones))}
+      </table>
+      ${beneficio !== null ? `
+      <hr class="sep">
+      <div class="beneficio-row">
+        <span style="font-size:12px;color:#888;font-weight:600">Beneficio estimado</span>
+        <span class="beneficio-num" style="color:${beneficio >= 0 ? '#16a34a' : '#dc2626'}">${beneficio >= 0 ? '+' : ''}${beneficio.toLocaleString('es-ES')} €</span>
+      </div>` : ''}
+    </div>
+  </div>
 
-<!-- ANÁLISIS ECONÓMICO -->
-<div class="card">
-  <div class="section-title">Análisis económico</div>
-  <table>
-    ${field('Deuda total', fmtN(p.deuda_tot))}
-    ${field('Precio de cesión', fmtN(cesion.precio_cesion))}
-    ${field('Valor de mercado garantía', fmtN(cesion.valor_mercado_garantia))}
-    ${field('Gastos inscripción', fmtN(cesion.gastos_inscripcion))}
-    ${field('Impuestos cesión', fmtN(cesion.impuestos_cesion))}
-    ${field('Comisiones', fmtN(cesion.comisiones))}
-    ${field('Impuestos adjudicación', fmtN(cesion.impuestos_adjudicacion))}
-  </table>
-  ${beneficio !== null ? `
-  <hr class="divider" style="margin-top:14px">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px">
-    <span style="font-size:13px;color:#666;font-weight:600">Beneficio estimado</span>
-    <span class="beneficio" style="color:${beneficio >= 0 ? '#16a34a' : '#dc2626'}">${beneficio >= 0 ? '+' : ''}${beneficio.toLocaleString('es-ES')} €</span>
+  <!-- Fila 2: Ratings (si existen) -->
+  ${(cesion.rating_deudor || cesion.rating_posesion || cesion.rating_juzgado || cesion.rating_procedimiento) ? `
+  <div class="grid2" style="margin-bottom:16px">
+    <div class="card" style="grid-column:1/-1">
+      <div class="sec">Análisis de cesión — Ratings de dificultad</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        ${[
+          ['Deudor', cesion.rating_deudor],
+          ['Posesión', cesion.rating_posesion],
+          ['Juzgado', cesion.rating_juzgado],
+          ['Procedimiento', cesion.rating_procedimiento],
+        ].filter(([,v]) => v).map(([label, val]) => {
+          const colors: Record<string, string> = { bajo:'#16a34a', medio:'#d97706', alto:'#dc2626', muy_alto:'#7c2d12' }
+          const labels: Record<string, string> = { bajo:'Bajo', medio:'Medio', alto:'Alto', muy_alto:'Muy alto' }
+          const v = val as string
+          return `<div style="text-align:center;padding:12px 8px;background:#F9F8F5;border-radius:10px">
+            <div style="font-size:11px;color:#999;font-weight:600;margin-bottom:6px">${label}</div>
+            <span class="rating-badge" style="background:${colors[v]}18;color:${colors[v]}">${labels[v] ?? v}</span>
+          </div>`
+        }).join('')}
+      </div>
+      ${cesion.notas_analisis ? `<div style="margin-top:14px;padding:12px;background:#F9F8F5;border-radius:10px;font-size:13px;color:#444;line-height:1.65">${cesion.notas_analisis}</div>` : ''}
+    </div>
   </div>` : ''}
+
+  <!-- Cargas -->
+  ${cargas.length > 0 ? `
+  <div class="card-full">
+    <div class="sec">Cargas</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      ${previas.length > 0 ? `
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Previas</div>
+        <table>${previas.map(cargaRow).join('')}</table>
+      </div>` : '<div></div>'}
+      ${posteriores.length > 0 ? `
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Posteriores</div>
+        <table>${posteriores.map(cargaRow).join('')}</table>
+      </div>` : ''}
+    </div>
+  </div>` : ''}
+
+  <!-- Reseña IA -->
+  ${resumen ? `
+  <div class="card-full">
+    <div class="sec">Reseña del activo</div>
+    <p class="resena-txt">${resumen.replace(/\n/g, '<br>')}</p>
+  </div>` : ''}
+
 </div>
-
-<!-- RATINGS CESIÓN -->
-${(cesion.rating_deudor || cesion.rating_posesion || cesion.rating_juzgado || cesion.rating_procedimiento) ? `
-<div class="card">
-  <div class="section-title">Análisis de cesión — Ratings de dificultad</div>
-  <table>
-    ${ratingRow('Deudor', cesion.rating_deudor)}
-    ${ratingRow('Posesión', cesion.rating_posesion)}
-    ${ratingRow('Juzgado', cesion.rating_juzgado)}
-    ${ratingRow('Procedimiento', cesion.rating_procedimiento)}
-  </table>
-  ${cesion.notas_analisis ? `<div style="margin-top:12px;padding:12px;background:#F9F8F5;border-radius:10px;font-size:13px;color:#444;line-height:1.6">${cesion.notas_analisis}</div>` : ''}
-</div>` : ''}
-
-<!-- CARGAS -->
-${cargas.length > 0 ? `
-<div class="card">
-  <div class="section-title">Cargas</div>
-  ${previas.length > 0 ? `
-  <div style="font-size:12px;font-weight:700;color:#666;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Previas</div>
-  <table>${previas.map(cargaRow).join('')}</table>` : ''}
-  ${posteriores.length > 0 ? `
-  <div style="font-size:12px;font-weight:700;color:#666;margin-top:14px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Posteriores</div>
-  <table>${posteriores.map(cargaRow).join('')}</table>` : ''}
-</div>` : ''}
-
-<!-- RESEÑA IA -->
-${resumen ? `
-<div class="card">
-  <div class="section-title">Reseña del activo</div>
-  <p class="resena">${resumen.replace(/\n/g, '<br>')}</p>
-</div>` : ''}
 
 <div class="footer">
   Generado por WOS3 · HASU Activos Inmobiliarios SL · ${fecha}
 </div>
 
-<script>window.onload = () => window.print()</script>
+<script>window.onload = () => { document.fonts.ready.then(() => window.print()) }</script>
 </body>
 </html>`
 
