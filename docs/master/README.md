@@ -12,7 +12,8 @@ Documentación estructurada del máster para uso en análisis de oportunidades y
 | 01 | Presentación de oportunidades a inversores | [sesion-01-presentacion-inversores.md](sesion-01-presentacion-inversores.md) |
 | 02 | Tipos de edificio (4), retos Tipo 4, gestión de obra | [sesion-02-edificios.md](sesion-02-edificios.md) |
 | 02 | Equipamiento para alquiler (15 claves) + checklist primera visita | [sesion-02-equipamiento-visita.md](sesion-02-equipamiento-visita.md) |
-| 03 | — pendiente | — |
+| 03 | Fiscalidad avanzada: IVA/TPO/AJD, ISP, rehabilitación, obra nueva, 9 trucos | [sesion-03-fiscalidad.md](sesion-03-fiscalidad.md) |
+| 03 | Estructura Holding: concepto, 3 formas, tributación socio, régimen FEAC | [sesion-03-holding.md](sesion-03-holding.md) |
 | 04 | — pendiente | — |
 | 05 | — pendiente | — |
 
