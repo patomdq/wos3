@@ -417,17 +417,23 @@ function PosicionCard({
 }) {
   const [catastroLoading, setCatastroLoading] = useState(false)
   const [catastroData, setCatastroData] = useState<DatosCatastro | null>(p.datos_catastro ?? null)
+  const [catastroError, setCatastroError] = useState<string | null>(null)
 
   const fetchCatastro = async () => {
     setCatastroLoading(true)
+    setCatastroError(null)
     try {
       const res = await authFetch(`/api/catastro/fetch?id=${p.id}`)
       const json = await res.json()
       if (json.ok && json.datos) {
         setCatastroData(json.datos)
         onUpdateCampo({ datos_catastro: json.datos } as any)
+      } else {
+        setCatastroError(json.error || 'Sin datos en el Catastro')
       }
-    } catch { /* silencioso */ }
+    } catch {
+      setCatastroError('Error de conexión')
+    }
     setCatastroLoading(false)
   }
 
@@ -915,6 +921,7 @@ function PosicionCard({
                     style={{ background: catastroData ? '#E8F5E9' : '#F0EEE8', color: catastroData ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: catastroData ? '#BBF7D0' : '#DDDAD2' }}>
                     {catastroLoading ? '⟳ Cargando…' : catastroData ? '✓ Actualizar datos' : '⬇ Obtener datos'}
                   </button>
+                  {catastroError && <span className="text-[11px]" style={{ color: '#dc2626' }}>{catastroError}</span>}
                 </>
               )}
             </div>

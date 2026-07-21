@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
 
   const { data: pos, error } = await supabase
     .from('deuda_posiciones')
-    .select('id, ref_catastral, provincia, municipio')
+    .select('id, ref_catastral, provincia, ciudad')
     .eq('id', id)
     .single()
 
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
   if (!pos.ref_catastral) return NextResponse.json({ error: 'Sin referencia catastral' }, { status: 400 })
 
   const prov = pos.provincia || ''
-  const mun = pos.municipio || ''
+  const mun = pos.ciudad || ''
   const catastro = await fetchCatastro(pos.ref_catastral, prov, mun)
   if (!catastro) return NextResponse.json({ error: 'Catastro no devolvió datos' }, { status: 404 })
 
