@@ -16,7 +16,9 @@ Documentación estructurada del máster para uso en análisis de oportunidades y
 | 03 | Estructura Holding: concepto, 3 formas, tributación socio, régimen FEAC | [sesion-03-holding.md](sesion-03-holding.md) |
 | 04 | Comunicación DISC+ (4 estilos, combinaciones, inmobiliaria) | [sesion-04-disc.md](sesion-04-disc.md) |
 | 04 | Negociación y Oferta (10 claves, objeciones, preguntas desbloqueo) | [sesion-04-negociacion-oferta.md](sesion-04-negociacion-oferta.md) |
-| 05 | — pendiente | — |
+| 05 | Riesgos jurídicos desalojos + Escenarios legales ocupación | [sesion-05-desalojos-juridico.md](sesion-05-desalojos-juridico.md) |
+| 05 | 5 Supuestos prácticos en la vía civil (casos reales) | [sesion-05-supuestos-civiles.md](sesion-05-supuestos-civiles.md) |
+| 05 | NPL, Cesión de Crédito y Ciclo del Activo Distress | [sesion-05-npl-cesion-credito.md](sesion-05-npl-cesion-credito.md) |
 
 ## Cómo usar esto
 
