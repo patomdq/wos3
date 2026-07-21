@@ -441,6 +441,7 @@ export type DeudaPosicion = {
   resumen_ia: string | null
   analisis_cesion: AnalisisCesion | null
   datos_catastro: DatosCatastro | null
+  valor_mercado_grupo: number | null
   created_at: string
   updated_at: string
 }
@@ -472,6 +473,7 @@ export type GrupoDeuda = {
   obTotal: number
   deudaTotTotal: number
   valorColateralTotal: number | null
+  valorMercadoGrupo: number | null
   ciudad: string | null | undefined
   provincia: string | null | undefined
   broker: string | null | undefined
@@ -499,6 +501,7 @@ export function agruparPorContrato(posiciones: DeudaPosicion[]): GrupoDeuda[] {
     obTotal: items.reduce((s, i) => s + (i.deuda_ob || 0), 0),
     deudaTotTotal: items.reduce((s, i) => s + (i.deuda_tot || 0), 0),
     valorColateralTotal: items.some(i => i.valor_colateral != null) ? items.reduce((s, i) => s + (i.valor_colateral || 0), 0) : null,
+    valorMercadoGrupo: items.find(i => i.valor_mercado_grupo != null)?.valor_mercado_grupo ?? null,
     ciudad: items[0]?.ciudad,
     provincia: items[0]?.provincia,
     broker: items[0]?.broker_origen,

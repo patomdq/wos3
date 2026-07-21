@@ -48,6 +48,15 @@ export default function DeudaFichaModal({
 }) {
   const [subiendoId, setSubiendoId] = useState<string | null>(null)
   const [ubicandoId, setUbicandoId] = useState<string | null>(null)
+  const [valorMercadoBuf, setValorMercadoBuf] = useState(
+    grupo.valorMercadoGrupo != null ? String(grupo.valorMercadoGrupo) : ''
+  )
+
+  const guardarValorMercado = () => {
+    const v = parseFloat(valorMercadoBuf.replace(/\./g, '').replace(',', '.'))
+    const val = isNaN(v) ? null : v
+    grupo.items.forEach(p => onUpdateCampo(p.id, { valor_mercado_grupo: val } as any))
+  }
 
   const subirImagen = async (id: string, file: File) => {
     setSubiendoId(id)
@@ -90,12 +99,14 @@ export default function DeudaFichaModal({
       </div>`
 
     // ── Totales del grupo ──
-    const ubicacion = [grupo.ciudad, grupo.provincia].filter(Boolean).join(', ') || 'Sin ubicación'
-    const deudaTot   = grupo.deudaTotTotal || null
-    const deudaOB    = grupo.obTotal || null
-    const askingTot  = grupo.askingTotal || null
-    const descuento  = deudaTot && askingTot ? (1 - askingTot / deudaTot) : null
-    const imgUrl     = grupo.imagenUrl || grupo.items[0]?.imagen_url || ''
+    const ubicacion    = [grupo.ciudad, grupo.provincia].filter(Boolean).join(', ') || 'Sin ubicación'
+    const deudaTot     = grupo.deudaTotTotal || null
+    const deudaOB      = grupo.obTotal || null
+    const askingTot    = grupo.askingTotal || null
+    const descuento    = deudaTot && askingTot ? (1 - askingTot / deudaTot) : null
+    const valorMercado = grupo.valorMercadoGrupo || null
+    const margenBruto  = valorMercado && askingTot ? valorMercado - askingTot : null
+    const imgUrl       = grupo.imagenUrl || grupo.items[0]?.imagen_url || ''
 
     // Cesión del primer ítem que tenga análisis (o del primero)
     const itemCesion = grupo.items.find(i => i.analisis_cesion) ?? grupo.items[0]
@@ -250,10 +261,11 @@ export default function DeudaFichaModal({
   .sep{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:12px 0}
   .footer{text-align:center;font-size:11px;color:#CCC;padding:20px 40px 32px;border-top:1px solid rgba(0,0,0,0.06)}
   @media print{
-    @page{size:A4;margin:14mm 12mm}
-    body{background:#F2F1ED!important}
+    @page{size:A4;margin:16mm 14mm}
+    body{background:#ffffff!important}
     .page{padding:0;max-width:100%}
-    .card,.hl-dark,.hl-light{break-inside:avoid}
+    .print-notice{display:none!important}
+    .card,.hl-dark,.hl-light{break-inside:avoid;page-break-inside:avoid}
   }
 </style>
 </head>
@@ -301,11 +313,7 @@ export default function DeudaFichaModal({
 </div>
 
 <!-- DASHBOARD ECONÓMICO -->
-<div class="dash">
-  <div class="hl-dark">
-    <div class="hl-label">Deuda total</div>
-    <div class="hl-value">${fmtK(deudaTot)}</div>
-  </div>
+<div class="dash" style="grid-template-columns:repeat(${valorMercado ? '4' : '3'},1fr)">
   <div class="hl-dark">
     <div class="hl-label">Deuda OB</div>
     <div class="hl-value">${fmtK(deudaOB)}</div>
@@ -315,6 +323,11 @@ export default function DeudaFichaModal({
     <div class="hl-value">${fmtK(askingTot)}</div>
   </div>
   ${(() => { const col = descuento !== null && descuento > 0.4 ? '#1A3A14' : '#14110C'; const enc = encodeURIComponent(col); return `<div class="hl-dark" style="background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='${enc}'/%3E%3C/svg%3E&quot;);background-size:cover"><div class="hl-label">Descuento s/ deuda</div><div class="hl-value" style="color:${descuento !== null && descuento > 0.4 ? '#4ade80' : '#F8F3E9'}">${pctFmt(descuento)}</div></div>` })()}
+  ${valorMercado ? `<div class="hl-dark" style="background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23${margenBruto && margenBruto > 0 ? '1A3A14' : '14110C'}'/%3E%3C/svg%3E&quot;);background-size:cover">
+    <div class="hl-label">Valor mercado</div>
+    <div class="hl-value">${fmtK(valorMercado)}</div>
+    ${margenBruto !== null ? `<div style="font-size:11px;margin-top:6px;color:${margenBruto > 0 ? '#4ade80' : '#f87171'};font-weight:700">Margen: ${margenBruto > 0 ? '+' : ''}${fmtK(margenBruto)}</div>` : ''}
+  </div>` : ''}
 </div>
 
 <!-- RATINGS CESIÓN -->
@@ -328,7 +341,6 @@ ${(cesion.rating_deudor || cesion.rating_posesion || cesion.rating_juzgado || ce
     ${ratingBox('Procedimiento (Pr)', cesion.rating_procedimiento)}
   </div>
   ${cesion.notas_analisis ? `<div style="padding:12px 14px;background:#F9F8F5;border-radius:10px;font-size:13px;color:#444;line-height:1.7;border-left:3px solid #A6855A">${cesion.notas_analisis}</div>` : ''}
-  ${beneficio !== null ? `<hr class="sep"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:#888;font-weight:700">Beneficio estimado cesión</span><span style="font-family:'Marcellus',serif;font-size:22px;color:${beneficio >= 0 ? '#16a34a' : '#dc2626'}">${beneficio >= 0 ? '+' : ''}${beneficio.toLocaleString('es-ES')} €</span></div>` : ''}
 </div>` : ''}
 
 <!-- DETALLE POR COLATERAL — empieza siempre en página nueva -->
@@ -402,6 +414,29 @@ window.onload = () => {
                 </button>
                 <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center text-sm" style={{ background: '#F5F4F0', color: '#666', border: '1px solid #ECEAE4' }}>✕</button>
               </div>
+            </div>
+          </div>
+
+          {/* Valor de mercado del grupo — campo clave para el dashboard inversor */}
+          <div className="flex-shrink-0 px-5 py-2.5 flex items-center gap-3" style={{ borderBottom: '1px solid #F0EEE8', background: '#FAFAF8' }}>
+            <span className="text-[11px] font-black uppercase tracking-wider" style={{ color: '#A6855A', whiteSpace: 'nowrap' }}>Valor mercado total</span>
+            <div className="flex items-center gap-1.5 flex-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={valorMercadoBuf}
+                onChange={e => setValorMercadoBuf(e.target.value)}
+                onBlur={guardarValorMercado}
+                placeholder="ej. 120000"
+                className="flex-1 text-[13px] font-bold px-2.5 py-1 rounded-lg"
+                style={{ background: '#F2F1ED', border: '1.5px solid rgba(0,0,0,0.08)', color: '#1A1A1A', outline: 'none', maxWidth: 140 }}
+              />
+              <span className="text-[12px]" style={{ color: '#999' }}>€ para todo el grupo</span>
+              {grupo.valorMercadoGrupo && grupo.askingTotal ? (
+                <span className="text-[12px] font-black px-2 py-0.5 rounded-lg" style={{ background: '#E8F5E9', color: '#16A34A' }}>
+                  Margen: +{fmt(grupo.valorMercadoGrupo - grupo.askingTotal)}
+                </span>
+              ) : null}
             </div>
           </div>
 
