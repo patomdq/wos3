@@ -205,9 +205,14 @@ export default function DeudaFichaModal({
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body{background:#F2F1ED;font-family:'Hanken Grotesk',sans-serif;color:#1A1A1A}
   .page{max-width:860px;margin:0 auto;padding:36px 40px 56px}
+
+  /* Aviso en pantalla (oculto al imprimir) */
+  .print-notice{display:flex;align-items:center;gap:10px;background:#FEF9EC;border:1px solid #F0D080;border-radius:10px;padding:10px 14px;margin-bottom:20px;font-size:12px;color:#7A5A00}
+  .print-notice strong{font-weight:800}
+  @media print{.print-notice{display:none!important}}
 
   /* HEADER */
   .hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:18px;border-bottom:1px solid rgba(0,0,0,0.10);margin-bottom:28px}
@@ -229,9 +234,9 @@ export default function DeudaFichaModal({
 
   /* DASHBOARD */
   .dash{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
-  .hl-dark{background:#14110C;border-radius:14px;padding:16px 18px}
-  .hl-label{font-size:10px;color:rgba(199,168,119,0.7);font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
-  .hl-value{font-family:'Marcellus',serif;font-size:20px;color:#F8F3E9;line-height:1.1}
+  .hl-dark{background:#14110C!important;border-radius:14px;padding:16px 18px}
+  .hl-label{font-size:10px;color:rgba(199,168,119,0.85)!important;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
+  .hl-value{font-family:'Marcellus',serif;font-size:20px;color:#F8F3E9!important;line-height:1.1}
   .hl-light{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:16px 18px}
   .hl-label-l{font-size:10px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
   .hl-value-l{font-family:'Marcellus',serif;font-size:20px;color:#1A1A1A;line-height:1.1}
@@ -247,15 +252,20 @@ export default function DeudaFichaModal({
   .sep{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:12px 0}
   .footer{text-align:center;font-size:11px;color:#CCC;padding:20px 40px 32px;border-top:1px solid rgba(0,0,0,0.06)}
   @media print{
-    @page{size:A4;margin:12mm 10mm}
-    body{background:#fff}
-    .page{padding:0}
+    @page{size:A4;margin:0}
+    body{background:#F2F1ED!important}
+    .page{padding:20px 28px 40px;max-width:100%}
     .card,.hl-dark,.hl-light{break-inside:avoid}
   }
 </style>
 </head>
 <body>
 <div class="page">
+
+<!-- AVISO PANTALLA (oculto al imprimir) -->
+<div class="print-notice">
+  ⚠️ <span>En el diálogo de impresión: activa <strong>Gráficos de fondo</strong> y desactiva <strong>Encabezados y pies de página</strong> para que el PDF quede exactamente igual a esta vista.</span>
+</div>
 
 <!-- HEADER -->
 <div class="hdr">
@@ -338,7 +348,16 @@ ${(cesion.rating_deudor || cesion.rating_posesion || cesion.rating_juzgado || ce
   Generado por WOS3 · HASU Activos Inmobiliarios SL · ${fecha}
 </div>
 
-<script>window.onload = () => { document.fonts.ready.then(() => window.print()) }</script>
+<script>
+window.onload = () => {
+  const imgs = Array.from(document.images)
+  const fontReady = document.fonts.ready
+  const imgsReady = imgs.length
+    ? Promise.all(imgs.map(img => img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r })))
+    : Promise.resolve()
+  Promise.all([fontReady, imgsReady]).then(() => setTimeout(() => window.print(), 300))
+}
+</script>
 </body>
 </html>`
 
