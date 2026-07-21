@@ -90,7 +90,19 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
-**Última sesión — 21/07/2026**
+**Última sesión — 22/07/2026**
+
+- **Informe PDF Deuda — reescritura completa**: dashboard grupal con 4 métricas (Deuda total, OB, Asking, Descuento %), ratings DPJP, itera TODOS los colaterales del grupo (no solo items[0]). Commit `ba1e55f`
+- **Catastro API integrado**: API pública `ovc.catastro.meh.es` — parámetros correctos: `Provincia` + `Municipio` (campo `ciudad` en BD) + `RefCat`. Devuelve dirección exacta, m², uso, año, escalera/planta/puerta
+  - Migración: columna `datos_catastro jsonb` en `deuda_posiciones`
+  - `/api/catastro/fetch?id=X` — fetch individual, guarda en BD
+  - `/api/catastro/batch` — actualiza todos los registros con ref_catastral (no conectado a UI, reserva futura)
+  - `PosicionCard` en `DeudaFichaModal`: botón "⬇ Obtener datos" / "✓ Actualizar datos" + bloque verde con datos + mensaje de error si falla
+  - Informe PDF usa datos catastrales si existen (dirección más precisa, m², año, tipo)
+  - Tipo `DatosCatastro` añadido a `lib/deuda-schema.ts`
+- Commits: `b47a8c8` (catastro), `991b23c` (fix subcomponente), `fef9beb` (fix campo ciudad + errores)
+
+**Sesión anterior — 21/07/2026**
 
 - **Base de conocimiento Máster IN+ — COMPLETA**: 10 archivos en `docs/master/` cubriendo las 5 sesiones
   - Sesión 01: CCP + liquidación, micromercado, modelos inversión, presentación inversores
@@ -121,6 +133,7 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## PENDIENTES ABIERTOS
 
+- **Deuda — Dashboard inversor al tope del modal + informe**: campo `valor_mercado_estimado` por colateral para calcular margen total (mercado − asking − gastos). Pendiente implementar
 - Pato prueba import Excel Alemaria (26 REOs) — confirmar mapeo de columnas
 - @menciones en bitácora con alerta Telegram
 - Drop tablas legacy (`inmuebles_radar`, `inmuebles_estudio`, `edificios_estudio`)
