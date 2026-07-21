@@ -137,7 +137,7 @@ export default function DeudaFichaModal({
       const dirSub = cat ? null : (item.municipio && item.direccion ? [item.municipio, item.provincia].filter(Boolean).join(', ') : null)
 
       return `
-      <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:20px;margin-bottom:14px;break-inside:avoid">
+      <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:20px;margin-bottom:14px;page-break-inside:avoid;break-inside:avoid">
         <!-- colateral header -->
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
           <div>
@@ -331,15 +331,15 @@ ${(cesion.rating_deudor || cesion.rating_posesion || cesion.rating_juzgado || ce
   ${beneficio !== null ? `<hr class="sep"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:#888;font-weight:700">Beneficio estimado cesión</span><span style="font-family:'Marcellus',serif;font-size:22px;color:${beneficio >= 0 ? '#16a34a' : '#dc2626'}">${beneficio >= 0 ? '+' : ''}${beneficio.toLocaleString('es-ES')} €</span></div>` : ''}
 </div>` : ''}
 
-<!-- DETALLE POR COLATERAL -->
-<div style="margin-top:4px">
+<!-- DETALLE POR COLATERAL — empieza siempre en página nueva -->
+<div style="page-break-before:always;break-before:page;padding-top:8px">
   <div class="sec" style="margin-bottom:12px">Detalle de colaterales</div>
   ${colateralHTML}
 </div>
 
 <!-- RESEÑA IA — una sola para el grupo -->
 ${resumenIA ? `
-<div class="card" style="border-left:3px solid #A6855A;margin-top:4px">
+<div class="card" style="border-left:3px solid #A6855A;margin-top:4px;page-break-inside:avoid;break-inside:avoid">
   <div class="sec">Reseña del activo</div>
   <div style="font-size:13.5px;line-height:1.85;color:#333">${resumenIA.replace(/\n/g,'<br>')}</div>
 </div>` : ''}
