@@ -7,6 +7,7 @@ Documentación estructurada del máster para uso en análisis de oportunidades y
 | Sesión | Tema | Archivo |
 |--------|------|---------|
 | 01 | Contrato de Cuentas en Participación (CCP) + Liquidación | [sesion-01-ccp.md](sesion-01-ccp.md) |
+| 01 | Análisis de Micromercado | [sesion-01-micromercado.md](sesion-01-micromercado.md) |
 | 02 | — pendiente | — |
 | 03 | — pendiente | — |
 | 04 | — pendiente | — |
