@@ -250,9 +250,9 @@ export default function DeudaFichaModal({
   .sep{border:none;border-top:1px solid rgba(0,0,0,0.06);margin:12px 0}
   .footer{text-align:center;font-size:11px;color:#CCC;padding:20px 40px 32px;border-top:1px solid rgba(0,0,0,0.06)}
   @media print{
-    @page{size:A4;margin:0}
+    @page{size:A4;margin:14mm 12mm}
     body{background:#F2F1ED!important}
-    .page{padding:20px 28px 40px;max-width:100%}
+    .page{padding:0;max-width:100%}
     .card,.hl-dark,.hl-light{break-inside:avoid}
   }
 </style>
