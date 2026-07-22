@@ -105,6 +105,41 @@ export default function DeudaCribaView({
     })
   }
 
+  const exportarCSV = () => {
+    const headers = ['Score', 'Semaforo', 'Contrato', 'Ciudad', 'Provincia', 'm2', 'OB', 'Asking', 'Descuento_pct', 'Rating_D', 'Rating_P', 'Rating_J', 'Rating_Pr', 'Alerta_cargas', 'Decision']
+    const rows = filasFiltradas.map(f => {
+      const { alerta } = calcRatioRiesgoCargas(f.posicion.cargas_previas, f.posicion.asking_price)
+      const m2 = f.posicion.datos_catastro?.superficie_construida ?? f.posicion.metros_cuadrados ?? ''
+      const desc = f.descuento != null ? (f.descuento * 100).toFixed(1) : ''
+      const dec = decisions[f.grupo.contractId] ?? ''
+      return [
+        f.score,
+        SEMAFORO_CFG[f.sem].label,
+        f.grupo.contractId,
+        f.posicion.datos_catastro?.municipio ?? f.grupo.ciudad ?? '',
+        f.posicion.provincia ?? '',
+        m2,
+        f.grupo.obTotal ?? '',
+        f.grupo.askingTotal ?? '',
+        desc,
+        f.ratings.rating_deudor ?? '',
+        f.ratings.rating_posesion ?? '',
+        f.ratings.rating_juzgado ?? '',
+        f.ratings.rating_procedimiento ?? '',
+        alerta ? 'Sí' : 'No',
+        dec,
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+    })
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `criba-deuda-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
 
@@ -287,8 +322,23 @@ export default function DeudaCribaView({
         </table>
       </div>
 
-      <div style={{ marginTop: 10, fontSize: 12, color: '#AAA', textAlign: 'right' }}>
-        {filasFiltradas.length} de {filas.length} activos · haz clic en una fila para abrir la ficha
+      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, color: '#AAA' }}>
+          {filasFiltradas.length} de {filas.length} activos · haz clic en una fila para abrir la ficha
+        </span>
+        <button
+          onClick={exportarCSV}
+          disabled={filasFiltradas.length === 0}
+          style={{
+            fontSize: 12, fontWeight: 600, cursor: filasFiltradas.length === 0 ? 'default' : 'pointer',
+            padding: '6px 14px', borderRadius: 999,
+            border: '1.5px solid rgba(166,133,90,0.4)',
+            background: 'rgba(166,133,90,0.08)', color: '#A6855A',
+            opacity: filasFiltradas.length === 0 ? 0.4 : 1,
+          }}
+        >
+          ↓ Exportar CSV ({filasFiltradas.length})
+        </button>
       </div>
     </div>
   )
