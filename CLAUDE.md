@@ -90,7 +90,16 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
-**Última sesión — 22/07/2026**
+**Última sesión — 23/07/2026**
+
+- **Vista Criba — screening masivo de deuda**: score 0-100 ponderado por descuento(35%)+posesión(30%)+judicial(25%)+deudor(10%), penalización −20 si cargas > asking
+  - `calcularScoreActivo()` + `semaforo()` en `lib/deuda-schema.ts`
+  - `components/DeudaCribaView.tsx`: tabla densa ordenada por score, dots DPJP, filtros por semáforo (verde ≥65 / amarillo 40-64 / rojo <40), score mínimo, acciones inline ✅⏸❌
+  - Integrada como tercera vista "🎯 Criba" en `/deuda` (junto a Lista y Mapa)
+  - Commit `37eaf72`
+- Pendiente: export CSV de seleccionados para cerrar el flujo de screening
+
+**Sesión anterior — 22/07/2026**
 
 - **Informe PDF Deuda — reescritura completa**: dashboard grupal con 4 métricas (Deuda total, OB, Asking, Descuento %), ratings DPJP, itera TODOS los colaterales del grupo (no solo items[0]). Commit `ba1e55f`
 - **Catastro API integrado**: API pública `ovc.catastro.meh.es` — parámetros correctos: `Provincia` + `Municipio` (campo `ciudad` en BD) + `RefCat`. Devuelve dirección exacta, m², uso, año, escalera/planta/puerta
