@@ -62,6 +62,7 @@ export default function DeudaCribaView({
   const [filtroSem, setFiltroSem] = useState<'verde' | 'amarillo' | 'rojo' | 'todos'>('todos')
   const [filtroDecision, setFiltroDecision] = useState<Decision | 'todos'>('todos')
   const [scoreMin, setScoreMin] = useState(0)
+  const [soloConFechaSubasta, setSoloConFechaSubasta] = useState(false)
 
   // Calcular score para cada grupo (usando la primera posición como representativa)
   const filas: FilaActivo[] = useMemo(() => {
@@ -94,9 +95,10 @@ export default function DeudaCribaView({
       if (scoreMin > 0 && f.score < scoreMin) return false
       const dec = decisions[f.grupo.contractId] ?? null
       if (filtroDecision !== 'todos' && dec !== filtroDecision) return false
+      if (soloConFechaSubasta && !f.posicion.fecha_subasta) return false
       return true
     })
-  }, [filas, filtroSem, scoreMin, filtroDecision, decisions])
+  }, [filas, filtroSem, scoreMin, filtroDecision, decisions, soloConFechaSubasta])
 
   const decidir = (contractId: string, dec: Decision) => {
     setDecisions(prev => {
@@ -188,6 +190,20 @@ export default function DeudaCribaView({
             ⏸ Revisar {conteos.revisar}
           </button>
         )}
+
+        {/* Fecha subasta conocida */}
+        <button
+          onClick={() => setSoloConFechaSubasta(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 14px', borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            border: soloConFechaSubasta ? '2px solid #7C3AED' : '1.5px solid rgba(0,0,0,0.12)',
+            background: soloConFechaSubasta ? 'rgba(124,58,237,0.1)' : '#FFF',
+            color: soloConFechaSubasta ? '#7C3AED' : '#666',
+          }}
+        >
+          📅 Fecha subasta conocida
+        </button>
 
         {/* Score mínimo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
