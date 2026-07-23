@@ -89,6 +89,9 @@ type Inmueble = {
   estado_judicial_reo?: string
   fase_desahucio?: string
   proyecto_id?: string | null
+  datos_catastro?: any
+  vendedor_tipo?: string
+  vendedor_nombre?: string
 }
 
 type JvJugador = { id: string; nombre: string; rol: 'gestor' | 'inversor' | 'mixto'; gestorPct?: number; capital: number }
@@ -291,6 +294,8 @@ export default function MercadoPage() {
   const [jvBonoBeneficioFinal, setJvBonoBeneficioFinal] = useState(0)
   const [jvBonoLiquidacion, setJvBonoLiquidacion] = useState('')
   const [checklistDoc, setChecklistDoc] = useState<ChecklistDocumentacion>({})
+  const [catastroLoadingId, setCatastroLoadingId] = useState<string | null>(null)
+  const [catastroError, setCatastroError] = useState<Record<string, string>>({})
 
   // Unidades (para edificios en calculadora)
   const [unidadesCalc, setUnidadesCalc] = useState<Unidad[]>([])
@@ -477,7 +482,9 @@ export default function MercadoPage() {
       notas: item.notas || '',
       url: item.url || '',
       drive_url: item.drive_url || '',
-    })
+      vendedor_tipo: item.vendedor_tipo || '',
+      vendedor_nombre: item.vendedor_nombre || '',
+    } as any)
     setAddingUnidadId(null)
     setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
     setEditPortada(null)
@@ -499,6 +506,8 @@ export default function MercadoPage() {
       notas: editForm.notas || null,
       url: editForm.url || null,
       drive_url: editForm.drive_url || null,
+      vendedor_tipo: (editForm as any).vendedor_tipo || null,
+      vendedor_nombre: (editForm as any).vendedor_nombre || null,
     }
     if (editPortada) {
       const ext = editPortada.name.split('.').pop() || 'jpg'
@@ -524,6 +533,22 @@ export default function MercadoPage() {
     if (!confirm(`¿Eliminar "${item.titulo || item.direccion}"?`)) return
     const { error } = await supabase.from('inmuebles').delete().eq('id', item.id)
     if (!error) setInmuebles(prev => prev.filter(x => x.id !== item.id))
+  }
+
+  const fetchCatastroInmueble = async (item: Inmueble) => {
+    if (!item.referencia_catastral) return
+    setCatastroLoadingId(item.id)
+    setCatastroError(prev => ({ ...prev, [item.id]: '' }))
+    try {
+      const res = await fetch(`/api/catastro/inmueble?id=${item.id}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Error obteniendo catastro')
+      setInmuebles(prev => prev.map(x => x.id === item.id ? { ...x, datos_catastro: json.datos } : x))
+    } catch (e: any) {
+      setCatastroError(prev => ({ ...prev, [item.id]: e.message }))
+    } finally {
+      setCatastroLoadingId(null)
+    }
   }
 
   const toggleFijado = async (item: Inmueble) => {
@@ -1613,6 +1638,71 @@ export default function MercadoPage() {
                   </div>
                   {item.tipologia !== 'edificio' && item.notas && <div className="mt-2 text-xs leading-relaxed" style={{ color: '#888' }}>{item.notas}</div>}
 
+                  {/* Bloque vendedor/titular */}
+                  {(() => {
+                    const esReo = (item.origen || 'directo') === 'reo'
+                    const tieneVendedor = esReo ? !!(item.portfolio_reo || item.asset_id_servicer) : !!(item.vendedor_tipo || item.vendedor_nombre)
+                    if (!tieneVendedor) return null
+                    return (
+                      <div className="mt-2 rounded-xl px-3 py-2" style={{ background: '#F5F4F0', border: '1px solid #ECEAE4' }}>
+                        <div className="text-[9px] font-black uppercase tracking-widest mb-1.5" style={{ color: '#A6855A' }}>
+                          {esReo ? 'Fondo / Servicer' : 'Vendedor'}
+                        </div>
+                        {esReo ? (
+                          <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                            {item.portfolio_reo && <span className="text-[11px] font-bold" style={{ color: '#1A1A1A' }}>{item.portfolio_reo}</span>}
+                            {item.asset_id_servicer && <span className="text-[11px]" style={{ color: '#666' }}>ID: {item.asset_id_servicer}</span>}
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-x-4 gap-y-0.5 items-center">
+                            {item.vendedor_tipo && (
+                              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(166,133,90,0.12)', color: '#A6855A' }}>{item.vendedor_tipo}</span>
+                            )}
+                            {item.vendedor_nombre && <span className="text-[11px] font-bold" style={{ color: '#1A1A1A' }}>{item.vendedor_nombre}</span>}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+
+                  {/* Bloque catastro */}
+                  {item.referencia_catastral && (() => {
+                    const cat = item.datos_catastro
+                    const isLoading = catastroLoadingId === item.id
+                    const err = catastroError[item.id]
+                    return (
+                      <div className="mt-2 rounded-xl overflow-hidden" style={{ border: '1px solid #ECEAE4' }}>
+                        <div className="flex items-center justify-between px-3 py-2" style={{ background: '#F5F4F0' }}>
+                          <div>
+                            <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#A6855A' }}>Catastro</div>
+                            <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?pest=rc&i=es&buscar=S&RefC=${encodeURIComponent(item.referencia_catastral)}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="text-[11px] font-mono font-bold hover:underline" style={{ color: '#3B82F6' }}>
+                              {item.referencia_catastral}
+                            </a>
+                          </div>
+                          <button
+                            onClick={() => fetchCatastroInmueble(item)}
+                            disabled={isLoading}
+                            className="text-[10px] font-black px-2.5 py-1 rounded-lg transition-colors"
+                            style={{ background: cat ? '#E8F5E9' : '#F0EEE8', color: cat ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: cat ? '#BBF7D0' : '#DDDAD2' }}>
+                            {isLoading ? '⟳' : cat ? '✓ Actualizar' : '⬇ Obtener'}
+                          </button>
+                        </div>
+                        {err && <div className="px-3 py-1 text-[10px]" style={{ color: '#dc2626', background: '#FEF2F2' }}>{err}</div>}
+                        {cat && (
+                          <div className="px-3 py-2 grid grid-cols-2 gap-x-3 gap-y-0.5" style={{ background: '#F9FFF9' }}>
+                            {cat.direccion_completa && <div className="col-span-2 text-[11px] font-semibold mb-0.5" style={{ color: '#1A1A1A' }}>{cat.direccion_completa}</div>}
+                            {cat.uso && <div className="text-[10px]"><span style={{ color: '#999' }}>Uso: </span><span style={{ color: '#333' }}>{cat.uso}</span></div>}
+                            {cat.superficie_construida && <div className="text-[10px]"><span style={{ color: '#999' }}>Sup: </span><span style={{ color: '#333' }}>{cat.superficie_construida} m²</span></div>}
+                            {cat.año_construccion && <div className="text-[10px]"><span style={{ color: '#999' }}>Año: </span><span style={{ color: '#333' }}>{cat.año_construccion}</span></div>}
+                            {cat.tipo_construccion && <div className="text-[10px]"><span style={{ color: '#999' }}>Tipo: </span><span style={{ color: '#333' }}>{cat.tipo_construccion}</span></div>}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+
                   {/* Ver detalle (edificios y/o JV) — colapsado por default para no alargar la card */}
                   {(() => {
                     const tieneUnidades = item.tipologia === 'edificio'
@@ -2194,6 +2284,23 @@ export default function MercadoPage() {
                   <div className="col-span-2">
                     <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>📁 Drive</label>
                     <input type="url" value={editForm.drive_url} onChange={e => setEditForm(f => ({ ...f, drive_url: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#22C55E'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Vendedor tipo</label>
+                    <select value={(editForm as any).vendedor_tipo || ''} onChange={e => setEditForm(f => ({ ...f, vendedor_tipo: e.target.value } as any))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L}>
+                      <option value="">—</option>
+                      <option value="Particular">Particular</option>
+                      <option value="Fondo">Fondo</option>
+                      <option value="Banco">Banco</option>
+                      <option value="Servicer">Servicer</option>
+                      <option value="Promotora">Promotora</option>
+                      <option value="Cooperativa">Cooperativa</option>
+                      <option value="Herencia">Herencia</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Vendedor nombre</label>
+                    <input type="text" value={(editForm as any).vendedor_nombre || ''} onChange={e => setEditForm(f => ({ ...f, vendedor_nombre: e.target.value } as any))} placeholder="Ej: Caixabank, Cerberus…" className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#A6855A'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Notas</label>
