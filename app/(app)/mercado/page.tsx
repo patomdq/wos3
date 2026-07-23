@@ -1640,79 +1640,19 @@ export default function MercadoPage() {
                   </div>
                   {item.tipologia !== 'edificio' && item.notas && <div className="mt-2 text-xs leading-relaxed" style={{ color: '#888' }}>{item.notas}</div>}
 
-                  {/* Bloque vendedor/titular */}
+                  {/* Ver detalle — catastro, vendedor, JV, unidades */}
                   {(() => {
                     const esReo = (item.origen || 'directo') === 'reo'
                     const tieneVendedor = esReo ? !!(item.portfolio_reo || item.asset_id_servicer) : !!(item.vendedor_tipo || item.vendedor_nombre)
-                    if (!tieneVendedor) return null
-                    return (
-                      <div className="mt-2 rounded-xl px-3 py-2" style={{ background: '#F5F4F0', border: '1px solid #ECEAE4' }}>
-                        <div className="text-[9px] font-black uppercase tracking-widest mb-1.5" style={{ color: '#A6855A' }}>
-                          {esReo ? 'Fondo / Servicer' : 'Vendedor'}
-                        </div>
-                        {esReo ? (
-                          <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                            {item.portfolio_reo && <span className="text-[11px] font-bold" style={{ color: '#1A1A1A' }}>{item.portfolio_reo}</span>}
-                            {item.asset_id_servicer && <span className="text-[11px]" style={{ color: '#666' }}>ID: {item.asset_id_servicer}</span>}
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-x-4 gap-y-0.5 items-center">
-                            {item.vendedor_tipo && (
-                              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(166,133,90,0.12)', color: '#A6855A' }}>{item.vendedor_tipo}</span>
-                            )}
-                            {item.vendedor_nombre && <span className="text-[11px] font-bold" style={{ color: '#1A1A1A' }}>{item.vendedor_nombre}</span>}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()}
-
-                  {/* Bloque catastro */}
-                  {item.referencia_catastral && (() => {
-                    const cat = item.datos_catastro
-                    const isLoading = catastroLoadingId === item.id
-                    const err = catastroError[item.id]
-                    return (
-                      <div className="mt-2 rounded-xl overflow-hidden" style={{ border: '1px solid #ECEAE4' }}>
-                        <div className="flex items-center justify-between px-3 py-2" style={{ background: '#F5F4F0' }}>
-                          <div>
-                            <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#A6855A' }}>Catastro</div>
-                            <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?pest=rc&i=es&buscar=S&RefC=${encodeURIComponent(item.referencia_catastral)}`}
-                              target="_blank" rel="noopener noreferrer"
-                              className="text-[11px] font-mono font-bold hover:underline" style={{ color: '#3B82F6' }}>
-                              {item.referencia_catastral}
-                            </a>
-                          </div>
-                          <button
-                            onClick={() => fetchCatastroInmueble(item)}
-                            disabled={isLoading}
-                            className="text-[10px] font-black px-2.5 py-1 rounded-lg transition-colors"
-                            style={{ background: cat ? '#E8F5E9' : '#F0EEE8', color: cat ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: cat ? '#BBF7D0' : '#DDDAD2' }}>
-                            {isLoading ? '⟳' : cat ? '✓ Actualizar' : '⬇ Obtener'}
-                          </button>
-                        </div>
-                        {err && <div className="px-3 py-1 text-[10px]" style={{ color: '#dc2626', background: '#FEF2F2' }}>{err}</div>}
-                        {cat && (
-                          <div className="px-3 py-2 grid grid-cols-2 gap-x-3 gap-y-0.5" style={{ background: '#F9FFF9' }}>
-                            {cat.direccion_completa && <div className="col-span-2 text-[11px] font-semibold mb-0.5" style={{ color: '#1A1A1A' }}>{cat.direccion_completa}</div>}
-                            {cat.uso && <div className="text-[10px]"><span style={{ color: '#999' }}>Uso: </span><span style={{ color: '#333' }}>{cat.uso}</span></div>}
-                            {cat.superficie_construida && <div className="text-[10px]"><span style={{ color: '#999' }}>Sup: </span><span style={{ color: '#333' }}>{cat.superficie_construida} m²</span></div>}
-                            {cat.año_construccion && <div className="text-[10px]"><span style={{ color: '#999' }}>Año: </span><span style={{ color: '#333' }}>{cat.año_construccion}</span></div>}
-                            {cat.tipo_construccion && <div className="text-[10px]"><span style={{ color: '#999' }}>Tipo: </span><span style={{ color: '#333' }}>{cat.tipo_construccion}</span></div>}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()}
-
-                  {/* Ver detalle (edificios y/o JV) — colapsado por default para no alargar la card */}
-                  {(() => {
+                    const tieneCatastro = !!item.referencia_catastral
                     const tieneUnidades = item.tipologia === 'edificio'
                     const tieneJv = !!(item.jv_jugadores && item.jv_jugadores.length > 0)
-                    if (!tieneUnidades && !tieneJv) return null
+                    if (!tieneUnidades && !tieneJv && !tieneVendedor && !tieneCatastro) return null
                     const partes = [
+                      tieneVendedor ? (esReo ? 'Fondo' : 'Vendedor') : '',
+                      tieneCatastro ? 'Registral' : '',
                       tieneJv ? 'JV' : '',
-                      tieneUnidades && unidades[item.id] ? `${unidades[item.id].length} unidades` : '',
+                      tieneUnidades && unidades[item.id] ? `${unidades[item.id].length} unidades` : (tieneUnidades ? 'Unidades' : ''),
                     ].filter(Boolean).join(' · ')
                     return (
                       <button onClick={() => toggleDetalle(item.id)}
@@ -1723,9 +1663,75 @@ export default function MercadoPage() {
                     )
                   })()}
 
-                  {/* Panel detalle expandido — reparto JV + unidades (edificios), solo lectura */}
+                  {/* Panel detalle expandido — vendedor, catastro, JV, unidades */}
                   {expandedDetalle === item.id && (
                     <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1.5px solid #ECEAE4' }}>
+
+                      {/* Vendedor / Titular */}
+                      {(() => {
+                        const esReo = (item.origen || 'directo') === 'reo'
+                        const tieneVendedor = esReo ? !!(item.portfolio_reo || item.asset_id_servicer) : !!(item.vendedor_tipo || item.vendedor_nombre)
+                        if (!tieneVendedor) return null
+                        return (
+                          <div className="px-3 py-2.5" style={{ borderBottom: '1px solid #F0EEE8' }}>
+                            <div className="text-[9px] font-black uppercase tracking-widest mb-1.5" style={{ color: '#A6855A' }}>
+                              {esReo ? 'Fondo / Servicer' : 'Vendedor'}
+                            </div>
+                            {esReo ? (
+                              <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                                {item.portfolio_reo && <span className="text-[12px] font-bold" style={{ color: '#1A1A1A' }}>{item.portfolio_reo}</span>}
+                                {item.asset_id_servicer && <span className="text-[11px]" style={{ color: '#666' }}>ID: {item.asset_id_servicer}</span>}
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-x-4 gap-y-0.5 items-center">
+                                {item.vendedor_tipo && (
+                                  <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(166,133,90,0.12)', color: '#A6855A' }}>{item.vendedor_tipo}</span>
+                                )}
+                                {item.vendedor_nombre && <span className="text-[12px] font-bold" style={{ color: '#1A1A1A' }}>{item.vendedor_nombre}</span>}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+
+                      {/* Catastro */}
+                      {item.referencia_catastral && (() => {
+                        const cat = item.datos_catastro
+                        const isLoading = catastroLoadingId === item.id
+                        const err = catastroError[item.id]
+                        return (
+                          <div style={{ borderBottom: '1px solid #F0EEE8' }}>
+                            <div className="flex items-center justify-between px-3 py-2.5">
+                              <div>
+                                <div className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#A6855A' }}>Catastro</div>
+                                <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?pest=rc&i=es&buscar=S&RefC=${encodeURIComponent(item.referencia_catastral)}`}
+                                  target="_blank" rel="noopener noreferrer"
+                                  className="text-[11px] font-mono font-bold hover:underline" style={{ color: '#3B82F6' }}>
+                                  {item.referencia_catastral}
+                                </a>
+                              </div>
+                              <button
+                                onClick={() => fetchCatastroInmueble(item)}
+                                disabled={isLoading}
+                                className="text-[10px] font-black px-2.5 py-1 rounded-lg transition-colors"
+                                style={{ background: cat ? '#E8F5E9' : '#F0EEE8', color: cat ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: cat ? '#BBF7D0' : '#DDDAD2' }}>
+                                {isLoading ? '⟳' : cat ? '✓ Actualizar' : '⬇ Obtener'}
+                              </button>
+                            </div>
+                            {err && <div className="px-3 pb-2 text-[10px]" style={{ color: '#dc2626' }}>{err}</div>}
+                            {cat && (
+                              <div className="px-3 pb-2.5 grid grid-cols-2 gap-x-3 gap-y-0.5">
+                                {cat.direccion_completa && <div className="col-span-2 text-[11px] font-semibold mb-0.5" style={{ color: '#1A1A1A' }}>{cat.direccion_completa}</div>}
+                                {cat.uso && <div className="text-[10px]"><span style={{ color: '#999' }}>Uso: </span><span style={{ color: '#333' }}>{cat.uso}</span></div>}
+                                {cat.superficie_construida && <div className="text-[10px]"><span style={{ color: '#999' }}>Sup: </span><span style={{ color: '#333' }}>{cat.superficie_construida} m²</span></div>}
+                                {cat.año_construccion && <div className="text-[10px]"><span style={{ color: '#999' }}>Año: </span><span style={{ color: '#333' }}>{cat.año_construccion}</span></div>}
+                                {cat.tipo_construccion && <div className="text-[10px]"><span style={{ color: '#999' }}>Tipo: </span><span style={{ color: '#333' }}>{cat.tipo_construccion}</span></div>}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+
                       {item.jv_jugadores && item.jv_jugadores.length > 0 && (() => {
                         const gDet = item.gastos_json as Gastos | undefined
                         const totalInvDet = gDet
