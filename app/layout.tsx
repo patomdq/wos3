@@ -45,6 +45,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             window.addEventListener('pageshow', function(e) {
               if (e.persisted) { window.location.reload(true); } else { check(); }
             });
+            document.addEventListener('visibilitychange', function() {
+              if (document.visibilityState === 'visible') { check(); }
+            });
+            window.addEventListener('focus', function() { check(); });
           })();
         `}} />
       </body>
