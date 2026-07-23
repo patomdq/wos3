@@ -129,6 +129,24 @@ export default function ProyectoDetalle() {
   const [interaccionProspectoId, setInteraccionProspectoId] = useState<string>('')
   const [interaccionForm, setInteraccionForm] = useState({ tipo:'llamada', fecha: new Date().toISOString().split('T')[0], nota:'' })
   const [savingInteraccion, setSavingInteraccion] = useState(false)
+  const [catastroLoadingInmueble, setCatastroLoadingInmueble] = useState(false)
+  const [catastroErrorInmueble, setCatastroErrorInmueble] = useState<string | null>(null)
+
+  const fetchCatastroProyecto = async () => {
+    if (!inmueble?.id || !inmueble?.referencia_catastral) return
+    setCatastroLoadingInmueble(true)
+    setCatastroErrorInmueble(null)
+    try {
+      const res = await fetch(`/api/catastro/inmueble?id=${inmueble.id}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Error obteniendo catastro')
+      setInmueble((prev: any) => ({ ...prev, datos_catastro: json.datos }))
+    } catch (e: any) {
+      setCatastroErrorInmueble(e.message)
+    } finally {
+      setCatastroLoadingInmueble(false)
+    }
+  }
 
   const loadMovimientos = async () => {
     const { data } = await supabase.from('movimientos').select('*').eq('proyecto_id', id).order('fecha', { ascending: false })
@@ -1901,6 +1919,93 @@ export default function ProyectoDetalle() {
       {/* ═══ Tab: ANÁLISIS (JV + Calculadora + Checklist desde inmueble vinculado) ═══ */}
       {tab === 7 && (
         <div>
+          {/* Ficha registral del inmueble vinculado */}
+          {inmueble && (
+            <div className="mb-4 rounded-2xl overflow-hidden" style={{ background: '#fff', border: '1.5px solid #ECEAE4' }}>
+              <div className="px-4 py-3" style={{ borderBottom: '1px solid #F0EEE8' }}>
+                <div className="text-[11px] font-black uppercase tracking-widest" style={{ color: '#A6855A' }}>Ficha registral</div>
+              </div>
+
+              {/* Vendedor / Titular */}
+              {(() => {
+                const esReo = (inmueble.origen || 'directo') === 'reo'
+                const tieneVendedor = esReo
+                  ? !!(inmueble.portfolio_reo || inmueble.asset_id_servicer)
+                  : !!(inmueble.vendedor_tipo || inmueble.vendedor_nombre)
+                if (!tieneVendedor && !inmueble.referencia_catastral) return (
+                  <div className="px-4 py-3 text-sm" style={{ color: '#BBB' }}>Sin referencia catastral ni datos de vendedor.</div>
+                )
+                return null
+              })()}
+
+              {(() => {
+                const esReo = (inmueble.origen || 'directo') === 'reo'
+                const tieneVendedor = esReo
+                  ? !!(inmueble.portfolio_reo || inmueble.asset_id_servicer)
+                  : !!(inmueble.vendedor_tipo || inmueble.vendedor_nombre)
+                if (!tieneVendedor) return null
+                return (
+                  <div className="px-4 py-3" style={{ borderBottom: '1px solid #F0EEE8' }}>
+                    <div className="text-[9px] font-black uppercase tracking-widest mb-1.5" style={{ color: '#A6855A' }}>
+                      {esReo ? 'Fondo / Servicer' : 'Vendedor'}
+                    </div>
+                    {esReo ? (
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                        {inmueble.portfolio_reo && <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>{inmueble.portfolio_reo}</span>}
+                        {inmueble.asset_id_servicer && <span className="text-sm" style={{ color: '#666' }}>ID: {inmueble.asset_id_servicer}</span>}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 items-center">
+                        {inmueble.vendedor_tipo && (
+                          <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(166,133,90,0.12)', color: '#A6855A' }}>{inmueble.vendedor_tipo}</span>
+                        )}
+                        {inmueble.vendedor_nombre && <span className="text-sm font-bold" style={{ color: '#1A1A1A' }}>{inmueble.vendedor_nombre}</span>}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* Catastro */}
+              {inmueble.referencia_catastral && (() => {
+                const cat = inmueble.datos_catastro
+                return (
+                  <div>
+                    <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: cat ? '1px solid #F0EEE8' : undefined }}>
+                      <div>
+                        <div className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#A6855A' }}>Catastro</div>
+                        <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?pest=rc&i=es&buscar=S&RefC=${encodeURIComponent(inmueble.referencia_catastral)}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="text-[13px] font-mono font-bold hover:underline" style={{ color: '#3B82F6' }}>
+                          {inmueble.referencia_catastral}
+                        </a>
+                      </div>
+                      <button
+                        onClick={fetchCatastroProyecto}
+                        disabled={catastroLoadingInmueble}
+                        className="text-[11px] font-black px-3 py-1.5 rounded-xl transition-colors"
+                        style={{ background: cat ? '#E8F5E9' : '#F0EEE8', color: cat ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: cat ? '#BBF7D0' : '#DDDAD2' }}>
+                        {catastroLoadingInmueble ? '⟳' : cat ? '✓ Actualizar' : '⬇ Obtener datos'}
+                      </button>
+                    </div>
+                    {catastroErrorInmueble && <div className="px-4 py-2 text-xs" style={{ color: '#dc2626' }}>{catastroErrorInmueble}</div>}
+                    {cat && (
+                      <div className="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-1">
+                        {cat.direccion_completa && <div className="col-span-2 text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>{cat.direccion_completa}</div>}
+                        {cat.uso && <div className="text-xs"><span style={{ color: '#999' }}>Uso: </span><span style={{ color: '#333' }}>{cat.uso}</span></div>}
+                        {cat.superficie_construida && <div className="text-xs"><span style={{ color: '#999' }}>Sup. construida: </span><span style={{ color: '#333' }}>{cat.superficie_construida} m²</span></div>}
+                        {cat.año_construccion && <div className="text-xs"><span style={{ color: '#999' }}>Año: </span><span style={{ color: '#333' }}>{cat.año_construccion}</span></div>}
+                        {cat.tipo_construccion && <div className="text-xs"><span style={{ color: '#999' }}>Tipo: </span><span style={{ color: '#333' }}>{cat.tipo_construccion}</span></div>}
+                        {cat.cp && <div className="text-xs"><span style={{ color: '#999' }}>CP: </span><span style={{ color: '#333' }}>{cat.cp}</span></div>}
+                        {cat.municipio && <div className="text-xs"><span style={{ color: '#999' }}>Municipio: </span><span style={{ color: '#333' }}>{cat.municipio}</span></div>}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+
           {inmueble
             ? <InmuebleCalculadora inmuebleId={inmueble.id} tipologia={inmueble.tipologia || 'piso'} mode="calculadora" />
             : <div className="rounded-2xl p-6 text-center" style={{ background:'#fff', border:'1.5px solid #ECEAE4' }}>
