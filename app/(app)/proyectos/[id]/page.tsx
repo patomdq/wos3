@@ -137,8 +137,24 @@ export default function ProyectoDetalle() {
   const saveRefCatastral = async () => {
     if (!inmueble?.id || !refCatastralInput.trim()) return
     setSavingRefCatastral(true)
-    const { error } = await supabase.from('inmuebles').update({ referencia_catastral: refCatastralInput.trim() }).eq('id', inmueble.id)
-    if (!error) setInmueble((prev: any) => ({ ...prev, referencia_catastral: refCatastralInput.trim() }))
+    const ref = refCatastralInput.trim()
+    const { error } = await supabase.from('inmuebles').update({ referencia_catastral: ref }).eq('id', inmueble.id)
+    if (!error) {
+      setInmueble((prev: any) => ({ ...prev, referencia_catastral: ref }))
+      // Auto-fetch catastro tras guardar
+      setCatastroLoadingInmueble(true)
+      setCatastroErrorInmueble(null)
+      try {
+        const res = await fetch(`/api/catastro/inmueble?id=${inmueble.id}`)
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'Error obteniendo catastro')
+        setInmueble((prev: any) => ({ ...prev, referencia_catastral: ref, datos_catastro: json.datos }))
+      } catch (e: any) {
+        setCatastroErrorInmueble(e.message)
+      } finally {
+        setCatastroLoadingInmueble(false)
+      }
+    }
     setSavingRefCatastral(false)
   }
 
