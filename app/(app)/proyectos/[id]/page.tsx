@@ -131,6 +131,16 @@ export default function ProyectoDetalle() {
   const [savingInteraccion, setSavingInteraccion] = useState(false)
   const [catastroLoadingInmueble, setCatastroLoadingInmueble] = useState(false)
   const [catastroErrorInmueble, setCatastroErrorInmueble] = useState<string | null>(null)
+  const [refCatastralInput, setRefCatastralInput] = useState('')
+  const [savingRefCatastral, setSavingRefCatastral] = useState(false)
+
+  const saveRefCatastral = async () => {
+    if (!inmueble?.id || !refCatastralInput.trim()) return
+    setSavingRefCatastral(true)
+    const { error } = await supabase.from('inmuebles').update({ referencia_catastral: refCatastralInput.trim() }).eq('id', inmueble.id)
+    if (!error) setInmueble((prev: any) => ({ ...prev, referencia_catastral: refCatastralInput.trim() }))
+    setSavingRefCatastral(false)
+  }
 
   const fetchCatastroProyecto = async () => {
     if (!inmueble?.id || !inmueble?.referencia_catastral) return
@@ -1967,42 +1977,66 @@ export default function ProyectoDetalle() {
               })()}
 
               {/* Catastro */}
-              {inmueble.referencia_catastral && (() => {
-                const cat = inmueble.datos_catastro
-                return (
-                  <div>
-                    <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: cat ? '1px solid #F0EEE8' : undefined }}>
-                      <div>
-                        <div className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#A6855A' }}>Catastro</div>
-                        <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?pest=rc&i=es&buscar=S&RefC=${encodeURIComponent(inmueble.referencia_catastral)}`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="text-[13px] font-mono font-bold hover:underline" style={{ color: '#3B82F6' }}>
-                          {inmueble.referencia_catastral}
-                        </a>
-                      </div>
-                      <button
-                        onClick={fetchCatastroProyecto}
-                        disabled={catastroLoadingInmueble}
-                        className="text-[11px] font-black px-3 py-1.5 rounded-xl transition-colors"
-                        style={{ background: cat ? '#E8F5E9' : '#F0EEE8', color: cat ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: cat ? '#BBF7D0' : '#DDDAD2' }}>
-                        {catastroLoadingInmueble ? '⟳' : cat ? '✓ Actualizar' : '⬇ Obtener datos'}
-                      </button>
+              <div>
+                {!inmueble.referencia_catastral ? (
+                  <div className="px-4 py-3 flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: '#A6855A' }}>Referencia catastral</div>
+                      <input
+                        type="text"
+                        value={refCatastralInput}
+                        onChange={e => setRefCatastralInput(e.target.value)}
+                        placeholder="Ej: 3897602XG0139N0024JI"
+                        className="w-full text-[13px] font-mono px-2 py-1 rounded-lg outline-none"
+                        style={{ border: '1px solid #DDDAD2', background: '#FAFAF8', color: '#1A1A1A' }}
+                        onKeyDown={e => e.key === 'Enter' && saveRefCatastral()}
+                      />
                     </div>
-                    {catastroErrorInmueble && <div className="px-4 py-2 text-xs" style={{ color: '#dc2626' }}>{catastroErrorInmueble}</div>}
-                    {cat && (
-                      <div className="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-1">
-                        {cat.direccion_completa && <div className="col-span-2 text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>{cat.direccion_completa}</div>}
-                        {cat.uso && <div className="text-xs"><span style={{ color: '#999' }}>Uso: </span><span style={{ color: '#333' }}>{cat.uso}</span></div>}
-                        {cat.superficie_construida && <div className="text-xs"><span style={{ color: '#999' }}>Sup. construida: </span><span style={{ color: '#333' }}>{cat.superficie_construida} m²</span></div>}
-                        {cat.año_construccion && <div className="text-xs"><span style={{ color: '#999' }}>Año: </span><span style={{ color: '#333' }}>{cat.año_construccion}</span></div>}
-                        {cat.tipo_construccion && <div className="text-xs"><span style={{ color: '#999' }}>Tipo: </span><span style={{ color: '#333' }}>{cat.tipo_construccion}</span></div>}
-                        {cat.cp && <div className="text-xs"><span style={{ color: '#999' }}>CP: </span><span style={{ color: '#333' }}>{cat.cp}</span></div>}
-                        {cat.municipio && <div className="text-xs"><span style={{ color: '#999' }}>Municipio: </span><span style={{ color: '#333' }}>{cat.municipio}</span></div>}
-                      </div>
-                    )}
+                    <button
+                      onClick={saveRefCatastral}
+                      disabled={savingRefCatastral || !refCatastralInput.trim()}
+                      className="text-[11px] font-black px-3 py-1.5 rounded-xl mt-4 transition-colors"
+                      style={{ background: '#F0EEE8', color: '#A6855A', border: '1px solid #DDDAD2', opacity: refCatastralInput.trim() ? 1 : 0.4 }}>
+                      {savingRefCatastral ? '⟳' : 'Guardar'}
+                    </button>
                   </div>
-                )
-              })()}
+                ) : (() => {
+                  const cat = inmueble.datos_catastro
+                  return (
+                    <div>
+                      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: cat ? '1px solid #F0EEE8' : undefined }}>
+                        <div>
+                          <div className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#A6855A' }}>Catastro</div>
+                          <a href={`https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCBusqueda.aspx?pest=rc&i=es&buscar=S&RefC=${encodeURIComponent(inmueble.referencia_catastral)}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="text-[13px] font-mono font-bold hover:underline" style={{ color: '#3B82F6' }}>
+                            {inmueble.referencia_catastral}
+                          </a>
+                        </div>
+                        <button
+                          onClick={fetchCatastroProyecto}
+                          disabled={catastroLoadingInmueble}
+                          className="text-[11px] font-black px-3 py-1.5 rounded-xl transition-colors"
+                          style={{ background: cat ? '#E8F5E9' : '#F0EEE8', color: cat ? '#16A34A' : '#A6855A', border: '1px solid', borderColor: cat ? '#BBF7D0' : '#DDDAD2' }}>
+                          {catastroLoadingInmueble ? '⟳' : cat ? '✓ Actualizar' : '⬇ Obtener datos'}
+                        </button>
+                      </div>
+                      {catastroErrorInmueble && <div className="px-4 py-2 text-xs" style={{ color: '#dc2626' }}>{catastroErrorInmueble}</div>}
+                      {cat && (
+                        <div className="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-1">
+                          {cat.direccion_completa && <div className="col-span-2 text-sm font-semibold mb-1" style={{ color: '#1A1A1A' }}>{cat.direccion_completa}</div>}
+                          {cat.uso && <div className="text-xs"><span style={{ color: '#999' }}>Uso: </span><span style={{ color: '#333' }}>{cat.uso}</span></div>}
+                          {cat.superficie_construida && <div className="text-xs"><span style={{ color: '#999' }}>Sup. construida: </span><span style={{ color: '#333' }}>{cat.superficie_construida} m²</span></div>}
+                          {cat.año_construccion && <div className="text-xs"><span style={{ color: '#999' }}>Año: </span><span style={{ color: '#333' }}>{cat.año_construccion}</span></div>}
+                          {cat.tipo_construccion && <div className="text-xs"><span style={{ color: '#999' }}>Tipo: </span><span style={{ color: '#333' }}>{cat.tipo_construccion}</span></div>}
+                          {cat.cp && <div className="text-xs"><span style={{ color: '#999' }}>CP: </span><span style={{ color: '#333' }}>{cat.cp}</span></div>}
+                          {cat.municipio && <div className="text-xs"><span style={{ color: '#999' }}>Municipio: </span><span style={{ color: '#333' }}>{cat.municipio}</span></div>}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
             </div>
           )}
 
