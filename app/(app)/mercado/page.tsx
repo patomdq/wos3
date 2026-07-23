@@ -484,6 +484,7 @@ export default function MercadoPage() {
       drive_url: item.drive_url || '',
       vendedor_tipo: item.vendedor_tipo || '',
       vendedor_nombre: item.vendedor_nombre || '',
+      referencia_catastral: item.referencia_catastral || '',
     } as any)
     setAddingUnidadId(null)
     setNuevaUnidad({ tipo: 'Piso', planta: '', superficie: '', ocupacion: 'libre', renta_mensual: '', precio_venta_est: '', reforma_estimada: '', notas: '' })
@@ -508,6 +509,7 @@ export default function MercadoPage() {
       drive_url: editForm.drive_url || null,
       vendedor_tipo: (editForm as any).vendedor_tipo || null,
       vendedor_nombre: (editForm as any).vendedor_nombre || null,
+      referencia_catastral: (editForm as any).referencia_catastral || null,
     }
     if (editPortada) {
       const ext = editPortada.name.split('.').pop() || 'jpg'
@@ -2276,6 +2278,10 @@ export default function MercadoPage() {
                   <div>
                     <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>m²</label>
                     <input type="number" value={editForm.superficie} onChange={e => setEditForm(f => ({ ...f, superficie: e.target.value }))} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium" style={INP_L} onFocus={e => e.target.style.borderColor='#A6855A'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Ref. Catastral</label>
+                    <input type="text" value={(editForm as any).referencia_catastral || ''} onChange={e => setEditForm(f => ({ ...f, referencia_catastral: e.target.value } as any))} placeholder="Ej: 3897602XG0139N0024JI" className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-medium font-mono" style={INP_L} onFocus={e => e.target.style.borderColor='#A6855A'} onBlur={e => e.target.style.borderColor='#ECEAE4'} />
                   </div>
                   <div className="col-span-2">
                     <label className="block text-[12px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#666' }}>Link anuncio</label>
