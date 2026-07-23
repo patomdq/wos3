@@ -90,7 +90,16 @@ Radar → En Estudio → En Negociación → Comprada → En Reforma → En Vent
 
 ## ESTADO OPERATIVO — actualizar al cerrar cada sesión
 
-**Última sesión — 23/07/2026**
+**Última sesión — 23/07/2026 (tarde)**
+
+- **Mercado — catastro y vendedor dentro del desplegable**: movidos fuera de la card visible al panel "Ver detalle" colapsado. Toggle aparece si hay vendedor, catastro, JV o unidades. Label muestra qué contiene (Fondo · Registral · JV · Unidades). Commits `15e1180`
+- **Proyectos — ficha registral en tab Análisis**: card "Ficha registral" al inicio del tab 7 con vendedor/fondo + catastro. Si no hay ref catastral, campo inline para escribirla + guardar. Al guardar auto-lanza fetch al Catastro (todo en un paso). Commits `e8aeb5d`, `2ebfa35`, `a663158`
+- **Columnas BD añadidas**: `inmuebles.datos_catastro jsonb`, `inmuebles.vendedor_tipo text`, `inmuebles.vendedor_nombre text`
+- **API `/api/catastro/inmueble?id=X`**: fetch catastro para tabla `inmuebles` (análoga a `/api/catastro/fetch` para `deuda_posiciones`)
+- **PWA Safari dock**: fix visibilidad — `visibilitychange` + `focus` eventos en `app/layout.tsx`
+- **Dato real**: inmueble `0ecbe10b` (Vera dúplex) — `referencia_catastral = '3897602XG0139N0024JI'`, `provincia = 'Almería'`, `datos_catastro` con dirección Av. La Giralda 1, año 2005, 304m²
+
+**Sesión anterior — 23/07/2026 (mañana)**
 
 - **Vista Criba — screening masivo de deuda**: score 0-100 ponderado por descuento(35%)+posesión(30%)+judicial(25%)+deudor(10%), penalización −20 si cargas > asking
   - `calcularScoreActivo()` + `semaforo()` en `lib/deuda-schema.ts`
