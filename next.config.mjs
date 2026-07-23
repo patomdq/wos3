@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
+const BUILD_TIME = Date.now().toString()
+
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_BUILD_TIME: BUILD_TIME,
+  },
   images: { unoptimized: true },
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },

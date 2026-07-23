@@ -24,11 +24,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${marcellus.variable} ${hanken.variable}`}>
       <body>
         {children}
-        {/* Fix PWA Mac: recarga cuando el navegador restaura desde bfcache (Cmd+Q → reabrir) */}
+        {/* Fix PWA Mac: detecta build nuevo y recarga — cubre bfcache + session restore de Chrome */}
         <script dangerouslySetInnerHTML={{ __html: `
-          window.addEventListener('pageshow', function(e) {
-            if (e.persisted) window.location.reload();
-          });
+          (function() {
+            var CURRENT = '${process.env.NEXT_PUBLIC_BUILD_TIME}';
+            function check() {
+              fetch('/api/ping', { cache: 'no-store' })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                  var stored = localStorage.getItem('_wos_build');
+                  if (stored && stored !== d.build) {
+                    localStorage.setItem('_wos_build', d.build);
+                    window.location.reload(true);
+                  } else {
+                    localStorage.setItem('_wos_build', d.build);
+                  }
+                }).catch(function(){});
+            }
+            check();
+            window.addEventListener('pageshow', function(e) {
+              if (e.persisted) { window.location.reload(true); } else { check(); }
+            });
+          })();
         `}} />
       </body>
     </html>
