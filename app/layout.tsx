@@ -22,7 +22,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${marcellus.variable} ${hanken.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Fix PWA Mac: recarga cuando el navegador restaura desde bfcache (Cmd+Q → reabrir) */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.addEventListener('pageshow', function(e) {
+            if (e.persisted) window.location.reload();
+          });
+        `}} />
+      </body>
     </html>
   )
 }
