@@ -594,28 +594,9 @@ function PosicionCard({
   return (
     <div className="px-5 py-4" style={{ borderTop: '1px solid #F5F4F0' }}>
 
-      {/* Resumen IA — preanálisis generado por Claude con todos los datos disponibles */}
-      <div className="rounded-xl px-3 py-2.5 mb-3" style={{ background: 'rgba(166,133,90,0.07)', border: '1px solid rgba(166,133,90,0.25)' }}>
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#A6855A' }}>✨ Resumen IA</div>
-          <button onClick={generarResumen} disabled={generandoResumen}
-            className="px-2 py-1 rounded-lg text-[11px] font-black disabled:opacity-50"
-            style={{ background: '#14110C', color: '#F8F3E9' }}>
-            {generandoResumen ? 'Generando...' : resumen ? '↺ Regenerar' : 'Generar'}
-          </button>
-        </div>
-        {resumen ? (
-          <p className="text-[12.5px] leading-relaxed" style={{ color: '#444' }}>{resumen}</p>
-        ) : (
-          <p className="text-[12px] italic" style={{ color: '#BBB' }}>
-            Todavía no hay resumen. Hacé clic en "Generar" para que Claude analice esta posición con todos los datos disponibles.
-          </p>
-        )}
-      </div>
-
-      {/* Imagen del inmueble — igual que la portada en Mercado */}
+      {/* Imagen — primer impacto visual, más grande */}
       <label className="block relative rounded-xl overflow-hidden mb-3 cursor-pointer"
-        style={{ height: 120, background: p.imagen_url ? undefined : '#F9F8F5', border: p.imagen_url ? 'none' : '1.5px dashed #DCDAD4' }}>
+        style={{ height: 180, background: p.imagen_url ? undefined : '#F9F8F5', border: p.imagen_url ? 'none' : '1.5px dashed #DCDAD4' }}>
         <input type="file" accept="image/*" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) onSubirImagen(f) }} />
         {p.imagen_url ? (
@@ -634,23 +615,14 @@ function PosicionCard({
         )}
       </label>
 
-      {/* Cabecera: dirección + tipo + badges + estado interno */}
+      {/* Título + estado — dirección grande al estilo Fencia */}
       <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
         <div className="min-w-[220px]">
-          <div className="text-[14px] font-bold" style={{ color: '#333' }}>{p.direccion || '(sin dirección)'}</div>
-          <div className="text-[12px] mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: '#999' }}>
+          <div style={{ fontFamily: 'Marcellus, serif', fontSize: 20, fontWeight: 400, color: '#1A1A1A', lineHeight: 1.2 }}>
+            {p.direccion || [p.ciudad, p.provincia].filter(Boolean).join(', ') || '(sin dirección)'}
+          </div>
+          <div className="text-[12px] mt-1 flex items-center gap-1.5 flex-wrap" style={{ color: '#999' }}>
             <span>{[p.tipo_colateral, p.subtipo_colateral].filter(Boolean).join(' · ') || 'Sin tipo'}</span>
-            {judCfg && estadoJudicialEfectivo && (
-              <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: judCfg.bg, color: judCfg.color }}>
-                {ESTADO_JUDICIAL_LABEL[estadoJudicialEfectivo]}
-                {!p.estado_judicial_normalizado && ' (inferido)'}
-              </span>
-            )}
-            {ocupCfg && p.ocupacion_estado && (
-              <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: ocupCfg.bg, color: ocupCfg.color }}>
-                {OCUPACION_LABEL[p.ocupacion_estado]}
-              </span>
-            )}
             {riesgo.alerta && (
               <span className="px-1.5 py-0.5 rounded-md text-[12px] font-black" style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444' }} title="Cargas previas superan el asking price">
                 🔴 Riesgo cargas
@@ -670,7 +642,86 @@ function PosicionCard({
         </select>
       </div>
 
-      {/* Banner auto-descarte: aparece cuando el sistema descartó automáticamente al importar por matemática pura */}
+      {/* 3 métricas clave — Deuda hoy / Valor mercado / Precio orientativo */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="rounded-xl p-3" style={{ background: '#14110C' }}>
+          <div style={{ fontSize: 10, color: '#C7A877', fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.8px', marginBottom: 4 }}>Deuda hoy</div>
+          <div style={{ fontFamily: 'Marcellus, serif', fontSize: 19, color: '#F8F3E9', lineHeight: 1.1 }}>{fmt(p.deuda_tot || p.deuda_ob)}</div>
+          {p.deuda_ob && p.deuda_tot && p.deuda_ob !== p.deuda_tot && (
+            <div style={{ fontSize: 10, color: '#888', marginTop: 3 }}>OB: {fmt(p.deuda_ob)}</div>
+          )}
+        </div>
+        <div className="rounded-xl p-3" style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)' }}>
+          <div style={{ fontSize: 10, color: '#999', fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.8px', marginBottom: 4 }}>Valor mercado</div>
+          <div style={{ fontFamily: 'Marcellus, serif', fontSize: 19, color: '#1A1A1A', lineHeight: 1.1 }}>{fmt(p.valor_colateral)}</div>
+          {ratioColateral.ratio !== null && (
+            <div style={{ fontSize: 10, color: ratioColateral.bueno ? '#16A34A' : '#EF4444', marginTop: 3 }}>
+              {pct(ratioColateral.ratio)} deuda/colateral
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl p-3" style={{ background: '#fff', border: '2px solid #A6855A' }}>
+          <div style={{ fontSize: 10, color: '#A6855A', fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.8px', marginBottom: 4 }}>Precio orientativo</div>
+          <div style={{ fontFamily: 'Marcellus, serif', fontSize: 19, color: '#A6855A', lineHeight: 1.1 }}>{fmt(p.asking_price)}</div>
+          {descuentoDeuda !== null && (
+            <div style={{ fontSize: 10, color: descuentoDeuda >= 0.3 ? '#16A34A' : '#EF4444', marginTop: 3 }}>
+              {pct(descuentoDeuda)} dto. s/ deuda
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Checklist — deudor · ocupación · fase judicial */}
+      {(p.titular_deuda || p.ocupacion_estado || estadoJudicialEfectivo) && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {p.titular_deuda && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: '#F9F8F5', border: '1px solid #ECEAE4' }}>
+              <span style={{ color: '#22C55E', fontWeight: 900, fontSize: 12 }}>✓</span>
+              <span className="text-[12px] font-semibold" style={{ color: '#555' }}>
+                <span style={{ color: '#AAA', fontWeight: 500 }}>Deudor · </span>{p.titular_deuda}
+              </span>
+            </div>
+          )}
+          {p.ocupacion_estado && ocupCfg && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: '#F9F8F5', border: '1px solid #ECEAE4' }}>
+              <span style={{ color: ocupCfg.color, fontWeight: 900, fontSize: 12 }}>✓</span>
+              <span className="text-[12px] font-semibold" style={{ color: '#555' }}>
+                <span style={{ color: '#AAA', fontWeight: 500 }}>Ocupación · </span>{OCUPACION_LABEL[p.ocupacion_estado as OcupacionEstado]}
+              </span>
+            </div>
+          )}
+          {estadoJudicialEfectivo && judCfg && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: judCfg.bg, border: `1px solid ${judCfg.color}44` }}>
+              <span style={{ color: judCfg.color, fontWeight: 900, fontSize: 12 }}>⚖</span>
+              <span className="text-[12px] font-semibold" style={{ color: judCfg.color }}>
+                {ESTADO_JUDICIAL_LABEL[estadoJudicialEfectivo]}
+                {!p.estado_judicial_normalizado && <span style={{ fontWeight: 500, opacity: 0.7 }}> (inferido)</span>}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Resumen IA */}
+      <div className="rounded-xl px-3 py-2.5 mb-3" style={{ background: 'rgba(166,133,90,0.07)', border: '1px solid rgba(166,133,90,0.25)' }}>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="text-[11px] font-black uppercase tracking-wide" style={{ color: '#A6855A' }}>✨ Resumen IA</div>
+          <button onClick={generarResumen} disabled={generandoResumen}
+            className="px-2 py-1 rounded-lg text-[11px] font-black disabled:opacity-50"
+            style={{ background: '#14110C', color: '#F8F3E9' }}>
+            {generandoResumen ? 'Generando...' : resumen ? '↺ Regenerar' : 'Generar'}
+          </button>
+        </div>
+        {resumen ? (
+          <p className="text-[12.5px] leading-relaxed" style={{ color: '#444' }}>{resumen}</p>
+        ) : (
+          <p className="text-[12px] italic" style={{ color: '#BBB' }}>
+            Todavía no hay resumen. Hacé clic en "Generar" para que Claude analice esta posición con todos los datos disponibles.
+          </p>
+        )}
+      </div>
+
+      {/* Banner auto-descarte */}
       {p.estado_interno === 'descartado' && (p.motivo_descarte === 'descuento_insuficiente' || p.motivo_descarte === 'cargas_excesivas') && (
         <div className="rounded-xl px-3 py-2.5 mb-3 flex items-center justify-between gap-3" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
           <div>
@@ -689,7 +740,7 @@ function PosicionCard({
         </div>
       )}
 
-      {/* Motivo de descarte — solo si el estado interno es "descartado" (punto 1: ~90% se descartan rápido, es normal) */}
+      {/* Motivo de descarte */}
       {p.estado_interno === 'descartado' && (
         <div className="rounded-xl px-3 py-2.5 mb-3" style={{ background: '#F9F8F5', border: '1px solid #ECEAE4' }}>
           <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#999' }}>Motivo del descarte</div>
@@ -700,14 +751,6 @@ function PosicionCard({
           </select>
         </div>
       )}
-
-      {/* Resumen económico — estilo ficha de deuda (FENCIA) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-        <Kpi label="Deuda OB" value={fmt(p.deuda_ob)} />
-        <Kpi label="Deuda total" value={fmt(p.deuda_tot)} />
-        <Kpi label="Asking price" value={fmt(p.asking_price)} highlight />
-        <Kpi label="Descuento s/ deuda" value={pct(descuentoDeuda)} semaforo={descuentoDeuda === null ? undefined : descuentoDeuda >= 0.3} />
-      </div>
 
       {/* Due diligence NPL — puntos 2A/2B/3/4/6 del criterio del experto */}
       <div className="rounded-xl p-3 mb-3" style={{ background: '#FAFAF8', border: '1px solid #F0EEE8' }}>
